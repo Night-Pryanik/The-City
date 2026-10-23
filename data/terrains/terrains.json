@@ -1,33 +1,205 @@
 {
+  // The terrains of the map: the RELIEF of a hex (what lies under the vegetation).
+  //
+  // Every passable land relief has a "family" — plain, hill or mountain — and the climate turns it
+  // into one of its VARIANTS: the same plain is a tundra in the cold belt, a steppe or a prairie in
+  // the mild one, a savanna in the subtropical one and a tropical plain near the equator
+  // (see data/climate.json). The variant is the terrain of the hex: it is what the game stores,
+  // what the tooltip shows and what the resources are placed on. There is no generic "plain" on
+  // the map — a plain is always one of its varieties.
+  //
+  // The family is what the game means by "a plain" wherever the climate does not matter:
+  // a resource that grows on allowed_terrain ["plain"] grows on all five of them, and the
+  // vegetation of a hex is taken from the cover_chance of its climate zone (data/climate.json),
+  // not from the terrain record.
+  //
+  // The variants of one family share the icons of the family: the climate is told by the "tint" —
+  // a colour wash drawn over the icon by the map renderer (see map_renderer._draw_terrain_tint).
+  // "color" is the flat colour of the hex, used where no icon is available.
   "terrains": [
+    // --- THE COLD BELT -------------------------------------------------------------------
     {
-      "id": "plain",
-      "name": "Plain",
-      "color": [ 144, 238, 144 ],
+      "id": "tundra_plain",
+      "name": "Tundra",
+      "family": "plain",
+      "color": [ 196, 208, 200 ],
+      "tint": [ 200, 212, 220 ],
+      "tint_alpha": 0.55,
       "move_cost": 1,
       "expansion_cost": 2,
-      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ],
-      "cover_chance": { "none": 60, "sparse_forest": 15, "forest": 25 }
+      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
     },
     {
-      "id": "hill",
-      "name": "Hills",
-      "color": [ 139, 90, 43 ],
+      "id": "tundra_hill",
+      "name": "Tundra Hills",
+      "family": "hill",
+      "color": [ 150, 148, 140 ],
+      "tint": [ 200, 212, 220 ],
+      "tint_alpha": 0.45,
       "move_cost": 2,
       "expansion_cost": 3,
-      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ],
-      "cover_chance": { "none": 60, "sparse_forest": 15, "forest": 25 }
+      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
     },
     {
-      "id": "mountain",
-      "name": "Mountains",
-      "color": [ 105, 105, 105 ],
+      "id": "tundra_mountain",
+      "name": "Tundra Mountains",
+      "family": "mountain",
+      "color": [ 140, 148, 152 ],
+      "tint": [ 200, 212, 220 ],
+      "tint_alpha": 0.45,
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,
-      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ],
-      "cover_chance": { "none": 90, "sparse_forest": 5, "forest": 5 }
+      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
     },
+
+    // --- THE MILD BELT -------------------------------------------------------------------
+    // The dry part of the belt is the steppe, the wet one is the prairie: one family, two
+    // varieties, told apart by the moisture.
+    {
+      "id": "steppe_plain",
+      "name": "Steppe",
+      "family": "plain",
+      "color": [ 214, 198, 132 ],
+      "tint": [ 225, 205, 110 ],
+      "tint_alpha": 0.45,
+      "move_cost": 1,
+      "expansion_cost": 2,
+      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
+    },
+    {
+      "id": "steppe_hill",
+      "name": "Steppe Hills",
+      "family": "hill",
+      "color": [ 168, 148, 96 ],
+      "tint": [ 225, 205, 110 ],
+      "tint_alpha": 0.35,
+      "move_cost": 2,
+      "expansion_cost": 3,
+      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
+    },
+    {
+      "id": "steppe_mountain",
+      "name": "Steppe Mountains",
+      "family": "mountain",
+      "color": [ 130, 122, 104 ],
+      "tint": [ 225, 205, 110 ],
+      "tint_alpha": 0.30,
+      "move_cost": 3,
+      "expansion_cost": 5,
+      "work_cost_mult": 2.5,
+      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
+    },
+    {
+      "id": "prairie_plain",
+      "name": "Prairie",
+      "family": "plain",
+      "color": [ 186, 205, 124 ],
+      "tint": [ 205, 220, 120 ],
+      "tint_alpha": 0.30,
+      "move_cost": 1,
+      "expansion_cost": 2,
+      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
+    },
+    {
+      "id": "prairie_hill",
+      "name": "Prairie Hills",
+      "family": "hill",
+      "color": [ 150, 165, 96 ],
+      "tint": [ 205, 220, 120 ],
+      "tint_alpha": 0.25,
+      "move_cost": 2,
+      "expansion_cost": 3,
+      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
+    },
+    {
+      "id": "prairie_mountain",
+      "name": "Prairie Mountains",
+      "family": "mountain",
+      "color": [ 120, 128, 110 ],
+      "tint": [ 205, 220, 120 ],
+      "tint_alpha": 0.22,
+      "move_cost": 3,
+      "expansion_cost": 5,
+      "work_cost_mult": 2.5,
+      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
+    },
+
+    // --- THE SUBTROPICAL BELT ------------------------------------------------------------
+    {
+      "id": "savanna_plain",
+      "name": "Savanna",
+      "family": "plain",
+      "color": [ 222, 192, 112 ],
+      "tint": [ 235, 190, 80 ],
+      "tint_alpha": 0.50,
+      "move_cost": 1,
+      "expansion_cost": 2,
+      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
+    },
+    {
+      "id": "savanna_hill",
+      "name": "Savanna Hills",
+      "family": "hill",
+      "color": [ 180, 150, 92 ],
+      "tint": [ 235, 190, 80 ],
+      "tint_alpha": 0.40,
+      "move_cost": 2,
+      "expansion_cost": 3,
+      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
+    },
+    {
+      "id": "savanna_mountain",
+      "name": "Savanna Mountains",
+      "family": "mountain",
+      "color": [ 140, 122, 96 ],
+      "tint": [ 235, 190, 80 ],
+      "tint_alpha": 0.35,
+      "move_cost": 3,
+      "expansion_cost": 5,
+      "work_cost_mult": 2.5,
+      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
+    },
+
+    // --- THE TROPICAL BELT ---------------------------------------------------------------
+    {
+      "id": "tropical_plain",
+      "name": "Tropical Plain",
+      "family": "plain",
+      "color": [ 122, 178, 104 ],
+      "tint": [ 110, 175, 90 ],
+      "tint_alpha": 0.25,
+      "move_cost": 1,
+      "expansion_cost": 2,
+      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
+    },
+    {
+      "id": "tropical_hill",
+      "name": "Tropical Hills",
+      "family": "hill",
+      "color": [ 120, 150, 92 ],
+      "tint": [ 110, 175, 90 ],
+      "tint_alpha": 0.25,
+      "move_cost": 2,
+      "expansion_cost": 3,
+      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
+    },
+    {
+      "id": "tropical_mountain",
+      "name": "Tropical Mountains",
+      "family": "mountain",
+      "color": [ 100, 125, 100 ],
+      "tint": [ 110, 175, 90 ],
+      "tint_alpha": 0.25,
+      "move_cost": 3,
+      "expansion_cost": 5,
+      "work_cost_mult": 2.5,
+      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
+    },
+
+    // --- THE RELIEF OUTSIDE THE CLIMATE ---------------------------------------------------
+    // The water, the wetlands and the deserts keep their own records: they are not a variety of
+    // a plain and their vegetation comes from their own cover_chance.
     {
       "id": "lake",
       "name": "Freshwater Lake",

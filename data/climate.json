@@ -1,0 +1,97 @@
+{
+  // The climate zones of the map: what a pair of the climate axes turns the relief into.
+  //
+  // A zone is not a thing the player ever sees and it has no name of its own: the player reads
+  // the TERRAIN of a hex ("Tundra", "Steppe", "Savanna" …) and its COVER ("Taiga", "Forest",
+  // "Tropical Forest" …). The zone only decides which variety of the relief stands where, and
+  // what grows on it.
+  //
+  // The axes (see map_config.json → "climate"):
+  //   temperature — the belts from the poles to the equator: cold, mild, subtropical, tropical.
+  //                 The belts are strictly ordered, so two hexes of the same latitude are never
+  //                 more than one belt apart;
+  //   humidity    — large wet and dry regions that do not follow the latitudes: they lie anywhere,
+  //                 curve and surround each other.
+  //
+  // The fields of a zone:
+  //   terrain      — the variety of every relief family of the zone (plain, hill, mountain). The
+  //                  family is the field "family" of a terrain record (data/terrains/terrains.json);
+  //   cover_chance — the vegetation of the zone. It applies to all three families of the zone, so
+  //                  a tundra mountain and a tundra plain share the same woods. The covers of the
+  //                  water, the wetlands and the deserts are NOT taken from here: those terrains
+  //                  keep their own cover_chance;
+  //   deserts      — true: the sandy and rocky deserts may stand in the zone. Everywhere else
+  //                  they are levelled into the plain of the zone, so that a sandy desert never
+  //                  appears in the taiga. The field is absent = false.
+  //
+  // Every pair (temperature, humidity) must have a zone: the generator looks the zone up by the
+  // pair and falls back to another zone of the same temperature belt if it finds none
+  // (data_validator reports the gap as zone_axes).
+  "climate_zones": [
+    // --- THE COLD BELT: the tundra ---------------------------------------------------------
+    {
+      "id": "tundra_dry",
+      "temperature": "cold",
+      "humidity": "dry",
+      "terrain": { "plain": "tundra_plain", "hill": "tundra_hill", "mountain": "tundra_mountain" },
+      "cover_chance": { "none": 90, "taiga_sparse": 10 }
+    },
+    {
+      "id": "tundra_wet",
+      "temperature": "cold",
+      "humidity": "wet",
+      "terrain": { "plain": "tundra_plain", "hill": "tundra_hill", "mountain": "tundra_mountain" },
+      "cover_chance": { "none": 30, "taiga": 45, "taiga_sparse": 25 }
+    },
+
+    // --- THE MILD BELT: the steppe and the prairie -----------------------------------------
+    {
+      "id": "steppe",
+      "temperature": "mild",
+      "humidity": "dry",
+      "terrain": { "plain": "steppe_plain", "hill": "steppe_hill", "mountain": "steppe_mountain" },
+      "cover_chance": { "none": 88, "sparse_forest": 12 }
+    },
+    {
+      "id": "prairie",
+      "temperature": "mild",
+      "humidity": "wet",
+      "terrain": { "plain": "prairie_plain", "hill": "prairie_hill", "mountain": "prairie_mountain" },
+      "cover_chance": { "none": 40, "sparse_forest": 25, "forest": 35 }
+    },
+
+    // --- THE SUBTROPICAL BELT: the savanna -------------------------------------------------
+    {
+      "id": "savanna_dry",
+      "temperature": "subtropical",
+      "humidity": "dry",
+      "terrain": { "plain": "savanna_plain", "hill": "savanna_hill", "mountain": "savanna_mountain" },
+      "cover_chance": { "none": 92, "sparse_forest": 8 },
+      "deserts": true
+    },
+    {
+      "id": "savanna_wet",
+      "temperature": "subtropical",
+      "humidity": "wet",
+      "terrain": { "plain": "savanna_plain", "hill": "savanna_hill", "mountain": "savanna_mountain" },
+      "cover_chance": { "none": 55, "sparse_forest": 35, "forest": 10 }
+    },
+
+    // --- THE TROPICAL BELT: the tropical plain ---------------------------------------------
+    {
+      "id": "tropical_dry",
+      "temperature": "tropical",
+      "humidity": "dry",
+      "terrain": { "plain": "tropical_plain", "hill": "tropical_hill", "mountain": "tropical_mountain" },
+      "cover_chance": { "none": 85, "tropical_forest_sparse": 15 },
+      "deserts": true
+    },
+    {
+      "id": "tropical_wet",
+      "temperature": "tropical",
+      "humidity": "wet",
+      "terrain": { "plain": "tropical_plain", "hill": "tropical_hill", "mountain": "tropical_mountain" },
+      "cover_chance": { "none": 22, "tropical_forest": 50, "tropical_forest_sparse": 28 }
+    }
+  ]
+}

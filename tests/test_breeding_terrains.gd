@@ -4,7 +4,7 @@
 # Checks the real JSON data and the shared MapHelpers.can_breed_resource_on_tile:
 # base locations are preserved, breeding groups work with AND/OR semantics,
 # invalid combinations do not pass, breedable=false takes priority, and
-# get_buildable_improvement offers an improvement on an additional biome.
+# get_buildable_improvement offers an improvement on an additional terrain.
 extends SceneTree
 
 # Hang watchdog: without it, an interrupted _run() coroutine looks from the
@@ -80,7 +80,7 @@ func _test_negative_and_invalid_cases(map_helpers, gdata, state: Dictionary) -> 
     check(not map_helpers.can_breed_resource_on_tile("buffalo", _tile("swamp", "none")),
             "buffalo must not automatically breed on marsh without reeds", state)
     check(not map_helpers.can_breed_resource_on_tile("freshwater_fish", _tile("lake", "none")),
-            "fish with breedable=false must not breed even in a suitable water biome", state)
+            "fish with breedable=false must not breed even in a suitable water terrain", state)
 
     # Check the strict handling of malformed/unknown conditions.
     var invalid_id := "__test_invalid_breeding_resource"
@@ -140,7 +140,7 @@ func _test_buildable_improvement(map_helpers, city, state: Dictionary) -> void:
     check(map_helpers.get_buildable_improvement(plain_tile) == "vineyard",
             "the usual vineyard offer must be preserved on plains", state)
     check(map_helpers.get_buildable_improvement(wrong_tile) == "",
-            "no improvement must be offered on an unsuitable biome", state)
+            "no improvement must be offered on an unsuitable terrain", state)
 
     city.domesticated_resources = old_domesticated
     city.unlocked_technologies = old_unlocked

@@ -275,12 +275,15 @@ func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
 # -------------------------------------------------------
 # Finds the vertices at which at least one hex has the given relief.
 # -------------------------------------------------------
+# The vertices whose hexes stand on a terrain. The name may be a terrain or a relief family: the
+# sources of the rivers are looked up by the family ("mountain", "hill"), because the climate turns
+# every one of them into the variety of its belt — a tundra mountain, a steppe mountain, …
 func _find_terrain_vertices(graph: Dictionary, tile_data: Array, terrain_id: String) -> Array:
     var vertex_hexes: Dictionary = graph["hexes"]
     var result: Array = []
     for vk in vertex_hexes.keys():
         for hex_info in vertex_hexes[vk]:
-            if tile_data[hex_info.row][hex_info.col]["terrain"] == terrain_id:
+            if GameData.terrain_matches(str(tile_data[hex_info.row][hex_info.col]["terrain"]), terrain_id):
                 result.append(vk)
                 break
     return result

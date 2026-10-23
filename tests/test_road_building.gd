@@ -150,7 +150,7 @@ func _make_map() -> Array:
         var row := []
         for c in range(COLS):
             row.append({
-                "terrain": "plain", "cover": "none", "resource": null,
+                "terrain": "steppe_plain", "cover": "none", "resource": null,
                 "quality": "", "crop_bred": null, "improvement": null,
                 "decorative": false, "terrain_icon": "", "fill_time": 0.0,
                 "production_fractional_remainder": 0.0, "has_town": false,
@@ -218,7 +218,7 @@ func _test_cost_per_hex(state: Dictionary) -> void:
     # The section cost on a plain 1 hex from the city: base × 1.0 (terrain)
     # × distance multiplier. No surcharge for route length.
     var near_price: Dictionary = _mh.get_road_step_work_cost(
-            paid_level, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "plain")
+            paid_level, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "steppe_plain")
     var near_expected := int(ceil(per_hex * 1.0 * _mh.get_road_distance_mult(1) \
             * float(near_price.get("construction_tech_mult", 1.0))))
     check(int(near_price.get("cost", -1)) == near_expected,
@@ -232,26 +232,26 @@ func _test_cost_per_hex(state: Dictionary) -> void:
     # maxi(1, …) here and the base was 0 — because of this a road to an
     # improvement was both free and instantaneous.
     var trail_price: Dictionary = _mh.get_road_step_work_cost(
-            1, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "mountain")
+            1, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "steppe_mountain")
     check(int(trail_price.get("cost", -1)) > 0,
             "a path section must cost work even in the mountains", state)
 
     # FARTHER FROM THE CITY IS MORE EXPENSIVE, on the same terrain.
     var far_price: Dictionary = _mh.get_road_step_work_cost(
-            paid_level, CITY_ROW - 6, CITY_COL, CITY_ROW, CITY_COL, "plain")
+            paid_level, CITY_ROW - 6, CITY_COL, CITY_ROW, CITY_COL, "steppe_plain")
     check(int(far_price.get("cost", 0)) > int(near_price.get("cost", 0)),
             "a section farther from the city must cost more on the same terrain", state)
 
     # DIFFICULT TERRAIN IS MORE EXPENSIVE, at the same distance.
     var mountain_price: Dictionary = _mh.get_road_step_work_cost(
-            paid_level, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "mountain")
+            paid_level, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "steppe_mountain")
     check(int(mountain_price.get("cost", 0)) > int(near_price.get("cost", 0)),
             "a section in the mountains must cost more than a section on a plain", state)
     # The terrain multiplier is the same work_cost_mult as for improvements.
     check(absf(float(mountain_price.get("terrain_mult", 0.0)) \
-            - float(_gdata.terrains.get("mountain", {}).get("work_cost_mult", -1.0))) < 0.0001,
+            - float(_gdata.terrains.get("steppe_mountain", {}).get("work_cost_mult", -1.0))) < 0.0001,
             "the section terrain multiplier must be taken from work_cost_mult in the data", state)
-    check(absf(_mh.get_terrain_work_mult("plain") - 1.0) < 0.0001,
+    check(absf(_mh.get_terrain_work_mult("steppe_plain") - 1.0) < 0.0001,
             "a plain must cost exactly the base", state)
     # Unknown terrain must not break the calculation.
     check(_mh.get_terrain_work_mult("no_such_terrain") == 1.0,

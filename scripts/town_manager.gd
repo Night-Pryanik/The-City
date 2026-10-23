@@ -133,6 +133,8 @@ const MIN_RESOURCES_FOR_CLUSTER := 2
 # the type of the terrain is a soft refinement on top of them: after the main cascade
 # we try to move to a hex with a more preferable terrain, without losing
 # the already earned primary attractions.
+# The groups name either a terrain or a relief family: "plain" covers the tundra, the steppe, the
+# prairie, the savanna and the tropical plain alike (see MapHelpers.terrain_in_list).
 const TERRAIN_PREFERENCE: Array = [
     ["plain", "beach"],
     ["hill"],
@@ -969,7 +971,7 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
     var cur_terrain: String = tile_data[best.row][best.col].get("terrain", "")
     var terrain_label := ""
     for group in TERRAIN_PREFERENCE:
-        if group.has(cur_terrain):
+        if MapHelpers.terrain_in_list(cur_terrain, group):
             terrain_label = str(group[0])
             break
         var moved: Dictionary = _find_hex_in_radius_satisfying(tile_data, rows, cols,
@@ -1067,7 +1069,7 @@ func _find_hex_in_radius_satisfying(tile_data: Array, rows: int, cols: int,
             # The secondary filter by the type of the terrain (an empty list = any).
             if not allowed_terrains.is_empty():
                 var terr: String = tile_data[r][c].get("terrain", "")
-                if not allowed_terrains.has(terr):
+                if not MapHelpers.terrain_in_list(terr, allowed_terrains):
                     continue
             if not _is_valid_town_hex(tile_data, r, c, city_row, city_col,
                     exclusion_start_row, exclusion_end_row,
@@ -1387,7 +1389,7 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
                     var tile: Dictionary = candidate.tile
                     if tile.get("improvement", null) == null \
                             and tile.get("resource", null) == null \
-                            and tile.get("terrain", "") == "plain" \
+                            and GameData.terrain_family(str(tile.get("terrain", ""))) == "plain" \
                             and tile.get("cover", "none") == "none":
                         farm_candidates.append(candidate)
                 farm_candidates.shuffle()

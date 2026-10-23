@@ -732,6 +732,21 @@ msgstr "Клик — панель управления зданием"
 msgid "Click: sort the list; a repeated click reverses the order"
 msgstr "Нажмите чтобы отсортировать список; повторное нажатие меняет порядок"
 
+msgid "Climate zone %s does not map the relief family \"%s\" to a terrain."
+msgstr "Климатическая зона %s не сопоставляет тип рельефа \"%s\" никакой местности."
+
+msgid "Climate zone %s has an unknown %s \"%s\"."
+msgstr "У климатической зоны %s неизвестное значение %s \"%s\"."
+
+msgid "Climate zone %s maps the relief family \"%s\" to \"%s\", which is not a terrain of that family."
+msgstr "Климатическая зона %s сопоставляет тип рельефа \"%s\" местности \"%s\", которая к этому типу не относится."
+
+msgid "Climate zone: the relief family is not mapped to a terrain of that family"
+msgstr "Климатическая зона: тип рельефа не сопоставлен местности этого типа"
+
+msgid "Climate zone: unknown climate axis value"
+msgstr "Климатическая зона: неизвестное значение оси климата"
+
 msgid "Clock"
 msgstr "Часы"
 
@@ -971,6 +986,9 @@ msgstr "Эпоха: %s"
 
 msgid "Errors in the game data"
 msgstr "Ошибки в игровых данных"
+
+msgid "Every zone maps each relief family the generator places — plain, hill, mountain, the keys of terrain_config — to a terrain that carries the same \"family\" field. Otherwise the hexes of that family keep the raw family name on the map instead of a terrain: no icon, no yields, no vegetation."
+msgstr "Каждая зона сопоставляет каждый тип рельефа, который размещает генератор (равнина, холмы, горы — ключи terrain_config), местности с тем же значением поля \"family\". Иначе гексы этого типа остаются на карте с именем типа вместо местности: без значка, без добычи и без растительности."
 
 msgid "Exit game"
 msgstr "Выйти из игры"
@@ -1950,6 +1968,9 @@ msgstr "Симуляция продолжена. Запуск: %s"
 msgid "The temperature is one of: cold, mild, hot; the humidity — one of: wet, dry. The generator compares the values literally, so a biome with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another biome."
 msgstr "Температура — одно из значений: cold, mild, hot; влажность — одно из: wet, dry. Генератор сравнивает значения буквально, поэтому биом с любым другим написанием никогда не появится на карте: его пара осей останется пустой, и климат возьмёт другой биом той же температуры."
 
+msgid "The temperature is one of: cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature."
+msgstr "Температура — одна из: cold, mild, subtropical, tropical; влажность — одна из: wet, dry. Генератор сравнивает значения буквально, поэтому зона с любым другим написанием никогда не появится на карте: её пара осей останется пустой, и климат возьмёт другую зону той же температуры."
+
 msgid "The time the goods spend on the road from the town to the city"
 msgstr "Время, которое товар проводит на дороге от городка до города"
 
@@ -2699,8 +2720,16 @@ msgid "Sparse Taiga"
 msgstr "Редкая тайга"
 
 msgctxt "covers.name"
+msgid "Sparse Tropical Forest"
+msgstr "Редкий тропический лес"
+
+msgctxt "covers.name"
 msgid "Taiga"
 msgstr "Тайга"
+
+msgctxt "covers.name"
+msgid "Tropical Forest"
+msgstr "Тропический лес"
 
 msgctxt "crafts.description"
 msgid "Blows bottles from molten glass."
@@ -5491,6 +5520,18 @@ msgid "Plain"
 msgstr "Равнина"
 
 msgctxt "terrains.name"
+msgid "Prairie"
+msgstr "Прерия"
+
+msgctxt "terrains.name"
+msgid "Prairie Hills"
+msgstr "Прерийные холмы"
+
+msgctxt "terrains.name"
+msgid "Prairie Mountains"
+msgstr "Прерийные горы"
+
+msgctxt "terrains.name"
 msgid "Rocky Desert"
 msgstr "Каменистая пустыня"
 
@@ -5501,6 +5542,18 @@ msgstr "Соленое озеро"
 msgctxt "terrains.name"
 msgid "Sandy Desert"
 msgstr "Песчаная пустыня"
+
+msgctxt "terrains.name"
+msgid "Savanna"
+msgstr "Саванна"
+
+msgctxt "terrains.name"
+msgid "Savanna Hills"
+msgstr "Саванные холмы"
+
+msgctxt "terrains.name"
+msgid "Savanna Mountains"
+msgstr "Саванные горы"
 
 msgctxt "terrains.name"
 msgid "Sea"
@@ -5515,8 +5568,44 @@ msgid "Soda Lake"
 msgstr "Содовое озеро"
 
 msgctxt "terrains.name"
+msgid "Steppe"
+msgstr "Степь"
+
+msgctxt "terrains.name"
+msgid "Steppe Hills"
+msgstr "Степные холмы"
+
+msgctxt "terrains.name"
+msgid "Steppe Mountains"
+msgstr "Степные горы"
+
+msgctxt "terrains.name"
 msgid "Swamp"
 msgstr "Болото"
+
+msgctxt "terrains.name"
+msgid "Tropical Hills"
+msgstr "Тропические холмы"
+
+msgctxt "terrains.name"
+msgid "Tropical Mountains"
+msgstr "Тропические горы"
+
+msgctxt "terrains.name"
+msgid "Tropical Plain"
+msgstr "Тропическая равнина"
+
+msgctxt "terrains.name"
+msgid "Tundra"
+msgstr "Тундра"
+
+msgctxt "terrains.name"
+msgid "Tundra Hills"
+msgstr "Тундровые холмы"
+
+msgctxt "terrains.name"
+msgid "Tundra Mountains"
+msgstr "Тундровые горы"
 
 msgctxt "validator_entity_ref_biome"
 msgid "this biome"
@@ -5529,6 +5618,10 @@ msgstr "это здание"
 msgctxt "validator_entity_ref_category"
 msgid "this category"
 msgstr "эту категорию"
+
+msgctxt "validator_entity_ref_climate_zone"
+msgid "this climate zone"
+msgstr "эту климатическую зону"
 
 msgctxt "validator_entity_ref_consumption_rule"
 msgid "this consumption rule"
@@ -5586,6 +5679,10 @@ msgctxt "validator_entity_ref_terrain"
 msgid "this terrain"
 msgstr "эту местность"
 
+msgctxt "validator_entity_ref_terrain_family"
+msgid "this relief family"
+msgstr "этот тип рельефа"
+
 msgctxt "validator_entity_source_biome"
 msgid "biome"
 msgstr "биоме"
@@ -5597,6 +5694,10 @@ msgstr "здании"
 msgctxt "validator_entity_source_category"
 msgid "category"
 msgstr "категории"
+
+msgctxt "validator_entity_source_climate_zone"
+msgid "climate zone"
+msgstr "климатическая зона"
 
 msgctxt "validator_entity_source_consumption_rule"
 msgid "consumption rule"
@@ -5654,6 +5755,10 @@ msgctxt "validator_entity_source_terrain"
 msgid "terrain"
 msgstr "местности"
 
+msgctxt "validator_entity_source_terrain_family"
+msgid "relief family"
+msgstr "тип рельефа"
+
 msgctxt "validator_entity_title_biome"
 msgid "Biome"
 msgstr "Биома"
@@ -5665,6 +5770,10 @@ msgstr "Здания"
 msgctxt "validator_entity_title_category"
 msgid "Category"
 msgstr "Категории"
+
+msgctxt "validator_entity_title_climate_zone"
+msgid "Climate zone"
+msgstr "Климатическая зона"
 
 msgctxt "validator_entity_title_consumption_rule"
 msgid "Consumption rule"
@@ -5721,3 +5830,7 @@ msgstr "Технологии"
 msgctxt "validator_entity_title_terrain"
 msgid "Terrain"
 msgstr "Местности"
+
+msgctxt "validator_entity_title_terrain_family"
+msgid "Relief family"
+msgstr "Тип рельефа"

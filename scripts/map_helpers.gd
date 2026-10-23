@@ -711,7 +711,7 @@ static func can_breed_resource_on_tile(res_id: String, tile: Dictionary) -> bool
     var allowed_terrain: Variant = raw.get("allowed_terrain", [])
     var allowed_cover: Variant = raw.get("allowed_cover", [])
     if allowed_terrain is Array and allowed_cover is Array \
-            and terrain_id in allowed_terrain and cover_id in allowed_cover:
+            and terrain_in_list(terrain_id, allowed_terrain) and cover_id in allowed_cover:
         return true
 
     var breeding_value: Variant = raw.get("breeding", [])
@@ -895,9 +895,22 @@ static func get_tech_reveal_conflict(tile: Dictionary) -> Dictionary:
     }
 
 
-## Guarantees that the city is on an allowed terrain (a plain or the hills).
-## If the city was generated/loaded on a mountain, a lake, the sea or a beach — it
-## is changed to a plain.
+## Whether a terrain satisfies a reference of the data: the reference may name the exact terrain
+## or a relief family. A rule that allows "plain" allows the tundra, the steppe, the prairie, the
+## savanna and the tropical plain alike — they are all varieties of the plain.
+static func terrain_in_list(terrain_id: String, references) -> bool:
+    if not (references is Array):
+        return false
+    for reference in references:
+        if GameData.terrain_matches(terrain_id, str(reference)):
+            return true
+    return false
+
+## Guarantees that the city is on an allowed terrain (a plain or the hills, whichever variety of
+## them the climate has put there).
+## If the city was generated/loaded on a mountain, a lake, the sea or a beach — it is changed to
+## the plain of the climate zone of the hex, so that a city in the north stands on a tundra and not
+## on a green field.
 static func ensure_city_valid_terrain(
     tile_data: Array,
     city_row: int,
@@ -908,10 +921,19 @@ static func ensure_city_valid_terrain(
     if city_row < 0 or city_row >= map_rows or city_col < 0 or city_col >= map_cols:
         return
     var city_tile = tile_data[city_row][city_col]
-    var current_terrain: String = city_tile.get("terrain", "plain")
-    var allowed_terrains: Array[String] = ["plain", "hill"]
-    if current_terrain not in allowed_terrains:
-        city_tile["terrain"] = "plain"
+    var family := GameData.terrain_family(str(city_tile.get("terrain", "")))
+    if family == "plain" or family == "hill":
+        return
+    var plain := GameData.zone_terrain(str(city_tile.get("climate", "")), "plain")
+    if plain == "":
+        # The zone of the hex is unknown (a loaded map without the climate field, a broken data
+        # set): any plain will do, the terrain must stay passable.
+        for zone_id in GameData.climate_zones.keys():
+            plain = GameData.zone_terrain(str(zone_id), "plain")
+            if plain != "":
+                break
+    if plain != "":
+        city_tile["terrain"] = plain
         city_tile["cover"] = "none"
         city_tile["_is_sea"] = false
         city_tile["_is_shallow_sea"] = false
@@ -1100,7 +1122,8 @@ static func ensure_food_plant(
                 var res: Dictionary = GameData.raw_resources[res_id]
                 if res.get("group") != "food_plants":
                     continue
-                if not (terrain in res.get("allowed_terrain", []) and cover in res.get("allowed_cover", [])):
+                if not (terrain_in_list(terrain, res.get("allowed_terrain", [])) \
+                        and cover in res.get("allowed_cover", [])):
                     continue
                 var tech_required: String = res.get("tech_required", "")
                 if tech_required != "" and not CityData.is_tech_unlocked(tech_required):
@@ -1214,7 +1237,7 @@ static func ensure_minimum_resource(
                 continue
             var terrain_id: String = t.get("terrain", "plain")
             var cover_id: String = t.get("cover", "none")
-            if not (terrain_id in allowed_terrain and cover_id in allowed_cover):
+            if not (terrain_in_list(terrain_id, allowed_terrain) and cover_id in allowed_cover):
                 continue
             # The geometric conditions of the spawn_conditions (for example, "by a river").
             if not HexUtils.is_hex_conditions_met(tile_data, row, col, chosen_data):

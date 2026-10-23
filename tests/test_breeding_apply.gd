@@ -78,7 +78,10 @@ func _run() -> void:
 # decoration — exactly the hex a player breeds on. The search is limited to the
 # visible region: the quality inheritance (find_domesticated_quality) only looks
 # inside it, so a hex outside would never be found by the round-trip test.
+# A "plain" here is the relief family, not a terrain id: the map carries the
+# climate variety of it (steppe_plain, prairie_plain, tundra_plain, ...).
 func _find_empty_plain(main_map) -> Dictionary:
+    var gdata = get_root().get_node("GameData")
     var tile_data = main_map.tile_data
     for r in range(main_map.region_start_row, main_map.region_end_row + 1):
         for c in range(main_map.region_start_col, main_map.region_end_col + 1):
@@ -87,7 +90,7 @@ func _find_empty_plain(main_map) -> Dictionary:
             var tile = tile_data[r][c]
             if tile == null:
                 continue
-            if str(tile.get("terrain", "")) != "plain":
+            if gdata.terrain_family(str(tile.get("terrain", ""))) != "plain":
                 continue
             if str(tile.get("cover", "none")) != "none":
                 continue

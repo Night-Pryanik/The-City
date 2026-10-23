@@ -732,6 +732,21 @@ msgstr ""
 msgid "Click: sort the list; a repeated click reverses the order"
 msgstr ""
 
+msgid "Climate zone %s does not map the relief family \"%s\" to a terrain."
+msgstr ""
+
+msgid "Climate zone %s has an unknown %s \"%s\"."
+msgstr ""
+
+msgid "Climate zone %s maps the relief family \"%s\" to \"%s\", which is not a terrain of that family."
+msgstr ""
+
+msgid "Climate zone: the relief family is not mapped to a terrain of that family"
+msgstr ""
+
+msgid "Climate zone: unknown climate axis value"
+msgstr ""
+
 msgid "Clock"
 msgstr ""
 
@@ -970,6 +985,9 @@ msgid "Era: %s"
 msgstr ""
 
 msgid "Errors in the game data"
+msgstr ""
+
+msgid "Every zone maps each relief family the generator places — plain, hill, mountain, the keys of terrain_config — to a terrain that carries the same \"family\" field. Otherwise the hexes of that family keep the raw family name on the map instead of a terrain: no icon, no yields, no vegetation."
 msgstr ""
 
 msgid "Exit game"
@@ -1950,6 +1968,9 @@ msgstr ""
 msgid "The temperature is one of: cold, mild, hot; the humidity — one of: wet, dry. The generator compares the values literally, so a biome with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another biome."
 msgstr ""
 
+msgid "The temperature is one of: cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature."
+msgstr ""
+
 msgid "The time the goods spend on the road from the town to the city"
 msgstr ""
 
@@ -2699,7 +2720,15 @@ msgid "Sparse Taiga"
 msgstr ""
 
 msgctxt "covers.name"
+msgid "Sparse Tropical Forest"
+msgstr ""
+
+msgctxt "covers.name"
 msgid "Taiga"
+msgstr ""
+
+msgctxt "covers.name"
+msgid "Tropical Forest"
 msgstr ""
 
 msgctxt "crafts.description"
@@ -5491,6 +5520,18 @@ msgid "Plain"
 msgstr ""
 
 msgctxt "terrains.name"
+msgid "Prairie"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Prairie Hills"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Prairie Mountains"
+msgstr ""
+
+msgctxt "terrains.name"
 msgid "Rocky Desert"
 msgstr ""
 
@@ -5500,6 +5541,18 @@ msgstr ""
 
 msgctxt "terrains.name"
 msgid "Sandy Desert"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Savanna"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Savanna Hills"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Savanna Mountains"
 msgstr ""
 
 msgctxt "terrains.name"
@@ -5515,7 +5568,43 @@ msgid "Soda Lake"
 msgstr ""
 
 msgctxt "terrains.name"
+msgid "Steppe"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Steppe Hills"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Steppe Mountains"
+msgstr ""
+
+msgctxt "terrains.name"
 msgid "Swamp"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Tropical Hills"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Tropical Mountains"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Tropical Plain"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Tundra"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Tundra Hills"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Tundra Mountains"
 msgstr ""
 
 msgctxt "validator_entity_ref_biome"
@@ -5528,6 +5617,10 @@ msgstr ""
 
 msgctxt "validator_entity_ref_category"
 msgid "this category"
+msgstr ""
+
+msgctxt "validator_entity_ref_climate_zone"
+msgid "this climate zone"
 msgstr ""
 
 msgctxt "validator_entity_ref_consumption_rule"
@@ -5586,6 +5679,10 @@ msgctxt "validator_entity_ref_terrain"
 msgid "this terrain"
 msgstr ""
 
+msgctxt "validator_entity_ref_terrain_family"
+msgid "this relief family"
+msgstr ""
+
 msgctxt "validator_entity_source_biome"
 msgid "biome"
 msgstr ""
@@ -5596,6 +5693,10 @@ msgstr ""
 
 msgctxt "validator_entity_source_category"
 msgid "category"
+msgstr ""
+
+msgctxt "validator_entity_source_climate_zone"
+msgid "climate zone"
 msgstr ""
 
 msgctxt "validator_entity_source_consumption_rule"
@@ -5654,6 +5755,10 @@ msgctxt "validator_entity_source_terrain"
 msgid "terrain"
 msgstr ""
 
+msgctxt "validator_entity_source_terrain_family"
+msgid "relief family"
+msgstr ""
+
 msgctxt "validator_entity_title_biome"
 msgid "Biome"
 msgstr ""
@@ -5664,6 +5769,10 @@ msgstr ""
 
 msgctxt "validator_entity_title_category"
 msgid "Category"
+msgstr ""
+
+msgctxt "validator_entity_title_climate_zone"
+msgid "Climate zone"
 msgstr ""
 
 msgctxt "validator_entity_title_consumption_rule"
@@ -5720,4 +5829,8 @@ msgstr ""
 
 msgctxt "validator_entity_title_terrain"
 msgid "Terrain"
+msgstr ""
+
+msgctxt "validator_entity_title_terrain_family"
+msgid "Relief family"
 msgstr ""

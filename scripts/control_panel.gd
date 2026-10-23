@@ -1050,7 +1050,8 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
             var terrain_list: Array = sa.get("source_terrains", [])
             if terrain_list.is_empty():
                 terrain_list = [sa.get("source_terrain", "")]
-            applicable = tile.terrain in terrain_list and tile.improvement == null
+            applicable = MapHelpers.terrain_in_list(str(tile.terrain), terrain_list) \
+                    and tile.improvement == null
         elif action_type == "cover":
             var cover_id = tile.get("cover", "none")
             applicable = cover_id in sa.get("source_cover", []) and tile.improvement == null and tile.resource == null
@@ -2069,7 +2070,7 @@ func _get_suitable_crops(row: int, col: int, imp_kind: String) -> Array:
     var out := []
     for id in ids:
         var data = GameData.raw_resources.get(id, {})
-        # breedable and the biome of the breeding are checked by a single helper; in particular,
+        # breedable and the terrain of the breeding are checked by a single helper; in particular,
         # it takes into account the additional conditions of the field resource.breeding.
         if not MapHelpers.can_breed_resource_by(id, imp_kind):
             continue

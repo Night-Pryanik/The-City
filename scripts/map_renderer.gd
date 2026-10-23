@@ -420,8 +420,8 @@ func _draw_hex(row: int, col: int):
             terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
         draw_colored_polygon(vertices, terrain_color)
 
-    # --- The climate: a colour wash of the biome over the relief ---
-    _draw_biome_tint(row, col, vertices)
+    # --- The climate: a colour wash of the terrain variety over the relief ---
+    _draw_terrain_tint(row, col, vertices)
 
     # --- The cover: a semi-transparent overlay over the terrain ---
     _draw_cover_overlay(row, col, center, vertices)
@@ -796,19 +796,20 @@ func _draw_town_influence_borders(visible_range: Dictionary) -> void:
         var color := Color(seg.cr, seg.cg, seg.cb, seg.ca)
         draw_line(p1, p2, color, TOWN_INFLUENCE_BORDER_WIDTH, true)
 
-    # Draws the colour wash of the biome over the relief. The wash is what tells the open biomes
-    # apart: the steppe, the savanna and the tundra grow no woods of their own, so without it they
-    # would all look like the same green plain. A biome without a wash (the temperate forest)
-    # draws nothing, and the water has no biome at all.
-func _draw_biome_tint(row: int, col: int, vertices: PackedVector2Array) -> void:
-    var biome_id = tile_data[row][col].get("biome", "")
-    if biome_id == "":
+    # Draws the colour wash of the terrain over the relief. The wash is what tells the varieties of
+    # one relief apart: the tundra, the steppe, the prairie, the savanna and the tropical plain all
+    # use the icons of the plain, so without it they would look like the same green field. The wash
+    # belongs to the terrain record ("tint" + "tint_alpha"), so a mod that adds a variety brings its
+    # own colour; the water and the wetlands have none.
+func _draw_terrain_tint(row: int, col: int, vertices: PackedVector2Array) -> void:
+    var terrain_id = str(tile_data[row][col].get("terrain", ""))
+    if terrain_id == "":
         return
-    var biome: Dictionary = GameData.biomes.get(biome_id, {})
-    var alpha = float(biome.get("tint_alpha", 0.0))
+    var terrain: Dictionary = GameData.terrains.get(terrain_id, {})
+    var alpha = float(terrain.get("tint_alpha", 0.0))
     if alpha <= 0.0:
         return
-    var c = biome.get("tint", [255, 255, 255])
+    var c = terrain.get("tint", [255, 255, 255])
     draw_colored_polygon(vertices, Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0, alpha))
 
     # Draws the overlay of the cover over the relief.

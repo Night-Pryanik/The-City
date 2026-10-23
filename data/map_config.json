@@ -27,6 +27,9 @@
     //   target_cluster  — the average cluster size in hexes (an upper bound:
     //                     the number of centres cannot be more than area / target_cluster).
     //                     If not set — the bound is not applied.
+    // A key is either a RELIEF FAMILY (plain, hill, mountain — the climate turns every hex of a
+    // family into the variety of its belt, see data/climate.json) or a terrain that the climate
+    // does not touch (lake, swamp, the deserts).
     // The global target_cluster (below) is a fallback value for the types that
     // do not have their own target_cluster in terrain_config.
     "target_cluster": 22,
@@ -40,26 +43,30 @@
       "rocky_desert": { "density": 0.05, "target_cluster": 5 }
     },
 
-  // --- Climate and biomes ---
+  // --- Climate ---
   // The climate is built from two independent fields:
   //   temperature — belts running from the poles to the equator. The belts are strictly
-  //     ordered (cold → mild → hot → mild → cold), therefore two hexes of the same latitude
-  //     never belong to non-neighbouring belts: a jungle and a taiga cannot meet sideways.
-  //     The equator sits on a random row, so the centre of the map (and the city on it) lands
-  //     on a different latitude from game to game, and the belts are built around it.
+  //     ordered (cold → mild → subtropical → tropical → subtropical → mild → cold), therefore two
+  //     hexes of the same latitude never belong to non-neighbouring belts: a tropical plain and a
+  //     tundra cannot meet sideways. The equator sits on a random row, so the centre of the map
+  //     (and the city on it) lands on a different latitude from game to game, and the belts are
+  //     built around it.
   //   moisture — large wet and dry regions that do not follow the latitudes: they lie anywhere,
-  //     curve and surround each other. The moisture splits every belt into two biomes.
-  // A pair (temperature, moisture) selects a biome from data/biomes.json, and the biome sets
-  // the vegetation of the plains and hills of its region.
+  //     curve and surround each other. The moisture splits every belt in two.
+  // A pair (temperature, moisture) selects a climate zone (data/climate.json), and the zone turns
+  // the relief of its region into the terrains of the belt (tundra, steppe, prairie, savanna,
+  // tropical plain) and rolls the vegetation on them.
   //
   // Rows are counted from the north edge of the map. All the "rows" values below are
   // fractions of the map height, so the climate does not depend on the map size.
   "climate": {
     "equator_min": 0.33,        // The range of the equator row: the nearer to 0.5, the more
-    "equator_max": 0.67,        // central (hot) the city's latitude is
-    "hot_half_rows": 0.12,      // Half of the hot belt's height
-    "mild_rows": 0.14,          // The height of the mild belt on each side of the hot one;
-                                // everything beyond it is cold
+    "equator_max": 0.67,        // central (tropical) the city's latitude is
+    "tropical_half_rows": 0.08, // Half of the height of the tropical belt
+    "subtropical_rows": 0.06,   // The height of the subtropical belt on each side of the tropical
+                                // one (the savanna)
+    "mild_rows": 0.10,          // The height of the mild belt on each side of the subtropical one
+                                // (the steppe and the prairie); everything beyond it is cold
     // The belts are not straight: the temperature row of a hex is shifted by a smooth noise field,
     // so the boundaries meander and the belts take unequal areas. The shift is limited so that
     // the belts never overturn: the sequence stays ordered in every column.
@@ -68,11 +75,8 @@
     // The moisture field: a threshold on a smooth noise. A lower threshold means more wet land.
     "moisture_scale": 0.26,
     "moisture_threshold": 0.5,
-    // A biome patch smaller than this many land hexes is dissolved into the biome around it.
-    "min_biome_size": 3,
-    // The sandy and rocky deserts are a relief of the hot dry belt: outside it they become plains,
-    // so that a sandy desert never appears in the taiga.
-    "deserts_only_in_hot_dry": true,
+    // A zone patch smaller than this many land hexes is dissolved into the zone around it.
+    "min_zone_size": 3,
     // Lone wooded hexes are cleared and lone holes in a forest are filled, so that the woods
     // read as groves instead of a random scatter of cells.
     "cover_smoothing": true

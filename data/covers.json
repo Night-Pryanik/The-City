@@ -11,7 +11,7 @@
       // gives per tick, in the same units as the "produces" of a resource
       // (data/resources/**). The denser the forest, the higher the yield.
       // A forest plot can be built on any cover with wood_yield > 0 —
-      // new forest covers (jungle, taiga, etc.) only need this field,
+      // new forest covers (taiga, tropical forest, etc.) only need this field,
       // no code change is required. A missing field = yield of 0.
       "wood_yield": 10,
       "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
@@ -46,9 +46,9 @@
       "icons": [  ]
     },
     {
-      // The tropical rainforest of the hot wet belt.
-      "id": "jungle",
-      "name": "Jungle",
+      // The tropical rainforest of the tropical belt: the wet variety of the tropical plain.
+      "id": "tropical_forest",
+      "name": "Tropical Forest",
       "color": [ 25, 105, 45 ],
       "alpha": 0.44,
       "move_cost_bonus": 0,
@@ -56,8 +56,8 @@
       "icons": [  ]
     },
     {
-      "id": "jungle_sparse",
-      "name": "Sparse Jungle",
+      "id": "tropical_forest_sparse",
+      "name": "Sparse Tropical Forest",
       "color": [ 35, 115, 55 ],
       "alpha": 0.3,
       "move_cost_bonus": 0,

@@ -44,6 +44,9 @@
     {
       // Draining swamps and marshes: turns them into a plain (action_type "terrain").
       // source_terrains — the list of terrain types the action applies to.
+      // result_terrain — a terrain or a RELIEF FAMILY: the family "plain" resolves to the plain
+      // of the climate zone the hex stands in (a drained swamp in the tundra becomes a tundra,
+      // in the tropics — a tropical plain).
       // The cost is significant — 3x the cost of a farm
       "id": "drain_water",
       "name": "Drain Water",

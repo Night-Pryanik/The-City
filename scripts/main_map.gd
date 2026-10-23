@@ -351,16 +351,16 @@ func _ready():
                 # crop_bred — the id of a domesticated animal/plant which is bred
                 # on an empty hex (see docs.md, the section "Breeding of animals/plants").
                 # For the natural resources tile.resource remains.
-                var tile = {"terrain": "plain", "cover": "none", "biome": "", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false, "road_built": false, "road_level": 1, "road_staged": false}
+                var tile = {"terrain": "plain", "cover": "none", "climate": "", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false, "road_built": false, "road_level": 1, "road_staged": false}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
                         # The forest is a cover (cover) over the terrain.
-                        var saved_terrain = saved.get("terrain", "plain")
+                        var saved_terrain = saved.get("terrain", "")
                         var saved_cover = saved.get("cover", "none")
                         tile["terrain"] = saved_terrain
                         tile["cover"] = saved_cover
-                        tile["biome"] = saved.get("biome", "")
+                        tile["climate"] = saved.get("climate", "")
                         tile["resource"] = saved.get("resource")
                         tile["crop_bred"] = saved.get("crop_bred")
                         # The occupancy of the livestock
@@ -1644,9 +1644,13 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             tile["feed_fractional_remainder"] = 0.0
 
         # We change the terrain type only if result_terrain is set and is not equal to "dont_change".
-        var result_terrain = sa.get("result_terrain", "")
+        var result_terrain = str(sa.get("result_terrain", ""))
         if result_terrain != "" and result_terrain != "dont_change":
-            tile.terrain = result_terrain
+            # The result names a terrain or a relief family. A family is resolved through the
+            # climate zone of the hex, so a drained swamp becomes a tundra in the north and a
+            # tropical plain at the equator.
+            var variant := GameData.zone_terrain(str(tile.get("climate", "")), result_terrain)
+            tile.terrain = variant if variant != "" else result_terrain
             _assign_terrain_icon(row, col)
 
         build_manager.remove_build(row, col)

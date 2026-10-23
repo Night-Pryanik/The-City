@@ -260,8 +260,10 @@ func _test_drain(main_map, bm, city, state: Dictionary) -> void:
     check(started2, "with the flag draining must start", state)
     check(not bm.is_building(hex2.row, hex2.col),
             "with the flag draining must not enter the construction queue", state)
-    check(str(tile2.get("terrain", "")) == "plain",
-            "with the flag the marsh must become plain immediately (got: \"%s\")"
+    # The drained hex becomes the plain of its climate belt: a tundra, a steppe, a savanna … —
+    # the family is what matters here, not the variety.
+    check(get_root().get_node("GameData").terrain_family(str(tile2.get("terrain", ""))) == "plain",
+            "with the flag the marsh must become a plain immediately (got: \"%s\")"
                     % str(tile2.get("terrain", "")), state)
     city.ignore_build_requirements = false
 

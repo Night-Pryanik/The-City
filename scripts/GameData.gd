@@ -6,7 +6,7 @@ const HUD_MESSAGE_IMPORTANT := 1
 
 var terrains: Dictionary = {}
 var covers: Dictionary = {}
-var biomes: Dictionary = {}
+var climate_zones: Dictionary = {} # id -> the climate zone (data/climate.json)
 var raw_resources: Dictionary = {}
 var products: Dictionary = {}
 var improvements: Dictionary = {}
@@ -81,7 +81,7 @@ func build_probe(mod_dirs: Array):
 func _assign_from(loader) -> void:
     terrains = loader.terrains
     covers = loader.covers
-    biomes = loader.biomes
+    climate_zones = loader.climate_zones
     raw_resources = loader.raw_resources
     products = loader.products
     improvements = loader.improvements
@@ -107,6 +107,49 @@ func _assign_from(loader) -> void:
     entity_sources = loader.entity_sources
     raw_data = loader.raw_data
     blacklisted = loader.blacklisted
+
+# === TERRAIN FAMILIES AND CLIMATE ZONES ===
+#
+# A terrain of the map is a VARIETY of a relief family: the same plain is a tundra in the cold
+# belt, a steppe or a prairie in the mild one, a savanna in the subtropical one and a tropical
+# plain near the equator (data/terrains/terrains.json → "family", data/climate.json).
+# The family is what the rules mean by "a plain" where the climate does not matter: a resource
+# allowed on the terrain "plain" grows on all five varieties of it.
+
+# The relief families of the map. A family is not a terrain of its own: the climate turns every hex
+# of a family into the variety of its belt (a plain becomes a tundra, a steppe, a prairie, a savanna
+# or a tropical plain).
+const RELIEF_FAMILIES := ["plain", "hill", "mountain"]
+
+# The family of a terrain ("plain", "hill", "mountain"), or an empty string for the water, the
+# wetlands and the deserts, which are no variety of a relief.
+func terrain_family(terrain_id: String) -> String:
+    var family := str(terrains.get(terrain_id, {}).get("family", ""))
+    if family != "":
+        return family
+    # A raw family name answers for itself: the generator always turns the relief into the varieties,
+    # but a default of `tile.get("terrain", "plain")`, a hand-built map and a mod's helper may name
+    # the family directly — and "a plain" is exactly what they mean.
+    return terrain_id if RELIEF_FAMILIES.has(terrain_id) else ""
+
+# Whether a terrain satisfies a reference of the data: the reference may name either a terrain id
+# or a family. Used by the rules that accept both (allowed_terrain, result_terrain, source_terrains).
+func terrain_matches(terrain_id: String, reference: String) -> bool:
+    if terrain_id == reference:
+        return true
+    var family := terrain_family(terrain_id)
+    return family != "" and family == reference
+
+# The zone of the map by its id. An empty dictionary — the zone is unknown (a data problem that
+# data_validator reports): the caller decides what to fall back to.
+func get_climate_zone(zone_id: String) -> Dictionary:
+    return climate_zones.get(zone_id, {})
+
+# The terrain a family of a zone is made of: "plain" + the tropical zone → "tropical_plain".
+# An empty string — the zone does not map that family (data_validator reports it).
+func zone_terrain(zone_id: String, family: String) -> String:
+    var zone: Dictionary = get_climate_zone(zone_id)
+    return str(zone.get("terrain", {}).get(family, ""))
 
 # === ROAD LEVELS (data/roads.json) ===
 #

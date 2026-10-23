@@ -223,6 +223,8 @@ const KEY_RESOURCES := "resources"
 const KEY_GROUP_REFS := "group_refs"
 const KEY_COVERS := "covers"
 const KEY_TERRAINS := "terrains"
+# The relief families (the field "family" of a terrain record): the keys of a zone's terrain map.
+const KEY_TERRAIN_FAMILIES := "terrain_families"
 const KEY_IMPROVEMENTS := "improvements"
 const KEY_PRIORITIES := "priorities"
 
@@ -236,6 +238,7 @@ const REGISTRY_TARGETS := {
     KEY_RESOURCES: "product",
     KEY_COVERS: "cover",
     KEY_TERRAINS: "terrain",
+    KEY_TERRAIN_FAMILIES: "terrain_family",
     KEY_IMPROVEMENTS: "improvement",
     KEY_PRIORITIES: "priority_option",
 }
@@ -249,7 +252,7 @@ const OWNER_KINDS := {
     "buildings": "building",
     "terrains": "terrain",
     "covers": "cover",
-    "biomes": "biome",
+    "climate_zones": "climate_zone",
     "improvements": "improvement",
 }
 
@@ -422,6 +425,13 @@ const TERRAIN_FIELDS := {
     "name": LEAF,
     "description": LEAF,
     "color": LEAF,
+    # The relief family of a terrain: the climate turns every hex of a family into the variety of
+    # its belt (a plain becomes a tundra, a steppe, a prairie, a savanna or a tropical plain).
+    # The water, the wetlands and the deserts have no family.
+    "family": LEAF,
+    # The colour wash of the variety over the icons of the family (see map_renderer._draw_terrain_tint).
+    "tint": LEAF,
+    "tint_alpha": LEAF,
     "icons": LEAF,
     "move_cost": LEAF,
     "expansion_cost": LEAF,
@@ -443,16 +453,20 @@ const COVER_FIELDS := {
     "fresh_water_source": LEAF,
 }
 
-# A biome is a pair of the climate axes plus the vegetation of its region. The two axes are
-# enumerated by _validate_biomes: a value outside the list is a biome that never appears on the map.
-const BIOME_FIELDS := {
+# A climate zone is a pair of the climate axes plus what the relief of its region becomes. The two
+# axes are enumerated by _validate_climate_zones: a value outside the list is a zone that never
+# appears on the map.
+const ZONE_FIELDS := {
     "id": LEAF,
-    "name": LEAF,
     "temperature": LEAF,
     "humidity": LEAF,
-    "tint": LEAF,
-    "tint_alpha": LEAF,
+    # The variety of every relief family of the zone: {"plain": "tundra_plain", …}. The keys are
+    # the families (KEY_TERRAIN_FAMILIES), the values — the terrains that carry that family.
+    "terrain": {"id_map": {"keys": KEY_TERRAINS}, "keys": KEY_TERRAIN_FAMILIES},
+    # The vegetation of the zone: it applies to every family of the zone at once.
     "cover_chance": COVER_MAP,
+    # true — the deserts may stand in the zone (the hot dry belts).
+    "deserts": LEAF,
 }
 
 const SPECIAL_ACTION_FIELDS := {
@@ -526,19 +540,19 @@ const SEA_CONFIG_FIELDS := {
     "noise_city_bump_radius": LEAF,
 }
 
-# The climate block: the belts of the temperature, the moisture field and the cleanup of the biomes
-# (see map_generator._generate_biomes).
+# The climate block: the belts of the temperature, the moisture field and the cleanup of the zones
+# (see map_generator._apply_climate).
 const CLIMATE_FIELDS := {
     "equator_min": LEAF,
     "equator_max": LEAF,
-    "hot_half_rows": LEAF,
+    "tropical_half_rows": LEAF,
+    "subtropical_rows": LEAF,
     "mild_rows": LEAF,
     "warp_rows": LEAF,
     "warp_scale": LEAF,
     "moisture_scale": LEAF,
     "moisture_threshold": LEAF,
-    "min_biome_size": LEAF,
-    "deserts_only_in_hot_dry": LEAF,
+    "min_zone_size": LEAF,
     "cover_smoothing": LEAF,
 }
 
@@ -644,7 +658,7 @@ const BLACKLIST_COLLECTIONS := [
     "roads",
     "terrains",
     "covers",
-    "biomes",
+    "climate_zones",
     "special_actions",
     "consumption",
 ]
@@ -663,7 +677,7 @@ const BLACKLIST_FIELDS := {
     "roads": BLACKLIST_ENTRY,
     "terrains": BLACKLIST_ENTRY,
     "covers": BLACKLIST_ENTRY,
-    "biomes": BLACKLIST_ENTRY,
+    "climate_zones": BLACKLIST_ENTRY,
     "special_actions": BLACKLIST_ENTRY,
     "consumption": BLACKLIST_ENTRY,
 }
@@ -686,7 +700,7 @@ const BLACKLIST_KINDS := {
     "roads": "road",
     "terrains": "terrain",
     "covers": "cover",
-    "biomes": "biome",
+    "climate_zones": "climate_zone",
     "special_actions": "special_action",
     "consumption": "consumption_rule",
 }
@@ -708,7 +722,7 @@ const SCHEMA := {
     "roads": {"array": ROAD_FIELDS},
     "terrains": {"array": TERRAIN_FIELDS},
     "covers": {"array": COVER_FIELDS},
-    "biomes": {"array": BIOME_FIELDS},
+    "climate_zones": {"array": ZONE_FIELDS},
     "special_actions": {"array": SPECIAL_ACTION_FIELDS},
     "consumption": {"array": CONSUMPTION_FIELDS},
     "group_bonuses": {"array": GROUP_BONUS_FIELDS},
@@ -732,7 +746,7 @@ const SCHEMA := {
 # to entity_forms() about how the builder reads them.
 const ENTITIES := [
     "building", "product", "improvement", "technology", "profession",
-    "category", "group", "recipe", "road", "terrain", "cover", "biome", "era",
+    "category", "group", "recipe", "road", "terrain", "terrain_family", "cover", "climate_zone", "era",
     "quality_level", "priority_option", "special_action", "consumption_rule",
 ]
 
@@ -805,10 +819,14 @@ static func entity_forms(kind: String, fallback: String = "product") -> Dictiona
             return {"title": TranslationServer.translate("Terrain cover", "validator_entity_title_cover"),
                 "ref": TranslationServer.translate("this terrain cover", "validator_entity_ref_cover"),
                 "source": TranslationServer.translate("terrain cover", "validator_entity_source_cover")}
-        "biome":
-            return {"title": TranslationServer.translate("Biome", "validator_entity_title_biome"),
-                "ref": TranslationServer.translate("this biome", "validator_entity_ref_biome"),
-                "source": TranslationServer.translate("biome", "validator_entity_source_biome")}
+        "terrain_family":
+            return {"title": TranslationServer.translate("Relief family", "validator_entity_title_terrain_family"),
+                "ref": TranslationServer.translate("this relief family", "validator_entity_ref_terrain_family"),
+                "source": TranslationServer.translate("relief family", "validator_entity_source_terrain_family")}
+        "climate_zone":
+            return {"title": TranslationServer.translate("Climate zone", "validator_entity_title_climate_zone"),
+                "ref": TranslationServer.translate("this climate zone", "validator_entity_ref_climate_zone"),
+                "source": TranslationServer.translate("climate zone", "validator_entity_source_climate_zone")}
         "era":
             return {"title": TranslationServer.translate("Era", "validator_entity_title_era"),
                 "ref": TranslationServer.translate("this era", "validator_entity_ref_era"),
@@ -884,8 +902,10 @@ static func check_title(kind: String) -> String:
             return TranslationServer.translate("Road max speed must be greater than zero")
         "road_work_cost":
             return TranslationServer.translate("Road work cost cannot be negative")
-        "biome_axes":
-            return TranslationServer.translate("Biome: unknown climate axis value")
+        "zone_axes":
+            return TranslationServer.translate("Climate zone: unknown climate axis value")
+        "zone_terrain":
+            return TranslationServer.translate("Climate zone: the relief family is not mapped to a terrain of that family")
         _:
             # An unknown kind of the check: we show the machine name — by it one can see
             # what is missing in CHECK_ORDER, and it survives any language.
@@ -931,7 +951,7 @@ const SOURCE_COLLECTIONS := {
     # their collections, but no other check refers to them.
     "terrain": "terrains",
     "cover": "covers",
-    "biome": "biomes",
+    "climate_zone": "climate_zones",
     "era": "eras",
     "quality_level": "quality_levels",
     "special_action": "special_actions",
@@ -961,7 +981,8 @@ const CHECK_ORDER := [
     "road_level",
     "road_max_speed",
     "road_work_cost",
-    "biome_axes",
+    "zone_axes",
+    "zone_terrain",
 ]
 
 
@@ -988,6 +1009,7 @@ func validate(gd: Object) -> Array:
     var product_groups: Dictionary = gd.product_groups
     var group_names: Dictionary = gd.product_group_names
     # These three are already the dictionaries id -> data in GameData (data_loader.gd).
+    var terrains: Dictionary = gd.terrains
     var all_resources: Dictionary = {}
     all_resources.merge(raw_resources)
     all_resources.merge(products)
@@ -1004,7 +1026,7 @@ func validate(gd: Object) -> Array:
     _validate_consumption(gd.consumption_rules, products, product_groups, professions, problems)
     _validate_technologies(technologies, problems)
     _validate_roads(gd.roads, technologies, problems)
-    _validate_biomes(gd.biomes, problems)
+    _validate_climate_zones(gd.climate_zones, terrains, _relief_families(terrains, gd.map_config), problems)
 
     _sort_problems(problems)
     return problems
@@ -1154,6 +1176,21 @@ func _key_registries(data: Dictionary) -> Dictionary:
     for group_id in _declared_ids(data.get("product_groups", [])):
         refs["@" + str(group_id)] = true
     sets[KEY_GROUP_REFS] = refs
+
+    # The relief families: the field "family" of the terrain records. A key of terrain_config names
+    # either a family (the climate turns every hex of it into the variety of its belt) or a terrain
+    # the climate leaves alone (a lake, a swamp, a desert), so the terrain registry takes both.
+    var families := {}
+    for record in data.get(KEY_TERRAINS, []):
+        if record is Dictionary:
+            var family := str(record.get("family", ""))
+            if family != "":
+                families[family] = true
+    sets[KEY_TERRAIN_FAMILIES] = families
+    var terrain_names: Dictionary = sets[KEY_TERRAINS]
+    for family in families.keys():
+        terrain_names[family] = true
+    sets[KEY_TERRAINS] = terrain_names
 
     var priorities := {}
     for option in _as_string_list(data.get("priority_options", [])):
@@ -1536,33 +1573,66 @@ func _validate_roads(roads, technologies: Dictionary, problems: Array) -> void:
                     "road", rname, road_id, "work_cost")
 
 
-# --- THE BIOMES ------------------------------------------------------------------
+# --- THE CLIMATE ZONES ------------------------------------------------------------
 # The two axes are enumerated, and the generator compares them with its own constants: any other
-# spelling would silently remove the biome from the map (the pair stays empty and the generator
-# falls back to another biome of the same temperature).
-const BIOME_TEMPERATURES := ["cold", "mild", "hot"]
-const BIOME_HUMIDITIES := ["wet", "dry"]
+# spelling would silently remove the zone from the map (the pair stays empty and the generator
+# falls back to another zone of the same temperature).
+const ZONE_TEMPERATURES := ["cold", "mild", "subtropical", "tropical"]
+const ZONE_HUMIDITIES := ["wet", "dry"]
 
-func _validate_biomes(biomes, problems: Array) -> void:
-    if biomes == null:
+# The relief families the climate turns into varieties: the keys of terrain_config that are not a
+# terrain of their own (a lake, a swamp, a desert is placed as it is). These are exactly the
+# families every zone has to map, otherwise the hexes of the family keep a raw family name on the
+# map instead of a terrain.
+func _relief_families(terrains: Dictionary, map_config: Dictionary) -> Array:
+    var declared := {}
+    for terrain_id in terrains.keys():
+        var family := str(terrains[terrain_id].get("family", ""))
+        if family != "":
+            declared[family] = true
+    var result: Array = []
+    for key in map_config.get("terrain_config", {}).keys():
+        var name := str(key)
+        if declared.has(name) and not result.has(name):
+            result.append(name)
+    result.sort()
+    return result
+
+func _validate_climate_zones(zones, terrains: Dictionary, families: Array, problems: Array) -> void:
+    if zones == null:
         return
     var records: Array = []
-    if biomes is Dictionary:
-        records = biomes.values()
-    elif biomes is Array:
-        records = biomes
-    for biome in records:
-        if not (biome is Dictionary):
+    if zones is Dictionary:
+        records = zones.values()
+    elif zones is Array:
+        records = zones
+    for zone in records:
+        if not (zone is Dictionary):
             continue
-        var biome_id := str(biome.get("id", ""))
-        var bname := _entity_name(biome, biome_id)
+        var zone_id := str(zone.get("id", ""))
+        var zname := _entity_name(zone, zone_id)
 
-        var temperature := str(biome.get("temperature", ""))
-        if not BIOME_TEMPERATURES.has(temperature):
-            _add(problems, "biome_axes", "biome", temperature, "biome", bname, biome_id, "temperature")
-        var humidity := str(biome.get("humidity", ""))
-        if not BIOME_HUMIDITIES.has(humidity):
-            _add(problems, "biome_axes", "biome", humidity, "biome", bname, biome_id, "humidity")
+        var temperature := str(zone.get("temperature", ""))
+        if not ZONE_TEMPERATURES.has(temperature):
+            _add(problems, "zone_axes", "climate_zone", temperature, "climate_zone", zname, zone_id, "temperature")
+        var humidity := str(zone.get("humidity", ""))
+        if not ZONE_HUMIDITIES.has(humidity):
+            _add(problems, "zone_axes", "climate_zone", humidity, "climate_zone", zname, zone_id, "humidity")
+
+        var mapping: Variant = zone.get("terrain", {})
+        if not (mapping is Dictionary):
+            continue
+        for family in families:
+            var terrain_id := str(mapping.get(family, ""))
+            if terrain_id == "":
+                # A missing mapping: the field names the family, the reference stays empty.
+                _add(problems, "zone_terrain", "climate_zone", "", "climate_zone", zname, zone_id, family)
+                continue
+            if not terrains.has(terrain_id):
+                _add(problems, "zone_terrain", "climate_zone", terrain_id, "climate_zone", zname, zone_id, family)
+                continue
+            if str(terrains[terrain_id].get("family", "")) != family:
+                _add(problems, "zone_terrain", "climate_zone", terrain_id, "climate_zone", zname, zone_id, family)
 
 
 # --- THE RECIPES ---------------------------------------------------------------
@@ -2051,9 +2121,17 @@ static func build_text(problem: Dictionary) -> void:
         "product_source":
             headline = TranslationServer.translate("Product \"%s\" is not produced anywhere.") % str(problem.get("ref_id", ""))
             where = TranslationServer.translate("Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file.") % [str(problem.get("source_name", "")), str(problem.get("source_id", ""))]
-        "biome_axes":
-            headline = TranslationServer.translate("Biome %s has an unknown %s \"%s\".") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), str(problem.get("field", "")), str(problem.get("ref_id", ""))]
-            where = TranslationServer.translate("The temperature is one of: cold, mild, hot; the humidity — one of: wet, dry. The generator compares the values literally, so a biome with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another biome.")
+        "zone_axes":
+            headline = TranslationServer.translate("Climate zone %s has an unknown %s \"%s\".") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), str(problem.get("field", "")), str(problem.get("ref_id", ""))]
+            where = TranslationServer.translate("The temperature is one of: cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature.")
+        "zone_terrain":
+            var family := str(problem.get("field", ""))
+            var mapped := str(problem.get("ref_id", ""))
+            if mapped == "":
+                headline = TranslationServer.translate("Climate zone %s does not map the relief family \"%s\" to a terrain.") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), family]
+            else:
+                headline = TranslationServer.translate("Climate zone %s maps the relief family \"%s\" to \"%s\", which is not a terrain of that family.") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), family, mapped]
+            where = TranslationServer.translate("Every zone maps each relief family the generator places — plain, hill, mountain, the keys of terrain_config — to a terrain that carries the same \"family\" field. Otherwise the hexes of that family keep the raw family name on the map instead of a terrain: no icon, no yields, no vegetation.")
         _:
             # The other checks are a broken REFERENCE: "There is no X with the identifier …
             # exists" + where exactly it was referred to.
