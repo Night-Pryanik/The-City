@@ -91,7 +91,10 @@ func _run() -> void:
     if WATCHDOG.wants_case("recipe_result_marker"):
         _test_recipe_result_marker(state, city_ui, building_id)
     if WATCHDOG.wants_case("building_panel"):
-        _test_building_panel(state, city_ui, building_id)
+        # The case awaits a frame, so it must be awaited here as well: a coroutine
+        # called without await suspends at the first await and never resumes —
+        # _finish() quits the process before the continuation runs.
+        await _test_building_panel(state, city_ui, building_id)
     if WATCHDOG.wants_case("actual_consumption"):
         _test_actual_consumption(state, building_id)
 
@@ -247,9 +250,10 @@ func _test_details_tooltip(state: Dictionary, city_ui, building_id: String) -> v
 # Invariants:
 #   * the reverse index GameData.get_consumption_consumers(display_key) finds the
 #     entry that addresses the same resource from the other side;
-#   * the "Consumes:" section row does NOT get a marker — the norm and bonus are already
-#     printed in the row itself, and the tooltip would duplicate the row (the marker lives
-#     in the recipe rows, the recipe_result_marker case);
+#   * the "Consumes:" section row gets no CONSUMERS marker — the norm and bonus are
+#     already printed in the row itself, and the tooltip would duplicate the row (the
+#     marker lives in the recipe rows, the recipe_result_marker case). A row of an
+#     @-group keeps its group-reference underline: it is dashed, the marker is dotted;
 #   * the consumers tooltip (ui_helpers.show_consumption_tooltip) lists
 #     consumers by profession names.
 # Expectations are derived from the same data, not from specific balance numbers.
@@ -286,12 +290,15 @@ func _test_consumption_marker(state: Dictionary, city_ui, building_id: String) -
         # The consumer's norm and bonus match the profession entry (the data is the same).
         check(int(consumers[0].get("amount", 0)) == int(entry.get("amount", 0)),
             "the consumer's norm must match the profession entry \"%s\"" % key, state)
-        # 2. In the "Consumes:" section there is NO marker: the row already states the norm
-        #    and bonus, and the consumers tooltip would duplicate the same thing. The marker
-        #    lives where the norm is not visible — in the recipe rows (the
-        #    recipe_result_marker case).
+        # 2. In the "Consumes:" section there is NO consumers marker: the row already
+        #    states the norm and the bonus, and the consumers tooltip would duplicate the
+        #    same thing. The marker lives where the norm is not visible — in the recipe
+        #    rows (the recipe_result_marker case). A row of an @-group still carries the
+        #    group-reference underline (the composition of the group on hover): that is a
+        #    DASHED line, while the consumers marker is the finer dotted one (dot_style) —
+        #    only the latter must be absent.
         var marked: Label = _find_underlined_label(content, str(entry.get("product_name", "")))
-        check(marked == null,
+        check(marked == null or not marked.dot_style,
             "the \"Consumes:\" section row (\"%s\") must not get the consumers marker: "
                 % key + "the norm and bonus are already printed in the row itself", state)
         # 3. The consumers tooltip itself works: the recipe row shows it.
@@ -700,12 +707,22 @@ func _pick_profession_building() -> String:
 
 
 # The default recipe of a building (the first non-empty slot from the data) — so the
-# building window counts the building as working, as in the game.
+# building window counts the building as working, as in the game. A building without
+# default recipes (the player assigns them himself) gets the first recipe that can be
+# made in it: an empty slot would make the building idle, and an idle building spends
+# no supplies (CityData.do_tick skips the consumption for it).
 func _default_slot_for_building(building_id: String) -> String:
     var b: Dictionary = _gdata.get_building_data(building_id)
     var recipes: Array = b.get("default_recipes", [])
     if not recipes.is_empty():
         return str(recipes[0])
+    for craft in _gdata.crafts:
+        var craft_id := str(craft.get("id", ""))
+        # The pseudo-recipe "empty" is craftable anywhere and means an idle slot.
+        if craft_id.is_empty() or craft_id == "empty":
+            continue
+        if _cdata.can_craft_in(craft_id, building_id):
+            return craft_id
     return "empty"
 
 

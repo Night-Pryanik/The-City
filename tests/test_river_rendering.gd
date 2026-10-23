@@ -20,6 +20,14 @@
 #   4. Scrolling the map (scroll_offset) does not "kill" rendering: the same
 #      river stays visible.
 #   5. A river entirely off screen is not drawn (culling still works).
+#
+# The whole map is revealed before the rendering checks: the rivers are clipped by
+# the fog of war (see _collect_river_segments), and the explored area of a fresh
+# game covers only the vicinity of the city. Whether a river flows through it
+# depends on the random seed of the generated map — on some seeds no river point
+# is visible at all, and the checks below would fail on a correctly working
+# renderer. The fog itself is covered by test_river_fog, so here the reveal only
+# makes the precondition ("a river is on screen") deterministic.
 extends SceneTree
 
 # Hang watchdog: without it a broken _run() coroutine looks like eternal
@@ -60,6 +68,9 @@ func _run() -> void:
     check(edge_hexes > 0,
         "rivers must leave river_edges in hexes (an indirect sign of water)", state)
 
+    # --- 1a. The whole map is revealed (see the header) ---
+    main_map.debug_open_whole_map()
+
     # --- 2. The screen rectangle — in screen coordinates ---
     var screen_rect: Rect2 = r._get_screen_rect()
     check(screen_rect.position == Vector2.ZERO,
@@ -96,10 +107,16 @@ func _run() -> void:
             % str(outside), state)
 
     # --- 4. Scrolling does not break rendering ---
-    # The standard way of scrolling in the game is right-clicking a city button
-    # (centers the city); we take the same shift as
-    # main_map._on_city_button_gui_input.
-    var scroll = - (HexUtils.hex_center(main_map.city_row, main_map.city_col, radius)
+    # The standard way of scrolling in the game is right-clicking a city button; we take
+    # the same shift, but centered on a river instead of the city: the city is not
+    # guaranteed to stand next to water, while the point of the check is the scroll
+    # itself (a large non-zero offset), not the target of the camera.
+    var scroll_target: Vector2 = Vector2.ZERO
+    for river in all_rivers:
+        if river.size() >= 2:
+            scroll_target = river[river.size() / 2]
+            break
+    var scroll = - (scroll_target
         + Vector2(main_map.offset_x, main_map.offset_y) - r._get_viewport_size() / 2.0)
     var visible_after_scroll: int = 0
     for river in all_rivers:
