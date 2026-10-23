@@ -1,0 +1,7 @@
+{
+	"id": "blacklist_example",
+	"name": "No Wine (blacklist example)",
+	"authors": ["The City team"],
+	"version": "1.0.0",
+	"description": "An example of a blacklist mod: it removes the winemaker's house, its two recipes and the wines they produce, and rewrites the goods group that listed them."
+}

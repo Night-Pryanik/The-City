@@ -1,13 +1,18 @@
 # mod_list.gd
 #
-# The list of the installed mods: a checkbox per mod, and the details of every mod —
-# the author, the version, the description, what it requires and what it conflicts with.
+# The mod manager: every installed mod on the left, the mods of the game on the right.
+#
+# THE RIGHT LIST IS THE LOAD ORDER. The data is merged from top to bottom, so a mod lower
+# in the list overrides the fields of the mods above it. A mod that requires another one
+# stays BELOW it — its dependency has to be applied first — and the arrows refuse to
+# break that pair (ModManager.order_conflict says why).
 #
 # The list is embedded into the city naming dialog and is collapsed until the player asks
 # for it: the mods are a detail of a new game, not its first question.
 #
 # THE LIST ONLY COLLECTS THE CHOICE. It never touches the data: `selection_changed` hands
-# the set to the host, and the host applies it (main_menu starts a new game with it).
+# the ordered set to the host, and the host applies it (main_menu starts a new game with
+# it).
 #
 # THE CHECK OF THE MOD DATA RUNS HERE, when a checkbox is switched on, and not at
 # startup: the mod is not part of the game until the player chooses it, so its data is
@@ -19,8 +24,9 @@ const ROW_INDENT := 6
 const MAX_SHOWN_PROBLEMS := 5
 const NAME_FONT_SIZE := 18
 const SMALL_FONT_SIZE := 12
+const ORDER_ROW_HEIGHT := 30
 
-## The player changed the set. The host applies it.
+## The player changed the set or its order. The host applies it.
 signal selection_changed(ids: Array)
 ## The room the list needs has changed: the problems panel was shown or hidden.
 signal layout_changed
@@ -32,22 +38,36 @@ var _selected: Array = []
 var _checkboxes: Dictionary = {}
 # mod id -> the label with the requirements and the conflicts of the mod.
 var _status_labels: Dictionary = {}
-@onready var empty_label: Label = $EmptyLabel
-@onready var scroll: ScrollContainer = $ScrollArea/Scroll
-@onready var list: VBoxContainer = $ScrollArea/Scroll/List
+# mod id -> the row of the load order. The rows of one build form one button group, so
+# exactly one of them is highlighted.
+var _order_rows: Dictionary = {}
+var _order_group := ButtonGroup.new()
+# The mod the arrows move.
+var _picked := ""
+@onready var available_scroll: ScrollContainer = $Panes/AvailablePane/ScrollArea/Scroll
+@onready var list: VBoxContainer = $Panes/AvailablePane/ScrollArea/Scroll/List
+@onready var order_scroll: ScrollContainer = $Panes/SelectedPane/Body/ScrollArea/Scroll
+@onready var order_list: VBoxContainer = $Panes/SelectedPane/Body/ScrollArea/Scroll/OrderList
+@onready var up_button: Button = $Panes/SelectedPane/Body/OrderButtons/UpButton
+@onready var down_button: Button = $Panes/SelectedPane/Body/OrderButtons/DownButton
 @onready var problems_panel: PanelContainer = $ProblemsPanel
 @onready var problems_label: Label = $ProblemsPanel/ProblemsMargin/ProblemsLabel
 
 func _ready() -> void:
-    _wire_scroll_gutter()
+    _wire_scroll_gutter(available_scroll)
+    _wire_scroll_gutter(order_scroll)
+    up_button.pressed.connect(_on_move_pressed.bind(-1))
+    down_button.pressed.connect(_on_move_pressed.bind(1))
+    _refresh_order_buttons()
 
 # --- Opening ---------------------------------------------------------------------
 
-# Fills the list with the given set. The set is resolved first: a save may name a mod
+# Fills both lists with the given set. The set is resolved first: a save may name a mod
 # that has been deleted since, and its dependencies must be complete.
 func open(ids: Array) -> void:
     ModManager.scan()
     _selected = ModManager.resolve(ids)
+    _picked = str(_selected[0]) if not _selected.is_empty() else ""
     _clear_problems()
     _rebuild()
 
@@ -57,16 +77,22 @@ func selected_ids() -> Array:
 # --- The list --------------------------------------------------------------------
 
 func _rebuild() -> void:
+    _rebuild_available()
+    _rebuild_order()
+    _sync_checkboxes()
+
+func _rebuild_available() -> void:
     for child in list.get_children():
         list.remove_child(child)
         child.queue_free()
     _checkboxes.clear()
     _status_labels.clear()
 
+    if ModManager.mods.is_empty():
+        list.add_child(_make_hint(tr("No mods are installed.")))
+        return
     for manifest in ModManager.mods:
         list.add_child(_make_row(manifest))
-    empty_label.visible = ModManager.mods.is_empty()
-    _sync_checkboxes()
 
 func _make_row(manifest: Dictionary) -> Control:
     var mod_id := str(manifest["id"])
@@ -134,6 +160,14 @@ func _make_header_line(manifest: Dictionary) -> Control:
 
     return line
 
+func _make_hint(text: String) -> Label:
+    var label := Label.new()
+    label.text = text
+    label.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
+    label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+    label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    return label
+
 func _tooltip(manifest: Dictionary) -> String:
     var lines: Array = [
         "%s %s" % [str(manifest["name"]), str(manifest["version"])],
@@ -147,6 +181,83 @@ func _tooltip(manifest: Dictionary) -> String:
         lines.append(tr("Conflicts with: %s") % ", ".join(PackedStringArray(manifest["conflicts"])))
     return "\n".join(PackedStringArray(lines))
 
+# --- The load order ---------------------------------------------------------------
+
+func _rebuild_order() -> void:
+    for child in order_list.get_children():
+        order_list.remove_child(child)
+        child.queue_free()
+    _order_rows.clear()
+    _order_group = ButtonGroup.new()
+
+    if _selected.is_empty():
+        order_list.add_child(_make_hint(tr("No mods are chosen yet.")))
+    else:
+        for mod_id in _selected:
+            order_list.add_child(_make_order_row(str(mod_id)))
+    _sync_order_view()
+
+func _make_order_row(mod_id: String) -> Button:
+    var manifest := ModManager.get_mod(mod_id)
+    var button := Button.new()
+    button.toggle_mode = true
+    button.button_group = _order_group
+    button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+    button.custom_minimum_size = Vector2(0, ORDER_ROW_HEIGHT)
+    button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    button.set_meta("mod_name", str(manifest.get("name", mod_id)))
+    button.tooltip_text = _tooltip(manifest) if not manifest.is_empty() else mod_id
+    button.set_pressed_no_signal(mod_id == _picked)
+    button.pressed.connect(_on_order_row_pressed.bind(mod_id))
+    _order_rows[mod_id] = button
+    return button
+
+# Puts the rows in the order of the set and numbers them. The rows themselves are reused:
+# a move must not reset the scroll of the list or the highlight.
+func _sync_order_view() -> void:
+    var index := 0
+    for mod_id in _selected:
+        var row = _order_rows.get(str(mod_id), null)
+        if row == null:
+            continue
+        order_list.move_child(row, index)
+        index += 1
+        var name := str((row as Button).get_meta("mod_name", str(mod_id)))
+        (row as Button).text = "%d. %s" % [index, name]
+    _refresh_order_buttons()
+
+func _refresh_order_buttons() -> void:
+    var index := _selected.find(_picked)
+    # The highlighted mod can be gone (it was switched off), and then the arrows have
+    # nothing to move: the first mod of the list takes the highlight.
+    if index < 0 and not _selected.is_empty():
+        _picked = str(_selected[0])
+        index = 0
+    var row = _order_rows.get(_picked, null)
+    if row != null:
+        (row as Button).set_pressed_no_signal(true)
+    up_button.disabled = index <= 0
+    down_button.disabled = index < 0 or index >= _selected.size() - 1
+
+func _on_order_row_pressed(mod_id: String) -> void:
+    _picked = mod_id
+    _refresh_order_buttons()
+
+func _on_move_pressed(offset: int) -> void:
+    var from := _selected.find(_picked)
+    var to := from + offset
+    if from < 0 or to < 0 or to >= _selected.size():
+        return
+    var reason := ModManager.order_conflict(_selected, from, to)
+    if not reason.is_empty():
+        _show_message(reason)
+        return
+    _selected.remove_at(from)
+    _selected.insert(to, _picked)
+    _clear_problems()
+    _sync_order_view()
+    selection_changed.emit(selected_ids())
+
 # --- Switching -------------------------------------------------------------------
 
 func _on_toggled(pressed: bool, mod_id: String) -> void:
@@ -157,6 +268,7 @@ func _on_toggled(pressed: bool, mod_id: String) -> void:
         _try_disable(mod_id)
     _sync_checkboxes()
     if _selected != before:
+        _rebuild_order()
         selection_changed.emit(selected_ids())
 
 func _try_enable(mod_id: String) -> void:
@@ -169,6 +281,9 @@ func _try_enable(mod_id: String) -> void:
     var previous: Array = _selected.duplicate()
     _selected.append(mod_id)
     _selected.append_array(plan["add"])
+    # The new mod goes to the bottom of the list — it has the last word over the mods
+    # that are already there — and its dependencies are pulled up right above it.
+    _selected = ModManager.resolve(_selected)
 
     # The data is checked on the set as it would run, and only after the switch: the
     # mod is not part of the game while the checkbox is off, so its errors do not
@@ -178,6 +293,7 @@ func _try_enable(mod_id: String) -> void:
         _selected = previous
         _show_problems(problems)
         return
+    _picked = mod_id
     _clear_problems()
 
 func _try_disable(mod_id: String) -> void:
@@ -260,7 +376,7 @@ func _set_problems_visible(value: bool) -> void:
 # The gutter is reserved (SHOW_ALWAYS) so that the rows keep their width when the list
 # starts to overflow, but an idle bar paints its grabber over the whole track. The bar
 # is hidden while everything fits (the same rule as in town_ui.gd).
-func _wire_scroll_gutter() -> void:
+func _wire_scroll_gutter(scroll: ScrollContainer) -> void:
     var bar := scroll.get_v_scroll_bar()
     if bar == null:
         return

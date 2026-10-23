@@ -1,0 +1,17 @@
+{
+  // A blacklist mod removes entities instead of adding them. The key is the collection,
+  // the value is the list of identifiers to remove from it.
+  //
+  // The identifiers belong to their collection: "wine" here is a RECIPE in "crafts" and a
+  // PRODUCT in "resources" — two different entities that share a name, and both have to
+  // be named. Inside one collection a repeated id changes nothing.
+  //
+  // The whole chain goes, because a building without its recipes produces nothing and a
+  // recipe without its building cannot be produced anywhere:
+  //   winemaker_house -> wine, fruit_wine -> wine, fruit_wine
+  "blacklist": {
+    "buildings": [ "winemaker_house" ],
+    "crafts": [ "wine", "fruit_wine" ],
+    "resources": [ "wine", "fruit_wine" ]
+  }
+}

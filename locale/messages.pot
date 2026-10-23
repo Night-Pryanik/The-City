@@ -231,6 +231,12 @@ msgstr ""
 msgid "\"%s\" conflicts with \"%s\"."
 msgstr ""
 
+msgid "\"%s\" is required by \"%s\", so it cannot be loaded after it."
+msgstr ""
+
+msgid "\"%s\" requires \"%s\", so it cannot be loaded before it."
+msgstr ""
+
 msgid "%.1f sec"
 msgstr ""
 
@@ -420,6 +426,9 @@ msgstr ""
 msgid "A citizen has died of starvation. Population: %d"
 msgstr ""
 
+msgid "A mod lower in the list overrides the mods above it."
+msgstr ""
+
 msgid "A range is shown because the goods in the group have different base prices."
 msgstr ""
 
@@ -490,6 +499,9 @@ msgid "Authors: %s"
 msgstr ""
 
 msgid "Available buildings:"
+msgstr ""
+
+msgid "Available mods"
 msgstr ""
 
 msgid "Available recipes:"
@@ -655,6 +667,9 @@ msgid "Cannot build on water"
 msgstr ""
 
 msgid "Cannot claim: another town's territory"
+msgstr ""
+
+msgid "Check a mod to add it to the game."
 msgstr ""
 
 msgid "Choose a city name"
@@ -933,6 +948,9 @@ msgstr ""
 msgid "Domestic trade"
 msgstr ""
 
+msgid "Down"
+msgstr ""
+
 msgid "Edge scrolling speed"
 msgstr ""
 
@@ -1164,6 +1182,9 @@ msgstr ""
 msgid "Load game"
 msgstr ""
 
+msgid "Load order"
+msgstr ""
+
 msgid "Map actions"
 msgstr ""
 
@@ -1201,6 +1222,12 @@ msgid "Mods"
 msgstr ""
 
 msgid "Mods: %s"
+msgstr ""
+
+msgid "Move the mod down"
+msgstr ""
+
+msgid "Move the mod up"
 msgstr ""
 
 msgid "New era"
@@ -1243,6 +1270,9 @@ msgid "No free workers!"
 msgstr ""
 
 msgid "No messages yet."
+msgstr ""
+
+msgid "No mods are chosen yet."
 msgstr ""
 
 msgid "No mods are installed."
@@ -2031,6 +2061,9 @@ msgstr ""
 msgid "Unknown trade direction — the order was not placed."
 msgstr ""
 
+msgid "Up"
+msgstr ""
+
 msgid "Update the contract"
 msgstr ""
 
@@ -2670,6 +2703,10 @@ msgid "Dries and roasts coffee beans."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Dries rosella flower sepals."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Dries, ferments, roasts and grinds cocoa beans."
 msgstr ""
 
@@ -3127,6 +3164,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Iron Weapons"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Karkadeh"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4222,6 +4263,10 @@ msgid "Jute"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Karkadeh"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Kenaf"
 msgstr ""
 
@@ -4495,6 +4540,14 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Rose Madder"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Rosella"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Rosella sepals"
 msgstr ""
 
 msgctxt "resources.name"

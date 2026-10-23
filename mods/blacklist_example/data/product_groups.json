@@ -1,0 +1,16 @@
+{
+  // A removed entity leaves its references behind, and cleaning them up is the mod's own
+  // work. The "alcohol" goods group listed both wines, so the group is rewritten without
+  // them: a group that points at products nobody produces any more is a broken reference,
+  // and the data check would refuse the whole mod. Only "products" is written here — the
+  // name of the group keeps its vanilla value.
+  //
+  // The "winemaker" profession is NOT touched: nothing refers to a profession from the
+  // side of the buildings, so a profession without a building of its own is not an error.
+  "product_groups": [
+    {
+      "id": "alcohol",
+      "products": [ "beer", "mead", "sake", "pulque" ]
+    }
+  ]
+}

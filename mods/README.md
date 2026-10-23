@@ -1,7 +1,10 @@
 # Mods — how to create a mod for The City
 
 This guide describes how mods work in the game and how to assemble them correctly.
-A ready-made example mod lives in the `test_mod` subfolder next to this file.
+Two ready-made examples live next to this file:
+
+- `test_mod` — the full specimen: new entities, overrides of vanilla ones and a blacklist;
+- `blacklist_example` — a small mod that only REMOVES things (see §4.3).
 
 ---
 
@@ -208,6 +211,21 @@ blacklists the product `papyrus` and rewrites the two goods groups that listed i
 it removes the whole vitriol chain of the alchemist house — the building, its recipe,
 the recipe that spends the product, and the product itself.
 
+`mods/blacklist_example` is the short version of the same idea, and it is the one to read
+first. It removes one whole chain — the winemaker's house, its two recipes and the two
+wines they produce — and then rewrites the single goods group that listed the wines:
+
+```
+data/blacklist.json         the building, the recipes, the products
+data/product_groups.json    the "alcohol" group without the two wines
+```
+
+The order matters for the reader, not for the game: the blacklist is applied first, so
+the group written by the mod never names a product that is still there. Note what the
+mod does NOT touch: the `winemaker` profession stays (nothing refers to a profession from
+the side of the buildings), and so does the technology that unlocked the house — a
+removal takes out entities, not the rules that led to them.
+
 A blacklist entry that names nothing is reported as well (the check `blacklist`): the
 collection has no such identifier and no mod declared it, so nothing was removed. It is
 a typo, and a blacklist that silently does nothing is worse than one that fails.
@@ -232,7 +250,15 @@ mods/tile_industry/
 ```
 
 A ready-made specimen exercising all three rules — adding, overriding and removing — is
-`mods/test_mod`.
+`mods/test_mod`. A specimen that only removes is `mods/blacklist_example`:
+
+```
+mods/blacklist_example/
+  mod.json
+  data/
+    blacklist.json          <- the entities to remove from the game
+    product_groups.json     <- the groups that referred to them, rewritten
+```
 
 ---
 

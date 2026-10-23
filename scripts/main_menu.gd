@@ -181,6 +181,15 @@ func _set_mods_expanded(expanded: bool):
     mods_toggle.set_pressed_no_signal(expanded)
     mod_list.visible = expanded
     _fit_dialog()
+    _refit_dialog_after_sort()
+
+# The room the list needs is known only after its container has been sorted: right after
+# the rows are added, the wrapped labels are not laid out yet and the list reports a
+# height nobody will ever see. The second fit waits a frame.
+func _refit_dialog_after_sort():
+    await get_tree().process_frame
+    if new_game_dialog != null and new_game_dialog.visible:
+        _fit_dialog()
 
 func _fit_dialog():
     var list_size: Vector2 = mod_list.get_combined_minimum_size()
@@ -196,8 +205,7 @@ func _fit_dialog():
 # The minimum size of the list is known only after its container has been sorted, so the
 # refit after a change inside the list waits a frame.
 func _on_mod_list_layout_changed():
-    await get_tree().process_frame
-    _fit_dialog()
+    _refit_dialog_after_sort()
 
 # The set is handed over at once, so the game that starts runs exactly the data the
 # player has chosen. The data itself is rebuilt later, when something really reads it:

@@ -1,7 +1,7 @@
 {
-  // A goods group lists the products that exist. "papyrus" is blacklisted
-  // (blacklist.json next to this file), so it is dropped from the two groups it
-  // belonged to: a member that does not exist is a broken reference, and the data
+  // A goods group lists the products that exist. "papyrus" and "glass_bottle" are
+  // blacklisted (blacklist.json next to this file), so they are dropped from every group
+  // they belong to: a member that does not exist is a broken reference, and the data
   // check would refuse the mod. Only "products" is written here — the names of the
   // groups keep their vanilla values.
   "product_groups": [
@@ -12,6 +12,10 @@
     {
       "id": "writing_materials",
       "products": [ "clay_tablets", "wax_tablets", "parchment", "silk", "paper" ]
+    },
+    {
+      "id": "tare",
+      "products": [ "amphora", "wooden_barrel" ]
     }
   ]
 }

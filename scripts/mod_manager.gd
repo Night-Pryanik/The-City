@@ -17,7 +17,9 @@
 # GameData.active_mod_dirs).
 #
 # The data of a mod is merged by data_loader: a new identifier is added to the vanilla
-# entities, an existing one is overwritten field by field.
+# entities, an existing one is overwritten field by field. The mods are merged in the
+# order of the set, so the player decides which mod has the last word by moving it down
+# in the list (see order_conflict).
 extends Node
 
 const DataValidator = preload("res://scripts/data_validator.gd")
@@ -33,8 +35,9 @@ const IDENT_CHARS := "abcdefghijklmnopqrstuvwxyz0123456789_"
 #   id, name, authors (Array), description, version, dependencies (Array),
 #   conflicts (Array), dir, error ("" — the manifest is usable).
 var mods: Array = []
-# The identifiers of the mods of the running game, in the order they are applied:
-# a dependency always comes before the mod that requires it.
+# The identifiers of the mods of the running game, in the order they are applied: the
+# order the player arranged, corrected so that a dependency always comes before the mod
+# that requires it.
 var active_ids: Array = []
 
 # The problems of the vanilla data. The check of a mod reports only what the mod adds to
@@ -94,8 +97,9 @@ func set_active(ids: Array) -> void:
     active_ids = resolve(ids)
     _push_to_game_data()
 
-# The identifiers in the order they must be applied: every dependency before the mod
-# that requires it.
+# The identifiers in the order they must be applied: the given order, corrected so that
+# every dependency comes before the mod that requires it. Mods that do not depend on each
+# other keep the relative order they were given in.
 func resolve(ids: Array) -> Array:
     var wanted := {}
     for id in ids:
@@ -115,6 +119,29 @@ func _visit(mod_id: String, wanted: Dictionary, visiting: Dictionary, ordered: A
         _visit(str(dependency), wanted, visiting, ordered)
     visiting.erase(mod_id)
     ordered.append(mod_id)
+
+# Why the mod at `from` cannot be put at `to` in `order`, or "" if it can.
+#
+# The list is the order of the merge: a mod is applied after everything above it, so a
+# mod that requires another one has to stay BELOW it. Only the mods the moved one passes
+# over can break that rule, and only through a dependency between the two of them.
+func order_conflict(order: Array, from: int, to: int) -> String:
+    if from < 0 or to < 0 or from >= order.size() or to >= order.size() or from == to:
+        return ""
+    var mod_id := str(order[from])
+    if to < from:
+        # The passed mods end up below the moved one: it cannot require any of them.
+        for other in order.slice(to, from):
+            if _dependencies_of(mod_id).has(str(other)):
+                return tr("\"%s\" requires \"%s\", so it cannot be loaded before it.") % [
+                    _display_name(mod_id), _display_name(str(other))]
+    else:
+        # The passed mods end up above the moved one: none of them may require it.
+        for other in order.slice(from + 1, to + 1):
+            if _dependencies_of(str(other)).has(mod_id):
+                return tr("\"%s\" is required by \"%s\", so it cannot be loaded after it.") % [
+                    _display_name(mod_id), _display_name(str(other))]
+    return ""
 
 func _push_to_game_data() -> void:
     var game_data = _game_data()

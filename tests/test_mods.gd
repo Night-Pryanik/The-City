@@ -11,12 +11,15 @@
 #   4. The set belongs to the save: a slot that names a mod restores it on loading.
 #   5. Dependencies and conflicts: a dependency comes along with its dependent and is
 #      applied before it; a conflicting pair cannot be switched on; a dependency cannot
-#      be switched off under its dependent.
+#      be switched off under its dependent; the load order refuses to put a dependency
+#      under the mod that requires it.
 #   6. The data of a mod is checked when the mod is switched on, and the check points at
 #      the mod's own file; a clean mod produces no problems.
-#   7. The list: one row per mod, the checkbox drives the set, the change is reported to
-#      the host.
-#   8. The "New game" path: the city naming dialog comes first, the list is folded under
+#   7. The shipped blacklist example: it is usable, it passes the check, and it removes
+#      exactly the chain it names without touching its neighbours.
+#   8. The list: one row per mod, the checkbox drives the set, a chosen mod appears in
+#      the load order, the arrows move the highlighted mod and report the new order.
+#   9. The "New game" path: the city naming dialog comes first, the list is folded under
 #      it, and unfolding it and switching a mod on applies the set at once.
 #
 # The test creates its own mods in user://mods and removes them afterwards, and it leaves
@@ -28,6 +31,9 @@ extends SceneTree
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 const SHIPPED_MOD := "test_mod"
+# The shipped blacklist example. Its data is as fragile as any other: it names vanilla
+# entities and the groups that refer to them, so a data change may break it unnoticed.
+const EXAMPLE_MOD := "blacklist_example"
 # The mods of the test. They live in user:// and are removed at the end.
 const DEP_MOD := "test_dep"
 const CHILD_MOD := "test_dep_child"
@@ -63,6 +69,7 @@ func _run() -> void:
     _test_save_set(state, save_manager)
     _test_dependencies(state)
     _test_validation(state)
+    _test_blacklist_example(state)
     await _test_list(state)
     await _test_new_game_flow(state)
 
@@ -220,6 +227,19 @@ func _test_dependencies(state: Dictionary) -> void:
     check(_mod_manager.required_by(DEP_MOD, [DEP_MOD]).is_empty(),
             "a dependency nobody needs can be switched off", state)
 
+    # The order of the set is the order of the merge: a mod may be moved below a mod it
+    # does not depend on, but never above the mod that requires it.
+    check(_mod_manager.order_conflict([SHIPPED_MOD, DEP_MOD], 0, 1).is_empty(),
+            "unrelated mods move freely", state)
+    check(not _mod_manager.order_conflict([DEP_MOD, CHILD_MOD], 0, 1).is_empty(),
+            "a dependency cannot be moved under its dependent", state)
+    check(_mod_manager.order_conflict([CHILD_MOD, DEP_MOD], 1, 0).is_empty(),
+            "a dependency may be moved above its dependent", state)
+    check(not _mod_manager.order_conflict([DEP_MOD, CHILD_MOD], 1, 0).is_empty(),
+            "a dependent cannot be moved above its dependency", state)
+    check(_mod_manager.order_conflict([DEP_MOD, CHILD_MOD], 1, 1).is_empty(),
+            "a mod moved onto its own place is not a conflict", state)
+
 # --- 6. The check on switching on --------------------------------------------------
 
 func _test_validation(state: Dictionary) -> void:
@@ -260,7 +280,43 @@ func _test_validation(state: Dictionary) -> void:
             typo_points_at_mod = true
     check(typo_points_at_mod, "the blacklist problems point at the file of the mod", state)
 
-# --- 7. The list -------------------------------------------------------------------
+# --- 7. The shipped blacklist example -----------------------------------------------
+
+# The example is shipped with the game, so it is read as any other mod: it must be usable,
+# it must pass the check, and it must remove the chain it names without touching its
+# neighbours. A vanilla data change that starts to refer to a removed entity would make
+# the example unusable — and the player would see a shipped mod that cannot be switched on.
+func _test_blacklist_example(state: Dictionary) -> void:
+    _mod_manager.scan()
+    var manifest = _mod_manager.get_mod(EXAMPLE_MOD)
+    check(not manifest.is_empty(), "the blacklist example is found", state)
+    if manifest.is_empty():
+        return
+    check(str(manifest["error"]).is_empty(), "the example manifest is usable", state)
+    check(_mod_manager.validate_selection([EXAMPLE_MOD]).is_empty(),
+            "the example adds no problems to the data", state)
+
+    _mod_manager.set_active([EXAMPLE_MOD])
+    _game_data.load_all_data()
+
+    check(_find_building("winemaker_house").is_empty(), "the example removes its building", state)
+    check(not _game_data.products.has("wine"), "the example removes the product", state)
+    check(not _has_craft("wine"), "the example removes the recipe of the same name", state)
+    check(not _has_craft("fruit_wine"), "the example removes the second recipe", state)
+    check(not _game_data.products.has("fruit_wine"), "the example removes the second product", state)
+
+    var alcohol = _game_data.product_groups.get("alcohol", [])
+    check(not (alcohol as Array).has("wine"), "the rewritten group drops the removed wine", state)
+    check(not (alcohol as Array).has("fruit_wine"),
+            "the rewritten group drops the removed fruit wine", state)
+    check((alcohol as Array).has("beer"), "the rest of the group survives", state)
+    check((_game_data.product_groups.get("tare", []) as Array).has("amphora"),
+            "a group the example does not write is untouched", state)
+
+    _mod_manager.set_active([])
+    _game_data.load_all_data()
+
+# --- 8. The list -------------------------------------------------------------------
 
 func _test_list(state: Dictionary) -> void:
     _mod_manager.scan()
@@ -290,11 +346,44 @@ func _test_list(state: Dictionary) -> void:
     check(emitted["ids"].has(SHIPPED_MOD), "the new set is reported to the host", state)
     check(mod_list.selected_ids() == mod_list._selected, "the list hands out its set", state)
 
+    # The chosen mod appears in the load order, and the order is the priority: a mod
+    # switched on later goes to the bottom, that is, it is applied after the others.
+    check(mod_list._order_rows.has(SHIPPED_MOD), "a chosen mod appears in the load order", state)
+    check(mod_list._order_rows[SHIPPED_MOD].text == "1. Test Mod", "the row is numbered", state)
+
+    var dependency_box = mod_list._checkboxes.get(DEP_MOD, null)
+    if dependency_box != null:
+        dependency_box.button_pressed = true
+        check(mod_list._selected == [SHIPPED_MOD, DEP_MOD], "a new mod goes to the bottom", state)
+        check(mod_list._order_rows[DEP_MOD].text == "2. Dependency", "the second row is numbered", state)
+
+        # The arrows move the highlighted mod.
+        mod_list._on_order_row_pressed(DEP_MOD)
+        check(not mod_list.up_button.disabled, "the arrows work on the highlighted mod", state)
+        mod_list.up_button.pressed.emit()
+        check(mod_list._selected == [DEP_MOD, SHIPPED_MOD], "the arrow moves the mod up", state)
+        check(emitted["ids"] == [DEP_MOD, SHIPPED_MOD], "the new order is reported to the host", state)
+        check(mod_list._order_rows[DEP_MOD].text == "1. Dependency", "the rows are renumbered", state)
+        check(mod_list.up_button.disabled, "the top mod cannot be moved up", state)
+
     # A dependency comes along with its dependent.
     var child = mod_list._checkboxes.get(CHILD_MOD, null)
     if child != null:
         child.button_pressed = true
         check(mod_list._selected.has(DEP_MOD), "the dependency is switched on with its dependent", state)
+
+        # The order keeps a dependency above the mod that requires it: the child passes
+        # the unrelated mod, but not the dependency.
+        mod_list._on_order_row_pressed(CHILD_MOD)
+        mod_list.up_button.pressed.emit()
+        check(mod_list._selected == [DEP_MOD, CHILD_MOD, SHIPPED_MOD],
+                "the dependent passes an unrelated mod", state)
+        var before_order = mod_list._selected.duplicate()
+        mod_list.up_button.pressed.emit()
+        check(mod_list._selected == before_order, "the dependent stays below its dependency", state)
+        check(mod_list.problems_label.text.contains("cannot be loaded"),
+                "the refusal names the order rule", state)
+
         # A dependency cannot be switched off under its dependent.
         var dependency = mod_list._checkboxes.get(DEP_MOD, null)
         dependency.button_pressed = false
@@ -311,7 +400,7 @@ func _test_list(state: Dictionary) -> void:
 
     mod_list.free()
 
-# --- 8. The "New game" path -------------------------------------------------------
+# --- 9. The "New game" path -------------------------------------------------------
 
 # "New game" opens the city naming dialog at once, and the mods of the game are folded
 # away under the name field. Unfolding them and switching a mod on applies the set
