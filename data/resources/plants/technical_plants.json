@@ -28,6 +28,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "cotton": 10, "feed": 40 },
@@ -62,6 +63,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "jute": 10, "feed": 40 },
@@ -80,6 +82,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "ramie": 10, "feed": 40 },
@@ -97,6 +100,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "kenaf": 10, "feed": 40 },
@@ -114,6 +118,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "yucca": 10, "yucca_fruit": 10, "feed": 40 },
@@ -135,6 +140,7 @@
       "allowed_cover": [
         "none", "oasis"
       ],
+      "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "agave": 10, "sisal": 10, "feed": 40 },
@@ -172,6 +178,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "sesame": 10, "feed": 40 },
@@ -189,6 +196,7 @@
       "allowed_cover": [
         "none", "reeds"
       ],
+      "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "papyrus_plant": 10, "feed": 40 },
@@ -207,6 +215,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "plantation",
       "produces": { "indigofera_leaves": 10 },
       "icon": "indigofera.png",
@@ -224,6 +233,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "plantation",
       "produces": { "lawsonia_leaves": 10 },
       "icon": "lawsonia.png",
@@ -275,6 +285,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": ["tropical_dry", "tropical_wet"],
       "improved_by": "lumberjack_hut",
       // The camp is the harvest point of the hex: the campeche tree gives its
       // timber as well as its dye wood (docs.md, "Improvement types are a
@@ -311,6 +322,7 @@
       "allowed_cover": [
         "none", "oasis"
       ],
+      "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "cactus_fruit": 10, "cochineal": 10 },

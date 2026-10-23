@@ -18,9 +18,10 @@
   // vegetation of a hex is taken from the cover_chance of its climate zone (data/climate.json),
   // not from the terrain record.
   //
-  // The variants of one family share the icons of the family: the climate is told by the "tint" —
-  // a colour wash drawn over the icon by the map renderer (see map_renderer._draw_terrain_tint).
-  // "color" is the flat colour of the hex, used where no icon is available.
+  // The variants of one family share the icons of the family: nothing in the drawing tells the
+  // varieties of one relief apart yet — the climate is read from the name of the terrain in the
+  // tooltip, not from its colour. "color" is the flat colour of the hex, used where no icon is
+  // available.
   "terrains": [
     // --- THE COLD BELT: the boreal zone ---------------------------------------------------
     {
@@ -28,8 +29,6 @@
       "name": "Boreal, Plain",
       "family": "plain",
       "color": [ 196, 208, 200 ],
-      "tint": [ 200, 212, 220 ],
-      "tint_alpha": 0.55,
       "move_cost": 1,
       "expansion_cost": 2,
       "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
@@ -39,8 +38,6 @@
       "name": "Boreal, Hills",
       "family": "hill",
       "color": [ 150, 148, 140 ],
-      "tint": [ 200, 212, 220 ],
-      "tint_alpha": 0.45,
       "move_cost": 2,
       "expansion_cost": 3,
       "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
@@ -50,8 +47,6 @@
       "name": "Mountains",
       "family": "mountain",
       "color": [ 140, 148, 152 ],
-      "tint": [ 200, 212, 220 ],
-      "tint_alpha": 0.45,
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,
@@ -66,8 +61,6 @@
       "name": "Steppe, Plain",
       "family": "plain",
       "color": [ 214, 198, 132 ],
-      "tint": [ 225, 205, 110 ],
-      "tint_alpha": 0.45,
       "move_cost": 1,
       "expansion_cost": 2,
       "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
@@ -77,8 +70,6 @@
       "name": "Steppe, Hills",
       "family": "hill",
       "color": [ 168, 148, 96 ],
-      "tint": [ 225, 205, 110 ],
-      "tint_alpha": 0.35,
       "move_cost": 2,
       "expansion_cost": 3,
       "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
@@ -88,8 +79,6 @@
       "name": "Mountains",
       "family": "mountain",
       "color": [ 130, 122, 104 ],
-      "tint": [ 225, 205, 110 ],
-      "tint_alpha": 0.30,
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,
@@ -100,8 +89,6 @@
       "name": "Prairie, Plain",
       "family": "plain",
       "color": [ 186, 205, 124 ],
-      "tint": [ 205, 220, 120 ],
-      "tint_alpha": 0.30,
       "move_cost": 1,
       "expansion_cost": 2,
       "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
@@ -111,8 +98,6 @@
       "name": "Prairie, Hills",
       "family": "hill",
       "color": [ 150, 165, 96 ],
-      "tint": [ 205, 220, 120 ],
-      "tint_alpha": 0.25,
       "move_cost": 2,
       "expansion_cost": 3,
       "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
@@ -122,8 +107,6 @@
       "name": "Mountains",
       "family": "mountain",
       "color": [ 120, 128, 110 ],
-      "tint": [ 205, 220, 120 ],
-      "tint_alpha": 0.22,
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,
@@ -136,8 +119,6 @@
       "name": "Savanna, Plain",
       "family": "plain",
       "color": [ 222, 192, 112 ],
-      "tint": [ 235, 190, 80 ],
-      "tint_alpha": 0.50,
       "move_cost": 1,
       "expansion_cost": 2,
       "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
@@ -147,8 +128,6 @@
       "name": "Savanna, Hills",
       "family": "hill",
       "color": [ 180, 150, 92 ],
-      "tint": [ 235, 190, 80 ],
-      "tint_alpha": 0.40,
       "move_cost": 2,
       "expansion_cost": 3,
       "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
@@ -158,8 +137,6 @@
       "name": "Mountains",
       "family": "mountain",
       "color": [ 140, 122, 96 ],
-      "tint": [ 235, 190, 80 ],
-      "tint_alpha": 0.35,
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,
@@ -172,8 +149,6 @@
       "name": "Tropical, Plain",
       "family": "plain",
       "color": [ 122, 178, 104 ],
-      "tint": [ 110, 175, 90 ],
-      "tint_alpha": 0.25,
       "move_cost": 1,
       "expansion_cost": 2,
       "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
@@ -183,8 +158,6 @@
       "name": "Tropical, Hills",
       "family": "hill",
       "color": [ 120, 150, 92 ],
-      "tint": [ 110, 175, 90 ],
-      "tint_alpha": 0.25,
       "move_cost": 2,
       "expansion_cost": 3,
       "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
@@ -194,8 +167,6 @@
       "name": "Mountains",
       "family": "mountain",
       "color": [ 100, 125, 100 ],
-      "tint": [ 110, 175, 90 ],
-      "tint_alpha": 0.25,
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,

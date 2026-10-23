@@ -1212,6 +1212,14 @@ func _terrain_allowed(terrain_id: String, data: Dictionary) -> bool:
             return true
     return false
 
+# Whether the climate zone of a hex satisfies the allowed_climate_zones list of a rule.
+# An empty or missing list means "any zone".
+func _climate_allowed(tile: Dictionary, data: Dictionary) -> bool:
+    var zones: Array = data.get("allowed_climate_zones", [])
+    if zones.is_empty():
+        return true
+    return str(tile.get("climate", "")) in zones
+
 # Removes a hex from the multi-index after it has been occupied by a resource.
 func _remove_hex_from_index(hex_index: Dictionary, row: int, col: int, terrain_id: String, cover_id: String) -> void:
     for name in _index_names(terrain_id):
@@ -1281,6 +1289,8 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, _rows: int, _cols:
                         continue
                     var arr: Array = hex_index[key]
                     for hex in arr:
+                        if not _climate_allowed(tile_data[hex.row][hex.col], data):
+                            continue
                         if HexUtils.is_hex_conditions_met(tile_data, hex.row, hex.col, data):
                             possible.append(hex)
             if possible.size() > 0:
@@ -1311,7 +1321,8 @@ func place_wild_food(tile_data: Array, min_row: int, max_row: int, min_col: int,
             var terrain_id = tile_data[r][c]["terrain"]
             var cover_id = tile_data[r][c].get("cover", "none")
             if _terrain_allowed(terrain_id, wild_data) and cover_id in wild_data.get("allowed_cover", []):
-                possible.append({"row": r, "col": c})
+                if _climate_allowed(tile_data[r][c], wild_data):
+                    possible.append({"row": r, "col": c})
     possible.shuffle()
     for i in range(min(count, possible.size())):
         var hex = possible[i]

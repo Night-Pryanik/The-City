@@ -293,6 +293,7 @@ const RESOURCE_FIELDS := {
     "tech_reveal": LEAF,
     "allowed_terrain": LEAF,
     "allowed_cover": LEAF,
+    "allowed_climate_zones": LEAF,
     "produces": RESOURCE_MAP,
     "special_yield": RESOURCE_MAP,
     "strategic": LEAF,
@@ -429,9 +430,6 @@ const TERRAIN_FIELDS := {
     # its belt (a plain becomes a boreal plain, a steppe, a prairie, a savanna or a tropical plain).
     # The water, the wetlands and the deserts have no family.
     "family": LEAF,
-    # The colour wash of the variety over the icons of the family (see map_renderer._draw_terrain_tint).
-    "tint": LEAF,
-    "tint_alpha": LEAF,
     "icons": LEAF,
     "move_cost": LEAF,
     "expansion_cost": LEAF,
