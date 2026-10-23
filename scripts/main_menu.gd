@@ -9,6 +9,10 @@ const DataProblemsWindow = preload("res://scripts/data_problems_window.gd")
 const UiHelpers = preload("res://scripts/ui_helpers.gd")
 const ModListScene = preload("res://scenes/mod_list.tscn")
 
+# The width of the city name field. It does not follow anything else: the name window is
+# sized to it and keeps that width.
+const NAME_FIELD_WIDTH := 340
+
 @onready var continue_button = $VBoxContainer/ContinueButton
 @onready var new_game_button = $VBoxContainer/NewGameButton
 @onready var load_game_button = $VBoxContainer/LoadGameButton
@@ -17,12 +21,14 @@ const ModListScene = preload("res://scenes/mod_list.tscn")
 
 # The window of the saves, created on the first click on "Load game".
 var save_load_window: CanvasLayer = null
-# The dialog of a new game: the city name, and the mods of that game folded away under
-# it. It is built once and kept — the choice of mods survives a "Back".
+# The dialog of a new game: the city name, and the way into the window of the mods. It is
+# built once and kept — the choice of mods survives a "Back".
 var new_game_dialog: ConfirmationDialog = null
 var city_name_edit: LineEdit = null
-var mods_toggle: Button = null
-var mods_holder: Control = null
+var mods_button: Button = null
+# The window of the mods. A window of its own: the list is 860 px wide and the name is not,
+# and one window that changes its width under the cursor is worse than two that keep theirs.
+var mods_window: AcceptDialog = null
 var mod_list = null
 
 func _ready():
@@ -98,15 +104,16 @@ func _on_continue_game():
         # offering a game that cannot be loaded.
         _refresh_save_buttons()
 
-# A new game starts with the city name. The mods of that game are folded away under the
-# name field: they are a detail of the game being created, not its first question, and
-# most games are started without any.
+# A new game starts with the city name. The mods of that game are a separate window behind
+# a button: they are a detail of the game being created, not its first question, and most
+# games are started without any.
 func _on_new_game():
     if new_game_dialog == null:
         _build_new_game_dialog()
+    if mods_window == null:
+        _build_mods_window()
     mod_list.open(ModManager.active_ids)
-    _refresh_mods_toggle()
-    _set_mods_expanded(false)
+    _refresh_mods_button()
     city_name_edit.text = tr("City")
     new_game_dialog.popup_centered()
     city_name_edit.grab_focus()
@@ -121,7 +128,7 @@ func _build_new_game_dialog():
     # An AcceptDialog does not arrange its children: every direct child is put at the
     # content origin, on top of the others. The rows live in a column of their own.
     var content = VBoxContainer.new()
-    content.add_theme_constant_override("separation", 6)
+    content.add_theme_constant_override("separation", 8)
     dialog.add_child(content)
 
     var name_row = HBoxContainer.new()
@@ -129,8 +136,10 @@ func _build_new_game_dialog():
     name_row.add_theme_constant_override("separation", 4)
     city_name_edit = LineEdit.new()
     city_name_edit.text = tr("City")
-    city_name_edit.custom_minimum_size = Vector2(260, 30)
-    city_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    # The field keeps its own width. The mod list is 860 px wide when it is unfolded, and
+    # a name field stretched to that width reads as a text area, not as a name.
+    city_name_edit.custom_minimum_size = Vector2(NAME_FIELD_WIDTH, 30)
+    city_name_edit.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
     city_name_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     city_name_edit.select_all_on_focus = true
     name_row.add_child(city_name_edit)
@@ -150,62 +159,76 @@ func _build_new_game_dialog():
     name_row.add_child(random_button)
     content.add_child(name_row)
 
-    mods_toggle = Button.new()
-    mods_toggle.toggle_mode = true
-    mods_toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-    mods_toggle.toggled.connect(_set_mods_expanded)
-    content.add_child(mods_toggle)
+    # The name is one question and the mods are another, with a window of their own: the
+    # line keeps the button of the second window apart from the name of the first.
+    var separator := HSeparator.new()
+    content.add_child(separator)
 
-    # The dialog sizes itself to its children and does not care whether they are
-    # visible, so the room for the list is reserved by a holder of its own: a plain
-    # Control asks for exactly what it is told to ask for.
-    mods_holder = Control.new()
-    mods_holder.clip_contents = true
-    content.add_child(mods_holder)
-
-    mod_list = ModListScene.instantiate()
-    mod_list.visible = false
-    mod_list.selection_changed.connect(_on_mods_changed)
-    mod_list.layout_changed.connect(_on_mod_list_layout_changed)
-    mods_holder.add_child(mod_list)
-    mod_list.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    mods_button = Button.new()
+    mods_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+    mods_button.pressed.connect(_open_mods_window)
+    content.add_child(mods_button)
 
     city_name_edit.text_submitted.connect(func(_text): dialog.get_ok_button().pressed.emit())
     dialog.confirmed.connect(func(): _start_new_game(city_name_edit.text))
+    dialog.canceled.connect(_on_new_game_canceled)
     add_child(dialog)
     new_game_dialog = dialog
 
-# The list is unfolded by the toggle, and it starts folded on every new game: the player
-# who does not care about mods never has to scroll past them.
-func _set_mods_expanded(expanded: bool):
-    mods_toggle.set_pressed_no_signal(expanded)
-    mod_list.visible = expanded
-    _fit_dialog()
-    _refit_dialog_after_sort()
+# The list fills its window: an AcceptDialog stretches its child to the content area, so
+# the window is exactly as wide as the list and keeps that width.
+func _build_mods_window():
+    var window := AcceptDialog.new()
+    window.title = tr("Mods")
+    window.ok_button_text = tr("Close")
+    window.confirmed.connect(_on_mods_window_closed)
+    window.canceled.connect(_on_mods_window_closed)
 
-# The room the list needs is known only after its container has been sorted: right after
-# the rows are added, the wrapped labels are not laid out yet and the list reports a
-# height nobody will ever see. The second fit waits a frame.
-func _refit_dialog_after_sort():
-    await get_tree().process_frame
-    if new_game_dialog != null and new_game_dialog.visible:
-        _fit_dialog()
+    mod_list = ModListScene.instantiate()
+    mod_list.selection_changed.connect(_on_mods_changed)
+    mod_list.layout_changed.connect(_on_mod_list_layout_changed)
+    window.add_child(mod_list)
+    add_child(window)
+    mods_window = window
 
-func _fit_dialog():
-    var list_size: Vector2 = mod_list.get_combined_minimum_size()
-    mods_holder.custom_minimum_size = Vector2(list_size.x, list_size.y if mod_list.visible else 0.0)
-    # An AcceptDialog keeps the size it was shown with, so the window is refitted to its
-    # content and put back into the middle — otherwise the window would hang in a corner
-    # of the screen after it grows or shrinks.
-    new_game_dialog.reset_size()
-    var screen: Vector2 = get_viewport().get_visible_rect().size
-    if screen.x > 0.0 and screen.y > 0.0:
-        new_game_dialog.position = Vector2i((screen - Vector2(new_game_dialog.size)) * 0.5)
+# One window at a time: a window of the mods is exclusive, so the dialog of the name steps
+# aside and comes back when the mods are closed. Neither of the two ever changes its width.
+func _open_mods_window():
+    new_game_dialog.hide()
+    mods_window.popup_centered()
+    _refit_mods_window()
+
+func _on_mods_window_closed():
+    _refresh_mods_button()
+    if new_game_dialog != null:
+        new_game_dialog.popup_centered()
+        city_name_edit.grab_focus()
+
+# The mods window belongs to the dialog of a new game: a game that is not started leaves
+# no window behind it.
+func _on_new_game_canceled():
+    if mods_window != null:
+        mods_window.hide()
+
+# The problems panel takes room only while it has something to say, so the window is
+# refitted when the list reports that its room has changed. The width does not change: the
+# panel spans the list, it does not widen it.
+func _on_mod_list_layout_changed():
+    _refit_mods_window()
 
 # The minimum size of the list is known only after its container has been sorted, so the
-# refit after a change inside the list waits a frame.
-func _on_mod_list_layout_changed():
-    _refit_dialog_after_sort()
+# refit waits a frame. It is also what puts the window in the middle of the screen: the
+# size a fresh popup computes may be the one of a list that has not been laid out yet.
+func _refit_mods_window():
+    if mods_window == null or not mods_window.visible:
+        return
+    await get_tree().process_frame
+    if not mods_window.visible:
+        return
+    mods_window.reset_size()
+    var screen: Vector2 = get_viewport().get_visible_rect().size
+    if screen.x > 0.0 and screen.y > 0.0:
+        mods_window.position = Vector2i((screen - Vector2(mods_window.size)) * 0.5)
 
 # The set is handed over at once, so the game that starts runs exactly the data the
 # player has chosen. The data itself is rebuilt later, when something really reads it:
@@ -213,7 +236,7 @@ func _on_mod_list_layout_changed():
 # known without it.
 func _on_mods_changed(mod_ids: Array):
     ModManager.set_active(mod_ids)
-    _refresh_mods_toggle()
+    _refresh_mods_button()
 
 # The random name is the only thing inside this dialog that reads the data, and the data
 # is stale as soon as the set changes (ModManager drops it). The start of the game
@@ -222,11 +245,11 @@ func _ensure_game_data():
     if not GameData.data_loaded:
         GameData.load_all_data()
 
-# The caption tells at a glance that a game is about to start with mods, even while the
-# list is folded.
-func _refresh_mods_toggle():
+# The caption tells at a glance that a game is about to start with mods, without opening
+# the window of the mods.
+func _refresh_mods_button():
     var count: int = mod_list.selected_ids().size()
-    mods_toggle.text = tr("Mods") if count == 0 else "%s (%d)" % [tr("Mods"), count]
+    mods_button.text = tr("Mods") if count == 0 else "%s (%d)" % [tr("Mods"), count]
 
 func _start_new_game(city_name: String):
     # Empty input — we substitute a random name.
