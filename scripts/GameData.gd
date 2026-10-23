@@ -110,15 +110,15 @@ func _assign_from(loader) -> void:
 
 # === TERRAIN FAMILIES AND CLIMATE ZONES ===
 #
-# A terrain of the map is a VARIETY of a relief family: the same plain is a tundra in the cold
-# belt, a steppe or a prairie in the mild one, a savanna in the subtropical one and a tropical
+# A terrain of the map is a VARIETY of a relief family: the same plain is a boreal plain in the
+# cold belt, a steppe or a prairie in the mild one, a savanna in the subtropical one and a tropical
 # plain near the equator (data/terrains/terrains.json → "family", data/climate.json).
 # The family is what the rules mean by "a plain" where the climate does not matter: a resource
 # allowed on the terrain "plain" grows on all five varieties of it.
 
 # The relief families of the map. A family is not a terrain of its own: the climate turns every hex
-# of a family into the variety of its belt (a plain becomes a tundra, a steppe, a prairie, a savanna
-# or a tropical plain).
+# of a family into the variety of its belt (a plain becomes a boreal plain, a steppe, a prairie, a
+# savanna or a tropical plain).
 const RELIEF_FAMILIES := ["plain", "hill", "mountain"]
 
 # The family of a terrain ("plain", "hill", "mountain"), or an empty string for the water, the
@@ -150,6 +150,21 @@ func get_climate_zone(zone_id: String) -> Dictionary:
 func zone_terrain(zone_id: String, family: String) -> String:
     var zone: Dictionary = get_climate_zone(zone_id)
     return str(zone.get("terrain", {}).get(family, ""))
+
+# The name of a hex as the player reads it: the terrain, which already carries its climate zone
+# ("Boreal, Plain", "Tropical, Hills" — data/terrains/terrains.json), and the cover on top of it —
+# "Tropical, Hills, Tropical Forest". A hex without a cover keeps the bare name of the terrain.
+func terrain_display_name(terrain_id: String, cover_id: String = "none") -> String:
+    var name := str(terrains.get(terrain_id, {}).get("name", terrain_id))
+    if cover_id == "" or cover_id == "none":
+        return name
+    var cover_name := str(covers.get(cover_id, {}).get("name", cover_id))
+    # Russian writes the parts of such a list after the first in lowercase ("Тропики, холмы,
+    # тропический лес"), English keeps the case of every part ("Tropical, Hills, Tropical Forest"),
+    # so the rule follows the language of the game.
+    if TranslationServer.get_locale().begins_with("ru"):
+        cover_name = cover_name.to_lower()
+    return "%s, %s" % [name, cover_name]
 
 # === ROAD LEVELS (data/roads.json) ===
 #

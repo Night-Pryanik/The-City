@@ -127,7 +127,7 @@ static func get_improvement_work_cost(
         "cost": final_cost,
         "base_cost": int(base_cost),
         "terrain_id": terrain_id,
-        "terrain_name": GameData.terrains.get(terrain_id, {}).get("name", terrain_id),
+        "terrain_name": GameData.terrain_display_name(terrain_id),
         "move_cost": move_cost,
         "terrain_mult": terrain_mult,
         "distance": distance,
@@ -896,7 +896,7 @@ static func get_tech_reveal_conflict(tile: Dictionary) -> Dictionary:
 
 
 ## Whether a terrain satisfies a reference of the data: the reference may name the exact terrain
-## or a relief family. A rule that allows "plain" allows the tundra, the steppe, the prairie, the
+## or a relief family. A rule that allows "plain" allows the boreal plain, the steppe, the prairie, the
 ## savanna and the tropical plain alike — they are all varieties of the plain.
 static func terrain_in_list(terrain_id: String, references) -> bool:
     if not (references is Array):
@@ -909,7 +909,7 @@ static func terrain_in_list(terrain_id: String, references) -> bool:
 ## Guarantees that the city is on an allowed terrain (a plain or the hills, whichever variety of
 ## them the climate has put there).
 ## If the city was generated/loaded on a mountain, a lake, the sea or a beach — it is changed to
-## the plain of the climate zone of the hex, so that a city in the north stands on a tundra and not
+## the plain of the climate zone of the hex, so that a city in the north stands on a boreal plain and not
 ## on a green field.
 static func ensure_city_valid_terrain(
     tile_data: Array,
@@ -998,7 +998,8 @@ static func get_chunk_info(chunk: Array, tile_data: Array) -> String:
     var resources := []
     for hex in chunk:
         var tile = tile_data[hex.row][hex.col]
-        var terrain: String = tile.get("terrain", "plain")
+        # The scouts report the hex the way the player reads it: "Boreal, Plain", not "boreal_plain".
+        var terrain: String = GameData.terrain_display_name(str(tile.get("terrain", "")))
         terrain_types[terrain] = terrain_types.get(terrain, 0) + 1
         var cover_id: String = tile.get("cover", "none")
         if cover_id != "none":
@@ -1016,8 +1017,8 @@ static func get_chunk_info(chunk: Array, tile_data: Array) -> String:
                 resources.append(res_name)
 
     var terrain_names: Array[String] = []
-    for terrain_id in terrain_types.keys():
-        terrain_names.append(GameData.terrains.get(terrain_id, {}).get("name", terrain_id))
+    for terrain_name in terrain_types.keys():
+        terrain_names.append(str(terrain_name))
     var terrain_str := ", ".join(terrain_names)
     if cover_forests:
         terrain_str += TranslationServer.translate(", forest")

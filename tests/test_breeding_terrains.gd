@@ -47,9 +47,9 @@ func _run() -> void:
 func _test_base_locations(map_helpers, state: Dictionary) -> void:
     check(map_helpers.can_breed_resource_on_tile("grapes_plant", _tile("plain", "none")),
             "grapes_plant must still breed on plains without cover", state)
-    check(map_helpers.can_breed_resource_on_tile("cows", _tile("plain", "sparse_forest")),
+    check(map_helpers.can_breed_resource_on_tile("cows", _tile("plain", "temperate_rainforest_sparse")),
             "cows must still breed on plains with sparse forest", state)
-    check(not map_helpers.can_breed_resource_on_tile("grapes_plant", _tile("plain", "forest")),
+    check(not map_helpers.can_breed_resource_on_tile("grapes_plant", _tile("plain", "temperate_rainforest")),
             "grapes_plant must not breed on a disallowed cover", state)
 
 func _test_oasis_resources(map_helpers, gdata, state: Dictionary) -> void:
@@ -93,16 +93,16 @@ func _test_negative_and_invalid_cases(map_helpers, gdata, state: Dictionary) -> 
         "breeding": [ [ { "terrain": "mountain" } ] ]
     }
     gdata.raw_resources[invalid_id] = valid_data
-    check(map_helpers.can_breed_resource_on_tile(invalid_id, _tile("mountain", "forest")),
+    check(map_helpers.can_breed_resource_on_tile(invalid_id, _tile("mountain", "temperate_rainforest")),
             "a terrain-only condition must work", state)
     check(not map_helpers.can_breed_resource_on_tile(invalid_id, _tile("plain", "none")),
             "an empty base location must not be accidentally allowed", state)
 
     var array_data := valid_data.duplicate(true)
     array_data["breeding"] = [ [ { "terrain": [ "mountain", "hill" ] },
-                                 { "cover": [ "forest", "none" ] } ] ]
+                                 { "cover": [ "temperate_rainforest", "none" ] } ] ]
     gdata.raw_resources[invalid_id] = array_data
-    check(map_helpers.can_breed_resource_on_tile(invalid_id, _tile("mountain", "forest")),
+    check(map_helpers.can_breed_resource_on_tile(invalid_id, _tile("mountain", "temperate_rainforest")),
             "terrain and cover arrays must be supported at the same time", state)
     check(map_helpers.can_breed_resource_on_tile(invalid_id, _tile("hill", "none")),
             "the second variant of terrain and cover arrays must match", state)
@@ -164,7 +164,7 @@ func _test_animal_locations(map_helpers, state: Dictionary) -> void:
     # Mountains are an additional location for sheep and goats.
     check(map_helpers.can_breed_resource_on_tile("sheep", _tile("mountain", "none")),
             "sheep must breed in the mountains", state)
-    check(map_helpers.can_breed_resource_on_tile("goats", _tile("mountain", "forest")),
+    check(map_helpers.can_breed_resource_on_tile("goats", _tile("mountain", "temperate_rainforest")),
             "goats must breed in the mountains", state)
 
     # Oases are additional locations for sheep, goats and bees.

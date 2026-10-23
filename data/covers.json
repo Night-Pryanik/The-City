@@ -1,9 +1,22 @@
 {
+  // The covers of the map: what grows ON TOP of the relief. A cover is a separate layer — a forest
+  // is not a terrain, it lies over the plain, the hills or the mountains of the hex.
+  //
+  // The forests are split by the climate that grows them: the boreal forest (the taiga) of the cold
+  // belt, the temperate one of the mild and the subtropical belts, and the tropical one near the
+  // equator. Inside every belt the wet and the dry half grow different woods, and every wood has a
+  // dense and a sparse variety — the sparse one is what a forest turns into at its edge.
+  //
+  // Which cover may grow where is decided by the "cover_chance" of the climate zone
+  // (data/climate.json) — the pools are never listed here. The water, the wetlands and the deserts
+  // keep their own pool in data/terrains/terrains.json.
   "covers": [
     { "id": "none", "name": "None", "color": [ 0, 0, 0 ], "alpha": 0.0, "move_cost_bonus": 0, "icons": [  ] },
+
+    // --- THE FORESTS OF THE MILD AND THE SUBTROPICAL BELTS -------------------------------
     {
-      "id": "sparse_forest",
-      "name": "Sparse Forest",
+      "id": "temperate_rainforest",
+      "name": "Temperate Rainforest",
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
@@ -11,23 +24,43 @@
       // gives per tick, in the same units as the "produces" of a resource
       // (data/resources/**). The denser the forest, the higher the yield.
       // A forest plot can be built on any cover with wood_yield > 0 —
-      // new forest covers (taiga, tropical forest, etc.) only need this field,
-      // no code change is required. A missing field = yield of 0.
-      "wood_yield": 10,
-      "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
-    },
-    {
-      "id": "forest",
-      "name": "Forest",
-      "color": [ 34, 139, 34 ],
-      "alpha": 0.9,
-      "move_cost_bonus": 0,
+      // new forest covers only need this field, no code change is required.
+      // A missing field = yield of 0.
       "wood_yield": 20,
       "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
     },
     {
-      // The boreal forest of the cold belt. The cover has no icon of its own yet:
-      // it is drawn as a translucent coloured overlay, and the file names go here when the art appears.
+      "id": "temperate_rainforest_sparse",
+      "name": "Sparse Temperate Rainforest",
+      "color": [ 34, 139, 34 ],
+      "alpha": 0.55,
+      "move_cost_bonus": 0,
+      "wood_yield": 10,
+      "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
+    },
+    {
+      "id": "temperate_dry_forest",
+      "name": "Temperate Dry Forest",
+      "color": [ 96, 122, 44 ],
+      "alpha": 0.8,
+      "move_cost_bonus": 0,
+      "wood_yield": 16,
+      "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
+    },
+    {
+      "id": "temperate_dry_forest_sparse",
+      "name": "Sparse Temperate Dry Forest",
+      "color": [ 96, 122, 44 ],
+      "alpha": 0.5,
+      "move_cost_bonus": 0,
+      "wood_yield": 8,
+      "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
+    },
+
+    // --- THE BOREAL FOREST ---------------------------------------------------------------
+    // The taiga has no icon of its own yet: it is drawn as a translucent coloured overlay, and the
+    // file names go here when the art appears.
+    {
       "id": "taiga",
       "name": "Taiga",
       "color": [ 30, 90, 70 ],
@@ -45,10 +78,11 @@
       "wood_yield": 10,
       "icons": [  ]
     },
+
+    // --- THE TROPICAL FOREST -------------------------------------------------------------
     {
-      // The tropical rainforest of the tropical belt: the wet variety of the tropical plain.
-      "id": "tropical_forest",
-      "name": "Tropical Forest",
+      "id": "tropical_rainforest",
+      "name": "Tropical Rainforest",
       "color": [ 25, 105, 45 ],
       "alpha": 0.44,
       "move_cost_bonus": 0,
@@ -56,14 +90,34 @@
       "icons": [  ]
     },
     {
-      "id": "tropical_forest_sparse",
-      "name": "Sparse Tropical Forest",
+      "id": "tropical_rainforest_sparse",
+      "name": "Sparse Tropical Rainforest",
       "color": [ 35, 115, 55 ],
       "alpha": 0.3,
       "move_cost_bonus": 0,
       "wood_yield": 12,
       "icons": [  ]
     },
+    {
+      "id": "tropical_dry_forest",
+      "name": "Tropical Dry Forest",
+      "color": [ 110, 118, 40 ],
+      "alpha": 0.4,
+      "move_cost_bonus": 0,
+      "wood_yield": 18,
+      "icons": [  ]
+    },
+    {
+      "id": "tropical_dry_forest_sparse",
+      "name": "Sparse Tropical Dry Forest",
+      "color": [ 118, 124, 52 ],
+      "alpha": 0.26,
+      "move_cost_bonus": 0,
+      "wood_yield": 9,
+      "icons": [  ]
+    },
+
+    // --- THE COVERS OUTSIDE THE CLIMATE ---------------------------------------------------
     {
       "id": "reeds",
       "name": "Reeds",

@@ -19,7 +19,11 @@
       "group": "wild",
       "subgroup": "forage",
       "allowed_terrain": [ "plain", "hill", "swamp" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest", "swamp_forest", "swamp_forest_sparse" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest", "swamp_forest",
+        "swamp_forest_sparse"
+      ],
       "improved_by": null,
       "produces": { "foraged_food": [ 50, 100 ] },
       "spawn_count": [ 2, 4 ],
@@ -35,7 +39,9 @@
       "subgroup": "cereals",
       "tech_required": "farming",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "wheat": 10, "feed": 120 },
@@ -51,7 +57,9 @@
       "subgroup": "cereals",
       "tech_required": "farming",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "oats": 10, "feed": 120 },
       "icon": "oats.png",
@@ -66,7 +74,9 @@
       "subgroup": "cereals",
       "tech_required": "farming",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "oasis" ],
+      "allowed_cover": [
+        "none", "oasis"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "barley": 10, "feed": 120 },
@@ -82,7 +92,9 @@
       "subgroup": "cereals",
       "tech_required": "farming",
       "allowed_terrain": [ "plain", "rocky_desert" ],
-      "allowed_cover": [ "none", "oasis" ],
+      "allowed_cover": [
+        "none", "oasis"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "millet": 10, "feed": 120 },
@@ -98,7 +110,9 @@
       "subgroup": "cereals",
       "tech_required": "farming",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "rye": 10, "feed": 120 },
       "icon": "rye.png",
@@ -113,7 +127,9 @@
       "subgroup": "cereals",
       "tech_required": "irrigation",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "rice": 10, "feed": 120 },
@@ -130,7 +146,9 @@
       "subgroup": "legumes",
       "tech_required": "farming",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "soybean": 10, "feed": 60 },
       "icon": "soybean.png",
@@ -145,7 +163,9 @@
       "subgroup": "pseudocereals",
       "tech_required": "farming",
       "allowed_terrain": [ "hill", "mountain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "quinoa": 10, "feed": 80 },
       "icon": "quinoa.png",
@@ -160,7 +180,9 @@
       "subgroup": "pseudocereals",
       "tech_required": "farming",
       "allowed_terrain": [ "hill", "mountain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "canihua": 10, "feed": 80 },
       "icon": "canihua.png",
@@ -175,7 +197,9 @@
       "subgroup": "tubers",
       "tech_required": "farming",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "potato": 10, "feed": 40 },
       "icon": "potato.png",
@@ -190,7 +214,9 @@
       "subgroup": "tubers",
       "tech_required": "farming",
       "allowed_terrain": [ "hill" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "oca": 10, "feed": 40 },
       "icon": "oca.png",
@@ -205,7 +231,9 @@
       "subgroup": "cereals",
       "tech_required": "farming",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "corn": 10, "feed": 120 },
@@ -221,7 +249,9 @@
       "subgroup": "tubers",
       "tech_required": "farming",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "yam": 10, "feed": 40 },
       "icon": "yam.png",
@@ -236,7 +266,9 @@
       "subgroup": "tubers",
       "tech_required": "farming",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "cassava": 10, "feed": 40 },
       "icon": "cassava.png",
@@ -251,7 +283,9 @@
       "subgroup": "cereals",
       "tech_required": "farming",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "oasis" ],
+      "allowed_cover": [
+        "none", "oasis"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "sorghum": 10, "feed": 120 },
@@ -267,7 +301,9 @@
       "subgroup": "pseudocereals",
       "tech_required": "farming",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "amaranth": 10, "feed": 80 },
@@ -283,7 +319,9 @@
       "subgroup": "cereals",
       "tech_required": "farming",
       "allowed_terrain": [ "hill", "mountain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "teff": 10, "feed": 120 },
       "icon": "teff.png",
@@ -298,7 +336,9 @@
       "subgroup": "tubers",
       "tech_required": "irrigation",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "taro": 10, "feed": 40 },
       "icon": "taro.png",
@@ -314,7 +354,9 @@
       "subgroup": "tubers",
       "tech_required": "farming",
       "allowed_terrain": [ "mountain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "maca": 10, "feed": 40 },
       "icon": "maca.png",
@@ -329,7 +371,9 @@
       "subgroup": "cereals",
       "tech_required": "farming",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "buckwheat": 10, "feed": 120 },
       "icon": "buckwheat.png",
@@ -344,7 +388,9 @@
       "subgroup": "legumes",
       "tech_required": "farming",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "beans": 10, "feed": 60 },
@@ -360,7 +406,9 @@
       "subgroup": "legumes",
       "tech_required": "farming",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "cowpea": 10, "feed": 60 },
@@ -376,7 +424,9 @@
       "subgroup": "legumes",
       "tech_required": "farming",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "farm",
       "produces": { "peas": 10, "feed": 60 },
       "icon": "peas.png",
@@ -391,7 +441,9 @@
       "subgroup": "legumes",
       "tech_required": "farming",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "lentils": 10, "feed": 60 },
@@ -407,7 +459,9 @@
       "subgroup": "legumes",
       "tech_required": "farming",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "chickpeas": 10, "feed": 60 },

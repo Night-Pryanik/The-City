@@ -46,6 +46,8 @@ func _run() -> void:
         _test_city_terrain(state)
     if WATCHDOG.wants_case("tooltip_terrain"):
         _test_tooltip_terrain(state)
+    if WATCHDOG.wants_case("terrain_names"):
+        _test_terrain_names(state)
     if WATCHDOG.wants_case("family_rules"):
         _test_family_rules(state)
 
@@ -254,7 +256,8 @@ func _test_tooltip_terrain(state: Dictionary) -> void:
 
     tooltip.update_tooltip_text(found.x, found.y, _tiles, int(ROWS / 2.0), int(COLS / 2.0))
     var text: String = label.text
-    var terrain_name := str(_gdata.terrains.get(_terrain_id(found.x, found.y), {}).get("name", ""))
+    var terrain_name := str(_gdata.terrain_display_name(_terrain_id(found.x, found.y),
+            str(_tiles[found.x][found.y].get("cover", "none"))))
     check(text.contains("Terrain: "), "the tooltip does not name the terrain: %s" % text, state)
     check(text.contains(terrain_name),
             "the tooltip does not name the terrain %s: %s" % [terrain_name, text], state)
@@ -262,6 +265,21 @@ func _test_tooltip_terrain(state: Dictionary) -> void:
 
     label.queue_free()
     container.queue_free()
+
+# The name of a variety carries its climate zone — "Boreal, Plain", "Tropical, Hills" — and the
+# mountains are the same in every zone, so they are just "Mountains".
+func _test_terrain_names(state: Dictionary) -> void:
+    for terrain_id in _gdata.terrains.keys():
+        var family: String = _gdata.terrain_family(terrain_id)
+        if family == "":
+            continue
+        var terrain_name := str(_gdata.terrains[terrain_id].get("name", ""))
+        if family == "mountain":
+            check(terrain_name == "Mountains",
+                    "the mountain %s is named %s, not Mountains" % [terrain_id, terrain_name], state)
+        else:
+            check(terrain_name.contains(", "),
+                    "the name of %s (%s) carries no climate zone" % [terrain_id, terrain_name], state)
 
 # A rule of the data may name a terrain or its relief family: "plain" reaches every variety of the
 # plain, and a family name never matches a terrain of another family.

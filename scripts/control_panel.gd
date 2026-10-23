@@ -1982,8 +1982,14 @@ func _build_road_preview(row: int, col: int, _action_id: String) -> bool:
     var terrain_ids: Array = breakdown.get("terrains", [])
     if not terrain_ids.is_empty():
         var parts: Array[String] = []
+        var seen_names := {}
         for tid in terrain_ids:
-            var tname: String = str(GameData.terrains.get(tid, {}).get("name", tid))
+            # The route knows the terrains, not the zones, and the multiplier is the same for every
+            # variety of one family anyway: the name of the relief is enough here.
+            var tname: String = GameData.terrain_display_name(str(tid))
+            if seen_names.has(tname):
+                continue
+            seen_names[tname] = true
             parts.append("%s ×%.2f" % [tname, MapHelpers.get_terrain_work_mult(tid)])
         var terr_label := Label.new()
         terr_label.text = tr(" Terrain on the route: %s") % ", ".join(parts)

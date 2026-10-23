@@ -277,7 +277,7 @@ func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
 # -------------------------------------------------------
 # The vertices whose hexes stand on a terrain. The name may be a terrain or a relief family: the
 # sources of the rivers are looked up by the family ("mountain", "hill"), because the climate turns
-# every one of them into the variety of its belt — a tundra mountain, a steppe mountain, …
+# every one of them into the variety of its belt — a boreal mountain, a steppe mountain, …
 func _find_terrain_vertices(graph: Dictionary, tile_data: Array, terrain_id: String) -> Array:
     var vertex_hexes: Dictionary = graph["hexes"]
     var result: Array = []

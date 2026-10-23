@@ -11,7 +11,10 @@
       "strategic": true,
       "tech_required": "mining",
       "allowed_terrain": [ "mountain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "basalt": 10 },
       "icon": "basalt.png",
@@ -27,7 +30,10 @@
       "subgroup": "construction_materials",
       "tech_required": "mining",
       "allowed_terrain": [ "hill", "mountain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "tuff": 10 },
       "icon": "tuff.png",
@@ -43,7 +49,10 @@
       "subgroup": "construction_materials",
       "tech_required": "mining",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "sandstone": 10 },
       "icon": "sandstone.png",
@@ -60,7 +69,10 @@
       "strategic": true,
       "tech_required": "mining",
       "allowed_terrain": [ "hill", "mountain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "marble": 10 },
       "icon": "marble.png",
@@ -77,7 +89,10 @@
       "strategic": true,
       "tech_required": "mining",
       "allowed_terrain": [ "mountain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "granite": 10 },
       "icon": "granite.png",
@@ -93,7 +108,10 @@
       "subgroup": "construction_materials",
       "tech_required": "mining",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "limestone": 10 },
       "icon": "limestone.png",
@@ -110,7 +128,10 @@
       "strategic": true,
       "tech_required": "pottery",
       "allowed_terrain": [ "plain", "swamp" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest", "reeds" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest", "reeds"
+      ],
       "improved_by": "clay_pit",
       "produces": { "clay": 10 },
       "icon": "clay.png",
@@ -131,7 +152,10 @@
       "strategic": true,
       "tech_required": "glassmaking",
       "allowed_terrain": [ "plain", "rocky_desert", "sandy_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "quartz_sand": 10 },
       "icon": "quartz_sand.png",
@@ -148,7 +172,9 @@
       "strategic": true,
       "tech_required": "soda_extraction",
       "allowed_terrain": [ "soda_lake" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "soda_quarry",
       "produces": { "soda": 10 },
       "icon": "soda.png",
@@ -166,7 +192,10 @@
       "strategic": true,
       "tech_required": "bitumen_extraction",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "tar_pit",
       "produces": { "bitumen": 10 },
       "icon": "bitumen.png",
@@ -183,7 +212,9 @@
       "strategic": true,
       "tech_required": "bitumen_extraction",
       "allowed_terrain": [ "asphalt_lake" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "tar_pit",
       "produces": { "bitumen": 10 },
       "icon": "bitumen.png",
@@ -201,7 +232,9 @@
       "strategic": true,
       "tech_required": "salt_extraction",
       "allowed_terrain": [ "salt_lake" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "mine",
       "produces": { "salt": 10 },
       "icon": "salt.png",
@@ -219,7 +252,10 @@
       "strategic": true,
       "tech_required": "salt_extraction",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "mine",
       "produces": { "salt": 10 },
       "icon": "salt.png",
@@ -241,7 +277,9 @@
       "strategic": true,
       "tech_required": "salt_extraction",
       "allowed_terrain": [ "beach" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [
+        "none"
+      ],
       "improved_by": "salt_pond",
       "produces": { "salt": 10 },
       "icon": "salt.png",
@@ -259,7 +297,10 @@
       "strategic": true,
       "tech_required": "dyeing",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "mine",
       "produces": { "cinnabar_ore": 10 },
       "icon": "cinnabar.png",
@@ -276,7 +317,10 @@
       "strategic": true,
       "tech_required": "mining",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "mine",
       "produces": { "lazurite_ore": 10 },
       "icon": "lazurite.png",
@@ -293,7 +337,10 @@
       "strategic": true,
       "tech_required": "mining",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "mine",
       "produces": { "malachite_ore": 10 },
       "icon": "malachite.png",
@@ -310,7 +357,10 @@
       "strategic": true,
       "tech_required": "mining",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "soapstone": 10 },
       "icon": "soapstone.png",
@@ -327,7 +377,10 @@
       "strategic": true,
       "tech_required": "mining",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "alabaster": 10 },
       "icon": "alabaster.png",
@@ -344,7 +397,10 @@
       "strategic": true,
       "tech_required": "mining",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "nephrite": 10 },
       "icon": "nephrite.png",
@@ -361,7 +417,10 @@
       "strategic": true,
       "tech_required": "mining",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "porphyry": 10 },
       "icon": "porphyry.png",
@@ -378,7 +437,10 @@
       "strategic": true,
       "tech_required": "mining",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "quarry",
       "produces": { "pyrite": 10 },
       "icon": "pyrite.png",

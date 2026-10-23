@@ -797,7 +797,7 @@ func _draw_town_influence_borders(visible_range: Dictionary) -> void:
         draw_line(p1, p2, color, TOWN_INFLUENCE_BORDER_WIDTH, true)
 
     # Draws the colour wash of the terrain over the relief. The wash is what tells the varieties of
-    # one relief apart: the tundra, the steppe, the prairie, the savanna and the tropical plain all
+    # one relief apart: the boreal plain, the steppe, the prairie, the savanna and the tropical plain all
     # use the icons of the plain, so without it they would look like the same green field. The wash
     # belongs to the terrain record ("tint" + "tint_alpha"), so a mod that adds a variety brings its
     # own colour; the water and the wetlands have none.

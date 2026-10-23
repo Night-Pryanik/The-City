@@ -692,7 +692,7 @@ func _has_exit_to_edge(reachable: Dictionary, rows: int, cols: int) -> bool:
 # It is used for laying the exit corridor through the impassable hexes
 # (the lakes and the seas). It resets the temporary flags _is_marsh and _is_sea.
 # The corridor is laid after the climate, so the plain is resolved through the zone of the hex:
-# a corridor through the tundra is a tundra, not a green plain in the middle of the north.
+# a corridor through the boreal zone is a boreal plain, not a green plain in the middle of the north.
 func _punch_hex(tile_data: Array, key: String) -> void:
     var parts = key.split(",")
     var r = int(parts[0])
@@ -759,7 +759,7 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
 #
 # The climate decides what the relief of a hex is made of and what grows on it. There is no
 # separate "biome" layer: a plain is never a plain on the map, it is one of its VARIETIES — a
-# tundra, a steppe, a prairie, a savanna or a tropical plain (data/terrains/terrains.json) — and
+# boreal plain, a steppe, a prairie, a savanna or a tropical plain (data/terrains/terrains.json) — and
 # the vegetation is a cover on top of it (data/covers.json).
 #
 # Two independent fields decide the variety:
@@ -771,7 +771,7 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
 #     never broken: the temperature row of a hex is shifted by a smooth noise field, but the shift
 #     is clamped so that the row never decreases down a column and never grows faster than
 #     MAX_TEMPERATURE_STEP rows per row. Therefore two hexes of the same latitude are never more
-#     than one belt apart — a tropical plain and a tundra cannot meet sideways.
+#     than one belt apart — a tropical plain and a boreal plain cannot meet sideways.
 #
 #   moisture — a smooth noise field that does not follow the latitudes at all. Wet and dry regions
 #     lie anywhere, curve and surround each other, and they split every temperature belt in two
@@ -882,7 +882,7 @@ func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
             tile_data[r][c]["climate"] = _pick_zone(lookup, temperature, humidity)
 
 # Turns the relief families the Voronoi placed into the varieties of their climate zone: every
-# plain becomes the plain of its belt (a tundra, a steppe, a prairie, a savanna, a tropical plain),
+# plain becomes the plain of its belt (a boreal plain, a steppe, a prairie, a savanna, a tropical plain),
 # and the same for the hills and the mountains. The water, the wetlands and the deserts have no
 # family and stay as they are.
 func _convert_families(tile_data: Array, rows: int, cols: int) -> void:
@@ -993,7 +993,7 @@ func _pick_zone(lookup: Dictionary, temperature: String, humidity: String) -> St
 
 # The deserts are a relief of the zones that allow them (data/climate.json → "deserts": the hot dry
 # belts). Outside them the deserts are levelled into the plain of their zone: a sandy desert in the
-# middle of the tundra would contradict the climate the player sees.
+# middle of the boreal zone would contradict the climate the player sees.
 func _limit_deserts(tile_data: Array, rows: int, cols: int) -> void:
     if GameData.climate_zones.is_empty():
         return
@@ -1144,7 +1144,7 @@ func _is_wooded_hex(tile: Dictionary) -> bool:
     var cover: Dictionary = GameData.covers.get(tile.get("cover", "none"), {})
     return float(cover.get("wood_yield", 0)) > 0.0
 
-# Rolls the cover of a hex. The varieties of a relief (a tundra, a steppe, a savanna …) share the
+# Rolls the cover of a hex. The varieties of a relief (a boreal plain, a steppe, a savanna …) share the
 # vegetation of their climate zone, so a whole region gets one coherent character (a prairie region
 # is mostly grass with groves, a tropical one is mostly forest with clearings). The water, the
 # wetlands and the deserts keep their own pool: the rock of a mountain does not turn into a forest
@@ -1173,9 +1173,9 @@ func _roll_cover(terrain_id: String, zone_id: String = "") -> String:
 # Builds a multi-index of the free hexes by (terrain, cover).
 # The key: "terrain|cover" -> Array of dictionaries {"row", "col"}.
 # A hex is indexed TWICE when its terrain belongs to a relief family: under its own id
-# ("tundra_plain|taiga") and under the family ("plain|taiga"). A rule of the data may therefore
+# ("boreal_plain|taiga") and under the family ("plain|taiga"). A rule of the data may therefore
 # name either the exact terrain or the family — allowed_terrain ["plain"] finds all five varieties
-# of the plain, allowed_terrain ["tundra_plain"] only the tundra (see GameData.terrain_matches).
+# of the plain, allowed_terrain ["boreal_plain"] only the boreal plain (see GameData.terrain_matches).
 # The hexes near the city (abs <= 1) are excluded, so as not to interfere with
 # the starting construction (as in the original _place_resources).
 func _build_hex_index(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> Dictionary:
@@ -1205,7 +1205,7 @@ func _index_names(terrain_id: String) -> Array:
     return names
 
 # Whether the terrain of a hex satisfies the allowed_terrain list of a rule. The list may name the
-# exact terrain ("tundra_plain") or a relief family ("plain" — all five varieties of the plain).
+# exact terrain ("boreal_plain") or a relief family ("plain" — all five varieties of the plain).
 func _terrain_allowed(terrain_id: String, data: Dictionary) -> bool:
     for reference in data.get("allowed_terrain", []):
         if GameData.terrain_matches(terrain_id, str(reference)):
@@ -1373,7 +1373,7 @@ func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
         free_count[terrain_id] += converted
 
 # The key of terrain_counts a hex belongs to: the exact terrain (a lake, a swamp, a desert), or
-# the relief family of it — a tundra, a steppe, a savanna … all count as the plain they are.
+# the relief family of it — a boreal plain, a steppe, a savanna … all count as the plain they are.
 func _count_bucket(terrain_id: String, terrain_counts: Dictionary) -> String:
     if terrain_counts.has(terrain_id):
         return terrain_id
@@ -1383,7 +1383,7 @@ func _count_bucket(terrain_id: String, terrain_counts: Dictionary) -> String:
     return ""
 
 # The terrain a key of terrain_counts becomes in this hex: the key itself, or the variety of the
-# family in the climate zone the hex stands in (the plain of the tundra zone is a tundra).
+# family in the climate zone the hex stands in (the plain of the boreal zone is a boreal plain).
 func _terrain_for_key(key: String, tile: Dictionary) -> String:
     var zone_id := str(tile.get("climate", ""))
     if zone_id != "":

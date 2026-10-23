@@ -10,7 +10,10 @@
       "subgroup": "",
       "tech_reveal": "native_metals",
       "allowed_terrain": [ "plain", "hill", "mountain", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": null,
       "produces": { "meteorite_iron": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
@@ -27,7 +30,10 @@
       "subgroup": "",
       "tech_reveal": "native_metals",
       "allowed_terrain": [ "plain", "hill", "mountain", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": null,
       "produces": { "copper": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
@@ -44,7 +50,10 @@
       "subgroup": "",
       "tech_reveal": "native_metals",
       "allowed_terrain": [ "plain", "hill", "mountain", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": null,
       "produces": { "gold": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
@@ -61,7 +70,10 @@
       "subgroup": "",
       "tech_reveal": "native_metals",
       "allowed_terrain": [ "plain", "hill", "mountain", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": null,
       "produces": { "silver": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
@@ -80,7 +92,10 @@
       "tech_reveal": "native_metals",
       "tech_required": "metallurgy",
       "allowed_terrain": [ "hill", "mountain", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "mine",
       "produces": { "iron_ore": 10 },
       "spawn_count": [ 1, 10 ],
@@ -99,7 +114,9 @@
       "tech_reveal": "native_metals",
       "tech_required": "metallurgy",
       "allowed_terrain": [ "swamp" ],
-      "allowed_cover": [ "none", "reed" ],
+      "allowed_cover": [
+        "none", "reed"
+      ],
       "improved_by": "mine",
       "produces": { "iron_ore": 10 },
       "spawn_count": [ 1, 10 ],
@@ -118,7 +135,10 @@
       "tech_reveal": "native_metals",
       "tech_required": "metallurgy",
       "allowed_terrain": [ "hill", "mountain", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "mine",
       "produces": { "copper_ore": 10 },
       "spawn_count": [ 1, 10 ],
@@ -137,7 +157,10 @@
       "tech_reveal": "native_metals",
       "tech_required": "metallurgy",
       "allowed_terrain": [ "hill", "mountain", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "mine",
       "produces": { "gold_ore": 10 },
       "spawn_count": [ 1, 10 ],
@@ -156,7 +179,10 @@
       "tech_reveal": "native_metals",
       "tech_required": "metallurgy",
       "allowed_terrain": [ "hill", "mountain", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "mine",
       "produces": { "silver_ore": 10 },
       "spawn_count": [ 1, 10 ],
@@ -175,7 +201,10 @@
       "tech_reveal": "native_metals",
       "tech_required": "bronze",
       "allowed_terrain": [ "hill", "mountain", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "mine",
       "produces": { "tin_ore": 10 },
       "spawn_count": [ 1, 10 ],
@@ -194,7 +223,10 @@
       "tech_reveal": "native_metals",
       "tech_required": "bronze",
       "allowed_terrain": [ "hill", "mountain", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "mine",
       "produces": { "antimony_ore": 10 },
       "spawn_count": [ 1, 10 ],
@@ -213,7 +245,10 @@
       "tech_reveal": "native_metals",
       "tech_required": "bronze",
       "allowed_terrain": [ "hill", "mountain", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "mine",
       "produces": { "arsenic_ore": 10 },
       "spawn_count": [ 1, 10 ],

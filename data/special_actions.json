@@ -5,7 +5,13 @@
       "name": "Clear Forest",
       "action_type": "cover",
       "icon": "clear_forest.png",
-      "source_cover": [ "forest", "sparse_forest", "taiga", "taiga_sparse", "jungle", "jungle_sparse" ],
+      "source_cover": [
+        "temperate_rainforest", "temperate_rainforest_sparse",
+        "temperate_dry_forest", "temperate_dry_forest_sparse",
+        "taiga", "taiga_sparse",
+        "tropical_rainforest", "tropical_rainforest_sparse",
+        "tropical_dry_forest", "tropical_dry_forest_sparse"
+      ],
       "result_cover": "none",
       "work_cost": 22,
       "unlock_tech": "wood_processing"
@@ -45,7 +51,7 @@
       // Draining swamps and marshes: turns them into a plain (action_type "terrain").
       // source_terrains — the list of terrain types the action applies to.
       // result_terrain — a terrain or a RELIEF FAMILY: the family "plain" resolves to the plain
-      // of the climate zone the hex stands in (a drained swamp in the tundra becomes a tundra,
+      // of the climate zone the hex stands in (a drained swamp in the boreal zone becomes a boreal plain,
       // in the tropics — a tropical plain).
       // The cost is significant — 3x the cost of a farm
       "id": "drain_water",

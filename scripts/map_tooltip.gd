@@ -660,8 +660,10 @@ func _render_extra_products(products: Array):
 # the properties of the hex remain in it (see build_hex_info).
 func _build_text(row: int, col: int, tile_data: Array, _city_row: int = 0, _city_col: int = 0, basic_only: bool = false) -> String:
     var tile = tile_data[row][col]
-    var terrain_name = GameData.terrains.get(tile.terrain, {}).get("name", tile.terrain)
-    var cover_id = tile.get("cover", "none")
+    # The name of the hex: the terrain (with its climate zone) and the cover on top of it —
+    # "Boreal, Plain", "Tropical, Hills, Tropical Forest" (GameData.terrain_display_name).
+    var terrain_name: String = GameData.terrain_display_name(
+            str(tile.terrain), str(tile.get("cover", "none")))
 
     var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
     # The effective resource: natural (tile.resource) or bred (tile.crop_bred).
@@ -673,13 +675,6 @@ func _build_text(row: int, col: int, tile_data: Array, _city_row: int = 0, _city
     var res_name = tr("none")
     if res_id != "":
         res_name = GameData.raw_resources.get(res_id, {}).get("name", res_id)
-
-    var cover_name_lower = ""
-    if cover_id != "none":
-        cover_name_lower = GameData.covers.get(cover_id, {}).get("name", cover_id).to_lower()
-    var terrain_with_cover = terrain_name
-    if cover_name_lower != "":
-        terrain_with_cover = "%s, %s" % [terrain_name, cover_name_lower]
 
     var terrain_data = GameData.terrains.get(tile.terrain, {})
     if terrain_data.get("unique", false) and not is_revealed:
@@ -698,7 +693,7 @@ func _build_text(row: int, col: int, tile_data: Array, _city_row: int = 0, _city
         # text with a hint about the scouting. The scouts can be sent to any
         # point reachable by scrolling, — including the territory of the towns, therefore
         # the hint is the same for all the unexplored hexes.
-        var unrevealed_text: String = tr("Terrain: %s") % terrain_with_cover
+        var unrevealed_text: String = tr("Terrain: %s") % terrain_name
         var unrevealed_terr: Array = _territory_lines_for(tile, row, col)
         if not unrevealed_terr.is_empty():
             unrevealed_text += "\n" + "\n".join(unrevealed_terr)
@@ -706,7 +701,7 @@ func _build_text(row: int, col: int, tile_data: Array, _city_row: int = 0, _city
         return unrevealed_text
 
     var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", tr("none")) if tile.improvement != null else tr("none")
-    var text: String = tr("Terrain: %s") % terrain_with_cover
+    var text: String = tr("Terrain: %s") % terrain_name
     # The markers of someone else's territory in the ring/at the place of a town: right after
     # "Terrain", so that the player sees "who is here" before reading
     # the rest of the tooltip. The "City" row is added ONLY when there really is

@@ -426,7 +426,7 @@ const TERRAIN_FIELDS := {
     "description": LEAF,
     "color": LEAF,
     # The relief family of a terrain: the climate turns every hex of a family into the variety of
-    # its belt (a plain becomes a tundra, a steppe, a prairie, a savanna or a tropical plain).
+    # its belt (a plain becomes a boreal plain, a steppe, a prairie, a savanna or a tropical plain).
     # The water, the wetlands and the deserts have no family.
     "family": LEAF,
     # The colour wash of the variety over the icons of the family (see map_renderer._draw_terrain_tint).
@@ -460,7 +460,7 @@ const ZONE_FIELDS := {
     "id": LEAF,
     "temperature": LEAF,
     "humidity": LEAF,
-    # The variety of every relief family of the zone: {"plain": "tundra_plain", …}. The keys are
+    # The variety of every relief family of the zone: {"plain": "boreal_plain", …}. The keys are
     # the families (KEY_TERRAIN_FAMILIES), the values — the terrains that carry that family.
     "terrain": {"id_map": {"keys": KEY_TERRAINS}, "keys": KEY_TERRAIN_FAMILIES},
     # The vegetation of the zone: it applies to every family of the zone at once.

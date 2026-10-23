@@ -2720,7 +2720,23 @@ msgid "Sparse Taiga"
 msgstr ""
 
 msgctxt "covers.name"
+msgid "Sparse Temperate Dry Forest"
+msgstr ""
+
+msgctxt "covers.name"
+msgid "Sparse Temperate Rainforest"
+msgstr ""
+
+msgctxt "covers.name"
+msgid "Sparse Tropical Dry Forest"
+msgstr ""
+
+msgctxt "covers.name"
 msgid "Sparse Tropical Forest"
+msgstr ""
+
+msgctxt "covers.name"
+msgid "Sparse Tropical Rainforest"
 msgstr ""
 
 msgctxt "covers.name"
@@ -2728,7 +2744,23 @@ msgid "Taiga"
 msgstr ""
 
 msgctxt "covers.name"
+msgid "Temperate Dry Forest"
+msgstr ""
+
+msgctxt "covers.name"
+msgid "Temperate Rainforest"
+msgstr ""
+
+msgctxt "covers.name"
+msgid "Tropical Dry Forest"
+msgstr ""
+
+msgctxt "covers.name"
 msgid "Tropical Forest"
+msgstr ""
+
+msgctxt "covers.name"
+msgid "Tropical Rainforest"
 msgstr ""
 
 msgctxt "crafts.description"
@@ -5500,6 +5532,14 @@ msgid "Beach"
 msgstr ""
 
 msgctxt "terrains.name"
+msgid "Boreal, Hills"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Boreal, Plain"
+msgstr ""
+
+msgctxt "terrains.name"
 msgid "Freshwater Lake"
 msgstr ""
 
@@ -5532,6 +5572,14 @@ msgid "Prairie Mountains"
 msgstr ""
 
 msgctxt "terrains.name"
+msgid "Prairie, Hills"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Prairie, Plain"
+msgstr ""
+
+msgctxt "terrains.name"
 msgid "Rocky Desert"
 msgstr ""
 
@@ -5553,6 +5601,14 @@ msgstr ""
 
 msgctxt "terrains.name"
 msgid "Savanna Mountains"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Savanna, Hills"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Savanna, Plain"
 msgstr ""
 
 msgctxt "terrains.name"
@@ -5580,6 +5636,14 @@ msgid "Steppe Mountains"
 msgstr ""
 
 msgctxt "terrains.name"
+msgid "Steppe, Hills"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Steppe, Plain"
+msgstr ""
+
+msgctxt "terrains.name"
 msgid "Swamp"
 msgstr ""
 
@@ -5593,6 +5657,14 @@ msgstr ""
 
 msgctxt "terrains.name"
 msgid "Tropical Plain"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Tropical, Hills"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Tropical, Plain"
 msgstr ""
 
 msgctxt "terrains.name"

@@ -40,7 +40,7 @@ const WOOD := "wood"
 # A cover that yields timber and one that does not (data/covers.json). The
 # barren one is "reeds": every forest cover yields timber, the swamp forest
 # included, so a forest cover is not a fixture of "no timber".
-const TIMBER_COVER := "forest"
+const TIMBER_COVER := "temperate_rainforest"
 const BARREN_COVER := "reeds"
 # A resource the camp extracts (improved_by == lumberjack_hut): its own products
 # are traded instead of the cover's wood.

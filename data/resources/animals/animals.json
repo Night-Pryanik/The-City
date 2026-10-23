@@ -19,7 +19,10 @@
       "subgroup": [ "meat_animals", "milk_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 30, "raw_milk": 20, "hide": 10 },
       "feed_consumption": 100,
@@ -36,7 +39,10 @@
       "subgroup": [ "meat_animals", "milk_animals", "wool_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ], [ { "terrain": "mountain" } ] ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 20, "raw_milk": 10, "wool": 20 },
@@ -54,7 +60,10 @@
       "subgroup": [ "meat_animals", "milk_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest", "oasis" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest", "oasis"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ], [ { "terrain": "mountain" } ] ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 20, "raw_milk": 20, "hide": 10 },
@@ -72,7 +81,10 @@
       "subgroup": [ "meat_animals", "milk_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 30, "raw_milk": 20, "hide": 10 },
       "feed_consumption": 80,
@@ -89,7 +101,10 @@
       "subgroup": "meat_animals",
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       // Pigs live in a sty, not on a range: they do not graze, and a sty is
       // what the player expects to see on the hex.
       "improved_by": "pigsty",
@@ -108,7 +123,10 @@
       "subgroup": [ "meat_animals", "milk_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 30, "raw_milk": 20, "hide": 10 },
       "feed_consumption": 100,
@@ -125,7 +143,10 @@
       "subgroup": [ "meat_animals", "milk_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 30, "raw_milk": 10, "hide": 20 },
       "feed_consumption": 100,
@@ -142,7 +163,10 @@
       "subgroup": [ "meat_animals", "milk_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "breeding": [ [ { "terrain": "swamp" }, { "cover": "reeds" } ], [ { "terrain": "marsh" }, { "cover": "reeds" } ] ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 40, "raw_milk": 20, "hide": 20 },
@@ -160,7 +184,10 @@
       "subgroup": [ "meat_animals", "milk_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 50, "raw_milk": 10, "hide": 20 },
       "feed_consumption": 100,
@@ -177,7 +204,10 @@
       "subgroup": [ "meat_animals", "milk_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "hill", "mountain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 30, "raw_milk": 20, "hide": 10 },
       "feed_consumption": 100,
@@ -194,7 +224,10 @@
       "subgroup": [ "meat_animals", "wool_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "hill", "mountain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 20, "wool": 20 },
       "feed_consumption": 60,
@@ -211,7 +244,10 @@
       "subgroup": [ "meat_animals", "wool_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "hill", "mountain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 10, "wool": 30 },
       "feed_consumption": 50,
@@ -228,7 +264,9 @@
       "subgroup": [ "meat_animals", "milk_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "sandy_desert", "rocky_desert" ],
-      "allowed_cover": [ "none", "oasis" ],
+      "allowed_cover": [
+        "none", "oasis"
+      ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 40, "raw_milk": 20, "hide": 10 },
       "feed_consumption": 70,
@@ -245,7 +283,10 @@
       "subgroup": "meat_animals",
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 30, "hide": 20 },
       "feed_consumption": 40,
@@ -262,7 +303,10 @@
       "subgroup": "poultry",
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       // Poultry and rabbits are housed in a farmstead, not on a pasture: a
       // fenced grazing area is the wrong label for a coop or a hutch
       // (docs.md, "Improvement types are a convention"). Grazing herds and
@@ -283,7 +327,10 @@
       "subgroup": "poultry",
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "farmstead",
       "produces": { "raw_meat": 20, "eggs": 20, "feathers": 10 },
       "feed_consumption": 20,
@@ -300,7 +347,10 @@
       "subgroup": "poultry",
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "breeding": [ [ { "terrain": "swamp" }, { "cover": "reeds" } ], [ { "terrain": "marsh" }, { "cover": "reeds" } ] ],
       "improved_by": "farmstead",
       "produces": { "raw_meat": 20, "eggs": 20, "feathers": 10 },
@@ -318,7 +368,10 @@
       "subgroup": "poultry",
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "breeding": [ [ { "terrain": "swamp" }, { "cover": [ "reeds", "none" ] } ],
                     [ { "terrain": "marsh" }, { "cover": [ "reeds", "none" ] } ] ],
       "improved_by": "farmstead",
@@ -337,7 +390,10 @@
       "subgroup": "poultry",
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "farmstead",
       "produces": { "raw_meat": 10, "eggs": 20, "feathers": 10 },
       "feed_consumption": 20,
@@ -354,7 +410,10 @@
       "subgroup": "poultry",
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest", "oasis" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest", "oasis"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" } ] ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 40, "eggs": 10, "hide": 10, "feathers": 20 },
@@ -372,7 +431,10 @@
       "subgroup": "bees",
       "tech_required": "beekeeping",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "beehive",
       "produces": { "honey": 20, "wax": 10 },
@@ -390,7 +452,10 @@
       "subgroup": [ "meat_animals", "fur_animals" ],
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "farmstead",
       "produces": { "raw_meat": 10, "hide": 10 },
       "feed_consumption": 10,
@@ -407,7 +472,10 @@
       "subgroup": "poultry",
       "tech_required": "animal_husbandry",
       "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
       "improved_by": "farmstead",
       "produces": { "raw_meat": 10, "eggs": 20, "feathers": 10 },
       "feed_consumption": 20,

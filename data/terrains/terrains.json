@@ -2,11 +2,16 @@
   // The terrains of the map: the RELIEF of a hex (what lies under the vegetation).
   //
   // Every passable land relief has a "family" — plain, hill or mountain — and the climate turns it
-  // into one of its VARIANTS: the same plain is a tundra in the cold belt, a steppe or a prairie in
-  // the mild one, a savanna in the subtropical one and a tropical plain near the equator
-  // (see data/climate.json). The variant is the terrain of the hex: it is what the game stores,
-  // what the tooltip shows and what the resources are placed on. There is no generic "plain" on
-  // the map — a plain is always one of its varieties.
+  // into one of its VARIANTS: the same plain is a boreal plain in the cold belt, a steppe or a
+  // prairie in the mild one, a savanna in the subtropical one and a tropical plain near the equator
+  // (see data/climate.json). The variant is the terrain of the hex: it is what the game stores and
+  // what the resources are placed on. There is no generic "plain" on the map — a plain is always one
+  // of its varieties.
+  //
+  // The NAME of a variety is the climate zone and the relief together: "Boreal, Plain",
+  // "Tropical, Hills". The mountains are the same in every zone, so their name carries no zone —
+  // they are just "Mountains". The cover of a hex is appended to the name when the hex is shown to
+  // the player: "Tropical, Hills, tropical forest" (GameData.terrain_display_name).
   //
   // The family is what the game means by "a plain" wherever the climate does not matter:
   // a resource that grows on allowed_terrain ["plain"] grows on all five of them, and the
@@ -17,10 +22,10 @@
   // a colour wash drawn over the icon by the map renderer (see map_renderer._draw_terrain_tint).
   // "color" is the flat colour of the hex, used where no icon is available.
   "terrains": [
-    // --- THE COLD BELT -------------------------------------------------------------------
+    // --- THE COLD BELT: the boreal zone ---------------------------------------------------
     {
-      "id": "tundra_plain",
-      "name": "Tundra",
+      "id": "boreal_plain",
+      "name": "Boreal, Plain",
       "family": "plain",
       "color": [ 196, 208, 200 ],
       "tint": [ 200, 212, 220 ],
@@ -30,8 +35,8 @@
       "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
     },
     {
-      "id": "tundra_hill",
-      "name": "Tundra Hills",
+      "id": "boreal_hill",
+      "name": "Boreal, Hills",
       "family": "hill",
       "color": [ 150, 148, 140 ],
       "tint": [ 200, 212, 220 ],
@@ -41,8 +46,8 @@
       "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
     },
     {
-      "id": "tundra_mountain",
-      "name": "Tundra Mountains",
+      "id": "boreal_mountain",
+      "name": "Mountains",
       "family": "mountain",
       "color": [ 140, 148, 152 ],
       "tint": [ 200, 212, 220 ],
@@ -58,7 +63,7 @@
     // varieties, told apart by the moisture.
     {
       "id": "steppe_plain",
-      "name": "Steppe",
+      "name": "Steppe, Plain",
       "family": "plain",
       "color": [ 214, 198, 132 ],
       "tint": [ 225, 205, 110 ],
@@ -69,7 +74,7 @@
     },
     {
       "id": "steppe_hill",
-      "name": "Steppe Hills",
+      "name": "Steppe, Hills",
       "family": "hill",
       "color": [ 168, 148, 96 ],
       "tint": [ 225, 205, 110 ],
@@ -80,7 +85,7 @@
     },
     {
       "id": "steppe_mountain",
-      "name": "Steppe Mountains",
+      "name": "Mountains",
       "family": "mountain",
       "color": [ 130, 122, 104 ],
       "tint": [ 225, 205, 110 ],
@@ -92,7 +97,7 @@
     },
     {
       "id": "prairie_plain",
-      "name": "Prairie",
+      "name": "Prairie, Plain",
       "family": "plain",
       "color": [ 186, 205, 124 ],
       "tint": [ 205, 220, 120 ],
@@ -103,7 +108,7 @@
     },
     {
       "id": "prairie_hill",
-      "name": "Prairie Hills",
+      "name": "Prairie, Hills",
       "family": "hill",
       "color": [ 150, 165, 96 ],
       "tint": [ 205, 220, 120 ],
@@ -114,7 +119,7 @@
     },
     {
       "id": "prairie_mountain",
-      "name": "Prairie Mountains",
+      "name": "Mountains",
       "family": "mountain",
       "color": [ 120, 128, 110 ],
       "tint": [ 205, 220, 120 ],
@@ -128,7 +133,7 @@
     // --- THE SUBTROPICAL BELT ------------------------------------------------------------
     {
       "id": "savanna_plain",
-      "name": "Savanna",
+      "name": "Savanna, Plain",
       "family": "plain",
       "color": [ 222, 192, 112 ],
       "tint": [ 235, 190, 80 ],
@@ -139,7 +144,7 @@
     },
     {
       "id": "savanna_hill",
-      "name": "Savanna Hills",
+      "name": "Savanna, Hills",
       "family": "hill",
       "color": [ 180, 150, 92 ],
       "tint": [ 235, 190, 80 ],
@@ -150,7 +155,7 @@
     },
     {
       "id": "savanna_mountain",
-      "name": "Savanna Mountains",
+      "name": "Mountains",
       "family": "mountain",
       "color": [ 140, 122, 96 ],
       "tint": [ 235, 190, 80 ],
@@ -164,7 +169,7 @@
     // --- THE TROPICAL BELT ---------------------------------------------------------------
     {
       "id": "tropical_plain",
-      "name": "Tropical Plain",
+      "name": "Tropical, Plain",
       "family": "plain",
       "color": [ 122, 178, 104 ],
       "tint": [ 110, 175, 90 ],
@@ -175,7 +180,7 @@
     },
     {
       "id": "tropical_hill",
-      "name": "Tropical Hills",
+      "name": "Tropical, Hills",
       "family": "hill",
       "color": [ 120, 150, 92 ],
       "tint": [ 110, 175, 90 ],
@@ -186,7 +191,7 @@
     },
     {
       "id": "tropical_mountain",
-      "name": "Tropical Mountains",
+      "name": "Mountains",
       "family": "mountain",
       "color": [ 100, 125, 100 ],
       "tint": [ 110, 175, 90 ],

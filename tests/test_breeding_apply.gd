@@ -79,7 +79,7 @@ func _run() -> void:
 # visible region: the quality inheritance (find_domesticated_quality) only looks
 # inside it, so a hex outside would never be found by the round-trip test.
 # A "plain" here is the relief family, not a terrain id: the map carries the
-# climate variety of it (steppe_plain, prairie_plain, tundra_plain, ...).
+# climate variety of it (steppe_plain, prairie_plain, boreal_plain, ...).
 func _find_empty_plain(main_map) -> Dictionary:
     var gdata = get_root().get_node("GameData")
     var tile_data = main_map.tile_data

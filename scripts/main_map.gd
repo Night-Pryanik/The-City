@@ -1647,7 +1647,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
         var result_terrain = str(sa.get("result_terrain", ""))
         if result_terrain != "" and result_terrain != "dont_change":
             # The result names a terrain or a relief family. A family is resolved through the
-            # climate zone of the hex, so a drained swamp becomes a tundra in the north and a
+            # climate zone of the hex, so a drained swamp becomes a boreal plain in the north and a
             # tropical plain at the equator.
             var variant := GameData.zone_terrain(str(tile.get("climate", "")), result_terrain)
             tile.terrain = variant if variant != "" else result_terrain

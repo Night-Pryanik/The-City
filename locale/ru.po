@@ -2720,16 +2720,48 @@ msgid "Sparse Taiga"
 msgstr "Редкая тайга"
 
 msgctxt "covers.name"
+msgid "Sparse Temperate Dry Forest"
+msgstr "Редкий умеренный сухой лес"
+
+msgctxt "covers.name"
+msgid "Sparse Temperate Rainforest"
+msgstr "Редкий умеренный дождевой лес"
+
+msgctxt "covers.name"
+msgid "Sparse Tropical Dry Forest"
+msgstr "Редкий сухой тропический лес"
+
+msgctxt "covers.name"
 msgid "Sparse Tropical Forest"
 msgstr "Редкий тропический лес"
+
+msgctxt "covers.name"
+msgid "Sparse Tropical Rainforest"
+msgstr "Редкий влажный тропический лес"
 
 msgctxt "covers.name"
 msgid "Taiga"
 msgstr "Тайга"
 
 msgctxt "covers.name"
+msgid "Temperate Dry Forest"
+msgstr "Умеренный сухой лес"
+
+msgctxt "covers.name"
+msgid "Temperate Rainforest"
+msgstr "Умеренный дождевой лес"
+
+msgctxt "covers.name"
+msgid "Tropical Dry Forest"
+msgstr "Сухой тропический лес"
+
+msgctxt "covers.name"
 msgid "Tropical Forest"
 msgstr "Тропический лес"
+
+msgctxt "covers.name"
+msgid "Tropical Rainforest"
+msgstr "Влажный тропический лес"
 
 msgctxt "crafts.description"
 msgid "Blows bottles from molten glass."
@@ -5500,6 +5532,14 @@ msgid "Beach"
 msgstr "Пляж"
 
 msgctxt "terrains.name"
+msgid "Boreal, Hills"
+msgstr "Бореаль, холмы"
+
+msgctxt "terrains.name"
+msgid "Boreal, Plain"
+msgstr "Бореаль, равнина"
+
+msgctxt "terrains.name"
 msgid "Freshwater Lake"
 msgstr "Пресноводное озеро"
 
@@ -5532,6 +5572,14 @@ msgid "Prairie Mountains"
 msgstr "Прерийные горы"
 
 msgctxt "terrains.name"
+msgid "Prairie, Hills"
+msgstr "Прерия, холмы"
+
+msgctxt "terrains.name"
+msgid "Prairie, Plain"
+msgstr "Прерия, равнина"
+
+msgctxt "terrains.name"
 msgid "Rocky Desert"
 msgstr "Каменистая пустыня"
 
@@ -5554,6 +5602,14 @@ msgstr "Саванные холмы"
 msgctxt "terrains.name"
 msgid "Savanna Mountains"
 msgstr "Саванные горы"
+
+msgctxt "terrains.name"
+msgid "Savanna, Hills"
+msgstr "Саванна, холмы"
+
+msgctxt "terrains.name"
+msgid "Savanna, Plain"
+msgstr "Саванна, равнина"
 
 msgctxt "terrains.name"
 msgid "Sea"
@@ -5580,6 +5636,14 @@ msgid "Steppe Mountains"
 msgstr "Степные горы"
 
 msgctxt "terrains.name"
+msgid "Steppe, Hills"
+msgstr "Степь, холмы"
+
+msgctxt "terrains.name"
+msgid "Steppe, Plain"
+msgstr "Степь, равнина"
+
+msgctxt "terrains.name"
 msgid "Swamp"
 msgstr "Болото"
 
@@ -5594,6 +5658,14 @@ msgstr "Тропические горы"
 msgctxt "terrains.name"
 msgid "Tropical Plain"
 msgstr "Тропическая равнина"
+
+msgctxt "terrains.name"
+msgid "Tropical, Hills"
+msgstr "Тропики, холмы"
+
+msgctxt "terrains.name"
+msgid "Tropical, Plain"
+msgstr "Тропики, равнина"
 
 msgctxt "terrains.name"
 msgid "Tundra"

@@ -48,13 +48,13 @@
   //   temperature — belts running from the poles to the equator. The belts are strictly
   //     ordered (cold → mild → subtropical → tropical → subtropical → mild → cold), therefore two
   //     hexes of the same latitude never belong to non-neighbouring belts: a tropical plain and a
-  //     tundra cannot meet sideways. The equator sits on a random row, so the centre of the map
+  //     boreal plain cannot meet sideways. The equator sits on a random row, so the centre of the map
   //     (and the city on it) lands on a different latitude from game to game, and the belts are
   //     built around it.
   //   moisture — large wet and dry regions that do not follow the latitudes: they lie anywhere,
   //     curve and surround each other. The moisture splits every belt in two.
   // A pair (temperature, moisture) selects a climate zone (data/climate.json), and the zone turns
-  // the relief of its region into the terrains of the belt (tundra, steppe, prairie, savanna,
+  // the relief of its region into the terrains of the belt (boreal, steppe, prairie, savanna,
   // tropical plain) and rolls the vegetation on them.
   //
   // Rows are counted from the north edge of the map. All the "rows" values below are
