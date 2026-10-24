@@ -223,7 +223,7 @@ const KEY_RESOURCES := "resources"
 const KEY_GROUP_REFS := "group_refs"
 const KEY_COVERS := "covers"
 const KEY_TERRAINS := "terrains"
-# The relief families (the field "family" of a terrain record): the keys of a zone's terrain map.
+# The terrain families (the field "family" of a terrain record): the keys of a zone's terrain map.
 const KEY_TERRAIN_FAMILIES := "terrain_families"
 const KEY_IMPROVEMENTS := "improvements"
 const KEY_PRIORITIES := "priorities"
@@ -426,9 +426,10 @@ const TERRAIN_FIELDS := {
     "name": LEAF,
     "description": LEAF,
     "color": LEAF,
-    # The relief family of a terrain: the climate turns every hex of a family into the variety of
+    # The terrain family of a terrain: the climate turns every hex of a family into the variety of
     # its belt (a plain becomes a tundra plain, a boreal plain, a steppe, a prairie, a savanna or a
-    # tropical plain). The water, the wetlands and the deserts have no family.
+    # tropical plain; a swamp becomes the bog of its belt). The water, the marsh and the deserts
+    # have no family.
     "family": LEAF,
     "icons": LEAF,
     "move_cost": LEAF,
@@ -458,10 +459,11 @@ const ZONE_FIELDS := {
     "id": LEAF,
     "temperature": LEAF,
     "humidity": LEAF,
-    # The variety of every relief family of the zone: {"plain": "boreal_plain", …}. The keys are
-    # the families (KEY_TERRAIN_FAMILIES), the values — the terrains that carry that family.
+    # The variety of every family of the zone: {"plain": "boreal_plain", …}. The keys are the
+    # families (KEY_TERRAIN_FAMILIES), the values — the terrains that carry that family.
     "terrain": {"id_map": {"keys": KEY_TERRAINS}, "keys": KEY_TERRAIN_FAMILIES},
-    # The vegetation of the zone: it applies to every family of the zone at once.
+    # The vegetation of the zone: it applies to the relief families of the zone at once. The
+    # wetland keeps its own pool (the terrain record of the swamp variety).
     "cover_chance": COVER_MAP,
     # true — the deserts may stand in the zone (the hot dry belts).
     "deserts": LEAF,
@@ -819,9 +821,9 @@ static func entity_forms(kind: String, fallback: String = "product") -> Dictiona
                 "ref": TranslationServer.translate("this terrain cover", "validator_entity_ref_cover"),
                 "source": TranslationServer.translate("terrain cover", "validator_entity_source_cover")}
         "terrain_family":
-            return {"title": TranslationServer.translate("Relief family", "validator_entity_title_terrain_family"),
-                "ref": TranslationServer.translate("this relief family", "validator_entity_ref_terrain_family"),
-                "source": TranslationServer.translate("relief family", "validator_entity_source_terrain_family")}
+            return {"title": TranslationServer.translate("Terrain family", "validator_entity_title_terrain_family"),
+                "ref": TranslationServer.translate("this terrain family", "validator_entity_ref_terrain_family"),
+                "source": TranslationServer.translate("terrain family", "validator_entity_source_terrain_family")}
         "climate_zone":
             return {"title": TranslationServer.translate("Climate zone", "validator_entity_title_climate_zone"),
                 "ref": TranslationServer.translate("this climate zone", "validator_entity_ref_climate_zone"),
@@ -904,7 +906,7 @@ static func check_title(kind: String) -> String:
         "zone_axes":
             return TranslationServer.translate("Climate zone: unknown climate axis value")
         "zone_terrain":
-            return TranslationServer.translate("Climate zone: the relief family is not mapped to a terrain of that family")
+            return TranslationServer.translate("Climate zone: the family is not mapped to a terrain of that family")
         _:
             # An unknown kind of the check: we show the machine name — by it one can see
             # what is missing in CHECK_ORDER, and it survives any language.
@@ -1025,7 +1027,7 @@ func validate(gd: Object) -> Array:
     _validate_consumption(gd.consumption_rules, products, product_groups, professions, problems)
     _validate_technologies(technologies, problems)
     _validate_roads(gd.roads, technologies, problems)
-    _validate_climate_zones(gd.climate_zones, terrains, _relief_families(terrains, gd.map_config), problems)
+    _validate_climate_zones(gd.climate_zones, terrains, _climate_families(terrains, gd.map_config), problems)
 
     _sort_problems(problems)
     return problems
@@ -1176,9 +1178,9 @@ func _key_registries(data: Dictionary) -> Dictionary:
         refs["@" + str(group_id)] = true
     sets[KEY_GROUP_REFS] = refs
 
-    # The relief families: the field "family" of the terrain records. A key of terrain_config names
+    # The terrain families: the field "family" of the terrain records. A key of terrain_config names
     # either a family (the climate turns every hex of it into the variety of its belt) or a terrain
-    # the climate leaves alone (a lake, a swamp, a desert), so the terrain registry takes both.
+    # the climate leaves alone (a lake, a desert), so the terrain registry takes both.
     var families := {}
     for record in data.get(KEY_TERRAINS, []):
         if record is Dictionary:
@@ -1579,11 +1581,11 @@ func _validate_roads(roads, technologies: Dictionary, problems: Array) -> void:
 const ZONE_TEMPERATURES := ["polar", "cold", "mild", "subtropical", "tropical"]
 const ZONE_HUMIDITIES := ["wet", "dry"]
 
-# The relief families the climate turns into varieties: the keys of terrain_config that are not a
-# terrain of their own (a lake, a swamp, a desert is placed as it is). These are exactly the
-# families every zone has to map, otherwise the hexes of the family keep a raw family name on the
-# map instead of a terrain.
-func _relief_families(terrains: Dictionary, map_config: Dictionary) -> Array:
+# The families the climate turns into varieties: the keys of terrain_config that are not a terrain
+# of their own (a lake or a desert is placed as it is). These are exactly the families every zone
+# has to map, otherwise the hexes of the family keep a raw family name on the map instead of a
+# terrain.
+func _climate_families(terrains: Dictionary, map_config: Dictionary) -> Array:
     var declared := {}
     for terrain_id in terrains.keys():
         var family := str(terrains[terrain_id].get("family", ""))
@@ -2127,10 +2129,10 @@ static func build_text(problem: Dictionary) -> void:
             var family := str(problem.get("field", ""))
             var mapped := str(problem.get("ref_id", ""))
             if mapped == "":
-                headline = TranslationServer.translate("Climate zone %s does not map the relief family \"%s\" to a terrain.") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), family]
+                headline = TranslationServer.translate("Climate zone %s does not map the family \"%s\" to a terrain.") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), family]
             else:
-                headline = TranslationServer.translate("Climate zone %s maps the relief family \"%s\" to \"%s\", which is not a terrain of that family.") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), family, mapped]
-            where = TranslationServer.translate("Every zone maps each relief family the generator places — plain, hill, mountain, the keys of terrain_config — to a terrain that carries the same \"family\" field. Otherwise the hexes of that family keep the raw family name on the map instead of a terrain: no icon, no yields, no vegetation.")
+                headline = TranslationServer.translate("Climate zone %s maps the family \"%s\" to \"%s\", which is not a terrain of that family.") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), family, mapped]
+            where = TranslationServer.translate("Every zone maps each family the generator places — plain, hill, mountain, swamp, the keys of terrain_config — to a terrain that carries the same \"family\" field. Otherwise the hexes of that family keep the raw family name on the map instead of a terrain: no icon, no yields, no vegetation.")
         _:
             # The other checks are a broken REFERENCE: "There is no X with the identifier …
             # exists" + where exactly it was referred to.

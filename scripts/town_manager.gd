@@ -133,8 +133,8 @@ const MIN_RESOURCES_FOR_CLUSTER := 2
 # the type of the terrain is a soft refinement on top of them: after the main cascade
 # we try to move to a hex with a more preferable terrain, without losing
 # the already earned primary attractions.
-# The groups name either a terrain or a relief family: "plain" covers the boreal plain, the steppe, the
-# prairie, the savanna and the tropical plain alike (see MapHelpers.terrain_in_list).
+# The groups name either a terrain or a family: "plain" covers the boreal plain, the steppe, the
+# prairie, the savanna and the tropical plain alike, "swamp" every bog (see MapHelpers.terrain_in_list).
 const TERRAIN_PREFERENCE: Array = [
     ["plain", "beach"],
     ["hill"],

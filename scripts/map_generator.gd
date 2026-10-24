@@ -36,9 +36,10 @@ const CENTER_EXCLUSION_RADIUS := 6
 # The participation in the Voronoi is now set explicitly through the config: adding a new
 # type to terrains.json no longer makes it automatically spread
 # over the whole map.
-# The types of the Voronoi: the keys of terrain_config. A key is either a relief family (the
-# climate turns every hex of it into the variety of its belt) or a terrain the climate leaves alone
-# (a lake, a swamp, a desert). The unique terrains are placed separately, by place_unique_terrains.
+# The types of the Voronoi: the keys of terrain_config. A key is either a family — the relief or
+# the wetland (the climate turns every hex of it into the variety of its belt) — or a terrain the
+# climate leaves alone (a lake, a desert). The unique terrains are placed separately, by
+# place_unique_terrains.
 static func _get_base_terrain_ids() -> Array:
     var cfg: Dictionary = GameData.map_config.get("terrain_config", {})
     var ids: Array = []
@@ -757,11 +758,12 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
 
 # --- CLIMATE ---
 #
-# The climate decides what the relief of a hex is made of and what grows on it. There is no
-# separate "biome" layer: a plain is never a plain on the map, it is one of its VARIETIES — a
-# tundra plain, a boreal plain, a steppe, a prairie, a savanna or a tropical plain
-# (data/terrains/terrains.json) — and the vegetation is a cover on top of it
-# (data/covers.json).
+# The climate decides what a hex is made of and what grows on it. There is no separate "biome"
+# layer: a plain is never a plain on the map, it is one of its VARIETIES — a tundra plain, a boreal
+# plain, a steppe, a prairie, a savanna or a tropical plain (data/terrains/terrains.json) — and the
+# vegetation is a cover on top of it (data/covers.json). The wetland is divided the same way, only
+# into fewer varieties: a swamp is a family whose zones name a shared record wherever the bogs of
+# two belts do not differ.
 #
 # Two independent fields decide the variety:
 #
@@ -785,7 +787,7 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
 # cold region. No wooded cover grows in the tundra, so the taiga never spreads into it.
 #
 # A pair (temperature, humidity) selects a climate zone (data/climate.json), and the zone says
-# which variety every relief family becomes and what grows on it. The zone id is stored in the
+# which variety every family becomes and what grows on it. The zone id is stored in the
 # tile ("climate"): the runtime asks it whenever it has to turn a family into a terrain after the
 # generation (a drained swamp, a corridor). The player never sees the zone — only the terrain and
 # the cover.
@@ -798,9 +800,11 @@ const TEMPERATURE_TROPICAL := "tropical"
 const HUMIDITY_WET := "wet"
 const HUMIDITY_DRY := "dry"
 
-# The relief families the climate turns into its varieties. The water, the wetlands and the deserts
-# have no family: they are no variety of a plain and the climate leaves them alone.
-const CLIMATE_FAMILIES := ["plain", "hill", "mountain"]
+# The families the climate turns into the varieties of its zone: the relief (a plain becomes a
+# tundra plain, a boreal plain, a steppe, a prairie, a savanna, a tropical plain) and the wetland
+# (a swamp becomes the bog of its belt). The water, the marsh and the deserts have no family and
+# the climate leaves them alone.
+const CLIMATE_FAMILIES := ["plain", "hill", "mountain", "swamp"]
 
 # The largest growth of the temperature row from one row to the next. It has to stay below the
 # height of the narrowest belt, otherwise one step could jump over it and put a cold hex next to
@@ -904,10 +908,10 @@ func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
             var humidity := HUMIDITY_WET if moisture >= moisture_threshold else HUMIDITY_DRY
             tile_data[r][c]["climate"] = _pick_zone(lookup, temperature, humidity)
 
-# Turns the relief families the Voronoi placed into the varieties of their climate zone: every
-# plain becomes the plain of its belt (a tundra plain, a boreal plain, a steppe, a prairie, a
-# savanna, a tropical plain), and the same for the hills and the mountains. The water, the wetlands
-# and the deserts have no family and stay as they are.
+# Turns the families the Voronoi placed into the varieties of their climate zone: every plain
+# becomes the plain of its belt (a tundra plain, a boreal plain, a steppe, a prairie, a savanna, a
+# tropical plain), the same for the hills and the mountains, and the swamp becomes the bog of its
+# belt. The water, the marsh and the deserts have no family and stay as they are.
 func _convert_families(tile_data: Array, rows: int, cols: int) -> void:
     for r in range(rows):
         for c in range(cols):
@@ -1203,17 +1207,16 @@ func _is_wooded_hex(tile: Dictionary) -> bool:
     var cover: Dictionary = GameData.covers.get(tile.get("cover", "none"), {})
     return float(cover.get("wood_yield", 0)) > 0.0
 
-# Rolls the cover of a hex. The varieties of a relief (a tundra plain, a boreal plain, a steppe, a
-# savanna …) share the vegetation of their climate zone, so a whole region gets one coherent
-# character (a prairie region is mostly grass with groves, a tropical one is mostly forest with
-# clearings). The water, the wetlands and the deserts keep their own pool: the rock of a mountain
-# does not turn into a forest just because the mountain stands in the jungle.
+# Rolls the cover of a hex. A terrain that carries a cover_chance of its own rolls on it — the
+# wetlands and the deserts keep their own vegetation, so a swamp of the tropics is a reed bed and a
+# swamp of the tundra is moss, whatever grows around them. Every other terrain is a variety of a
+# family, and the varieties of a family share the vegetation of their climate zone, so a whole
+# region gets one coherent character (a prairie region is mostly grass with groves, a tropical one
+# is mostly forest with clearings).
 func _roll_cover(terrain_id: String, zone_id: String = "") -> String:
-    var chances: Dictionary = {}
-    if zone_id != "" and GameData.terrain_family(terrain_id) != "":
+    var chances: Dictionary = GameData.terrains.get(terrain_id, {}).get("cover_chance", {})
+    if chances.is_empty() and zone_id != "":
         chances = GameData.get_climate_zone(zone_id).get("cover_chance", {})
-    if chances.is_empty():
-        chances = GameData.terrains.get(terrain_id, {}).get("cover_chance", {})
     if chances.is_empty():
         return "none"
     var total := 0.0
@@ -1231,10 +1234,11 @@ func _roll_cover(terrain_id: String, zone_id: String = "") -> String:
 
 # Builds a multi-index of the free hexes by (terrain, cover).
 # The key: "terrain|cover" -> Array of dictionaries {"row", "col"}.
-# A hex is indexed TWICE when its terrain belongs to a relief family: under its own id
+# A hex is indexed TWICE when its terrain belongs to a family: under its own id
 # ("boreal_plain|taiga") and under the family ("plain|taiga"). A rule of the data may therefore
 # name either the exact terrain or the family — allowed_terrain ["plain"] finds all six varieties
-# of the plain, allowed_terrain ["boreal_plain"] only the boreal plain (see GameData.terrain_matches).
+# of the plain, allowed_terrain ["swamp"] every swamp, allowed_terrain ["boreal_plain"] only the
+# boreal plain (see GameData.terrain_matches).
 # The hexes near the city (abs <= 1) are excluded, so as not to interfere with
 # the starting construction (as in the original _place_resources).
 func _build_hex_index(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> Dictionary:
@@ -1255,7 +1259,7 @@ func _build_hex_index(tile_data: Array, rows: int, cols: int, city_row: int, cit
                 index[key].append({"row": r, "col": c})
     return index
 
-# The names a hex is indexed by: its terrain and, for a variety of a relief, its family.
+# The names a hex is indexed by: its terrain and, for a variety of a family, its family.
 func _index_names(terrain_id: String) -> Array:
     var names: Array = [terrain_id]
     var family := GameData.terrain_family(terrain_id)
@@ -1264,7 +1268,8 @@ func _index_names(terrain_id: String) -> Array:
     return names
 
 # Whether the terrain of a hex satisfies the allowed_terrain list of a rule. The list may name the
-# exact terrain ("boreal_plain") or a relief family ("plain" — all six varieties of the plain).
+# exact terrain ("boreal_plain") or a family ("plain" — all six varieties of the plain, "swamp" —
+# every swamp).
 func _terrain_allowed(terrain_id: String, data: Dictionary) -> bool:
     for reference in data.get("allowed_terrain", []):
         if GameData.terrain_matches(terrain_id, str(reference)):
@@ -1321,7 +1326,7 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, _rows: int, _cols:
     #     (for example, "by a river", "on a soda lake"); if it did not roll out / does not fit —
     #     the resource is skipped;
     #   * allowed_terrain / allowed_cover — the ordinary terrain and cover restrictions. A terrain
-    #     may be named exactly or by its relief family (see _build_hex_index).
+    #     may be named exactly or by its family (see _build_hex_index).
     # If the resource has tech_reveal (the underground minerals) — it appears
     # on the map IMMEDIATELY, but is hidden from the player until the corresponding technology
     # is learned.
@@ -1334,7 +1339,7 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, _rows: int, _cols:
     ids.shuffle()
     for res_id in ids:
         var data = res_dict[res_id]
-        if not HexUtils.spawn_conditions_met(data):
+        if not MapHelpers.spawn_conditions_met(data):
             continue
         # spawn_count: how many specimens of the resource to spawn (a number or [min, max]).
         # 0 — the resource is not spawned at all.
@@ -1350,7 +1355,7 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, _rows: int, _cols:
                     for hex in arr:
                         if not _climate_allowed(tile_data[hex.row][hex.col], data):
                             continue
-                        if HexUtils.is_hex_conditions_met(tile_data, hex.row, hex.col, data):
+                        if MapHelpers.is_hex_conditions_met(tile_data, hex.row, hex.col, data):
                             possible.append(hex)
             if possible.size() > 0:
                 var hex = possible[randi() % possible.size()]
@@ -1442,9 +1447,9 @@ func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
                 city_row, city_col)
         free_count[terrain_id] += converted
 
-# The key of terrain_counts a hex belongs to: the exact terrain (a lake, a swamp, a desert), or
-# the relief family of it — a tundra plain, a boreal plain, a steppe, a savanna … all count as the
-# plain they are.
+# The key of terrain_counts a hex belongs to: the exact terrain (a lake, a desert), or the family of
+# it — a tundra plain, a boreal plain, a steppe, a savanna … all count as the plain they are, and a
+# bog of any belt counts as the swamp.
 func _count_bucket(terrain_id: String, terrain_counts: Dictionary) -> String:
     if terrain_counts.has(terrain_id):
         return terrain_id

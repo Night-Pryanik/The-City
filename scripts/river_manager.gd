@@ -292,7 +292,8 @@ func _find_terrain_vertices(graph: Dictionary, tile_data: Array, terrain_id: Str
 # -------------------------------------------------------
 # Finds the hexes along which the rivers CANNOT flow:
 #   - the lake and sea hexes and their neighbours (so that the river does not flow along the shore);
-#   - the swamp (swamp) and marsh (marsh) hexes themselves — the rivers do not pass through them.
+#   - the wetland hexes themselves (a swamp of any belt and a marsh) — the rivers do not pass
+#     through them.
 # It returns a dictionary with the keys "row_col" -> true.
 # -------------------------------------------------------
 func _build_restricted_hexes(tile_data: Array, rows: int, cols: int) -> Dictionary:
@@ -312,12 +313,12 @@ func _build_restricted_hexes(tile_data: Array, rows: int, cols: int) -> Dictiona
         for n in HexUtils.get_neighbors_odd_r(wh.row, wh.col, rows, cols):
             result["%d_%d" % [n.row, n.col]] = true
 
-    # The swamp and marsh hexes themselves — the rivers do not pass through them (their neighbours
+    # The wetland hexes themselves — the rivers do not pass through them (their neighbours
     # are not marked: that would be too restrictive).
     for row in range(rows):
         for col in range(cols):
             var terrain_id = tile_data[row][col]["terrain"]
-            if terrain_id == "swamp" or terrain_id == "marsh":
+            if MapHelpers.is_wetland_terrain(terrain_id):
                 result["%d_%d" % [row, col]] = true
 
     return result

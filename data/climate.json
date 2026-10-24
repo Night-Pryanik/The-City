@@ -4,7 +4,8 @@
   // A zone is not a thing the player ever sees as such: the player reads the TERRAIN of a hex, and
   // the name of the terrain already says which belt it belongs to — "Boreal, Plain", "Tropical,
   // Hills" (data/terrains/terrains.json). The zone only decides which variety of the relief stands
-  // where and what grows on it.
+  // where and what grows on it. The swamp of a zone is the exception: every belt calls it
+  // "Swamps", and the belt is read from what grows in it (moss, a taiga bog, a carr, a reed bed).
   //
   // The axes (see map_config.json → "climate"):
   //   temperature — the belts from the poles to the equator: polar, cold, mild, subtropical,
@@ -14,12 +15,14 @@
   //                 curve and surround each other.
   //
   // The fields of a zone:
-  //   terrain      — the variety of every relief family of the zone (plain, hill, mountain). The
-  //                  family is the field "family" of a terrain record (data/terrains/terrains.json);
-  //   cover_chance — the vegetation of the zone. It applies to all three families of the zone, so
-  //                  a taiga mountain and a taiga plain share the same woods. The covers of the
-  //                  water, the wetlands and the deserts are NOT taken from here: those terrains
-  //                  keep their own cover_chance;
+  //   terrain      — the variety of every family of the zone (plain, hill, mountain, swamp). The
+  //                  family is the field "family" of a terrain record (data/terrains/terrains.json).
+  //                  The swamp is a family too, but a small one: the zones whose wetlands do not
+  //                  differ share the same swamp record, so several zones name the same id;
+  //   cover_chance — the vegetation of the zone. It applies to the relief families of the zone
+  //                  (plain, hill, mountain), so a taiga mountain and a taiga plain share the same
+  //                  woods. The covers of the swamp, the marsh, the water and the deserts are NOT
+  //                  taken from here: those terrains keep their own cover_chance;
   //   deserts      — true: the sandy and rocky deserts may stand in the zone. Everywhere else
   //                  they are levelled into the plain of the zone, so that a sandy desert never
   //                  appears in the taiga. The field is absent = false.
@@ -35,14 +38,16 @@
       "id": "tundra_dry",
       "temperature": "polar",
       "humidity": "dry",
-      "terrain": { "plain": "tundra_plain", "hill": "tundra_hill", "mountain": "tundra_mountain" },
+      "terrain": { "plain": "tundra_plain", "hill": "tundra_hill", "mountain": "tundra_mountain",
+                   "swamp": "tundra_swamp" },
       "cover_chance": { "none": 75, "tundra_moss": 25 }
     },
     {
       "id": "tundra_wet",
       "temperature": "polar",
       "humidity": "wet",
-      "terrain": { "plain": "tundra_plain", "hill": "tundra_hill", "mountain": "tundra_mountain" },
+      "terrain": { "plain": "tundra_plain", "hill": "tundra_hill", "mountain": "tundra_mountain",
+                   "swamp": "tundra_swamp" },
       "cover_chance": { "none": 40, "tundra_moss": 60 }
     },
 
@@ -51,14 +56,16 @@
       "id": "boreal_dry",
       "temperature": "cold",
       "humidity": "dry",
-      "terrain": { "plain": "boreal_plain", "hill": "boreal_hill", "mountain": "boreal_mountain" },
+      "terrain": { "plain": "boreal_plain", "hill": "boreal_hill", "mountain": "boreal_mountain",
+                   "swamp": "boreal_swamp" },
       "cover_chance": { "none": 90, "taiga_sparse": 10 }
     },
     {
       "id": "boreal_wet",
       "temperature": "cold",
       "humidity": "wet",
-      "terrain": { "plain": "boreal_plain", "hill": "boreal_hill", "mountain": "boreal_mountain" },
+      "terrain": { "plain": "boreal_plain", "hill": "boreal_hill", "mountain": "boreal_mountain",
+                   "swamp": "boreal_swamp" },
       "cover_chance": { "none": 30, "taiga": 45, "taiga_sparse": 25 }
     },
 
@@ -67,14 +74,16 @@
       "id": "steppe",
       "temperature": "mild",
       "humidity": "dry",
-      "terrain": { "plain": "steppe_plain", "hill": "steppe_hill", "mountain": "steppe_mountain" },
+      "terrain": { "plain": "steppe_plain", "hill": "steppe_hill", "mountain": "steppe_mountain",
+                   "swamp": "temperate_swamp" },
       "cover_chance": { "none": 88, "temperate_dry_forest": 4, "temperate_dry_forest_sparse": 8 }
     },
     {
       "id": "prairie",
       "temperature": "mild",
       "humidity": "wet",
-      "terrain": { "plain": "prairie_plain", "hill": "prairie_hill", "mountain": "prairie_mountain" },
+      "terrain": { "plain": "prairie_plain", "hill": "prairie_hill", "mountain": "prairie_mountain",
+                   "swamp": "temperate_swamp" },
       "cover_chance": { "none": 40, "temperate_rainforest_sparse": 25, "temperate_rainforest": 35 }
     },
 
@@ -83,7 +92,8 @@
       "id": "savanna_dry",
       "temperature": "subtropical",
       "humidity": "dry",
-      "terrain": { "plain": "savanna_plain", "hill": "savanna_hill", "mountain": "savanna_mountain" },
+      "terrain": { "plain": "savanna_plain", "hill": "savanna_hill", "mountain": "savanna_mountain",
+                   "swamp": "tropical_swamp" },
       "cover_chance": { "none": 90, "temperate_dry_forest_sparse": 10 },
       "deserts": true
     },
@@ -91,7 +101,8 @@
       "id": "savanna_wet",
       "temperature": "subtropical",
       "humidity": "wet",
-      "terrain": { "plain": "savanna_plain", "hill": "savanna_hill", "mountain": "savanna_mountain" },
+      "terrain": { "plain": "savanna_plain", "hill": "savanna_hill", "mountain": "savanna_mountain",
+                   "swamp": "tropical_swamp" },
       "cover_chance": { "none": 55, "temperate_rainforest_sparse": 35, "temperate_rainforest": 10 }
     },
 
@@ -100,7 +111,8 @@
       "id": "tropical_dry",
       "temperature": "tropical",
       "humidity": "dry",
-      "terrain": { "plain": "tropical_plain", "hill": "tropical_hill", "mountain": "tropical_mountain" },
+      "terrain": { "plain": "tropical_plain", "hill": "tropical_hill", "mountain": "tropical_mountain",
+                   "swamp": "tropical_swamp" },
       "cover_chance": { "none": 82, "tropical_dry_forest": 6, "tropical_dry_forest_sparse": 12 },
       "deserts": true
     },
@@ -108,7 +120,8 @@
       "id": "tropical_wet",
       "temperature": "tropical",
       "humidity": "wet",
-      "terrain": { "plain": "tropical_plain", "hill": "tropical_hill", "mountain": "tropical_mountain" },
+      "terrain": { "plain": "tropical_plain", "hill": "tropical_hill", "mountain": "tropical_mountain",
+                   "swamp": "tropical_swamp" },
       "cover_chance": { "none": 22, "tropical_rainforest": 50, "tropical_rainforest_sparse": 28 }
     }
   ]

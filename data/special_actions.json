@@ -49,7 +49,8 @@
     },
     {
       // Draining swamps and marshes: turns them into a plain (action_type "terrain").
-      // source_terrains — the list of terrain types the action applies to.
+      // source_terrains — the list of terrain types the action applies to. An entry may name a
+      // FAMILY: "swamp" drains the bog of every climate belt at once.
       // result_terrain — a terrain or a RELIEF FAMILY: the family "plain" resolves to the plain
       // of the climate zone the hex stands in (a drained swamp in the boreal zone becomes a boreal plain,
       // in the tropics — a tropical plain).

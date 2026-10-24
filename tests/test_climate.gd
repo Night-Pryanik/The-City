@@ -52,6 +52,8 @@ func _run() -> void:
         _test_terrain_names(state)
     if WATCHDOG.wants_case("family_rules"):
         _test_family_rules(state)
+    if WATCHDOG.wants_case("swamp_reeds_warm"):
+        _test_swamp_reeds_warm(state)
 
     WATCHDOG.report_skipped()
     if state["failed"]:
@@ -95,7 +97,10 @@ func _has_zone(row: int, col: int) -> bool:
 # --- the checks --------------------------------------------------------------
 
 # Every variety of every relief family exists somewhere on the map: a zone that never appears would
-# silently remove one of the six plains, and the player would never see it.
+# silently remove one of the six plains, and the player would never see it. The swamps are not
+# checked this way: there are only a few swamp hexes on the map and no belt is obliged to get one,
+# so a missing bog proves nothing. That every swamp hex is the bog of its own zone is checked by
+# _test_terrain_matches_zone.
 func _test_all_varieties(state: Dictionary) -> void:
     _generate()
     var seen := {}
@@ -103,19 +108,19 @@ func _test_all_varieties(state: Dictionary) -> void:
         for c in range(COLS):
             seen[_terrain_id(r, c)] = true
     for terrain_id in _gdata.terrains.keys():
-        if _gdata.terrain_family(terrain_id) == "":
+        if not _gdata.RELIEF_FAMILIES.has(_gdata.terrain_family(terrain_id)):
             continue
         check(seen.has(terrain_id), "the terrain %s never appears on the map" % terrain_id, state)
 
-# The Voronoi places the relief families; the climate turns every one of them into a variety. A hex
-# that still carries a family name has no terrain record: no icon, no yields, no vegetation.
+# The Voronoi places the families; the climate turns every one of them into a variety. A hex that
+# still carries a family name has no terrain record: no icon, no yields, no vegetation.
 func _test_no_raw_families(state: Dictionary) -> void:
     _generate()
     for r in range(ROWS):
         for c in range(COLS):
             var terrain_id := _terrain_id(r, c)
-            check(not ["plain", "hill", "mountain"].has(terrain_id),
-                    "the raw relief family %s is left at (%d,%d)" % [terrain_id, r, c], state)
+            check(not ["plain", "hill", "mountain", "swamp"].has(terrain_id),
+                    "the raw family %s is left at (%d,%d)" % [terrain_id, r, c], state)
 
 func _test_terrain_matches_zone(state: Dictionary) -> void:
     _generate()
@@ -199,7 +204,7 @@ func _test_polar_edges(state: Dictionary) -> void:
                         "the edge is too warm at (%d,%d): %s" % [r, c, _zone_id(r, c)], state)
 
 # The tundra lies beyond the taiga: the pool of the polar zone has no woods, so no forest grows on
-# the relief of the tundra. The swamps and the marshes keep their own pool and are not a part of it.
+# the relief of the tundra. The bog of the tundra keeps its own pool, which has no woods either.
 func _test_tundra_has_no_woods(state: Dictionary) -> void:
     _generate()
     for r in range(ROWS):
@@ -224,12 +229,14 @@ func _test_deserts_hot_dry(state: Dictionary) -> void:
                     "a desert outside the hot dry zone at (%d,%d): %s" % [r, c, _zone_id(r, c)], state)
 
 # The vegetation of a hex belongs to its zone: the whole region shares one pool, and the pool
-# applies to the plains, the hills and the mountains alike.
+# applies to the plains, the hills and the mountains alike. The swamp is the exception — its
+# vegetation is the pool of its own record, and _test_swamp_reeds_warm guards the part of it that
+# matters.
 func _test_covers_from_zone(state: Dictionary) -> void:
     _generate()
     for r in range(ROWS):
         for c in range(COLS):
-            if _family(r, c) == "":
+            if not _gdata.RELIEF_FAMILIES.has(_family(r, c)):
                 continue
             if not _has_zone(r, c):
                 continue
@@ -285,7 +292,7 @@ func _test_tooltip_terrain(state: Dictionary) -> void:
     container.queue_free()
 
 # The name of a variety carries its climate zone — "Boreal, Plain", "Tropical, Hills" — and the
-# mountains are the same in every zone, so they are just "Mountains".
+# mountains and the swamps are the same in every zone, so they are just "Mountains" and "Swamps".
 func _test_terrain_names(state: Dictionary) -> void:
     for terrain_id in _gdata.terrains.keys():
         var family: String = _gdata.terrain_family(terrain_id)
@@ -295,12 +302,15 @@ func _test_terrain_names(state: Dictionary) -> void:
         if family == "mountain":
             check(terrain_name == "Mountains",
                     "the mountain %s is named %s, not Mountains" % [terrain_id, terrain_name], state)
+        elif family == "swamp":
+            check(terrain_name == "Swamps",
+                    "the swamp %s is named %s, not Swamps" % [terrain_id, terrain_name], state)
         else:
             check(terrain_name.contains(", "),
                     "the name of %s (%s) carries no climate zone" % [terrain_id, terrain_name], state)
 
-# A rule of the data may name a terrain or its relief family: "plain" reaches every variety of the
-# plain, and a family name never matches a terrain of another family.
+# A rule of the data may name a terrain or its family: "plain" reaches every variety of the plain,
+# "swamp" every variety of the wetland, and a family name never matches a terrain of another family.
 func _test_family_rules(state: Dictionary) -> void:
     for terrain_id in _gdata.terrains.keys():
         var family: String = _gdata.terrain_family(terrain_id)
@@ -309,11 +319,30 @@ func _test_family_rules(state: Dictionary) -> void:
         if family != "":
             check(_gdata.terrain_matches(terrain_id, family),
                     "%s does not match its family %s" % [terrain_id, family], state)
-            for other in ["plain", "hill", "mountain"]:
+            for other in ["plain", "hill", "mountain", "swamp"]:
                 if other == family:
                     continue
                 check(not _gdata.terrain_matches(terrain_id, other),
                         "%s matches the foreign family %s" % [terrain_id, other], state)
+
+# The reed bed is the vegetation of the warm swamp, and the papyrus grows in it: no reed may appear
+# in the bog of the polar or the cold belt. The cover of a swamp comes from its own pool, so this is
+# the one thing the climate of a zone must not decide.
+func _test_swamp_reeds_warm(state: Dictionary) -> void:
+    _generate()
+    var cold_belts := [TEMPERATURES.find("polar"), TEMPERATURES.find("cold")]
+    var checked := 0
+    for r in range(ROWS):
+        for c in range(COLS):
+            if _family(r, c) != "swamp":
+                continue
+            if _temperature_index(r, c) not in cold_belts:
+                continue
+            checked += 1
+            check(str(_tiles[r][c].get("cover", "none")) != "reeds",
+                    "a reed bed grows in the cold swamp at (%d,%d), zone %s" %
+                    [r, c, _zone_id(r, c)], state)
+    check(checked > 0, "the map under test has no cold swamp to check", state)
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if not condition:

@@ -27,9 +27,9 @@
     //   target_cluster  — the average cluster size in hexes (an upper bound:
     //                     the number of centres cannot be more than area / target_cluster).
     //                     If not set — the bound is not applied.
-    // A key is either a RELIEF FAMILY (plain, hill, mountain — the climate turns every hex of a
-    // family into the variety of its belt, see data/climate.json) or a terrain that the climate
-    // does not touch (lake, swamp, the deserts).
+    // A key is either a FAMILY — the relief (plain, hill, mountain) or the wetland (swamp); the
+    // climate turns every hex of a family into the variety of its belt, see data/climate.json — or
+    // a terrain that the climate does not touch (lake, the deserts).
     // The global target_cluster (below) is a fallback value for the types that
     // do not have their own target_cluster in terrain_config.
     "target_cluster": 22,

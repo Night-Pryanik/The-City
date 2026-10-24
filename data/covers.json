@@ -8,8 +8,9 @@
   // dense and a sparse variety — the sparse one is what a forest turns into at its edge.
   //
   // Which cover may grow where is decided by the "cover_chance" of the climate zone
-  // (data/climate.json) — the pools are never listed here. The water, the wetlands and the deserts
-  // keep their own pool in data/terrains/terrains.json.
+  // (data/climate.json) — the pools are never listed here. A terrain that carries a pool of its own
+  // keeps it: that is how the swamp of every belt and the deserts get their vegetation from
+  // data/terrains/terrains.json instead of the zone.
   "covers": [
     { "id": "none", "name": "None", "color": [ 0, 0, 0 ], "alpha": 0.0, "move_cost_bonus": 0, "icons": [  ] },
 
@@ -131,6 +132,9 @@
     },
 
     // --- THE COVERS OUTSIDE THE CLIMATE ---------------------------------------------------
+    // The reed bed is the vegetation of the warm swamp (data/terrains/terrains.json): the tall
+    // grasses of the tropics and the subtropics, where the papyrus grows among them. It is also
+    // what the marsh rolls everywhere — the marsh is a waterlogged strip by the water, not a bog.
     {
       "id": "reeds",
       "name": "Reeds",

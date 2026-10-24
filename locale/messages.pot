@@ -732,16 +732,16 @@ msgstr ""
 msgid "Click: sort the list; a repeated click reverses the order"
 msgstr ""
 
-msgid "Climate zone %s does not map the relief family \"%s\" to a terrain."
+msgid "Climate zone %s does not map the family \"%s\" to a terrain."
 msgstr ""
 
 msgid "Climate zone %s has an unknown %s \"%s\"."
 msgstr ""
 
-msgid "Climate zone %s maps the relief family \"%s\" to \"%s\", which is not a terrain of that family."
+msgid "Climate zone %s maps the family \"%s\" to \"%s\", which is not a terrain of that family."
 msgstr ""
 
-msgid "Climate zone: the relief family is not mapped to a terrain of that family"
+msgid "Climate zone: the family is not mapped to a terrain of that family"
 msgstr ""
 
 msgid "Climate zone: unknown climate axis value"
@@ -987,7 +987,7 @@ msgstr ""
 msgid "Errors in the game data"
 msgstr ""
 
-msgid "Every zone maps each relief family the generator places — plain, hill, mountain, the keys of terrain_config — to a terrain that carries the same \"family\" field. Otherwise the hexes of that family keep the raw family name on the map instead of a terrain: no icon, no yields, no vegetation."
+msgid "Every zone maps each family the generator places — plain, hill, mountain, swamp, the keys of terrain_config — to a terrain that carries the same \"family\" field. Otherwise the hexes of that family keep the raw family name on the map instead of a terrain: no icon, no yields, no vegetation."
 msgstr ""
 
 msgid "Exit game"
@@ -2699,6 +2699,10 @@ msgid "Jungle"
 msgstr ""
 
 msgctxt "covers.name"
+msgid "Moss and Lichen"
+msgstr ""
+
+msgctxt "covers.name"
 msgid "None"
 msgstr ""
 
@@ -2764,10 +2768,6 @@ msgstr ""
 
 msgctxt "covers.name"
 msgid "Tropical Rainforest"
-msgstr ""
-
-msgctxt "covers.name"
-msgid "Moss and Lichen"
 msgstr ""
 
 msgctxt "crafts.description"
@@ -5651,7 +5651,7 @@ msgid "Steppe, Plain"
 msgstr ""
 
 msgctxt "terrains.name"
-msgid "Swamp"
+msgid "Swamps"
 msgstr ""
 
 msgctxt "terrains.name"
@@ -5767,7 +5767,7 @@ msgid "this terrain"
 msgstr ""
 
 msgctxt "validator_entity_ref_terrain_family"
-msgid "this relief family"
+msgid "this terrain family"
 msgstr ""
 
 msgctxt "validator_entity_source_biome"
@@ -5843,7 +5843,7 @@ msgid "terrain"
 msgstr ""
 
 msgctxt "validator_entity_source_terrain_family"
-msgid "relief family"
+msgid "terrain family"
 msgstr ""
 
 msgctxt "validator_entity_title_biome"
@@ -5919,5 +5919,5 @@ msgid "Terrain"
 msgstr ""
 
 msgctxt "validator_entity_title_terrain_family"
-msgid "Relief family"
+msgid "Terrain family"
 msgstr ""

@@ -1,5 +1,6 @@
 {
-  // The terrains of the map: the RELIEF of a hex (what lies under the vegetation).
+  // The terrains of the map: the RELIEF of a hex (what lies under the vegetation), the water and
+  // the wetlands.
   //
   // Every passable land relief has a "family" — plain, hill or mountain — and the climate turns it
   // into one of its VARIANTS: the same plain is a tundra plain at the poles, a boreal plain in the
@@ -23,6 +24,11 @@
   // varieties of one relief apart yet — the climate is read from the name of the terrain in the
   // tooltip, not from its colour. "color" is the flat colour of the hex, used where no icon is
   // available.
+  //
+  // The WETLAND family "swamp" is built the same way: the Voronoi spreads the family and the
+  // climate turns every hex of it into the bog of its belt. The varieties of the swamp are fewer
+  // than the zones — only the belts whose wetlands really differ from their neighbours get a record
+  // of their own — and all of them are named "Swamps", the way every mountain is "Mountains".
   "terrains": [
     // --- THE POLAR BELT: the tundra -------------------------------------------------------
     // The coldest belt, the closest to the poles: the same relief as everywhere else, only the
@@ -206,8 +212,75 @@
       "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
     },
 
+    // --- THE WETLANDS: the swamp of every belt --------------------------------------------
+    // A swamp is waterlogged ground, not a relief, so it is a family of its own: the Voronoi
+    // spreads it under the name "swamp" (data/map_config.json → terrain_config) and the climate
+    // turns every hex of it into the variety of its belt. A zone names its swamp in
+    // data/climate.json → terrain.swamp.
+    //
+    // There is no record per zone: a wetland differs from its neighbour only where the climate
+    // does — the frozen bog of the tundra, the stunted taiga bog, the wooded carr of the mild
+    // belt and the reed bed of the warm one. The steppe and the prairie therefore share one
+    // swamp, and the two warm belts share another.
+    //
+    // The vegetation of a swamp comes from its OWN cover_chance, never from the pool of the
+    // climate zone: the ground is under water, and a jungle cannot grow on it just because the
+    // jungle grows around it. That is what keeps the reed beds (and the papyrus that grows in
+    // them) in the warm belts and the moss of the tundra out of the tropics.
+    //
+    // All the varieties are named "Swamps" — like the mountains, the name carries no zone.
+    {
+      "id": "tundra_swamp",
+      "name": "Swamps",
+      "family": "swamp",
+      "color": [ 98, 116, 108 ],
+      "move_cost": 2,
+      "expansion_cost": 4,
+      "work_cost_mult": 2.0,
+      "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
+      // The permafrost bog: nothing but moss and lichen. No tree and no reed survives here.
+      "cover_chance": { "none": 60, "tundra_moss": 40 }
+    },
+    {
+      "id": "boreal_swamp",
+      "name": "Swamps",
+      "family": "swamp",
+      "color": [ 88, 112, 96 ],
+      "move_cost": 2,
+      "expansion_cost": 4,
+      "work_cost_mult": 2.0,
+      "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
+      // The peat bog of the taiga: pines and birches stunted by the cold water, no reed bed.
+      "cover_chance": { "none": 45, "swamp_forest_sparse": 45, "swamp_forest": 10 }
+    },
+    {
+      "id": "temperate_swamp",
+      "name": "Swamps",
+      "family": "swamp",
+      "color": [ 90, 120, 80 ],
+      "move_cost": 2,
+      "expansion_cost": 4,
+      "work_cost_mult": 2.0,
+      "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
+      // The carr of the mild belt: alder and willow standing in the water.
+      "cover_chance": { "none": 45, "swamp_forest_sparse": 30, "swamp_forest": 25 }
+    },
+    {
+      "id": "tropical_swamp",
+      "name": "Swamps",
+      "family": "swamp",
+      "color": [ 72, 116, 70 ],
+      "move_cost": 2,
+      "expansion_cost": 4,
+      "work_cost_mult": 2.0,
+      "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
+      // The warm swamp is a reed bed: the papyrus field (data/resources/plants/technical_plants.json)
+      // grows on its reeds, and it is the only swamp where they do.
+      "cover_chance": { "none": 25, "swamp_forest_sparse": 10, "swamp_forest": 15, "reeds": 50 }
+    },
+
     // --- THE RELIEF OUTSIDE THE CLIMATE ---------------------------------------------------
-    // The water, the wetlands and the deserts keep their own records: they are not a variety of
+    // The water, the marsh and the deserts keep their own records: they are not a variety of
     // a plain and their vegetation comes from their own cover_chance.
     {
       "id": "lake",
@@ -224,16 +297,6 @@
       // field, no code change is required.
       "fresh_water_source": true,
       "cover_chance": { "none": 100 }
-    },
-    {
-      "id": "swamp",
-      "name": "Swamp",
-      "color": [ 90, 120, 80 ],
-      "move_cost": 2,
-      "expansion_cost": 4,
-      "work_cost_mult": 2.0,
-      "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
-      "cover_chance": { "none": 40, "swamp_forest_sparse": 15, "swamp_forest": 15, "reeds": 30 }
     },
     {
       "id": "marsh",

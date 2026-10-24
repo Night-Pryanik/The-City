@@ -715,9 +715,9 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     var canal_potential_tile = tile.resource == null and tile.get("crop_bred", null) == null \
             and tile.improvement == null and not tile.get("has_town", false) \
             and not tile.get("in_town_influence", false) \
-            and tile.terrain != "mountain" \
+            and not MapHelpers.is_mountain_terrain(tile.terrain) \
             and not MapHelpers.is_water_terrain(tile.terrain) \
-            and tile.terrain != "swamp" and tile.terrain != "marsh" \
+            and not MapHelpers.is_wetland_terrain(tile.terrain) \
             and MapHelpers.would_canal_have_water(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
     if canal_potential_tile:
         var canal_name = GameData.improvements.get("irrigation_canal", {}).get("name", tr("Irrigation Canal"))

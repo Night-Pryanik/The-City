@@ -110,20 +110,28 @@ func _assign_from(loader) -> void:
 
 # === TERRAIN FAMILIES AND CLIMATE ZONES ===
 #
-# A terrain of the map is a VARIETY of a relief family: the same plain is a tundra plain at the
-# poles, a boreal plain in the cold belt, a steppe or a prairie in the mild one, a savanna in the
+# A terrain of the map is a VARIETY of a family: the same plain is a tundra plain at the poles, a
+# boreal plain in the cold belt, a steppe or a prairie in the mild one, a savanna in the
 # subtropical one and a tropical plain near the equator (data/terrains/terrains.json → "family",
 # data/climate.json).
 # The family is what the rules mean by "a plain" where the climate does not matter: a resource
 # allowed on the terrain "plain" grows on all six varieties of it.
+#
+# The wetland family "swamp" works the same way — the swamp of a belt is a variety of it — with one
+# difference: its vegetation is the pool of the variety, not the one of the climate zone.
 
-# The relief families of the map. A family is not a terrain of its own: the climate turns every hex
-# of a family into the variety of its belt (a plain becomes a tundra plain, a boreal plain, a
-# steppe, a prairie, a savanna or a tropical plain).
+# The relief families of the map: the land the Voronoi spreads, which the climate turns into the
+# varieties of its belt (a plain becomes a tundra plain, a boreal plain, a steppe, a prairie, a
+# savanna or a tropical plain).
 const RELIEF_FAMILIES := ["plain", "hill", "mountain"]
 
-# The family of a terrain ("plain", "hill", "mountain"), or an empty string for the water, the
-# wetlands and the deserts, which are no variety of a relief.
+# The families that are not a relief: the wetland. The climate divides it into varieties too
+# (a tundra bog, a taiga bog, a carr, a reed bed), and every rule that names "swamp" reaches all
+# of them.
+const WETLAND_FAMILIES := ["swamp"]
+
+# The family of a terrain ("plain", "hill", "mountain", "swamp"), or an empty string for the water,
+# the marsh and the deserts, which are no variety of a family.
 func terrain_family(terrain_id: String) -> String:
     var family := str(terrains.get(terrain_id, {}).get("family", ""))
     if family != "":
@@ -131,7 +139,7 @@ func terrain_family(terrain_id: String) -> String:
     # A raw family name answers for itself: the generator always turns the relief into the varieties,
     # but a default of `tile.get("terrain", "plain")`, a hand-built map and a mod's helper may name
     # the family directly — and "a plain" is exactly what they mean.
-    return terrain_id if RELIEF_FAMILIES.has(terrain_id) else ""
+    return terrain_id if RELIEF_FAMILIES.has(terrain_id) or WETLAND_FAMILIES.has(terrain_id) else ""
 
 # Whether a terrain satisfies a reference of the data: the reference may name either a terrain id
 # or a family. Used by the rules that accept both (allowed_terrain, result_terrain, source_terrains).
@@ -153,7 +161,8 @@ func zone_terrain(zone_id: String, family: String) -> String:
     return str(zone.get("terrain", {}).get(family, ""))
 
 # The name of a hex as the player reads it: the terrain, which already carries its climate zone
-# ("Boreal, Plain", "Tropical, Hills" — data/terrains/terrains.json), and the cover on top of it —
+# ("Boreal, Plain", "Tropical, Hills" — data/terrains/terrains.json; the swamp and the mountains
+# are the same in every belt, so their name carries none), and the cover on top of it —
 # "Tropical, Hills, Tropical Forest". A hex without a cover keeps the bare name of the terrain.
 func terrain_display_name(terrain_id: String, cover_id: String = "none") -> String:
     var name := str(terrains.get(terrain_id, {}).get("name", terrain_id))

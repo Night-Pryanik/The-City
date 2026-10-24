@@ -192,7 +192,10 @@
       "category": "technical_plants",
       "group": "technical_plants",
       "subgroup": "technical_plants",
-      "allowed_terrain": [ "marsh" ],
+      // The papyrus is a plant of the warm wetlands: it grows in the reed bed of the warm swamp
+      // and in the marsh beside it, never in the bogs of the cold belts. The terrain is named by
+      // its family ("swamp" is every variety of it) and the climate zones do the rest.
+      "allowed_terrain": [ "marsh", "swamp" ],
       "allowed_cover": [
         "none", "reeds"
       ],

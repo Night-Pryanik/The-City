@@ -286,7 +286,7 @@ static func can_build_lumberjack_hut(tile: Dictionary) -> bool:
     if tile.get("in_town_influence", false):
         return false
     var terrain_id: String = tile.get("terrain", "")
-    if terrain_id == "mountain" or terrain_id == "swamp" or terrain_id == "marsh":
+    if is_mountain_terrain(terrain_id) or is_wetland_terrain(terrain_id):
         return false
     if is_water_terrain(terrain_id):
         return false
@@ -394,9 +394,9 @@ static func can_build_canal(row: int, col: int, tile_data: Array, map_rows: int,
     var terrain_id: String = tile.get("terrain", "plain")
     if is_water_terrain(terrain_id):
         return {"ok": false, "reason": TranslationServer.translate("Cannot build on water")}
-    if terrain_id == "mountain":
+    if is_mountain_terrain(terrain_id):
         return {"ok": false, "reason": TranslationServer.translate("Cannot build in the mountains")}
-    if terrain_id == "swamp" or terrain_id == "marsh":
+    if is_wetland_terrain(terrain_id):
         return {"ok": false, "reason": TranslationServer.translate("Cannot build on a marsh")}
     # The ban of the "impassable" custom terrains: move_cost >= 999 — that is
     # already a water by the move_cost logic (is_water_terrain catches the
@@ -896,13 +896,73 @@ static func get_tech_reveal_conflict(tile: Dictionary) -> Dictionary:
 
 
 ## Whether a terrain satisfies a reference of the data: the reference may name the exact terrain
-## or a relief family. A rule that allows "plain" allows the tundra plain, the boreal plain, the
-## steppe, the prairie, the savanna and the tropical plain alike — they are all varieties of the plain.
+## or a family. A rule that allows "plain" allows the tundra plain, the boreal plain, the steppe, the
+## prairie, the savanna and the tropical plain alike — they are all varieties of the plain — and a
+## rule that allows "swamp" allows every bog from the tundra to the equator.
 static func terrain_in_list(terrain_id: String, references) -> bool:
     if not (references is Array):
         return false
     for reference in references:
         if GameData.terrain_matches(terrain_id, str(reference)):
+            return true
+    return false
+
+## --- The spawn conditions of a resource (spawn_conditions) ---
+##
+## They live here rather than in HexUtils because one of them reads the terrain rules, and a
+## class_name helper without a node of its own is compiled before the autoloads exist in the
+## --script mode of the tests.
+
+## Whether the chances of the additional spawn conditions have come up.
+## Format: [ [ {type, chance}, ... ], ... ] — an array of groups combined with OR;
+## within each group the conditions are combined with AND. This is analogous to the
+## prerequisites of technologies. For each group its activation chance (chance, 0-100) is rolled
+## first: if the chance does not come up — the group is not considered met.
+static func spawn_conditions_met(data: Dictionary) -> bool:
+    var conditions: Array = data.get("spawn_conditions", [])
+    if conditions.is_empty():
+        return true
+    for group in conditions:
+        var group_met = true
+        for cond in group:
+            var chance = float(cond.get("chance", 100))
+            if (randf() * 100.0) > chance:
+                group_met = false
+                break
+        if group_met:
+            return true
+    return false
+
+## Whether a particular hex (row, col) suits the geometric conditions of spawn_conditions. The
+## logic is the same: an array of groups — OR, within them — AND.
+static func is_hex_conditions_met(tile_data: Array, row: int, col: int, data: Dictionary) -> bool:
+    var conditions: Array = data.get("spawn_conditions", [])
+    if conditions.is_empty():
+        return true
+    for group in conditions:
+        var group_met = true
+        for cond in group:
+            var cond_type = cond.get("type", "")
+            var ok = true
+            if cond_type == "near_river":
+                # The hex shares an edge with a river ⇔ it has river_edges.
+                ok = tile_data[row][col].get("river_edges", []).size() > 0
+            elif cond_type == "terrain":
+                # The universal condition by terrain: the hex must stand on the terrain_id of the
+                # condition. It is used, for example, by the soda_deposit resource
+                # (data/resources/minerals.json), which spawns only on the hexes of a soda lake
+                # (soda_lake). The id may name a family ("swamp" is every variety of the wetland),
+                # the same way allowed_terrain does.
+                var required_terrain: String = cond.get("terrain_id", "")
+                ok = required_terrain != "" and GameData.terrain_matches(
+                        str(tile_data[row][col].get("terrain", "")), required_terrain)
+            else:
+                # An unknown condition — we consider it met so as not to break the spawn.
+                ok = true
+            if not ok:
+                group_met = false
+                break
+        if group_met:
             return true
     return false
 
@@ -1211,7 +1271,7 @@ static func ensure_minimum_resource(
         var rdata: Dictionary = GameData.raw_resources[res_id]
         if not matches_filter.call(rdata):
             continue
-        if not HexUtils.spawn_conditions_met(rdata):
+        if not spawn_conditions_met(rdata):
             continue
         candidates.append(res_id)
     if candidates.is_empty():
@@ -1241,7 +1301,7 @@ static func ensure_minimum_resource(
             if not (terrain_in_list(terrain_id, allowed_terrain) and cover_id in allowed_cover):
                 continue
             # The geometric conditions of the spawn_conditions (for example, "by a river").
-            if not HexUtils.is_hex_conditions_met(tile_data, row, col, chosen_data):
+            if not is_hex_conditions_met(tile_data, row, col, chosen_data):
                 continue
             possible.append({"row": row, "col": col})
     if possible.is_empty():
@@ -1276,6 +1336,16 @@ const WATER_TERRAINS := ["lake", "sea", "shallow_sea"]
 ## Whether a type of the terrain is a water one (a lake or either sea depth).
 static func is_water_terrain(terrain_id: String) -> bool:
     return terrain_id in WATER_TERRAINS
+
+## Whether a type of the terrain is a wetland: a swamp of any climate belt (the family "swamp") or
+## a marsh. The ground is waterlogged, so a clearing, a channel and a river keep off it, whatever
+## the belt has made of the swamp.
+static func is_wetland_terrain(terrain_id: String) -> bool:
+    return GameData.terrain_family(terrain_id) == "swamp" or terrain_id == "marsh"
+
+## Whether a type of the terrain is a mountain of any climate belt (the family "mountain").
+static func is_mountain_terrain(terrain_id: String) -> bool:
+    return GameData.terrain_family(terrain_id) == "mountain"
 
 static func _water_body_type(terrain_id: String) -> String:
     return "sea" if terrain_id == "shallow_sea" else terrain_id
