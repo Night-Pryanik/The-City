@@ -122,6 +122,7 @@ SLOW = {
     "test_road_capacity",
     "test_delivery_logistics",
     "test_edge_scrolling",
+    "test_keyboard_scrolling",
     "test_tooltip_live_refresh",
     "test_town_roads",
     "test_improvement_road",

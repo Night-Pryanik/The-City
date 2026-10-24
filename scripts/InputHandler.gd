@@ -33,10 +33,12 @@ var drag_start_mouse: Vector2 = Vector2.ZERO
 
 var tooltip_delay: float = 0.5
 var extended_tooltip_delay: float = 1.0
-# The speed of the scrolling of the map by the cursor standing at the edge of the screen
-# (pixels per second; the key interface/edge_scroll_speed in user://settings.cfg). The
-# range matches the slider of the settings menu — the clamp is here so that a hand-edited
-# config cannot make the map jump across the whole world in a single frame.
+# The speed of the movement of the map — both by the cursor standing at the edge of the
+# screen and by the arrow keys (pixels per second; the key interface/edge_scroll_speed in
+# user://settings.cfg). The two ways of moving the map are the same gesture for the player,
+# therefore they share one slider. The range matches the slider of the settings menu — the
+# clamp is here so that a hand-edited config cannot make the map jump across the whole
+# world in a single frame.
 var scroll_speed: float = 300.0
 const SCROLL_SPEED_MIN: float = 100.0
 const SCROLL_SPEED_MAX: float = 1000.0
@@ -196,6 +198,11 @@ func handle_process(delta: float):
         _hide_tooltip()
         return
 
+    # The arrow keys move the map independently of the cursor, therefore they are handled
+    # before the cursor checks below: the sticky treasury tooltip and the corner panel stop
+    # the MOUSE interaction with the map, not the keyboard.
+    _process_keyboard_scrolling(delta)
+
     var mouse_pos_ui: Vector2 = main_map.get_global_mouse_position()
 
     # When the cursor is on the "sticky" treasury breakdown tooltip: while it is there,
@@ -305,18 +312,49 @@ func _process_edge_scrolling(delta: float):
     if scroll == Vector2.ZERO:
         return
 
-    main_map.scroll_offset += scroll
-    # The maximum scroll distance of the map — the single source of truth
-    # (main_map.get_max_scroll). The same value also limits
-    # the reachability of the hexes: the scouting can be sent only where
-    # the player can scroll to (main_map.get_scout_reach_bounds).
+    _apply_scroll(scroll)
+
+# The movement of the map by the arrow keys. The keys are polled and not taken from
+# events: a held key then moves the map continuously instead of stepping at the rate of
+# the OS key repeat, and two keys at once give a diagonal.
+func _process_keyboard_scrolling(delta: float):
+    # A text field owns the arrow keys: they move the caret there, not the map.
+    var focus = get_viewport().gui_get_focus_owner()
+    if focus is LineEdit or focus is TextEdit:
+        return
+
+    var direction := Vector2.ZERO
+    if Input.is_key_pressed(KEY_LEFT):
+        direction.x += 1.0
+    if Input.is_key_pressed(KEY_RIGHT):
+        direction.x -= 1.0
+    if Input.is_key_pressed(KEY_UP):
+        direction.y += 1.0
+    if Input.is_key_pressed(KEY_DOWN):
+        direction.y -= 1.0
+
+    if direction == Vector2.ZERO:
+        return
+
+    # The diagonal is normalised: otherwise the map would move sqrt(2) times faster.
+    _apply_scroll(direction.normalized() * scroll_speed * delta)
+
+# The single place where the position of the map is written. The clamp is
+# main_map.get_max_scroll — the single source of truth for the reachable area: the same
+# value limits the reachability of the hexes (main_map.get_scout_reach_bounds), so no
+# way of moving the map may leave it.
+func _set_scroll_offset(offset: Vector2):
     var max_scroll = main_map.get_max_scroll()
-    main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll.x, max_scroll.x)
-    main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll.y, max_scroll.y)
+    main_map.scroll_offset = Vector2(
+        clamp(offset.x, -max_scroll.x, max_scroll.x),
+        clamp(offset.y, -max_scroll.y, max_scroll.y))
     map_renderer.queue_redraw()
     map_renderer.queue_redraw_for_scroll()
     if progress_bar_layer:
         progress_bar_layer.queue_redraw()
+
+func _apply_scroll(scroll: Vector2):
+    _set_scroll_offset(main_map.scroll_offset + scroll)
 
 func _handle_esc():
     if town_ui.visible:
@@ -410,18 +448,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
                 is_dragging = true
         if is_dragging:
             var delta = mouse_pos - drag_start_mouse
-            main_map.scroll_offset = drag_start_scroll_offset + delta
-            # The scroll clamp — the single source of truth (main_map.get_max_scroll).
-            # The same formula as for the edge scrolling of the screen above; otherwise on
-            # dragging the map would run into the Region bounds and it would be impossible to
-            # scroll to the fog of war for scouting.
-            var max_scroll = main_map.get_max_scroll()
-            main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll.x, max_scroll.x)
-            main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll.y, max_scroll.y)
-            map_renderer.queue_redraw()
-            map_renderer.queue_redraw_for_scroll()
-            if progress_bar_layer:
-                progress_bar_layer.queue_redraw()
+            _set_scroll_offset(drag_start_scroll_offset + delta)
             return
 
     var hex = _interactive_hex_at(event.global_position.x, event.global_position.y)
