@@ -121,8 +121,14 @@ var scroll_offset = Vector2.ZERO
 var zoom: float = 1.0
 var zoom_target: float = 1.0
 # The SCREEN point that stays in place while the zoom changes — the cursor that turned
-# the wheel. The scroll offset is corrected frame by frame around it.
+# the wheel. The scroll offset is corrected around it when the gesture ends.
 var _zoom_anchor: Vector2 = Vector2.ZERO
+# The world point under the anchor, fixed for the whole gesture.
+var _zoom_world: Vector2 = Vector2.ZERO
+# The zoom the recorded drawing was built for. A gesture draws the map ONCE and then only
+# moves the transform of the renderer, therefore the culling and the screen-sized caches
+# have to cover the widest zoom of the gesture — the target one when zooming out.
+var _draw_zoom: float = 1.0
 
 # The absolute boundaries of the visible window "Ring + Region" (inclusive).
 # The Region is the only zone where the chunks can be BOUGHT (claimed).
@@ -3064,65 +3070,112 @@ func center_on_hex(row: int, col: int) -> void:
 # place, `factor` multiplies the current TARGET (so a spin of the wheel accumulates
 # instead of restarting from the value the animation has reached so far).
 func zoom_by(factor: float, anchor: Vector2) -> void:
+    # The anchor is re-read from the CURRENT visual state, so a spin in the middle of an
+    # animation continues from where the map actually is on the screen.
     _zoom_anchor = anchor
+    _zoom_world = screen_to_local(anchor) - Vector2(offset_x, offset_y) - scroll_offset
     zoom_target = clampf(zoom_target * factor, ZOOM_MIN, ZOOM_MAX)
+    # Zooming out uncovers area the recorded commands do not contain: the map is drawn once
+    # for the widest zoom of the gesture. Zooming in needs nothing — the drawing already
+    # covers more than the screen will show.
+    var widest: float = minf(zoom, zoom_target)
+    if widest < _draw_zoom:
+        _draw_zoom = widest
+        _request_map_redraw()
 
 # Sets the zoom without an animation. Used when the value comes from the settings.
 func set_zoom(value: float) -> void:
     zoom = clampf(value, ZOOM_MIN, ZOOM_MAX)
     zoom_target = zoom
-    _apply_zoom_scale()
+    _draw_zoom = zoom
     if map_renderer:
-        map_renderer.queue_redraw_for_scroll()
-    if progress_bar_layer:
-        progress_bar_layer.queue_redraw()
+        map_renderer.position = Vector2.ZERO
+        map_renderer.scale = Vector2(zoom, zoom)
+    _request_map_redraw()
 
 # Snaps a running animation to its target. The drag and the jump of the camera must not
 # fight the animation: both write scroll_offset, and the loser would make the map twitch.
 func finish_zoom() -> void:
     if is_equal_approx(zoom, zoom_target):
         return
-    var previous := zoom
     zoom = zoom_target
-    _apply_zoom_step(previous)
+    _apply_zoom_view()
+    _settle_zoom()
     _save_zoom_level()
 
 # Advances the zoom animation. It lives in the input handler (handle_process), not in
 # _process of the map: the latter is the simulation and stands still while the active
 # pause is on, and the player must be able to zoom a paused map.
+#
+# A frame of the gesture does NOT redraw the map. The recorded draw commands are reused and
+# only the transform of the renderer changes, so the cost of the animation is the same on a
+# starting Region and on a fully revealed map.
 func process_zoom(delta: float) -> void:
     if is_equal_approx(zoom, zoom_target):
         return
-    var previous := zoom
     zoom = lerpf(zoom, zoom_target, 1.0 - exp(-ZOOM_SMOOTHING * delta))
     if absf(zoom - zoom_target) < ZOOM_SETTLE_EPS:
         zoom = zoom_target
-    _apply_zoom_step(previous)
+    _apply_zoom_view()
     if zoom == zoom_target:
+        _settle_zoom()
         _save_zoom_level()
 
-# Applies one step of the zoom: the scroll that keeps the anchor in place, the clamp and
-# the redraws.
+# Places the map on the screen for the current zoom without touching the drawing:
+# `screen = position + local * zoom`, and the position is chosen so that the world point of
+# the anchor lands exactly on the anchor.
 #
-# The screen is `local * zoom` (the renderer is scaled about its own origin), therefore
-# local = screen / zoom, and the world point under the anchor is
-# `anchor / zoom - offset - scroll`. Equating it before and after the step gives the
-# correction below — it is exactly what makes the zoom follow the cursor instead of the
-# centre of the screen.
-func _apply_zoom_step(previous: float) -> void:
-    scroll_offset += _zoom_anchor * (1.0 / zoom - 1.0 / previous)
+# The shift is limited by the same scroll clamp the drag obeys: without it a gesture at the
+# edge of the reachable area would carry the map beyond the boundary for the whole animation
+# and snap it back at the end. Here the ANCHOR slides instead, exactly as it did when the
+# clamp was applied to the scroll on every frame.
+func _apply_zoom_view() -> void:
+    if map_renderer == null:
+        return
+    map_renderer.scale = Vector2(zoom, zoom)
+    var shift: Vector2 = _zoom_anchor - (_zoom_world + Vector2(offset_x, offset_y)
+            + scroll_offset) * zoom
+    var max_scroll = get_max_scroll()
+    var settled: Vector2 = scroll_offset + shift / zoom
+    var clamped := Vector2(
+            clampf(settled.x, -max_scroll.x, max_scroll.x),
+            clampf(settled.y, -max_scroll.y, max_scroll.y))
+    map_renderer.position = shift + (clamped - settled) * zoom
+
+# Ends the gesture: the shift accumulated by the animation is folded into the scroll offset,
+# so the map returns to its usual state. The drawing bakes the offset in, therefore this is
+# the one redraw of the whole gesture.
+func _settle_zoom() -> void:
+    if map_renderer == null:
+        return
+    scroll_offset += map_renderer.position / zoom
     var max_scroll = get_max_scroll()
     scroll_offset = Vector2(
             clampf(scroll_offset.x, -max_scroll.x, max_scroll.x),
             clampf(scroll_offset.y, -max_scroll.y, max_scroll.y))
-    _apply_zoom_scale()
-    map_renderer.queue_redraw_for_scroll()
+    map_renderer.position = Vector2.ZERO
+    map_renderer.scale = Vector2(zoom, zoom)
+    _draw_zoom = zoom
+    _request_map_redraw()
+
+# The zoom the map was last DRAWN for. Every culling decision reads it instead of `zoom`:
+# during a zoom-out gesture the drawing is made for the target zoom, and the hexes of the
+# area that is about to be uncovered must be in it already.
+func get_draw_zoom() -> float:
+    return _draw_zoom
+
+# The map draws in its own LOCAL pixels; the renderer scales them by the zoom and shifts
+# them by its position (a gesture moves the transform instead of redrawing the map).
+func screen_to_local(pos: Vector2) -> Vector2:
+    if map_renderer == null:
+        return pos / zoom
+    return (pos - map_renderer.position) / zoom
+
+func _request_map_redraw() -> void:
+    if map_renderer:
+        map_renderer.queue_redraw_for_scroll()
     if progress_bar_layer:
         progress_bar_layer.queue_redraw()
-
-func _apply_zoom_scale() -> void:
-    if map_renderer:
-        map_renderer.scale = Vector2(zoom, zoom)
 
 # The zoom is a view preference, not a part of the game state: it lives in settings.cfg
 # next to the scroll speed. Written when a gesture settles, so a spin of the wheel does
@@ -3307,8 +3360,9 @@ func get_scout_reach_bounds() -> Dictionary:
     # of the scrolling: world = -offset - scroll .. -offset - scroll + viewport.
     # The viewport is taken in LOCAL pixels: a zoom below 1 shows more of the world than
     # the window itself, and the hexes of that extra strip must stay drawable and
-    # clickable, otherwise the zoomed-out map would end in a dead band.
-    var visible_size: Vector2 = viewport_size / zoom
+    # clickable, otherwise the zoomed-out map would end in a dead band. The zoom is the one
+    # the map is DRAWN for — a gesture draws it for the widest zoom of the gesture.
+    var visible_size: Vector2 = viewport_size / _draw_zoom
     var world_left = - (offset_x + max_scroll.x)
     var world_right = - offset_x + max_scroll.x + visible_size.x
     var world_top = - (offset_y + max_scroll.y)

@@ -170,8 +170,8 @@ func _get_visible_hex_range() -> Dictionary:
     # The rectangle of the viewport in the map coordinates (before the offset). The
     # viewport is converted into the LOCAL pixels of the map: a zoom below 1 puts more of
     # the world on the same screen, and without the division the outer strip would stay
-    # blank.
-    var visible_size: Vector2 = viewport_size / main_map.zoom
+    # blank. The zoom is the one the map is DRAWN for (see main_map.get_draw_zoom).
+    var visible_size: Vector2 = viewport_size / main_map.get_draw_zoom()
     var world_left = - offset_x
     var world_top = - offset_y
     var world_right = world_left + visible_size.x
@@ -206,9 +206,10 @@ func _get_visible_hex_range() -> Dictionary:
 # _collect_river_segments), therefore the rectangle must be in the same system.
 # `-offset_x / -offset_y` here would mean the WORLD coordinate system and
 # would clip everything - exactly so the rivers once disappeared from the map.
-# The zoom magnifies the local pixels, so the screen covers viewport / zoom of them.
+# The zoom magnifies the local pixels, so the screen covers viewport / zoom of them — the
+# zoom the map was drawn for, which during a zoom-out gesture is already the target one.
 func _get_screen_rect() -> Rect2:
-    return Rect2(Vector2.ZERO, _get_viewport_size() / main_map.zoom)
+    return Rect2(Vector2.ZERO, _get_viewport_size() / main_map.get_draw_zoom())
 
 # Checks whether the rectangle (in the local coordinates of the map) intersects the viewport.
 func _is_rect_visible(rect: Rect2) -> bool:
@@ -378,6 +379,21 @@ func _draw():
             )
 
 func _draw_hex(row: int, col: int):
+    var tile = tile_data[row][col]
+    var in_influence = tile.get("in_influence", false)
+    var is_explored = tile.get("is_explored", false)
+
+    # A real fog of war: an unexplored hex beyond the limits of the Region
+    # is not drawn at all - only the dark background of the canvas is visible. After the scouting
+    # (`is_explored = true`) the hex is drawn as the ordinary one again: the fog
+    # "opens up" and the scouting has a visual effect.
+    #
+    # The test comes BEFORE the geometry on purpose: a zoomed-out map spans far more hexes
+    # than it draws, and building the vertices of every skipped one costs more than the
+    # visible layer itself.
+    if not in_influence and not is_explored and not main_map.is_valid_hex(row, col):
+        return
+
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
     var offset_x = main_map.offset_x + main_map.scroll_offset.x
     var offset_y = main_map.offset_y + main_map.scroll_offset.y
@@ -388,17 +404,6 @@ func _draw_hex(row: int, col: int):
     var closed_vertices = PackedVector2Array()
     closed_vertices.append_array(vertices)
     closed_vertices.append(vertices[0])
-
-    var tile = tile_data[row][col]
-    var in_influence = tile.get("in_influence", false)
-    var is_explored = tile.get("is_explored", false)
-
-    # A real fog of war: an unexplored hex beyond the limits of the Region
-    # is not drawn at all - only the dark background of the canvas is visible. After the scouting
-    # (`is_explored = true`) the hex is drawn as the ordinary one again: the fog
-    # "opens up" and the scouting has a visual effect.
-    if not in_influence and not is_explored and not main_map.is_valid_hex(row, col):
-        return
 
     var terrain_color = Color.BLACK
     var terrain = tile.terrain
@@ -584,14 +589,18 @@ func _ensure_town_influence_cache(_visible_range: Dictionary) -> void:
     # The fill: we draw a hex only once, even if it is in the rings of several
     # towns (earlier - N times with a "double" darkening of the intersections).
             var key := "%d,%d" % [row, col]
+            var c: Vector2 = HexUtils.hex_center(row, col, radius)
             if not seen.has(key):
                 seen[key] = true
-                var c: Vector2 = HexUtils.hex_center(row, col, radius)
                 _influence_fill_centers.append({"cx": c.x, "cy": c.y,
                         "row": row, "col": col,
                     "cr": bc[0], "cg": bc[1], "cb": bc[2],
                     "ca": TOWN_INFLUENCE_FILL_ALPHA})
     # The border: the edges between the ring of a town and its surroundings.
+            # The six vertices are computed ONCE for the hex: HexUtils.hex_vertex() recomputes
+            # the centre and allocates the whole array on every call, and an edge needs eight
+            # of them (six for the distances + two for the answer).
+            var verts: PackedVector2Array = HexUtils.hex_vertices(c.x, c.y, radius)
             var dirs: Array = even_dirs if row % 2 == 0 else odd_dirs
             for d in dirs:
                 var nr := row + int(d[0])
@@ -607,13 +616,22 @@ func _ensure_town_influence_cache(_visible_range: Dictionary) -> void:
     # The common rim: the two vertices of the current hex which are the closest to the centre
     # of the neighbour. For the pointy-top hexes this is the common edge.
                 var nb_center: Vector2 = HexUtils.hex_center(nr, nc, radius)
-                var dists: Array = []
+                var near1 := 0
+                var near2 := 1
+                var dist1 := INF
+                var dist2 := INF
                 for vi in range(6):
-                    var v: Vector2 = HexUtils.hex_vertex(row, col, vi, radius)
-                    dists.append({"idx": vi, "d": v.distance_squared_to(nb_center)})
-                dists.sort_custom(func(a, b): return a.d < b.d)
-                var p1: Vector2 = HexUtils.hex_vertex(row, col, int(dists[0].idx), radius)
-                var p2: Vector2 = HexUtils.hex_vertex(row, col, int(dists[1].idx), radius)
+                    var dist: float = verts[vi].distance_squared_to(nb_center)
+                    if dist < dist1:
+                        dist2 = dist1
+                        near2 = near1
+                        dist1 = dist
+                        near1 = vi
+                    elif dist < dist2:
+                        dist2 = dist
+                        near2 = vi
+                var p1: Vector2 = verts[near1]
+                var p2: Vector2 = verts[near2]
                 _influence_border_segments.append({"p1x": p1.x, "p1y": p1.y,
                         "p2x": p2.x, "p2y": p2.y,
                         "cr": bc[0], "cg": bc[1], "cb": bc[2], "ca": bc[3],
@@ -856,10 +874,6 @@ func _is_resource_revealed(tile: Dictionary) -> bool:
     return MapHelpers.is_resource_revealed(tile)
 
 func _draw_hex_overlays(row: int, col: int):
-    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
-    center.x += main_map.offset_x + main_map.scroll_offset.x
-    center.y += main_map.offset_y + main_map.scroll_offset.y
-
     var tile = tile_data[row][col]
     var in_influence = tile.get("in_influence", false)
     var is_explored = tile.get("is_explored", false)
@@ -871,8 +885,13 @@ func _draw_hex_overlays(row: int, col: int):
     # overlays (the resources, the icons of the improvements, the towns, the conflicts of tech_reveal).
     # `_draw_hex` has already refused to draw it; here we also return, so as not to
     # accidentally "give away" the contents.
+    # The test comes before the geometry: see _draw_hex.
     if not in_influence and not is_explored and not main_map.is_valid_hex(row, col):
         return
+
+    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
+    center.x += main_map.offset_x + main_map.scroll_offset.x
+    center.y += main_map.offset_y + main_map.scroll_offset.y
 
     # The resources of the Region outside the Influence Ring are hidden until the area is scouted.
     # (The progress bars below are drawn regardless of the visibility of the resource.)
@@ -1757,7 +1776,7 @@ func _build_river_frame_cache(radius: float) -> void:
         var cached_offset: Vector2 = _river_frame_cache_offset
         var drift = absf(offset_x - cached_offset.x)
         drift = maxf(drift, absf(offset_y - cached_offset.y))
-        var zoom_exposes_more: bool = main_map.zoom < _river_frame_cache_zoom
+        var zoom_exposes_more: bool = main_map.get_draw_zoom() < _river_frame_cache_zoom
         if drift <= main_map.MAP_CACHE_MARGIN and not zoom_exposes_more:
             # A new river (or a changed path) invalidates the cache: the list of the rivers is
             # the cache key, and on a loaded save it differs from the generated one.
@@ -1780,7 +1799,7 @@ func _build_river_frame_cache(radius: float) -> void:
 
     _river_frame_cache.clear()
     _river_frame_cache_offset = Vector2(offset_x, offset_y)
-    _river_frame_cache_zoom = main_map.zoom
+    _river_frame_cache_zoom = main_map.get_draw_zoom()
     _river_frame_rebuilds += 1
 
     # The world -> screen offset of the cached geometry is the current one; the margin around the

@@ -555,10 +555,11 @@ func _pixel_to_hex(mx: float, my: float):
     var y_spacing = radius * 1.5
 
     # The map draws in its own LOCAL pixels and the zoom magnifies them, therefore the
-    # cursor is converted into the local space first (screen = local * zoom) and the
-    # whole hit test below runs in local coordinates.
-    var local_x = mx / main_map.zoom
-    var local_y = my / main_map.zoom
+    # cursor is converted into the local space first and the whole hit test below runs in
+    # local coordinates.
+    var local: Vector2 = main_map.screen_to_local(Vector2(mx, my))
+    var local_x = local.x
+    var local_y = local.y
 
     var world_x = local_x - (main_map.offset_x + main_map.scroll_offset.x)
     var world_y = local_y - (main_map.offset_y + main_map.scroll_offset.y)
