@@ -39,7 +39,7 @@
       "temperature": "polar",
       "humidity": "dry",
       "terrain": { "plain": "tundra_plain", "hill": "tundra_hill", "mountain": "tundra_mountain",
-                   "swamp": "tundra_swamp" },
+                   "swamp": "tundra_swamp", "marsh": "cold_marsh" },
       "cover_chance": { "none": 75, "tundra_moss": 25 }
     },
     {
@@ -47,7 +47,7 @@
       "temperature": "polar",
       "humidity": "wet",
       "terrain": { "plain": "tundra_plain", "hill": "tundra_hill", "mountain": "tundra_mountain",
-                   "swamp": "tundra_swamp" },
+                   "swamp": "tundra_swamp", "marsh": "cold_marsh" },
       "cover_chance": { "none": 40, "tundra_moss": 60 }
     },
 
@@ -57,7 +57,7 @@
       "temperature": "cold",
       "humidity": "dry",
       "terrain": { "plain": "boreal_plain", "hill": "boreal_hill", "mountain": "boreal_mountain",
-                   "swamp": "boreal_swamp" },
+                   "swamp": "boreal_swamp", "marsh": "cold_marsh" },
       "cover_chance": { "none": 90, "taiga_sparse": 10 }
     },
     {
@@ -65,7 +65,7 @@
       "temperature": "cold",
       "humidity": "wet",
       "terrain": { "plain": "boreal_plain", "hill": "boreal_hill", "mountain": "boreal_mountain",
-                   "swamp": "boreal_swamp" },
+                   "swamp": "boreal_swamp", "marsh": "cold_marsh" },
       "cover_chance": { "none": 30, "taiga": 45, "taiga_sparse": 25 }
     },
 
@@ -75,7 +75,7 @@
       "temperature": "mild",
       "humidity": "dry",
       "terrain": { "plain": "steppe_plain", "hill": "steppe_hill", "mountain": "steppe_mountain",
-                   "swamp": "temperate_swamp" },
+                   "swamp": "temperate_swamp", "marsh": "warm_marsh" },
       "cover_chance": { "none": 88, "temperate_dry_forest": 4, "temperate_dry_forest_sparse": 8 }
     },
     {
@@ -83,7 +83,7 @@
       "temperature": "mild",
       "humidity": "wet",
       "terrain": { "plain": "prairie_plain", "hill": "prairie_hill", "mountain": "prairie_mountain",
-                   "swamp": "temperate_swamp" },
+                   "swamp": "temperate_swamp", "marsh": "warm_marsh" },
       "cover_chance": { "none": 40, "temperate_rainforest_sparse": 25, "temperate_rainforest": 35 }
     },
 
@@ -93,7 +93,7 @@
       "temperature": "subtropical",
       "humidity": "dry",
       "terrain": { "plain": "savanna_plain", "hill": "savanna_hill", "mountain": "savanna_mountain",
-                   "swamp": "tropical_swamp" },
+                   "swamp": "tropical_swamp", "marsh": "warm_marsh" },
       "cover_chance": { "none": 90, "temperate_dry_forest_sparse": 10 },
       "deserts": true
     },
@@ -102,7 +102,7 @@
       "temperature": "subtropical",
       "humidity": "wet",
       "terrain": { "plain": "savanna_plain", "hill": "savanna_hill", "mountain": "savanna_mountain",
-                   "swamp": "tropical_swamp" },
+                   "swamp": "tropical_swamp", "marsh": "warm_marsh" },
       "cover_chance": { "none": 55, "temperate_rainforest_sparse": 35, "temperate_rainforest": 10 }
     },
 
@@ -112,7 +112,7 @@
       "temperature": "tropical",
       "humidity": "dry",
       "terrain": { "plain": "tropical_plain", "hill": "tropical_hill", "mountain": "tropical_mountain",
-                   "swamp": "tropical_swamp" },
+                   "swamp": "tropical_swamp", "marsh": "warm_marsh" },
       "cover_chance": { "none": 82, "tropical_dry_forest": 6, "tropical_dry_forest_sparse": 12 },
       "deserts": true
     },
@@ -121,7 +121,7 @@
       "temperature": "tropical",
       "humidity": "wet",
       "terrain": { "plain": "tropical_plain", "hill": "tropical_hill", "mountain": "tropical_mountain",
-                   "swamp": "tropical_swamp" },
+                   "swamp": "tropical_swamp", "marsh": "warm_marsh" },
       "cover_chance": { "none": 22, "tropical_rainforest": 50, "tropical_rainforest_sparse": 28 }
     }
   ]

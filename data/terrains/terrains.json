@@ -298,14 +298,35 @@
       "fresh_water_source": true,
       "cover_chance": { "none": 100 }
     },
+    // --- THE COASTAL WETLANDS: the marsh of every belt ------------------------------------
+    // A marsh is a waterlogged coastal strip, placed after the Voronoi by the post-processing
+    // (_apply_marshes and SeaManager). Like the swamp, it is a family: the post-processing sets
+    // the family name "marsh" and the climate turns it into the variety of its belt.
+    //
+    // The cold marsh is a frozen bare mudflat; the warm marsh is a reedy shore. Both are named
+    // "Marsh" — the climate is read from what grows in it, not from the name.
     {
-      "id": "marsh",
+      "id": "cold_marsh",
       "name": "Marsh",
+      "family": "marsh",
       "color": [ 80, 100, 70 ],
       "move_cost": 2,
       "expansion_cost": 3,
       "work_cost_mult": 1.5,
       "icons": [ "marsh_1.png", "marsh_2.png", "marsh_3.png" ],
+      // The frozen marsh: no reed survives here.
+      "cover_chance": { "none": 100 }
+    },
+    {
+      "id": "warm_marsh",
+      "name": "Marsh",
+      "family": "marsh",
+      "color": [ 80, 100, 70 ],
+      "move_cost": 2,
+      "expansion_cost": 3,
+      "work_cost_mult": 1.5,
+      "icons": [ "marsh_1.png", "marsh_2.png", "marsh_3.png" ],
+      // The warm marsh is a reedy shore.
       "cover_chance": { "none": 50, "reeds": 50 }
     },
     {

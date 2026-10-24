@@ -125,10 +125,10 @@ func _assign_from(loader) -> void:
 # savanna or a tropical plain).
 const RELIEF_FAMILIES := ["plain", "hill", "mountain"]
 
-# The families that are not a relief: the wetland. The climate divides it into varieties too
-# (a tundra bog, a taiga bog, a carr, a reed bed), and every rule that names "swamp" reaches all
-# of them.
-const WETLAND_FAMILIES := ["swamp"]
+# The families that are not a relief: the wetlands. The climate divides them into varieties too
+# (a tundra bog, a taiga bog, a carr, a reed bed for the swamp; a frozen mudflat and a reedy
+# shore for the marsh), and every rule that names "swamp" or "marsh" reaches all of its varieties.
+const WETLAND_FAMILIES := ["swamp", "marsh"]
 
 # The family of a terrain ("plain", "hill", "mountain", "swamp"), or an empty string for the water,
 # the marsh and the deserts, which are no variety of a family.

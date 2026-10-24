@@ -428,8 +428,8 @@ const TERRAIN_FIELDS := {
     "color": LEAF,
     # The terrain family of a terrain: the climate turns every hex of a family into the variety of
     # its belt (a plain becomes a tundra plain, a boreal plain, a steppe, a prairie, a savanna or a
-    # tropical plain; a swamp becomes the bog of its belt). The water, the marsh and the deserts
-    # have no family.
+    # tropical plain; a swamp becomes the bog of its belt; a marsh becomes the mudflat of its
+    # belt). The water and the deserts have no family.
     "family": LEAF,
     "icons": LEAF,
     "move_cost": LEAF,

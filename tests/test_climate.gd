@@ -54,6 +54,8 @@ func _run() -> void:
         _test_family_rules(state)
     if WATCHDOG.wants_case("swamp_reeds_warm"):
         _test_swamp_reeds_warm(state)
+    if WATCHDOG.wants_case("marsh_reeds_warm"):
+        _test_marsh_reeds_warm(state)
 
     WATCHDOG.report_skipped()
     if state["failed"]:
@@ -119,7 +121,7 @@ func _test_no_raw_families(state: Dictionary) -> void:
     for r in range(ROWS):
         for c in range(COLS):
             var terrain_id := _terrain_id(r, c)
-            check(not ["plain", "hill", "mountain", "swamp"].has(terrain_id),
+            check(not ["plain", "hill", "mountain", "swamp", "marsh"].has(terrain_id),
                     "the raw family %s is left at (%d,%d)" % [terrain_id, r, c], state)
 
 func _test_terrain_matches_zone(state: Dictionary) -> void:
@@ -305,6 +307,9 @@ func _test_terrain_names(state: Dictionary) -> void:
         elif family == "swamp":
             check(terrain_name == "Swamps",
                     "the swamp %s is named %s, not Swamps" % [terrain_id, terrain_name], state)
+        elif family == "marsh":
+            check(terrain_name == "Marsh",
+                    "the marsh %s is named %s, not Marsh" % [terrain_id, terrain_name], state)
         else:
             check(terrain_name.contains(", "),
                     "the name of %s (%s) carries no climate zone" % [terrain_id, terrain_name], state)
@@ -319,7 +324,7 @@ func _test_family_rules(state: Dictionary) -> void:
         if family != "":
             check(_gdata.terrain_matches(terrain_id, family),
                     "%s does not match its family %s" % [terrain_id, family], state)
-            for other in ["plain", "hill", "mountain", "swamp"]:
+            for other in ["plain", "hill", "mountain", "swamp", "marsh"]:
                 if other == family:
                     continue
                 check(not _gdata.terrain_matches(terrain_id, other),
@@ -343,6 +348,24 @@ func _test_swamp_reeds_warm(state: Dictionary) -> void:
                     "a reed bed grows in the cold swamp at (%d,%d), zone %s" %
                     [r, c, _zone_id(r, c)], state)
     check(checked > 0, "the map under test has no cold swamp to check", state)
+
+# The reed bed is the vegetation of the warm marsh too: no reed may appear in the frozen mudflat
+# of the polar or the cold belt. The cover of a marsh comes from its own pool, just like the swamp.
+func _test_marsh_reeds_warm(state: Dictionary) -> void:
+    _generate()
+    var cold_belts := [TEMPERATURES.find("polar"), TEMPERATURES.find("cold")]
+    var checked := 0
+    for r in range(ROWS):
+        for c in range(COLS):
+            if _family(r, c) != "marsh":
+                continue
+            if _temperature_index(r, c) not in cold_belts:
+                continue
+            checked += 1
+            check(str(_tiles[r][c].get("cover", "none")) != "reeds",
+                    "a reed bed grows in the cold marsh at (%d,%d), zone %s" %
+                    [r, c, _zone_id(r, c)], state)
+    check(checked > 0, "the map under test has no cold marsh to check", state)
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if not condition:

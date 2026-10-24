@@ -31,7 +31,7 @@ const CENTER_EXCLUSION_RADIUS := 6
 # Returns the list of the terrain types that take part in the Voronoi algorithm
 # (the base relief). They do NOT include:
 #   - the unique types (unique: true) — they are placed by place_unique_terrains;
-#   - the types that are not listed in terrain_config (the marshes) — they are created
+#   - the types that are not listed in terrain_config (the marsh family) — they are created
 #     only by the post-processing (_apply_marshes).
 # The participation in the Voronoi is now set explicitly through the config: adding a new
 # type to terrains.json no longer makes it automatically spread
@@ -68,7 +68,7 @@ static func _get_unique_terrain_ids() -> Array:
 # be more than area / target_cluster). The excess of total is redistributed
 # to the types without a target_cluster bound in proportion to their density.
 # ONLY the types explicitly listed in terrain_config take part (see
-# _get_base_terrain_ids): the others (the marshes) are created by the post-processing.
+# _get_base_terrain_ids): the others (the marsh family) are created by the post-processing.
 func make_terrain_counts(rows: int, cols: int) -> Dictionary:
     var cfg: Dictionary = GameData.map_config
     var area := rows * cols
@@ -801,10 +801,10 @@ const HUMIDITY_WET := "wet"
 const HUMIDITY_DRY := "dry"
 
 # The families the climate turns into the varieties of its zone: the relief (a plain becomes a
-# tundra plain, a boreal plain, a steppe, a prairie, a savanna, a tropical plain) and the wetland
-# (a swamp becomes the bog of its belt). The water, the marsh and the deserts have no family and
-# the climate leaves them alone.
-const CLIMATE_FAMILIES := ["plain", "hill", "mountain", "swamp"]
+# tundra plain, a boreal plain, a steppe, a prairie, a savanna, a tropical plain) and the wetlands
+# (a swamp becomes the bog of its belt, a marsh becomes the mudflat of its belt). The water and
+# the deserts have no family and the climate leaves them alone.
+const CLIMATE_FAMILIES := ["plain", "hill", "mountain", "swamp", "marsh"]
 
 # The largest growth of the temperature row from one row to the next. It has to stay below the
 # height of the narrowest belt, otherwise one step could jump over it and put a cold hex next to
@@ -910,8 +910,9 @@ func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
 
 # Turns the families the Voronoi placed into the varieties of their climate zone: every plain
 # becomes the plain of its belt (a tundra plain, a boreal plain, a steppe, a prairie, a savanna, a
-# tropical plain), the same for the hills and the mountains, and the swamp becomes the bog of its
-# belt. The water, the marsh and the deserts have no family and stay as they are.
+# tropical plain), the same for the hills and the mountains, the swamp becomes the bog of its
+# belt and the marsh becomes the mudflat of its belt. The water and the deserts have no family
+# and stay as they are.
 func _convert_families(tile_data: Array, rows: int, cols: int) -> void:
     for r in range(rows):
         for c in range(cols):

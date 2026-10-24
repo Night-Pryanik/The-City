@@ -1341,7 +1341,7 @@ static func is_water_terrain(terrain_id: String) -> bool:
 ## a marsh. The ground is waterlogged, so a clearing, a channel and a river keep off it, whatever
 ## the belt has made of the swamp.
 static func is_wetland_terrain(terrain_id: String) -> bool:
-    return GameData.terrain_family(terrain_id) == "swamp" or terrain_id == "marsh"
+    return GameData.WETLAND_FAMILIES.has(GameData.terrain_family(terrain_id))
 
 ## Whether a type of the terrain is a mountain of any climate belt (the family "mountain").
 static func is_mountain_terrain(terrain_id: String) -> bool:
