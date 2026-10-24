@@ -11,6 +11,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "flax": 10, "feed": 40 },
@@ -46,6 +47,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "hemp": 10, "feed": 40 },
@@ -158,6 +160,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry", "savanna_wet" ],
       "improved_by": "plantation",
       "tech_required": "sericulture",
       // The plantation is the harvest point of the hex: the mulberry gives its
@@ -254,6 +257,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "plantation",
       "produces": { "marena_roots": 10 },
       "icon": "marena.png",
@@ -271,6 +275,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "plantation",
       "produces": { "woad_leaves": 10 },
       "icon": "woad.png",
@@ -309,6 +314,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry", "savanna_wet" ],
       "improved_by": "plantation",
       "produces": { "safflower_leaves": 10 },
       "icon": "safflower.png",
@@ -364,6 +370,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "velvetleaf": 10, "feed": 40 },

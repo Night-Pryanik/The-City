@@ -10,6 +10,9 @@
       "subgroup": "stimulating_drinks",
       "allowed_terrain": [ "mountain" ],
       "allowed_cover": [ "none" ],
+      // The tea bush is a plant of the warm highlands: it grows on the mountains of
+      // the savanna and the tropics, never on the bare mountains of the cold belts.
+      "allowed_climate_zones": [ "savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "tea_leaves": 10 },

@@ -42,6 +42,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "wheat": 10, "feed": 120 },
@@ -60,6 +61,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "farm",
       "produces": { "oats": 10, "feed": 120 },
       "icon": "oats.png",
@@ -77,6 +79,8 @@
       "allowed_cover": [
         "none", "oasis"
       ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie",
+                                 "savanna_dry", "tropical_dry" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "barley": 10, "feed": 120 },
@@ -95,6 +99,8 @@
       "allowed_cover": [
         "none", "oasis"
       ],
+      "allowed_climate_zones": [ "steppe", "savanna_dry", "savanna_wet",
+                                 "tropical_dry", "tropical_wet" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "millet": 10, "feed": 120 },
@@ -113,6 +119,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "farm",
       "produces": { "rye": 10, "feed": 120 },
       "icon": "rye.png",
@@ -130,6 +137,8 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "prairie", "savanna_dry", "savanna_wet",
+                                 "tropical_dry", "tropical_wet" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "rice": 10, "feed": 120 },
@@ -149,6 +158,8 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "prairie", "savanna_dry", "savanna_wet",
+                                 "tropical_dry", "tropical_wet" ],
       "improved_by": "farm",
       "produces": { "soybean": 10, "feed": 60 },
       "icon": "soybean.png",
@@ -202,6 +213,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "farm",
       "produces": { "potato": 10, "feed": 40 },
       "icon": "potato.png",
@@ -237,6 +249,8 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "prairie", "savanna_dry", "savanna_wet",
+                                 "tropical_dry", "tropical_wet" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "corn": 10, "feed": 120 },
@@ -384,6 +398,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "farm",
       "produces": { "buckwheat": 10, "feed": 120 },
       "icon": "buckwheat.png",
@@ -439,6 +454,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "farm",
       "produces": { "peas": 10, "feed": 60 },
       "icon": "peas.png",
@@ -456,6 +472,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "lentils": 10, "feed": 60 },
@@ -474,6 +491,7 @@
       "allowed_cover": [
         "none"
       ],
+      "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
       "produces": { "chickpeas": 10, "feed": 60 },
