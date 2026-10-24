@@ -1971,6 +1971,9 @@ msgstr "Температура — одно из значений: cold, mild, h
 msgid "The temperature is one of: cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature."
 msgstr "Температура — одна из: cold, mild, subtropical, tropical; влажность — одна из: wet, dry. Генератор сравнивает значения буквально, поэтому зона с любым другим написанием никогда не появится на карте: её пара осей останется пустой, и климат возьмёт другую зону той же температуры."
 
+msgid "The temperature is one of: polar, cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature."
+msgstr "Температура — одна из: polar, cold, mild, subtropical, tropical; влажность — одна из: wet, dry. Генератор сравнивает значения буквально, поэтому зона с любым другим написанием никогда не появится на карте: её пара осей останется пустой, и климат возьмёт другую зону той же температуры."
+
 msgid "The time the goods spend on the road from the town to the city"
 msgstr "Время, которое товар проводит на дороге от городка до города"
 
@@ -2762,6 +2765,10 @@ msgstr "Тропический лес"
 msgctxt "covers.name"
 msgid "Tropical Rainforest"
 msgstr "Влажный тропический лес"
+
+msgctxt "covers.name"
+msgid "Moss and Lichen"
+msgstr "Мхи и лишайники"
 
 msgctxt "crafts.description"
 msgid "Blows bottles from molten glass."
@@ -5678,6 +5685,14 @@ msgstr "Тундровые холмы"
 msgctxt "terrains.name"
 msgid "Tundra Mountains"
 msgstr "Тундровые горы"
+
+msgctxt "terrains.name"
+msgid "Tundra, Hills"
+msgstr "Тундра, холмы"
+
+msgctxt "terrains.name"
+msgid "Tundra, Plain"
+msgstr "Тундра, равнина"
 
 msgctxt "validator_entity_ref_biome"
 msgid "this biome"

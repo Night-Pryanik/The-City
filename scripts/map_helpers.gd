@@ -896,8 +896,8 @@ static func get_tech_reveal_conflict(tile: Dictionary) -> Dictionary:
 
 
 ## Whether a terrain satisfies a reference of the data: the reference may name the exact terrain
-## or a relief family. A rule that allows "plain" allows the boreal plain, the steppe, the prairie, the
-## savanna and the tropical plain alike — they are all varieties of the plain.
+## or a relief family. A rule that allows "plain" allows the tundra plain, the boreal plain, the
+## steppe, the prairie, the savanna and the tropical plain alike — they are all varieties of the plain.
 static func terrain_in_list(terrain_id: String, references) -> bool:
     if not (references is Array):
         return false

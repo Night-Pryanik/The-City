@@ -10,7 +10,7 @@ const SEED := 20261023
 
 # The order of the temperature belts from the pole to the equator. The generator never inverts it,
 # therefore the difference between two neighbouring hexes can only be 0 or 1.
-const TEMPERATURES := ["cold", "mild", "subtropical", "tropical"]
+const TEMPERATURES := ["polar", "cold", "mild", "subtropical", "tropical"]
 
 var _gdata = null
 var _tiles: Array = []
@@ -36,8 +36,10 @@ func _run() -> void:
         _test_neighbouring_belts(state)
     if WATCHDOG.wants_case("min_size"):
         _test_min_size(state)
-    if WATCHDOG.wants_case("cold_edges"):
-        _test_cold_edges(state)
+    if WATCHDOG.wants_case("polar_edges"):
+        _test_polar_edges(state)
+    if WATCHDOG.wants_case("tundra_has_no_woods"):
+        _test_tundra_has_no_woods(state)
     if WATCHDOG.wants_case("deserts_hot_dry"):
         _test_deserts_hot_dry(state)
     if WATCHDOG.wants_case("covers_from_zone"):
@@ -93,7 +95,7 @@ func _has_zone(row: int, col: int) -> bool:
 # --- the checks --------------------------------------------------------------
 
 # Every variety of every relief family exists somewhere on the map: a zone that never appears would
-# silently remove one of the five plains, and the player would never see it.
+# silently remove one of the six plains, and the player would never see it.
 func _test_all_varieties(state: Dictionary) -> void:
     _generate()
     var seen := {}
@@ -178,22 +180,38 @@ func _test_min_size(state: Dictionary) -> void:
                     "the zone %s has a patch of %d hexes at (%d,%d)" % [zone_id, cells.size(), r, c],
                     state)
 
-# The map keeps a polar edge on both sides: the belts never reach the very top or the very bottom.
-func _test_cold_edges(state: Dictionary) -> void:
+# The map keeps a polar edge on both sides: the tundra reaches the very pole, and no belt warmer
+# than the taiga comes near the edge.
+func _test_polar_edges(state: Dictionary) -> void:
     _generate()
+    var polar := TEMPERATURES.find("polar")
     var cold := TEMPERATURES.find("cold")
-    for r in range(3):
+    for r in range(ROWS):
+        var edge := mini(r, ROWS - 1 - r)
         for c in range(COLS):
             if not _has_zone(r, c):
                 continue
-            check(_temperature_index(r, c) == cold,
-                    "the northern edge is not cold at (%d,%d): %s" % [r, c, _terrain_id(r, c)], state)
-    for r in range(ROWS - 3, ROWS):
+            var here := _temperature_index(r, c)
+            if edge == 0:
+                check(here == polar, "the pole is not tundra at (%d,%d): %s" % [r, c, _zone_id(r, c)], state)
+            elif edge < 3:
+                check(here <= cold,
+                        "the edge is too warm at (%d,%d): %s" % [r, c, _zone_id(r, c)], state)
+
+# The tundra lies beyond the taiga: the pool of the polar zone has no woods, so no forest grows on
+# the relief of the tundra. The swamps and the marshes keep their own pool and are not a part of it.
+func _test_tundra_has_no_woods(state: Dictionary) -> void:
+    _generate()
+    for r in range(ROWS):
         for c in range(COLS):
-            if not _has_zone(r, c):
+            if _family(r, c) == "":
                 continue
-            check(_temperature_index(r, c) == cold,
-                    "the southern edge is not cold at (%d,%d): %s" % [r, c, _terrain_id(r, c)], state)
+            if _temperature_index(r, c) != TEMPERATURES.find("polar"):
+                continue
+            var cover: Dictionary = _gdata.covers.get(_tiles[r][c].get("cover", "none"), {})
+            check(float(cover.get("wood_yield", 0)) <= 0.0,
+                    "a wooded cover %s grows in the tundra at (%d,%d)" % [cover.get("id", ""), r, c],
+                    state)
 
 func _test_deserts_hot_dry(state: Dictionary) -> void:
     _generate()

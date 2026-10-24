@@ -46,16 +46,16 @@
   // --- Climate ---
   // The climate is built from two independent fields:
   //   temperature — belts running from the poles to the equator. The belts are strictly
-  //     ordered (cold → mild → subtropical → tropical → subtropical → mild → cold), therefore two
-  //     hexes of the same latitude never belong to non-neighbouring belts: a tropical plain and a
-  //     boreal plain cannot meet sideways. The equator sits on a random row, so the centre of the map
-  //     (and the city on it) lands on a different latitude from game to game, and the belts are
-  //     built around it.
+  //     ordered (polar → cold → mild → subtropical → tropical → subtropical → mild → cold →
+  //     polar), therefore two hexes of the same latitude never belong to non-neighbouring belts:
+  //     a tropical plain and a tundra plain cannot meet sideways. The equator sits on a random row,
+  //     so the centre of the map (and the city on it) lands on a different latitude from game to
+  //     game, and the belts are built around it.
   //   moisture — large wet and dry regions that do not follow the latitudes: they lie anywhere,
   //     curve and surround each other. The moisture splits every belt in two.
   // A pair (temperature, moisture) selects a climate zone (data/climate.json), and the zone turns
-  // the relief of its region into the terrains of the belt (boreal, steppe, prairie, savanna,
-  // tropical plain) and rolls the vegetation on them.
+  // the relief of its region into the terrains of the belt (tundra, boreal, steppe, prairie,
+  // savanna, tropical plain) and rolls the vegetation on them.
   //
   // Rows are counted from the north edge of the map. All the "rows" values below are
   // fractions of the map height, so the climate does not depend on the map size.
@@ -67,6 +67,11 @@
                                 // one (the savanna)
     "mild_rows": 0.10,          // The height of the mild belt on each side of the subtropical one
                                 // (the steppe and the prairie); everything beyond it is cold
+    "polar_share": 0.3,         // The share of the cold region that is the polar (tundra) belt.
+                                // The tundra is its outer part, the one that reaches the map edge,
+                                // and the taiga keeps the inner part. A share rather than a height
+                                // in rows: the cold region is only a few rows thick on a side the
+                                // equator has been rolled close to, and both belts have to fit in it.
     // The belts are not straight: the temperature row of a hex is shifted by a smooth noise field,
     // so the boundaries meander and the belts take unequal areas. The shift is limited so that
     // the belts never overturn: the sequence stays ordered in every column.

@@ -13,6 +13,19 @@
   "covers": [
     { "id": "none", "name": "None", "color": [ 0, 0, 0 ], "alpha": 0.0, "move_cost_bonus": 0, "icons": [  ] },
 
+    // --- THE POLAR BELT ------------------------------------------------------------------
+    // The poles are too cold for a tree: the ground of the tundra is covered by moss and lichen,
+    // which yields no timber. The cover has no icon yet — it is drawn as a translucent coloured
+    // overlay, and the file names go here when the art appears.
+    {
+      "id": "tundra_moss",
+      "name": "Moss and Lichen",
+      "color": [ 186, 200, 196 ],
+      "alpha": 0.45,
+      "move_cost_bonus": 0,
+      "icons": [  ]
+    },
+
     // --- THE FORESTS OF THE MILD AND THE SUBTROPICAL BELTS -------------------------------
     {
       "id": "temperate_rainforest",

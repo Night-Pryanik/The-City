@@ -110,15 +110,16 @@ func _assign_from(loader) -> void:
 
 # === TERRAIN FAMILIES AND CLIMATE ZONES ===
 #
-# A terrain of the map is a VARIETY of a relief family: the same plain is a boreal plain in the
-# cold belt, a steppe or a prairie in the mild one, a savanna in the subtropical one and a tropical
-# plain near the equator (data/terrains/terrains.json → "family", data/climate.json).
+# A terrain of the map is a VARIETY of a relief family: the same plain is a tundra plain at the
+# poles, a boreal plain in the cold belt, a steppe or a prairie in the mild one, a savanna in the
+# subtropical one and a tropical plain near the equator (data/terrains/terrains.json → "family",
+# data/climate.json).
 # The family is what the rules mean by "a plain" where the climate does not matter: a resource
-# allowed on the terrain "plain" grows on all five varieties of it.
+# allowed on the terrain "plain" grows on all six varieties of it.
 
 # The relief families of the map. A family is not a terrain of its own: the climate turns every hex
-# of a family into the variety of its belt (a plain becomes a boreal plain, a steppe, a prairie, a
-# savanna or a tropical plain).
+# of a family into the variety of its belt (a plain becomes a tundra plain, a boreal plain, a
+# steppe, a prairie, a savanna or a tropical plain).
 const RELIEF_FAMILIES := ["plain", "hill", "mountain"]
 
 # The family of a terrain ("plain", "hill", "mountain"), or an empty string for the water, the

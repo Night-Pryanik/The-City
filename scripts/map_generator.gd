@@ -759,23 +759,30 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
 #
 # The climate decides what the relief of a hex is made of and what grows on it. There is no
 # separate "biome" layer: a plain is never a plain on the map, it is one of its VARIETIES — a
-# boreal plain, a steppe, a prairie, a savanna or a tropical plain (data/terrains/terrains.json) — and
-# the vegetation is a cover on top of it (data/covers.json).
+# tundra plain, a boreal plain, a steppe, a prairie, a savanna or a tropical plain
+# (data/terrains/terrains.json) — and the vegetation is a cover on top of it
+# (data/covers.json).
 #
 # Two independent fields decide the variety:
 #
 #   temperature — belts running from the poles to the equator. The equator sits on a random row
 #     (the "climate" block of data/map_config.json), so the city in the middle of the map lands
 #     on a different latitude from game to game and the belts are built around it. The belts are
-#     ordered cold → mild → subtropical → tropical → subtropical → mild → cold, and the order is
-#     never broken: the temperature row of a hex is shifted by a smooth noise field, but the shift
-#     is clamped so that the row never decreases down a column and never grows faster than
-#     MAX_TEMPERATURE_STEP rows per row. Therefore two hexes of the same latitude are never more
-#     than one belt apart — a tropical plain and a boreal plain cannot meet sideways.
+#     ordered polar → cold → mild → subtropical → tropical → subtropical → mild → cold → polar,
+#     and the order is never broken: the temperature row of a hex is shifted by a smooth noise
+#     field, but the shift is clamped so that the row never decreases down a column and never
+#     grows faster than MAX_TEMPERATURE_STEP rows per row. Therefore two hexes of the same
+#     latitude are never more than one belt apart — a tropical plain and a tundra plain cannot
+#     meet sideways.
 #
 #   moisture — a smooth noise field that does not follow the latitudes at all. Wet and dry regions
 #     lie anywhere, curve and surround each other, and they split every temperature belt in two
 #     (the steppe and the prairie, the dry and the wet savanna, …).
+#
+# The polar belt is measured not from the equator but from the map edge: it is the outer part of
+# the cold region of every column ("polar_share" of data/map_config.json), so the tundra reaches
+# the pole whatever latitude the equator was rolled on, and the taiga keeps the inner part of the
+# cold region. No wooded cover grows in the tundra, so the taiga never spreads into it.
 #
 # A pair (temperature, humidity) selects a climate zone (data/climate.json), and the zone says
 # which variety every relief family becomes and what grows on it. The zone id is stored in the
@@ -783,6 +790,7 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
 # generation (a drained swamp, a corridor). The player never sees the zone — only the terrain and
 # the cover.
 
+const TEMPERATURE_POLAR := "polar"
 const TEMPERATURE_COLD := "cold"
 const TEMPERATURE_MILD := "mild"
 const TEMPERATURE_SUBTROPICAL := "subtropical"
@@ -863,12 +871,24 @@ func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
     var moisture_threshold := float(cfg.get("moisture_threshold", 0.5))
     var moisture_salt := randi()
 
+    # The polar belt of every column: the outer share of its cold region. It is measured from the
+    # edge row of the column, so the meander of the boundary can never pull the tundra off the pole.
+    var polar_share := clampf(float(cfg.get("polar_share", 0.3)), 0.0, 1.0)
+    var polar_bounds: Array = []
+    for c in range(cols):
+        var top := float(temperature_rows[0][c])
+        var bottom := float(temperature_rows[rows - 1][c])
+        var cold_top := maxf(0.0, equator - belt - top)
+        var cold_bottom := maxf(0.0, bottom - equator - belt)
+        polar_bounds.append([top + cold_top * polar_share, bottom - cold_bottom * polar_share])
+
     var lookup := _zone_lookup()
     for r in range(rows):
         for c in range(cols):
             if _is_impassable_terrain_id(tile_data[r][c].get("terrain", "")):
                 continue
-            var distance: float = absf(float(temperature_rows[r][c]) - equator)
+            var temperature_row := float(temperature_rows[r][c])
+            var distance: float = absf(temperature_row - equator)
             var temperature := TEMPERATURE_TROPICAL
             if distance > tropical_half:
                 if distance <= tropical_half + subtropical:
@@ -877,14 +897,17 @@ func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
                     temperature = TEMPERATURE_MILD
                 else:
                     temperature = TEMPERATURE_COLD
+            var polar: Array = polar_bounds[c]
+            if temperature_row <= float(polar[0]) or temperature_row >= float(polar[1]):
+                temperature = TEMPERATURE_POLAR
             var moisture := _fbm(float(r) / moisture_scale, float(c) / moisture_scale, moisture_salt, 2, 0.35)
             var humidity := HUMIDITY_WET if moisture >= moisture_threshold else HUMIDITY_DRY
             tile_data[r][c]["climate"] = _pick_zone(lookup, temperature, humidity)
 
 # Turns the relief families the Voronoi placed into the varieties of their climate zone: every
-# plain becomes the plain of its belt (a boreal plain, a steppe, a prairie, a savanna, a tropical plain),
-# and the same for the hills and the mountains. The water, the wetlands and the deserts have no
-# family and stay as they are.
+# plain becomes the plain of its belt (a tundra plain, a boreal plain, a steppe, a prairie, a
+# savanna, a tropical plain), and the same for the hills and the mountains. The water, the wetlands
+# and the deserts have no family and stay as they are.
 func _convert_families(tile_data: Array, rows: int, cols: int) -> void:
     for r in range(rows):
         for c in range(cols):
@@ -1011,8 +1034,10 @@ func _limit_deserts(tile_data: Array, rows: int, cols: int) -> void:
                 tile["terrain"] = plain
 
 # Dissolves the zone patches smaller than min_size land hexes into the zone that dominates their
-# boundary, so that the map reads as large regions instead of a scatter of cells. An island with no
-# land neighbours keeps its zone: there is nothing to merge it with.
+# boundary, so that the map reads as large regions instead of a scatter of cells. The specks are
+# taken in CLUSTERS: two touching specks of different zones are merged into the zone around them
+# together, otherwise they would only exchange zones and stay specks. An island with no land
+# neighbours keeps a single zone of its own: there is nothing to merge it with.
 func _remove_small_zone_islands(tile_data: Array, rows: int, cols: int, min_size: int) -> void:
     if min_size <= 1:
         return
@@ -1024,7 +1049,7 @@ func _remove_small_zone_islands(tile_data: Array, rows: int, cols: int, min_size
         line.fill(false)
         visited.append(line)
 
-    var merges: Array = []
+    var small: Dictionary = {}
     for r in range(rows):
         for c in range(cols):
             if visited[r][c]:
@@ -1050,26 +1075,66 @@ func _remove_small_zone_islands(tile_data: Array, rows: int, cols: int, min_size
 
             if cells.size() >= min_size:
                 continue
-            var target := _dominant_neighbour_zone(tile_data, rows, cols, cells)
+            for cell in cells:
+                small[cell] = true
+
+    var merged: Dictionary = {}
+    for r in range(rows):
+        for c in range(cols):
+            var start := Vector2i(r, c)
+            if not small.has(start) or merged.has(start):
+                continue
+            var cluster: Array = []
+            var members: Dictionary = {}
+            var stack: Array = [start]
+            merged[start] = true
+            members[start] = true
+            while not stack.is_empty():
+                var cell: Vector2i = stack.pop_back()
+                cluster.append(cell)
+                for neighbour in HexUtils.get_neighbors_odd_r(cell.x, cell.y, rows, cols):
+                    var key := Vector2i(neighbour.row, neighbour.col)
+                    if not small.has(key) or merged.has(key):
+                        continue
+                    merged[key] = true
+                    members[key] = true
+                    stack.append(key)
+            var target := _dominant_neighbour_zone(tile_data, rows, cols, members, cluster)
+            if target == "":
+                # An island: nothing around it to merge into, so it keeps one zone instead of
+                # being split between the specks it is made of.
+                target = _dominant_zone_of_cells(tile_data, cluster)
             if target != "":
-                merges.append({"cells": cells, "zone": target})
+                for cell in cluster:
+                    tile_data[cell.x][cell.y]["climate"] = target
 
-    for merge in merges:
-        for cell in merge.cells:
-            tile_data[cell.x][cell.y]["climate"] = merge.zone
-
-# The zone that surrounds a patch: the most frequent one among the land neighbours of its hexes.
-# Ties are broken by the id, so that the result does not depend on the dictionary order.
-func _dominant_neighbour_zone(tile_data: Array, rows: int, cols: int, cells: Array) -> String:
+# The zone that surrounds a cluster of specks: the most frequent one among the land neighbours of
+# its hexes that are not a part of the cluster. Ties are broken by the id, so that the result does
+# not depend on the dictionary order.
+func _dominant_neighbour_zone(tile_data: Array, rows: int, cols: int, members: Dictionary,
+        cells: Array) -> String:
     var counts: Dictionary = {}
     for cell in cells:
         for neighbour in HexUtils.get_neighbors_odd_r(cell.x, cell.y, rows, cols):
+            if members.has(Vector2i(neighbour.row, neighbour.col)):
+                continue
             var zone_id := str(tile_data[neighbour.row][neighbour.col].get("climate", ""))
             if zone_id == "":
                 continue
-            if _contains_cell(cells, neighbour.row, neighbour.col):
-                continue
             counts[zone_id] = int(counts.get(zone_id, 0)) + 1
+    return _most_frequent(counts)
+
+# The most frequent zone of the hexes themselves — for an island, which has no zone around it.
+func _dominant_zone_of_cells(tile_data: Array, cells: Array) -> String:
+    var counts: Dictionary = {}
+    for cell in cells:
+        var zone_id := str(tile_data[cell.x][cell.y].get("climate", ""))
+        if zone_id == "":
+            continue
+        counts[zone_id] = int(counts.get(zone_id, 0)) + 1
+    return _most_frequent(counts)
+
+func _most_frequent(counts: Dictionary) -> String:
     var best := ""
     var best_count := 0
     for zone_id in counts.keys():
@@ -1078,12 +1143,6 @@ func _dominant_neighbour_zone(tile_data: Array, rows: int, cols: int, cells: Arr
             best = str(zone_id)
             best_count = count
     return best
-
-func _contains_cell(cells: Array, row: int, col: int) -> bool:
-    for cell in cells:
-        if cell.x == row and cell.y == col:
-            return true
-    return false
 
 # The wooded cover a zone fills the holes in its woods with: the heaviest cover of its pool that
 # yields timber. An empty string means the zone has no woods at all.
@@ -1144,11 +1203,11 @@ func _is_wooded_hex(tile: Dictionary) -> bool:
     var cover: Dictionary = GameData.covers.get(tile.get("cover", "none"), {})
     return float(cover.get("wood_yield", 0)) > 0.0
 
-# Rolls the cover of a hex. The varieties of a relief (a boreal plain, a steppe, a savanna …) share the
-# vegetation of their climate zone, so a whole region gets one coherent character (a prairie region
-# is mostly grass with groves, a tropical one is mostly forest with clearings). The water, the
-# wetlands and the deserts keep their own pool: the rock of a mountain does not turn into a forest
-# just because the mountain stands in the jungle.
+# Rolls the cover of a hex. The varieties of a relief (a tundra plain, a boreal plain, a steppe, a
+# savanna …) share the vegetation of their climate zone, so a whole region gets one coherent
+# character (a prairie region is mostly grass with groves, a tropical one is mostly forest with
+# clearings). The water, the wetlands and the deserts keep their own pool: the rock of a mountain
+# does not turn into a forest just because the mountain stands in the jungle.
 func _roll_cover(terrain_id: String, zone_id: String = "") -> String:
     var chances: Dictionary = {}
     if zone_id != "" and GameData.terrain_family(terrain_id) != "":
@@ -1174,7 +1233,7 @@ func _roll_cover(terrain_id: String, zone_id: String = "") -> String:
 # The key: "terrain|cover" -> Array of dictionaries {"row", "col"}.
 # A hex is indexed TWICE when its terrain belongs to a relief family: under its own id
 # ("boreal_plain|taiga") and under the family ("plain|taiga"). A rule of the data may therefore
-# name either the exact terrain or the family — allowed_terrain ["plain"] finds all five varieties
+# name either the exact terrain or the family — allowed_terrain ["plain"] finds all six varieties
 # of the plain, allowed_terrain ["boreal_plain"] only the boreal plain (see GameData.terrain_matches).
 # The hexes near the city (abs <= 1) are excluded, so as not to interfere with
 # the starting construction (as in the original _place_resources).
@@ -1205,7 +1264,7 @@ func _index_names(terrain_id: String) -> Array:
     return names
 
 # Whether the terrain of a hex satisfies the allowed_terrain list of a rule. The list may name the
-# exact terrain ("boreal_plain") or a relief family ("plain" — all five varieties of the plain).
+# exact terrain ("boreal_plain") or a relief family ("plain" — all six varieties of the plain).
 func _terrain_allowed(terrain_id: String, data: Dictionary) -> bool:
     for reference in data.get("allowed_terrain", []):
         if GameData.terrain_matches(terrain_id, str(reference)):
@@ -1384,7 +1443,8 @@ func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
         free_count[terrain_id] += converted
 
 # The key of terrain_counts a hex belongs to: the exact terrain (a lake, a swamp, a desert), or
-# the relief family of it — a boreal plain, a steppe, a savanna … all count as the plain they are.
+# the relief family of it — a tundra plain, a boreal plain, a steppe, a savanna … all count as the
+# plain they are.
 func _count_bucket(terrain_id: String, terrain_counts: Dictionary) -> String:
     if terrain_counts.has(terrain_id):
         return terrain_id

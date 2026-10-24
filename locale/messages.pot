@@ -1971,6 +1971,9 @@ msgstr ""
 msgid "The temperature is one of: cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature."
 msgstr ""
 
+msgid "The temperature is one of: polar, cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature."
+msgstr ""
+
 msgid "The time the goods spend on the road from the town to the city"
 msgstr ""
 
@@ -2761,6 +2764,10 @@ msgstr ""
 
 msgctxt "covers.name"
 msgid "Tropical Rainforest"
+msgstr ""
+
+msgctxt "covers.name"
+msgid "Moss and Lichen"
 msgstr ""
 
 msgctxt "crafts.description"
@@ -5677,6 +5684,14 @@ msgstr ""
 
 msgctxt "terrains.name"
 msgid "Tundra Mountains"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Tundra, Hills"
+msgstr ""
+
+msgctxt "terrains.name"
+msgid "Tundra, Plain"
 msgstr ""
 
 msgctxt "validator_entity_ref_biome"

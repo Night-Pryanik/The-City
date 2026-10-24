@@ -7,9 +7,9 @@
   // where and what grows on it.
   //
   // The axes (see map_config.json → "climate"):
-  //   temperature — the belts from the poles to the equator: cold, mild, subtropical, tropical.
-  //                 The belts are strictly ordered, so two hexes of the same latitude are never
-  //                 more than one belt apart;
+  //   temperature — the belts from the poles to the equator: polar, cold, mild, subtropical,
+  //                 tropical. The belts are strictly ordered, so two hexes of the same latitude
+  //                 are never more than one belt apart;
   //   humidity    — large wet and dry regions that do not follow the latitudes: they lie anywhere,
   //                 curve and surround each other.
   //
@@ -28,6 +28,24 @@
   // pair and falls back to another zone of the same temperature belt if it finds none
   // (data_validator reports the gap as zone_axes).
   "climate_zones": [
+    // --- THE POLAR BELT: the tundra --------------------------------------------------------
+    // The poles are too cold for a forest: no wooded cover grows here, so a taiga never reaches
+    // the tundra. The two halves differ only in how much of the bare ground the moss covers.
+    {
+      "id": "tundra_dry",
+      "temperature": "polar",
+      "humidity": "dry",
+      "terrain": { "plain": "tundra_plain", "hill": "tundra_hill", "mountain": "tundra_mountain" },
+      "cover_chance": { "none": 75, "tundra_moss": 25 }
+    },
+    {
+      "id": "tundra_wet",
+      "temperature": "polar",
+      "humidity": "wet",
+      "terrain": { "plain": "tundra_plain", "hill": "tundra_hill", "mountain": "tundra_mountain" },
+      "cover_chance": { "none": 40, "tundra_moss": 60 }
+    },
+
     // --- THE COLD BELT: the boreal zone ---------------------------------------------------
     {
       "id": "boreal_dry",

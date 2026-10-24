@@ -427,8 +427,8 @@ const TERRAIN_FIELDS := {
     "description": LEAF,
     "color": LEAF,
     # The relief family of a terrain: the climate turns every hex of a family into the variety of
-    # its belt (a plain becomes a boreal plain, a steppe, a prairie, a savanna or a tropical plain).
-    # The water, the wetlands and the deserts have no family.
+    # its belt (a plain becomes a tundra plain, a boreal plain, a steppe, a prairie, a savanna or a
+    # tropical plain). The water, the wetlands and the deserts have no family.
     "family": LEAF,
     "icons": LEAF,
     "move_cost": LEAF,
@@ -546,6 +546,7 @@ const CLIMATE_FIELDS := {
     "tropical_half_rows": LEAF,
     "subtropical_rows": LEAF,
     "mild_rows": LEAF,
+    "polar_share": LEAF,
     "warp_rows": LEAF,
     "warp_scale": LEAF,
     "moisture_scale": LEAF,
@@ -1575,7 +1576,7 @@ func _validate_roads(roads, technologies: Dictionary, problems: Array) -> void:
 # The two axes are enumerated, and the generator compares them with its own constants: any other
 # spelling would silently remove the zone from the map (the pair stays empty and the generator
 # falls back to another zone of the same temperature).
-const ZONE_TEMPERATURES := ["cold", "mild", "subtropical", "tropical"]
+const ZONE_TEMPERATURES := ["polar", "cold", "mild", "subtropical", "tropical"]
 const ZONE_HUMIDITIES := ["wet", "dry"]
 
 # The relief families the climate turns into varieties: the keys of terrain_config that are not a
@@ -2121,7 +2122,7 @@ static func build_text(problem: Dictionary) -> void:
             where = TranslationServer.translate("Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file.") % [str(problem.get("source_name", "")), str(problem.get("source_id", ""))]
         "zone_axes":
             headline = TranslationServer.translate("Climate zone %s has an unknown %s \"%s\".") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), str(problem.get("field", "")), str(problem.get("ref_id", ""))]
-            where = TranslationServer.translate("The temperature is one of: cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature.")
+            where = TranslationServer.translate("The temperature is one of: polar, cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature.")
         "zone_terrain":
             var family := str(problem.get("field", ""))
             var mapped := str(problem.get("ref_id", ""))
