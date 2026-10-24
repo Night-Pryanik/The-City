@@ -145,6 +145,7 @@ SLOW = {
     "test_quality_price",
     "test_journal_live",
     "test_save_window_live",
+    "test_new_game_loading",
 }
 
 

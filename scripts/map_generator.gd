@@ -185,22 +185,22 @@ func _apply_marshes(tile_data: Array, rows: int, cols: int) -> void:
     # of map_generator. It is called AFTER the application of the sea/beach mask.
     SeaManager.apply_sea_coast_marshes(tile_data, rows, cols)
 
-func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: Dictionary, terrain_counts: Dictionary) -> Array:
-    var t0 = Time.get_ticks_msec()
+# The generation of the world is split into stages so that the caller can update a
+# progress indicator between them (see MainMap._initialize_map). The monolithic
+# generate_map below stays a thin wrapper over the same stages, in the same order.
+func init_tile_data(rows: int, cols: int) -> Array:
     var tile_data = []
     for row in range(rows):
         var col_array = []
         for col in range(cols):
             col_array.append({"terrain": "plain", "cover": "none", "resource": null, "improvement": null})
         tile_data.append(col_array)
+    return tile_data
 
-    # --- THE SEAS (the mask BEFORE Voronoi) ---
-    # The sea does not take part in the Voronoi algorithm (it is not in terrain_config).
-    # The sea mask is generated here and is remembered in the temporary flag _is_sea,
-    # and after the Voronoi it is re-applied on top of the result (see below),
-    # so that the Voronoi does not overwrite the sea/beach. The logic is entirely in SeaManager.
-    var sea_mask = SeaManager.apply_sea(tile_data, rows, cols, city_row, city_col)
+func apply_sea_mask(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> Array:
+    return SeaManager.apply_sea(tile_data, rows, cols, city_row, city_col)
 
+func generate_relief(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int, terrain_counts: Dictionary) -> void:
     # We generate the centres for the Voronoi. For the impassable terrain types
     # (the lakes and so on, move_cost >= 999) the centres must NOT get into the
     # CENTER_EXCLUSION_RADIUS around the city: thanks to the property of the diagram
@@ -233,6 +233,7 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
         for col in range(cols):
             tile_data[row][col]["terrain"] = voronoi[row][col]
 
+func post_process_relief(tile_data: Array, rows: int, cols: int, sea_mask: Array, city_row: int, city_col: int) -> void:
     # --- THE REPEATED APPLICATION OF THE SEA/BEACH MASK ---
     # The Voronoi filled the whole map with its relief, therefore on top of it
     # we re-apply the sea (by the flag _is_sea) and the beach (by the flag _is_beach),
@@ -292,6 +293,7 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # of the cover and the resources.
     _ensure_plain_zone(tile_data, rows, cols, city_row, city_col, PLAIN_ZONE_RADIUS)
 
+func apply_climate_and_covers(tile_data: Array, rows: int, cols: int) -> void:
     # --- THE CLIMATE ---
     # The climate is built AFTER the relief, because the water hexes have no zone: the sea and
     # the lakes break the climate regions at the coasts. The deserts are pruned right after, while
@@ -315,11 +317,13 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             tile_data[row][col]["cover"] = _roll_cover(terrain_id, zone_id)
     if bool(climate_cfg.get("cover_smoothing", true)):
         _smooth_covers(tile_data, rows, cols)
+    print("cover stage: ", Time.get_ticks_msec() - t_cover, " ms")
 
+func place_all_resources(tile_data: Array, raw_res: Dictionary, rows: int, cols: int, city_row: int, city_col: int) -> void:
+    var t_res = Time.get_ticks_msec()
     # The multi-index of the free hexes by (terrain, cover) — for a fast
     # placement of the resources without a full scan of the map for each resource.
     var hex_index = _build_hex_index(tile_data, rows, cols, city_row, city_col)
-    print("cover + hex_index stage: ", Time.get_ticks_msec() - t_cover, " ms")
 
     # --- The ordinary resources ---
     # The category is only a classification of the resource and does not determine
@@ -340,14 +344,9 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # of specimens is taken from spawn_count, the output on gathering — from produces.
     # The wild plants (wild_food) are placed separately (see place_wild_food).
     place_one_time_resources(tile_data, raw_res, rows, cols, city_row, city_col, hex_index)
+    print("resources stage: ", Time.get_ticks_msec() - t_res, " ms")
 
-    # --- All the resources spawn at the start, including tech_required and tech_reveal ---
-    # Previously the resources with tech_required were filtered here and spawned
-    # lazily through CityData.spawn_resource_on_tech_research. Now they
-    # appear on the map right away, and the visibility/extraction is regulated by the fields
-    # tech_reveal (visibility) and tech_required (the building of the improvement).
-    # See docs.md, the section "tech_reveal: hidden resources".
-
+func ensure_outward_corridor(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> void:
     # --- THE GUARANTEE OF A WAY OUT ---
     # A safety check: if despite the ban on the lake centres the city has still
     # been isolated by an impassable terrain, we lay a corridor of a plain
@@ -355,6 +354,15 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # placed marshes and unique lakes.
     _ensure_outward_corridor(tile_data, rows, cols, city_row, city_col)
 
+func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: Dictionary, terrain_counts: Dictionary) -> Array:
+    var t0 = Time.get_ticks_msec()
+    var tile_data = init_tile_data(rows, cols)
+    var sea_mask = apply_sea_mask(tile_data, rows, cols, city_row, city_col)
+    generate_relief(tile_data, rows, cols, city_row, city_col, terrain_counts)
+    post_process_relief(tile_data, rows, cols, sea_mask, city_row, city_col)
+    apply_climate_and_covers(tile_data, rows, cols)
+    place_all_resources(tile_data, raw_res, rows, cols, city_row, city_col)
+    ensure_outward_corridor(tile_data, rows, cols, city_row, city_col)
     print("generate_map stage: ", Time.get_ticks_msec() - t0, " ms")
     return tile_data
 

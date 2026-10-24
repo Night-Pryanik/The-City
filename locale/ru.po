@@ -480,6 +480,9 @@ msgstr "Здесь стоит чужой городок — нельзя стр�
 msgid "Any product from the group"
 msgstr "Любой товар из группы"
 
+msgid "Applying climate..."
+msgstr "Применение климата..."
+
 msgid "Area not scouted — information unavailable.\n\nTerrain, resources and improvements become known after scouting."
 msgstr "Область не разведана — информация недоступна.\n\nМестность, ресурсы и улучшения станут известны после разведки."
 
@@ -677,6 +680,9 @@ msgstr "Нельзя строить на воде"
 
 msgid "Cannot claim: another town's territory"
 msgstr "Освоить нельзя: территория чужого городка"
+
+msgid "Carving rivers..."
+msgstr "Проведение рек..."
 
 msgid "Check a mod to add it to the game."
 msgstr "Отметьте модификацию, чтобы добавить её в игру."
@@ -924,6 +930,9 @@ msgstr "Не удалось сохранить игру."
 msgid "Crafting \"%s\": %s"
 msgstr "Крафт «%s»: %s"
 
+msgid "Creating a new world..."
+msgstr "Создание нового мира..."
+
 msgid "Culture:"
 msgstr "Культура:"
 
@@ -1035,6 +1044,9 @@ msgstr "Заполненность: %d%% (полное через %.0f сек)"
 msgid "Fill time: %.0f sec"
 msgstr "Время заполнения: %.0f сек"
 
+msgid "Finalizing terrain..."
+msgstr "Завершение рельефа..."
+
 msgid "Font"
 msgstr "Шрифт"
 
@@ -1059,6 +1071,9 @@ msgstr "Внешняя торговля"
 msgid "Found %d problems. Some recipes, resources and technologies may work incorrectly — check the files in the res://data folder."
 msgstr "Найдено проблем: %d. Часть рецептов, ресурсов и технологий может работать некорректно — проверьте файлы в папке res://data."
 
+msgid "Founding towns..."
+msgstr "Основание городов..."
+
 msgid "Fresh water access: direct"
 msgstr "Доступ к пресной воде: прямой"
 
@@ -1073,6 +1088,12 @@ msgstr "Игра"
 
 msgid "Game saved."
 msgstr "Игра сохранена."
+
+msgid "Generating relief..."
+msgstr "Генерация рельефа..."
+
+msgid "Generating seas..."
+msgstr "Генерация морей..."
 
 msgid "Go to the technology list"
 msgstr "Перейти к списку технологий"
@@ -1422,6 +1443,9 @@ msgstr "Приостановлено"
 msgid "Permanent"
 msgstr "Постоянно"
 
+msgid "Placing resources..."
+msgstr "Размещение ресурсов..."
+
 msgid "Plan: demand %s units/sec × price %s = %s coins/sec"
 msgstr "План: спрос %s ед./сек × цена %s = %s монет/сек"
 
@@ -1445,6 +1469,15 @@ msgstr "Население: 1"
 
 msgid "Population: 50"
 msgstr "Население: 50"
+
+msgid "Preparing starting area..."
+msgstr "Подготовка стартовой области..."
+
+msgid "Preparing world..."
+msgstr "Подготовка мира..."
+
+msgid "Preparing..."
+msgstr "Подготовка..."
 
 msgid "Price = base price of the goods ×%.2f (market) × quality multiplier"
 msgstr "Цена = базовая цена товара ×%.2f (рынок) × множитель качества"
@@ -1754,6 +1787,9 @@ msgstr "Отправить разведчиков"
 
 msgid "Settings"
 msgstr "Настройки"
+
+msgid "Shaping landscape..."
+msgstr "Формирование ландшафта..."
 
 msgid "Show borders between tiles"
 msgstr "Показывать границы между клетками"

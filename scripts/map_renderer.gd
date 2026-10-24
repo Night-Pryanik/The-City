@@ -259,6 +259,11 @@ func _cache_icon(icon_name: String):
 
 func _draw():
     draw_calls += 1
+    # Nothing to draw yet: the node has not been initialized, or the world is still
+    # being generated (the stages of the generation yield frames — a half-built map
+    # must not flash behind the loading screen of a new game).
+    if main_map == null or main_map.world_generating:
+        return
     # We compute the visible range of the hexes (the viewport culling): we draw only those
     # hexes which intersect the rectangle of the screen.
     var visible_range = _get_visible_hex_range()

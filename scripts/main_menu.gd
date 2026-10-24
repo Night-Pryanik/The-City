@@ -257,7 +257,62 @@ func _start_new_game(city_name: String):
         city_name = GameData.get_random_city_name()
     SaveManager.new_game()
     CityData.city_name = city_name.strip_edges()
+    # The overlay is hung on the ROOT, not on the menu: the scene change frees the
+    # menu, and the world generation runs inside MainMap. MainMap updates the very
+    # same bar and removes it when the world is ready.
+    _show_loading_overlay()
+    await get_tree().process_frame
     get_tree().change_scene_to_file("res://scenes/MainMap.tscn")
+
+# The loading screen of a new game: a dimmed background, a caption, a progress bar and
+# the name of the current stage of the generation. It lives on a high CanvasLayer,
+# because MainMap draws its own HUD layers while the world is being built.
+func _show_loading_overlay() -> CanvasLayer:
+    var overlay = CanvasLayer.new()
+    overlay.name = "LoadingOverlay"
+    overlay.layer = 128
+
+    var bg = ColorRect.new()
+    bg.color = Color(0, 0, 0, 0.7)
+    bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+    overlay.add_child(bg)
+
+    var vbox = VBoxContainer.new()
+    vbox.name = "VBoxContainer"
+    vbox.set_anchors_preset(Control.PRESET_CENTER)
+    # The preset alone puts the top left corner at the centre of the screen and the box
+    # would grow down and to the right of it. Growing around the anchor point is what
+    # actually centres it.
+    vbox.grow_horizontal = Control.GROW_DIRECTION_BOTH
+    vbox.grow_vertical = Control.GROW_DIRECTION_BOTH
+    vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+    vbox.add_theme_constant_override("separation", 12)
+    overlay.add_child(vbox)
+
+    var title = Label.new()
+    title.name = "TitleLabel"
+    title.text = tr("Creating a new world...")
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.add_theme_font_size_override("font_size", 28)
+    vbox.add_child(title)
+
+    var bar = ProgressBar.new()
+    bar.name = "ProgressBar"
+    bar.custom_minimum_size = Vector2(400, 24)
+    bar.min_value = 0.0
+    bar.max_value = 1.0
+    bar.value = 0.0
+    vbox.add_child(bar)
+
+    var status = Label.new()
+    status.name = "StatusLabel"
+    status.text = tr("Preparing...")
+    status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    status.add_theme_font_size_override("font_size", 16)
+    vbox.add_child(status)
+
+    get_tree().root.add_child(overlay)
+    return overlay
 
 func _on_load_game():
     if not SaveManager.has_save():

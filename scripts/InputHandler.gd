@@ -85,6 +85,12 @@ func handle_input(event: InputEvent):
     if Engine.is_editor_hint():
         return
 
+    # The map is not ready yet: the input handler is initialized only after the world
+    # is built, and while a new game generates its world (main_map.world_generating)
+    # there is nothing for the input to work with.
+    if main_map == null or main_map.world_generating:
+        return
+
     # SPACE: the hotkey of the active pause. It does exactly what the button of the
     # HUD does, and nothing else. The event is consumed right here, otherwise a
     # focused button would receive the same key and press itself as well.

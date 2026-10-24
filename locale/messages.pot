@@ -480,6 +480,9 @@ msgstr ""
 msgid "Any product from the group"
 msgstr ""
 
+msgid "Applying climate..."
+msgstr ""
+
 msgid "Area not scouted — information unavailable.\n\nTerrain, resources and improvements become known after scouting."
 msgstr ""
 
@@ -676,6 +679,9 @@ msgid "Cannot build on water"
 msgstr ""
 
 msgid "Cannot claim: another town's territory"
+msgstr ""
+
+msgid "Carving rivers..."
 msgstr ""
 
 msgid "Check a mod to add it to the game."
@@ -924,6 +930,9 @@ msgstr ""
 msgid "Crafting \"%s\": %s"
 msgstr ""
 
+msgid "Creating a new world..."
+msgstr ""
+
 msgid "Culture:"
 msgstr ""
 
@@ -1035,6 +1044,9 @@ msgstr ""
 msgid "Fill time: %.0f sec"
 msgstr ""
 
+msgid "Finalizing terrain..."
+msgstr ""
+
 msgid "Font"
 msgstr ""
 
@@ -1059,6 +1071,9 @@ msgstr ""
 msgid "Found %d problems. Some recipes, resources and technologies may work incorrectly — check the files in the res://data folder."
 msgstr ""
 
+msgid "Founding towns..."
+msgstr ""
+
 msgid "Fresh water access: direct"
 msgstr ""
 
@@ -1072,6 +1087,12 @@ msgid "Game"
 msgstr ""
 
 msgid "Game saved."
+msgstr ""
+
+msgid "Generating relief..."
+msgstr ""
+
+msgid "Generating seas..."
 msgstr ""
 
 msgid "Go to the technology list"
@@ -1422,6 +1443,9 @@ msgstr ""
 msgid "Permanent"
 msgstr ""
 
+msgid "Placing resources..."
+msgstr ""
+
 msgid "Plan: demand %s units/sec × price %s = %s coins/sec"
 msgstr ""
 
@@ -1444,6 +1468,15 @@ msgid "Population: 1"
 msgstr ""
 
 msgid "Population: 50"
+msgstr ""
+
+msgid "Preparing starting area..."
+msgstr ""
+
+msgid "Preparing world..."
+msgstr ""
+
+msgid "Preparing..."
 msgstr ""
 
 msgid "Price = base price of the goods ×%.2f (market) × quality multiplier"
@@ -1753,6 +1786,9 @@ msgid "Send the scouts"
 msgstr ""
 
 msgid "Settings"
+msgstr ""
+
+msgid "Shaping landscape..."
 msgstr ""
 
 msgid "Show borders between tiles"

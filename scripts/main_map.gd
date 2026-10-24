@@ -112,6 +112,14 @@ const CARTOGRAPHY_TECH_ID := "cartography"
 # The absolute boundaries of the Influence Ring (inclusive) over the whole map.
 
 var tile_data = []
+# The world is being built right now (a new game). The generation runs in stages with
+# a frame between them so that the loading bar can advance, and those frames must not
+# run the simulation, the drawing of a half-built map or the input of the map.
+var world_generating := false
+# The loading screen of the new game, put on the root by the main menu (see
+# main_menu._show_loading_overlay). While it is absent — a test, the editor, a direct
+# scene run — the world is built in one go, exactly as before.
+var _loading_overlay: CanvasLayer = null
 var offset_x: float = 0.0
 var offset_y: float = 0.0
 var scroll_offset = Vector2.ZERO
@@ -558,7 +566,16 @@ func _ready():
         progress_bar_layer.initialize(tile_data, self)
     else:
         randomize()
-        _initialize_map()
+        # The world is built in stages with a frame between them (see _initialize_map):
+        # the first yield gives the loading screen of the new game a chance to be drawn
+        # before the heavy work starts. Without the screen (a test, the editor) the
+        # generation runs in one go, as it always did.
+        _loading_overlay = get_tree().root.get_node_or_null("LoadingOverlay")
+        world_generating = true
+        if _loading_overlay != null:
+            _update_loading_progress(0.0, tr("Preparing world..."))
+            await get_tree().process_frame
+        await _initialize_map()
         road_manager.initialize(city_row, city_col)
         # The road network of the city of the player is ready — it is possible to build the networks of the towns
         # (the towns and their improvements are already placed in _initialize_map).
@@ -733,6 +750,35 @@ func _ready():
     save_load_window.save_requested.connect(_on_save_requested)
     save_load_window.load_requested.connect(_on_load_requested)
 
+    _update_loading_progress(1.0)
+    _remove_loading_overlay()
+
+# The loading bar of a new game. It lives on the ROOT (see main_menu._show_loading_overlay):
+# the scene change frees the menu, while the world is still being built here. Without an
+# overlay (a loaded save, the editor) the calls do nothing.
+func _update_loading_progress(value: float, status: String = "") -> void:
+    if _loading_overlay == null:
+        return
+    var bar = _loading_overlay.get_node_or_null("VBoxContainer/ProgressBar")
+    if bar != null:
+        bar.value = clampf(value, 0.0, 1.0)
+    var label = _loading_overlay.get_node_or_null("VBoxContainer/StatusLabel")
+    if label != null and status != "":
+        label.text = status
+
+func _remove_loading_overlay() -> void:
+    if _loading_overlay != null:
+        _loading_overlay.queue_free()
+        _loading_overlay = null
+
+# One frame of the loading screen. Without it the stages of the generation would run
+# inside a single frame and the bar would jump from 0 to 100. The stages run in one go
+# when there is no loading screen (a test, the editor, a direct scene run).
+func _yield_loading_frame() -> void:
+    if _loading_overlay == null:
+        return
+    await get_tree().process_frame
+
 # The predicate for rebuild_roads_from_existing: this hex is skipped
 # on the restoration of the road network.
 #
@@ -815,6 +861,11 @@ func _debug_hotkey_number(keycode: Key) -> int:
 
 func _process(delta):
     if Engine.is_editor_hint():
+        return
+
+    # The world is still being generated: the stages run with a frame between them,
+    # and those frames must not simulate, select hexes or move the map.
+    if world_generating:
         return
 
     # We block the buttons of the HUD while the game is paused or the town window is
@@ -1204,6 +1255,7 @@ func _deliver_production(row: int, col: int, product: String, amount: int,
     CityData.record_production_source(product, source, amount)
 
 func _initialize_map():
+    world_generating = true
     GameData.load_all_data()
     var selected_city_name = CityData.city_name
     CityData.setup()
@@ -1229,14 +1281,46 @@ func _initialize_map():
     start_region_start_col = region_start_col
     start_region_end_col = region_end_col
 
-    # We generate the WHOLE map of the world at once (the relief, the cover, the rivers).
+    # The world is built in STAGES, with a frame between them: the generation of the
+    # whole map (the relief, the cover, the resources) is long enough for the player to
+    # wonder whether the game has hung, therefore the loading bar of the new game is
+    # advanced between the stages (see _update_loading_progress). Without a loading
+    # screen (a test, the editor, a direct scene run) the stages run in one go
+    # (see _yield_loading_frame).
     var generator = load("res://scripts/map_generator.gd").new()
     # The number of the Voronoi centres for each terrain type is computed
     # from the configuration terrain_config (density + target_cluster),
     # set in data/map_config.json.
     var terrain_counts = generator.make_terrain_counts(map_rows, map_cols)
-    tile_data = generator.generate_map(map_rows, map_cols, city_row, city_col, GameData.raw_resources, terrain_counts)
+
+    _update_loading_progress(0.05, tr("Generating seas..."))
+    await _yield_loading_frame()
+    tile_data = generator.init_tile_data(map_rows, map_cols)
+    var sea_mask = generator.apply_sea_mask(tile_data, map_rows, map_cols, city_row, city_col)
+
+    _update_loading_progress(0.15, tr("Generating relief..."))
+    await _yield_loading_frame()
+    generator.generate_relief(tile_data, map_rows, map_cols, city_row, city_col, terrain_counts)
+
+    _update_loading_progress(0.35, tr("Shaping landscape..."))
+    await _yield_loading_frame()
+    generator.post_process_relief(tile_data, map_rows, map_cols, sea_mask, city_row, city_col)
+
+    _update_loading_progress(0.50, tr("Applying climate..."))
+    await _yield_loading_frame()
+    generator.apply_climate_and_covers(tile_data, map_rows, map_cols)
+
+    _update_loading_progress(0.65, tr("Placing resources..."))
+    await _yield_loading_frame()
+    generator.place_all_resources(tile_data, GameData.raw_resources, map_rows, map_cols, city_row, city_col)
+
+    _update_loading_progress(0.75, tr("Finalizing terrain..."))
+    await _yield_loading_frame()
+    generator.ensure_outward_corridor(tile_data, map_rows, map_cols, city_row, city_col)
     print("The map of the world has been generated. Hexes: ", map_rows * map_cols)
+
+    _update_loading_progress(0.80, tr("Preparing starting area..."))
+    await _yield_loading_frame()
 
     # We guarantee that the city is on a permitted terrain (a plain or the hills)
     _ensure_city_valid_terrain()
@@ -1335,6 +1419,8 @@ func _initialize_map():
 
     # We generate the river system (the main rivers + the tributaries) over the whole map
     # and mark the river edges in the data of the hexes. We pass tile_data (for the mountains/lakes).
+    _update_loading_progress(0.90, tr("Carving rivers..."))
+    await _yield_loading_frame()
     river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS, tile_data)
     river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS, river_manager.get_cached_graph())
 
@@ -1353,6 +1439,8 @@ func _initialize_map():
     #     get there, so that on the transition to the 2nd era the player can immediately
     #     see someone and start trading.
     var era2_region_bounds: Dictionary = _compute_era2_region_bounds()
+    _update_loading_progress(0.95, tr("Founding towns..."))
+    await _yield_loading_frame()
     town_manager.generate_towns(tile_data, map_rows, map_cols, city_row, city_col,
             start_region_start_row, start_region_end_row,
             start_region_start_col, start_region_end_col,
@@ -1384,6 +1472,8 @@ func _initialize_map():
     # We mark the hex of the city with the flag is_city — the logic of the water (MapHelpers) counts
     # it as a conductor/source, when the water is really brought to the city.
     _mark_city_hex()
+    generator.free()
+    world_generating = false
 
 func _mark_city_hex() -> void:
     if city_row >= 0 and city_row < map_rows and city_col >= 0 and city_col < map_cols:
