@@ -7,6 +7,22 @@ const UiHelpers = preload("res://scripts/ui_helpers.gd")
 
 const HEX_RADIUS = 55
 
+# --- The zoom of the map ---
+# The map is always drawn at HEX_RADIUS in the local pixels of MapRenderer; the zoom is a
+# CanvasItem scale on that node, therefore ONE transform magnifies everything it draws —
+# the hexes, the icons, the rivers, the town rings and the progress bars.
+# ZOOM_MIN still fits the Region of the first era (11x13 hexes = 1239x907 local pixels)
+# into the 1152x768 window; ZOOM_MAX stops where the upscaled icons start to look soft.
+const ZOOM_MIN: float = 0.6
+const ZOOM_MAX: float = 1.5
+# One notch of the mouse wheel.
+const ZOOM_STEP: float = 1.15
+# The rate of the exponential approach to the target zoom (1/s): a notch settles in ~0.2 s.
+const ZOOM_SMOOTHING: float = 14.0
+# The distance to the target below which the animation snaps: without it the exponential
+# approach would keep redrawing the whole map for a vanishing remainder.
+const ZOOM_SETTLE_EPS: float = 0.001
+
 # --- The dimensions and the boundaries of the world/window ---
 
 # The main parameters (map_rows, map_cols, start_ring_rows, start_ring_cols,
@@ -99,6 +115,14 @@ var tile_data = []
 var offset_x: float = 0.0
 var offset_y: float = 0.0
 var scroll_offset = Vector2.ZERO
+# The current zoom and the value the animation is heading to. The scroll offset stays in
+# LOCAL pixels: the zoom only changes how they map to the screen, so the existing clamp
+# (get_max_scroll) and every reader of the offset keep their meaning.
+var zoom: float = 1.0
+var zoom_target: float = 1.0
+# The SCREEN point that stays in place while the zoom changes — the cursor that turned
+# the wheel. The scroll offset is corrected frame by frame around it.
+var _zoom_anchor: Vector2 = Vector2.ZERO
 
 # The absolute boundaries of the visible window "Ring + Region" (inclusive).
 # The Region is the only zone where the chunks can be BOUGHT (claimed).
@@ -1415,10 +1439,14 @@ func _calc_offsets():
     var viewport_size = Vector2(1152, 768)
     if not Engine.is_editor_hint():
         viewport_size = get_viewport_rect().size
+    # The offsets centre the Region in the LOCAL pixels of the map, and the zoom magnifies
+    # them: at a zoom other than 1 the same window holds viewport / zoom of them. Without
+    # the division a zoom restored from the settings would push the map into the top left
+    # corner instead of centring it.
     var offsets = MapHelpers.calc_offsets(
         region_start_row, region_end_row,
         region_start_col, region_end_col,
-        HEX_RADIUS, viewport_size
+        HEX_RADIUS, viewport_size / zoom
     )
     offset_x = offsets.x
     offset_y = offsets.y
@@ -2371,7 +2399,8 @@ func _on_building_upgrade_completed(_build_key: String, idx: int, upgrade_to: St
     CityData.complete_building_upgrade(idx, upgrade_to)
 
 func pixel_to_hex(mx: float, my: float):
-    return MapHelpers.pixel_to_hex(mx, my,
+    # The helper works in the local pixels of the map; the caller passes screen ones.
+    return MapHelpers.pixel_to_hex(mx / zoom, my / zoom,
         region_start_row, region_end_row,
         region_start_col, region_end_col,
         offset_x, offset_y,
@@ -3015,17 +3044,94 @@ func _on_city_button_gui_input(event: InputEvent):
 
 # Centers the map on a hex. The clamp by get_max_scroll is the same as in the edge scrolling
 # (InputHandler): without it a hex at the border of the Region would ask for a scroll the map
-# cannot make, and the hex would stay off screen.
+# cannot make, and the hex would stay off screen. The half of the screen is taken in LOCAL
+# pixels, hence the division by the zoom: the hex has to land in the middle of the SCREEN.
 func center_on_hex(row: int, col: int) -> void:
+    # A running zoom would keep correcting the offset towards its anchor and drag the
+    # map away from the hex we are about to centre.
+    finish_zoom()
     var max_scroll = get_max_scroll()
     scroll_offset = - (HexUtils.hex_center(row, col, HEX_RADIUS) + Vector2(offset_x, offset_y)
-            - get_viewport_rect().size / 2.0)
+            - get_viewport_rect().size / (2.0 * zoom))
     scroll_offset.x = clamp(scroll_offset.x, -max_scroll.x, max_scroll.x)
     scroll_offset.y = clamp(scroll_offset.y, -max_scroll.y, max_scroll.y)
     map_renderer.queue_redraw()
     map_renderer.queue_redraw_for_scroll()
     if progress_bar_layer:
         progress_bar_layer.queue_redraw()
+
+# The entry point of the zoom gestures: `anchor` is the SCREEN point that must stay in
+# place, `factor` multiplies the current TARGET (so a spin of the wheel accumulates
+# instead of restarting from the value the animation has reached so far).
+func zoom_by(factor: float, anchor: Vector2) -> void:
+    _zoom_anchor = anchor
+    zoom_target = clampf(zoom_target * factor, ZOOM_MIN, ZOOM_MAX)
+
+# Sets the zoom without an animation. Used when the value comes from the settings.
+func set_zoom(value: float) -> void:
+    zoom = clampf(value, ZOOM_MIN, ZOOM_MAX)
+    zoom_target = zoom
+    _apply_zoom_scale()
+    if map_renderer:
+        map_renderer.queue_redraw_for_scroll()
+    if progress_bar_layer:
+        progress_bar_layer.queue_redraw()
+
+# Snaps a running animation to its target. The drag and the jump of the camera must not
+# fight the animation: both write scroll_offset, and the loser would make the map twitch.
+func finish_zoom() -> void:
+    if is_equal_approx(zoom, zoom_target):
+        return
+    var previous := zoom
+    zoom = zoom_target
+    _apply_zoom_step(previous)
+    _save_zoom_level()
+
+# Advances the zoom animation. It lives in the input handler (handle_process), not in
+# _process of the map: the latter is the simulation and stands still while the active
+# pause is on, and the player must be able to zoom a paused map.
+func process_zoom(delta: float) -> void:
+    if is_equal_approx(zoom, zoom_target):
+        return
+    var previous := zoom
+    zoom = lerpf(zoom, zoom_target, 1.0 - exp(-ZOOM_SMOOTHING * delta))
+    if absf(zoom - zoom_target) < ZOOM_SETTLE_EPS:
+        zoom = zoom_target
+    _apply_zoom_step(previous)
+    if zoom == zoom_target:
+        _save_zoom_level()
+
+# Applies one step of the zoom: the scroll that keeps the anchor in place, the clamp and
+# the redraws.
+#
+# The screen is `local * zoom` (the renderer is scaled about its own origin), therefore
+# local = screen / zoom, and the world point under the anchor is
+# `anchor / zoom - offset - scroll`. Equating it before and after the step gives the
+# correction below — it is exactly what makes the zoom follow the cursor instead of the
+# centre of the screen.
+func _apply_zoom_step(previous: float) -> void:
+    scroll_offset += _zoom_anchor * (1.0 / zoom - 1.0 / previous)
+    var max_scroll = get_max_scroll()
+    scroll_offset = Vector2(
+            clampf(scroll_offset.x, -max_scroll.x, max_scroll.x),
+            clampf(scroll_offset.y, -max_scroll.y, max_scroll.y))
+    _apply_zoom_scale()
+    map_renderer.queue_redraw_for_scroll()
+    if progress_bar_layer:
+        progress_bar_layer.queue_redraw()
+
+func _apply_zoom_scale() -> void:
+    if map_renderer:
+        map_renderer.scale = Vector2(zoom, zoom)
+
+# The zoom is a view preference, not a part of the game state: it lives in settings.cfg
+# next to the scroll speed. Written when a gesture settles, so a spin of the wheel does
+# not rewrite the file on every frame.
+func _save_zoom_level() -> void:
+    var config := ConfigFile.new()
+    config.load("user://settings.cfg")
+    config.set_value("interface", "zoom", zoom)
+    config.save("user://settings.cfg")
 
 # The jump from the "Trade partners" column of the city interface: the city window is closed, the
 # map is centered on the town and the window of that town is opened right away — the player asked
@@ -3199,10 +3305,14 @@ func get_scout_reach_bounds() -> Dictionary:
     var y_spacing = HEX_RADIUS * 1.5
     # We unite the screen rectangle at both extreme positions
     # of the scrolling: world = -offset - scroll .. -offset - scroll + viewport.
+    # The viewport is taken in LOCAL pixels: a zoom below 1 shows more of the world than
+    # the window itself, and the hexes of that extra strip must stay drawable and
+    # clickable, otherwise the zoomed-out map would end in a dead band.
+    var visible_size: Vector2 = viewport_size / zoom
     var world_left = - (offset_x + max_scroll.x)
-    var world_right = - offset_x + max_scroll.x + viewport_size.x
+    var world_right = - offset_x + max_scroll.x + visible_size.x
     var world_top = - (offset_y + max_scroll.y)
-    var world_bottom = - offset_y + max_scroll.y + viewport_size.y
+    var world_bottom = - offset_y + max_scroll.y + visible_size.y
     # The margin of 2 hexes: the offset of the odd rows and the partially visible hexes
     # at the edges of the screen (otherwise the extreme reachable hexes would "fall out" of
     # the chunks of the scouting, although one can click on them).
@@ -3574,6 +3684,7 @@ func _load_settings():
         resource_display_interval = settings_config.get_value("game", "resource_display_interval", 1.0)
         hud_message_duration = settings_config.get_value("interface", "hud_message_duration", 3.0)
         show_clock = settings_config.get_value("interface", "show_clock", true)
+        set_zoom(settings_config.get_value("interface", "zoom", 1.0))
     else:
         show_hex_borders = true
         use_edge_scrolling = true
@@ -3584,6 +3695,7 @@ func _load_settings():
         resource_display_interval = 1.0
         hud_message_duration = 3.0
         show_clock = true
+        set_zoom(1.0)
 
 func apply_settings():
     _load_settings()

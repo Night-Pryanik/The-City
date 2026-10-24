@@ -189,6 +189,10 @@ func handle_process(delta: float):
     if Engine.is_editor_hint():
         return
 
+    # The zoom animation is advanced before every early return below: the map must not
+    # stay frozen half-zoomed because a menu happened to open in the middle of a gesture.
+    main_map.process_zoom(delta)
+
     if town_ui.visible or city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
         _hide_tooltip()
         return
@@ -354,7 +358,10 @@ func _set_scroll_offset(offset: Vector2):
         progress_bar_layer.queue_redraw()
 
 func _apply_scroll(scroll: Vector2):
-    _set_scroll_offset(main_map.scroll_offset + scroll)
+    # The speed is set in SCREEN pixels per second (the slider of the settings menu), so
+    # the world distance is the screen distance divided by the zoom: zoomed out, the same
+    # drag of the cursor covers more of the map, exactly as it does visually.
+    _set_scroll_offset(main_map.scroll_offset + scroll / main_map.zoom)
 
 func _handle_esc():
     if town_ui.visible:
@@ -377,6 +384,16 @@ func _handle_esc():
         main_map.open_pause_menu()
 
 func _handle_mouse_button(event: InputEventMouseButton):
+    # The wheel zooms the map around the cursor. The map keeps drawing at a fixed hex
+    # radius, so the wheel only moves the TARGET zoom; the animation and the scroll
+    # correction are owned by main_map.
+    if event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+        if event.pressed:
+            var factor: float = main_map.ZOOM_STEP if event.button_index == MOUSE_BUTTON_WHEEL_UP \
+                    else 1.0 / main_map.ZOOM_STEP
+            main_map.zoom_by(factor, event.global_position)
+        return
+
     # The debug menu: waiting for a click on a hex to place a resource
     if debug_manager and debug_manager.waiting_for_hex:
         if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -387,6 +404,9 @@ func _handle_mouse_button(event: InputEventMouseButton):
 
     if event.button_index == MOUSE_BUTTON_LEFT:
         if event.pressed:
+            # The drag owns the scroll offset for its whole duration: a zoom still in
+            # flight would keep correcting it and the map would twitch under the cursor.
+            main_map.finish_zoom()
             drag_start_scroll_offset = main_map.scroll_offset
             drag_start_mouse = event.global_position
             is_dragging = false
@@ -448,7 +468,9 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
                 is_dragging = true
         if is_dragging:
             var delta = mouse_pos - drag_start_mouse
-            _set_scroll_offset(drag_start_scroll_offset + delta)
+            # The map must stay glued to the cursor: the delta is in screen pixels, and
+            # one screen pixel covers 1 / zoom local ones.
+            _set_scroll_offset(drag_start_scroll_offset + delta / main_map.zoom)
             return
 
     var hex = _interactive_hex_at(event.global_position.x, event.global_position.y)
@@ -532,8 +554,14 @@ func _pixel_to_hex(mx: float, my: float):
     var x_spacing = radius * sqrt(3.0)
     var y_spacing = radius * 1.5
 
-    var world_x = mx - (main_map.offset_x + main_map.scroll_offset.x)
-    var world_y = my - (main_map.offset_y + main_map.scroll_offset.y)
+    # The map draws in its own LOCAL pixels and the zoom magnifies them, therefore the
+    # cursor is converted into the local space first (screen = local * zoom) and the
+    # whole hit test below runs in local coordinates.
+    var local_x = mx / main_map.zoom
+    var local_y = my / main_map.zoom
+
+    var world_x = local_x - (main_map.offset_x + main_map.scroll_offset.x)
+    var world_y = local_y - (main_map.offset_y + main_map.scroll_offset.y)
 
     var approx_row = int(round(world_y / y_spacing))
     var approx_col = int(round(world_x / x_spacing))
@@ -550,7 +578,7 @@ func _pixel_to_hex(mx: float, my: float):
             center.x += main_map.offset_x + main_map.scroll_offset.x
             center.y += main_map.offset_y + main_map.scroll_offset.y
             var verts = HexUtils.hex_vertices(center.x, center.y, radius)
-            if HexUtils.point_in_polygon(mx, my, verts):
+            if HexUtils.point_in_polygon(local_x, local_y, verts):
                 return {"row": row, "col": col}
     return null
 

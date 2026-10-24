@@ -67,6 +67,10 @@ var _river_smooth_cache: Dictionary = {}
 # anything. A change of the fog of war drops the cache (see invalidate_town_influence_cache).
 var _river_frame_cache: Dictionary = {}
 var _river_frame_cache_offset: Vector2 = Vector2.ZERO
+# The zoom the clipped geometry was built for. The clip rectangle follows the zoom (see
+# _get_cache_rect), and zooming out exposes area the cache does not cover — only that
+# direction needs a rebuild: zooming in clips away geometry the cache already holds.
+var _river_frame_cache_zoom: float = 1.0
 # The current world -> screen offset, added at the drawing of the river polylines.
 var _river_frame_offset: Vector2 = Vector2.ZERO
 # Set by queue_redraw_for_scroll and consumed once per frame: the caches are re-checked lazily,
@@ -163,11 +167,15 @@ func _get_visible_hex_range() -> Dictionary:
     var x_spacing = radius * sqrt(3.0)
     var y_spacing = radius * 1.5
 
-    # The rectangle of the viewport in the map coordinates (before the offset).
+    # The rectangle of the viewport in the map coordinates (before the offset). The
+    # viewport is converted into the LOCAL pixels of the map: a zoom below 1 puts more of
+    # the world on the same screen, and without the division the outer strip would stay
+    # blank.
+    var visible_size: Vector2 = viewport_size / main_map.zoom
     var world_left = - offset_x
     var world_top = - offset_y
-    var world_right = world_left + viewport_size.x
-    var world_bottom = world_top + viewport_size.y
+    var world_right = world_left + visible_size.x
+    var world_bottom = world_top + visible_size.y
 
     # A margin of 2 hexes, to account for the offset of the odd rows
     # and the partially visible hexes at the edges of the screen.
@@ -192,16 +200,17 @@ func _get_visible_hex_range() -> Dictionary:
         "col_end": col_end
     }
 
-# The screen rectangle in the SCREEN coordinates - the single source
+# The screen rectangle in the LOCAL coordinates of the map — the single source
 # of truth both for the viewport culling and for the clipping of the rivers.
 # The invariant: everything that we clip is already shifted by the offset (see
-# _collect_river_segments), therefore the rectangle must be the screen one as well.
+# _collect_river_segments), therefore the rectangle must be in the same system.
 # `-offset_x / -offset_y` here would mean the WORLD coordinate system and
 # would clip everything - exactly so the rivers once disappeared from the map.
+# The zoom magnifies the local pixels, so the screen covers viewport / zoom of them.
 func _get_screen_rect() -> Rect2:
-    return Rect2(Vector2.ZERO, _get_viewport_size())
+    return Rect2(Vector2.ZERO, _get_viewport_size() / main_map.zoom)
 
-# Checks whether the rectangle (in the screen coordinates) intersects the viewport.
+# Checks whether the rectangle (in the local coordinates of the map) intersects the viewport.
 func _is_rect_visible(rect: Rect2) -> bool:
     return rect.intersects(_get_screen_rect())
 
@@ -1748,7 +1757,8 @@ func _build_river_frame_cache(radius: float) -> void:
         var cached_offset: Vector2 = _river_frame_cache_offset
         var drift = absf(offset_x - cached_offset.x)
         drift = maxf(drift, absf(offset_y - cached_offset.y))
-        if drift <= main_map.MAP_CACHE_MARGIN:
+        var zoom_exposes_more: bool = main_map.zoom < _river_frame_cache_zoom
+        if drift <= main_map.MAP_CACHE_MARGIN and not zoom_exposes_more:
             # A new river (or a changed path) invalidates the cache: the list of the rivers is
             # the cache key, and on a loaded save it differs from the generated one.
             #
@@ -1770,14 +1780,12 @@ func _build_river_frame_cache(radius: float) -> void:
 
     _river_frame_cache.clear()
     _river_frame_cache_offset = Vector2(offset_x, offset_y)
+    _river_frame_cache_zoom = main_map.zoom
     _river_frame_rebuilds += 1
 
     # The world -> screen offset of the cached geometry is the current one; the margin around the
-    # screen makes the cache valid for the same pan distance in any direction.
-    var screen_rect = Rect2(
-        Vector2(-main_map.MAP_CACHE_MARGIN, -main_map.MAP_CACHE_MARGIN),
-        _get_viewport_size() + Vector2(main_map.MAP_CACHE_MARGIN, main_map.MAP_CACHE_MARGIN) * 2.0
-    )
+    # visible area makes the cache valid for the same pan distance in any direction.
+    var screen_rect = _get_cache_rect()
 
     for river in all_rivers:
         if river.size() < 2:
@@ -1953,12 +1961,11 @@ func _nearest_hex(pos: Vector2, radius: float) -> Vector2i:
     return best
 
 
-# The rectangle of the cached river geometry: the screen grown by the pan margin on each side.
+# The rectangle of the cached river geometry: the visible area grown by the pan margin
+# on each side. It follows the zoom (see _get_screen_rect); zooming out widens it, and
+# _build_river_frame_cache rebuilds the geometry when the cache no longer covers it.
 func _get_cache_rect() -> Rect2:
-    return Rect2(
-        Vector2(-main_map.MAP_CACHE_MARGIN, -main_map.MAP_CACHE_MARGIN),
-        _get_viewport_size() + Vector2(main_map.MAP_CACHE_MARGIN, main_map.MAP_CACHE_MARGIN) * 2.0
-    )
+    return _get_screen_rect().grow(main_map.MAP_CACHE_MARGIN)
 
 
 func river_points_with_offset(points: PackedVector2Array, dx: float, dy: float) -> PackedVector2Array:

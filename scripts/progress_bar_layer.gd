@@ -43,8 +43,11 @@ func _get_visible_hex_range() -> Dictionary:
 
     var world_left = - offset_x
     var world_top = - offset_y
-    var world_right = world_left + viewport_size.x
-    var world_bottom = world_top + viewport_size.y
+    # The zoom magnifies the local pixels of the map, so the screen covers
+    # viewport / zoom of them.
+    var visible_size: Vector2 = viewport_size / main_map.zoom
+    var world_right = world_left + visible_size.x
+    var world_bottom = world_top + visible_size.y
 
     var margin = 2
 
