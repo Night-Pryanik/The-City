@@ -1701,6 +1701,9 @@ msgstr ""
 msgid "Reference to a nonexistent technology"
 msgstr ""
 
+msgid "Regenerate"
+msgstr ""
+
 msgid "Remove \"%s\" from the queue. It has not started yet and nothing has been spent"
 msgstr ""
 
@@ -2230,6 +2233,9 @@ msgid "This is inside another town's influence ring — cannot build"
 msgstr ""
 
 msgid "This is the city itself"
+msgstr ""
+
+msgid "This map is only an approximate preview; the actual world will be generated separately and may differ."
 msgstr ""
 
 msgid "This mod is required by \"%s\"."
@@ -4353,11 +4359,19 @@ msgid "Chickpeas"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Chili"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Cinnabar"
 msgstr ""
 
 msgctxt "resources.name"
 msgid "Cinnabar (Ore)"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Cinnamon"
 msgstr ""
 
 msgctxt "resources.name"
@@ -4565,6 +4579,10 @@ msgid "Honey"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Hops"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Horses"
 msgstr ""
 
@@ -4729,6 +4747,10 @@ msgid "Nephrite Jewelry"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Nutmeg"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Oak Tree"
 msgstr ""
 
@@ -4801,6 +4823,10 @@ msgid "Pigs"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Pistachio"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Planks"
 msgstr ""
 
@@ -4861,6 +4887,10 @@ msgid "Ramie"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Rapeseed"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Raw Fish"
 msgstr ""
 
@@ -4910,6 +4940,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Safflower Leaves"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Saffron"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5005,6 +5039,18 @@ msgid "Stone Tableware"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Sugar Cane"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Sunflower"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Sunflower Seeds"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Tar"
 msgstr ""
 
@@ -5037,6 +5083,10 @@ msgid "Tin Ore"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Tobacco"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Tuff"
 msgstr ""
 
@@ -5050,6 +5100,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Ultramarine"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Vanilla"
 msgstr ""
 
 msgctxt "resources.name"
