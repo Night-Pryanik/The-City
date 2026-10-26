@@ -11,7 +11,9 @@
 #      range, zero allowed. The buttons beside it step the number and stop at the bounds.
 #   5. The proportional checkbox computes the count from the map size and takes the input
 #      away from the field and the buttons while it is on.
-#   6. The map preview of both tabs follows the settings.
+#   6. The map preview of both tabs follows the settings, and the water on it is the sea the
+#      generator builds for those settings (the modes, the edges, the islands, the shallows,
+#      the beaches).
 #   7. Neither the map size nor the number of towns is part of data/map_config.json: the
 #      world reads them from the player's choice (CityData.world_map_size / world_town_count).
 #   8. The "Seas" section: the mode dropdown, the rows of the chosen mode only, a tooltip on
@@ -27,12 +29,20 @@ const WRAPPED_TOOLTIP = preload("res://scripts/wrapped_tooltip.gd")
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const SCREEN := Vector2i(1152, 768)
 
+# The script of the preview, loaded in _run(): its cell codes are what _is_water compares.
+var _preview_script = null
+
 func _initialize() -> void:
     WATCHDOG.arm(self)
     _run()
 
 func _run() -> void:
     var state := {"failed": false}
+
+    # Loaded rather than preloaded: in the --script mode the autoloads are not in the global
+    # cache when this file is compiled, and the preview reaches the sea manager.
+    var WorldPreview = load("res://scripts/world_preview.gd")
+    _preview_script = WorldPreview
 
     # The headless window is 64x64 by default; the dialog is sized from the screen, so the
     # test asks for the size of the real game window.
@@ -259,6 +269,80 @@ func _run() -> void:
     check(menu.world_previews[1].map_size == 30,
             "a preset moves the preview at once (got %d)" % menu.world_previews[1].map_size, state)
 
+    # --- 6b. The water of the preview ---
+    # The picture is built by the generator itself: the sea mask of the chosen settings, cut
+    # down to the cells of the preview. The checks below are about the sea it draws, not about
+    # the exact coastline (which is random and pinned by the seed of the preview).
+    var no_sea: Dictionary = menu._selected_sea_config().duplicate(true)
+    no_sea["mode"] = "none"
+    var dry: Dictionary = WorldPreview.build(60, no_sea)
+    check(is_zero_approx(float(dry["sea_share"])),
+            "a world without a sea has no water on the picture (got %.3f)"
+                    % float(dry["sea_share"]), state)
+
+    var coast: Dictionary = menu._selected_sea_config().duplicate(true)
+    coast["mode"] = "edge"
+    coast["sides"] = [1, 1]
+    coast["edge_islands_enabled"] = false
+    var one_side: Dictionary = WorldPreview.build(60, coast)
+    check(float(one_side["sea_share"]) > 0.02,
+            "the coastal strips put water on the picture (got %.3f)"
+                    % float(one_side["sea_share"]), state)
+    check(_sea_edges(one_side) == 1,
+            "one edge of the sea leaves the water on one side of the picture (got %d)"
+                    % _sea_edges(one_side), state)
+
+    var all_sides: Dictionary = coast.duplicate(true)
+    all_sides["sides"] = [4, 4]
+    var four_sides: Dictionary = WorldPreview.build(60, all_sides)
+    check(_sea_edges(four_sides) == 4,
+            "four edges of the sea put water on all four sides of the picture (got %d)"
+                    % _sea_edges(four_sides), state)
+    check(float(four_sides["sea_share"]) > float(one_side["sea_share"]),
+            "four edges of the sea take more of the map than one (got %.3f of %.3f)"
+                    % [float(four_sides["sea_share"]), float(one_side["sea_share"])], state)
+
+    # The same settings must draw the same picture, otherwise a change of one setting could
+    # not be told apart from a new roll of the coastline.
+    var again: Dictionary = WorldPreview.build(60, coast)
+    check(again["cells"] == one_side["cells"],
+            "the same sea settings draw the same picture", state)
+
+    # The islands are land inside the sea: the water around them turns into shallows and
+    # beaches, so the picture of the same coast changes with the checkbox.
+    var islands: Dictionary = coast.duplicate(true)
+    islands["edge_islands_enabled"] = true
+    check(WorldPreview.build(60, islands)["cells"] != one_side["cells"],
+            "the islands of the sea change the picture", state)
+
+    # The beach and the shallow band are two rims of the same coast, and both are settings of
+    # their own: each must be visible without the other.
+    var deep_shallows: Dictionary = coast.duplicate(true)
+    deep_shallows["coast_max_depth"] = 1
+    check(WorldPreview.build(60, deep_shallows)["cells"] != one_side["cells"],
+            "the depth of the shallows changes the picture", state)
+    var no_beach: Dictionary = coast.duplicate(true)
+    no_beach["beach"] = false
+    check(WorldPreview.build(60, no_beach)["cells"] != one_side["cells"],
+            "the beaches change the picture", state)
+
+    # The caption says what the sea took, which is the one number the picture cannot show.
+    check(menu.world_previews[0]._sea_caption() == tr("No sea")
+            or menu.world_previews[0]._sea_caption().contains("%"),
+            "the caption names the share of the sea (got %s)"
+                    % menu.world_previews[0]._sea_caption(), state)
+
+    # The dialog rebuilds the picture on every change of a sea setting, not only on the mode:
+    # a number typed into a field must move the preview as well.
+    var before_typing: Dictionary = menu.world_previews[0]._picture
+    var depth_field: LineEdit = menu.sea_controls["max_sea_depth"]["control"]
+    depth_field.text = "6"
+    depth_field.text_changed.emit("6")
+    check(menu.world_previews[0]._picture["cells"] != before_typing["cells"],
+            "a sea setting typed into the field moves the picture", state)
+    depth_field.text = str(menu._sea_default("max_sea_depth"))
+    menu._normalize_sea_fields()
+
     # --- 7. The seas ---
     tabs.current_tab = menu.TAB_WORLD
     await process_frame
@@ -433,6 +517,28 @@ func _row_of(rows: Array, text: String) -> Control:
                 and row.get_child(0).text == text:
             return row
     return null
+
+# The map edges of the picture that carry water, counted in the middle of the edge. The
+# corners are left out on purpose: a strip along one side runs the whole length of it and
+# touches the two perpendicular edges with its ends, whatever the sea settings are.
+func _sea_edges(picture: Dictionary) -> int:
+    var grid: int = picture["grid"]
+    var cells: PackedByteArray = picture["cells"]
+    var middle := int(grid / 2.0)
+    var wet := {
+        "north": _is_water(cells[middle]),
+        "south": _is_water(cells[(grid - 1) * grid + middle]),
+        "west": _is_water(cells[middle * grid]),
+        "east": _is_water(cells[middle * grid + grid - 1]),
+    }
+    var count := 0
+    for side in wet.keys():
+        if wet[side]:
+            count += 1
+    return count
+
+func _is_water(code: int) -> bool:
+    return code == _preview_script.CELL_DEEP_SEA or code == _preview_script.CELL_SHALLOW_SEA
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if not condition:

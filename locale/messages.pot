@@ -1449,6 +1449,9 @@ msgstr ""
 msgid "No scouted route from the city to the town — send scouts there"
 msgstr ""
 
+msgid "No sea"
+msgstr ""
+
 msgid "No technology is being researched. Click to select a technology"
 msgstr ""
 
@@ -1876,6 +1879,9 @@ msgid "Scouts sent... (%d coins paid from the treasury)"
 msgstr ""
 
 msgid "Sea level"
+msgstr ""
+
+msgid "Sea: %d%%"
 msgstr ""
 
 msgid "Seas"

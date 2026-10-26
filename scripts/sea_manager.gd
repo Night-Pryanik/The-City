@@ -6,6 +6,10 @@
 # Public API:
 #   - sea_config()                                     : Dictionary
 #   - is_sea_hex(tile_data, row, col)                  : bool
+#   - build_sea_mask(rows, cols, city_row,
+#                    city_col, cfg)                    : Array   (2D bool mask, water only)
+#   - grow_sea_islands(sea_mask, rows, cols, city_row,
+#                      city_col, cfg, announce)        : void    (in place)
 #   - apply_sea(tile_data, rows, cols, city_row,
 #               city_col)                              : Array   (2D bool mask)
 #   - reapply_sea_mask(tile_data)                      : void    (after Voronoi)
@@ -42,66 +46,55 @@ static func is_sea_hex(tile_data: Array, row: int, col: int) -> bool:
     return tile_data[row][col].get("_is_sea", false)
 
 
-# Generates the sea mask on the map BEFORE the Voronoi algorithm.
-# It returns a 2D bool array: true = the hex is sea.
-# Two modes are supported (see CityData.world_sea):
-#   - "noise" (variant A): elevation = the gradient from the edge + noise + city_bump;
-#     land = elevation > sea_level.
-#   - "edge" (variant B): a sea strip at the chosen edges, the width is a smooth 1D noise.
-#   - "none": the sea is not generated.
-# The sea hexes are marked with the temporary flag _is_sea, so that after the Voronoi
-# the mask can be re-applied on top of the result.
-static func apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> Array:
-    var cfg := sea_config()
-    var mode: String = cfg.get("mode", "none")
-    var sea_mask: Array = []
-    for r in range(rows):
-        var row_arr = []
-        row_arr.resize(cols)
-        row_arr.fill(false)
-        sea_mask.append(row_arr)
-
+# The water of the world, before anything is done with it: the chosen mode, the map edges the
+# sea comes from and the coastline itself. The shallow band, the islands and the beaches are
+# separate steps (see apply_sea) — this is the mask alone, and the map preview of a new game
+# draws it, so the shape on the preview is the shape the generator builds.
+#
+# The modes are the "mode" of CityData.world_sea: "edge" — a strip along the chosen map edges,
+# "noise" — an elevation field, "none" — no water at all.
+#
+# The water is drawn at random, so the caller that needs a stable picture seeds the global
+# generator before the call (the world generation reseeds it on its own).
+static func build_sea_mask(rows: int, cols: int, city_row: int, city_col: int,
+        cfg: Dictionary) -> Array:
+    var sea_mask := _empty_mask(rows, cols)
+    var mode: String = str(cfg.get("mode", "none"))
     if mode == "none":
         return sea_mask
 
+    var sides: Array = _choose_sides(cfg)
+    if sides.is_empty():
+        return sea_mask
+
     var max_sea_depth: int = int(cfg.get("max_sea_depth", 8))
-    var coast_max_depth: int = maxi(1, int(cfg.get("coast_max_depth", 5)))
-    var beach_enabled: bool = cfg.get("beach", true)
-
-    # sides — the range [min, max] of the number of randomly chosen map edges
-    # that will have the sea. [0,0] — the sea is not generated.
-    # The parsing and validation of the format ("a number" or "[min, max] of numbers", swap on
-    # swapped bounds) is delegated to RangeUtils.parse_range.
-    # With invalid data the sea is not generated (safe behaviour).
-    var parsed_sides: Dictionary = RangeUtils.parse_range(cfg.get("sides", []))
-    if not parsed_sides.ok:
-        print("map_generator: warning — the sea.sides field is set incorrectly, the sea is not generated. A number or [min, max] (0..4) is expected.")
-        return sea_mask
-    var sides: Array = []
-    var min_sides: int = clampi(parsed_sides["min"], 0, 4)
-    var max_sides: int = clampi(parsed_sides["max"], 0, 4)
-    # If the minimum = 0 — the sea may not be generated at all.
-    if max_sides <= 0:
-        return sea_mask
-    var all_sides: Array = ["east", "west", "north", "south"]
-    var count: int = randi_range(min_sides, max_sides)
-    all_sides.shuffle()
-    for i in range(count):
-        sides.append(all_sides[i])
-
     if mode == "noise":
         _apply_sea_noise(sea_mask, rows, cols, city_row, city_col, cfg, max_sea_depth, sides)
     elif mode == "edge":
         _apply_sea_edge(sea_mask, rows, cols, cfg, max_sea_depth, sides)
+    return sea_mask
 
+
+# Builds the water of the world on the map BEFORE the Voronoi algorithm: the mask of
+# build_sea_mask, then the shallow band, the islands and the beaches. The hexes are marked with
+# the temporary flags _is_sea / _is_shallow_sea / _is_beach, so that after the Voronoi the mask
+# can be re-applied on top of the result (see reapply_sea_mask).
+static func apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> Array:
+    var cfg := sea_config()
+    var sea_mask := build_sea_mask(rows, cols, city_row, city_col, cfg)
+
+    # A world without water is finished here: the steps below have nothing to work on, and the
+    # beach pass would walk the whole map to find no coast at all.
+    if not _has_sea(sea_mask):
+        return sea_mask
+
+    var coast_max_depth: int = maxi(1, int(cfg.get("coast_max_depth", 5)))
     var shallow_mask := _build_shallow_sea_mask(sea_mask, rows, cols, coast_max_depth)
 
-    if mode == "edge":
-        # Islands in the seas — only for the "edge" mode. They are placed BEFORE the _is_sea
-        # marking and BEFORE _apply_beach, so that the beach later correctly outlines the new
-        # islands (as well as any other land next to the sea).
-        if bool(cfg.get("edge_islands_enabled", true)):
-            _apply_sea_islands(sea_mask, rows, cols, cfg, city_row, city_col)
+    # The islands are grown AFTER the shallow band, so an island never carries shallows of its
+    # own. They come before the marking and before the beach, so that the beach outlines the
+    # new islands as it does any other land next to the sea.
+    grow_sea_islands(sea_mask, rows, cols, city_row, city_col, cfg)
 
     # We mark the sea hexes with the temporary flag _is_sea.
     for r in range(rows):
@@ -112,10 +105,67 @@ static func apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, cit
                     tile_data[r][c]["_is_shallow_sea"] = true
 
     # The beach: land adjacent to the sea becomes a beach (beach).
-    if beach_enabled:
+    if bool(cfg.get("beach", true)):
         _apply_beach(tile_data, sea_mask, rows, cols)
 
     return sea_mask
+
+
+# The islands inside the seas. They belong to the "edge" mode and to the player's checkbox, so
+# both conditions are checked here rather than by every caller.
+#
+# `announce` writes the count to the log. The world generation wants it; the map preview
+# rebuilds the mask on every change of a setting and would flood the console.
+static func grow_sea_islands(sea_mask: Array, rows: int, cols: int,
+        city_row: int, city_col: int, cfg: Dictionary, announce: bool = true) -> void:
+    if str(cfg.get("mode", "none")) != "edge":
+        return
+    if not bool(cfg.get("edge_islands_enabled", true)):
+        return
+    _apply_sea_islands(sea_mask, rows, cols, cfg, city_row, city_col, announce)
+
+
+# The map edges that get a sea: `sides` is a range [min, max] of the number of cardinal
+# directions, and the directions themselves are drawn at random. An empty result means the
+# world gets no sea at all.
+#
+# The parsing and validation of the format ("a number" or "[min, max] of numbers", swap on
+# swapped bounds) is delegated to RangeUtils.parse_range. With invalid data the sea is not
+# generated (safe behaviour).
+static func _choose_sides(cfg: Dictionary) -> Array:
+    var parsed: Dictionary = RangeUtils.parse_range(cfg.get("sides", []))
+    if not parsed.ok:
+        print("map_generator: warning — the sea.sides field is set incorrectly, the sea is not generated. A number or [min, max] (0..4) is expected.")
+        return []
+    var min_sides: int = clampi(parsed["min"], 0, 4)
+    var max_sides: int = clampi(parsed["max"], 0, 4)
+    # If the minimum = 0 — the sea may not be generated at all.
+    if max_sides <= 0:
+        return []
+    var sides: Array = []
+    var all_sides: Array = ["east", "west", "north", "south"]
+    var count: int = randi_range(min_sides, max_sides)
+    all_sides.shuffle()
+    for i in range(count):
+        sides.append(all_sides[i])
+    return sides
+
+
+static func _empty_mask(rows: int, cols: int) -> Array:
+    var mask: Array = []
+    for r in range(rows):
+        var row_arr = []
+        row_arr.resize(cols)
+        row_arr.fill(false)
+        mask.append(row_arr)
+    return mask
+
+
+static func _has_sea(sea_mask: Array) -> bool:
+    for row in sea_mask:
+        if true in row:
+            return true
+    return false
 
 
 # Re-applies the sea/beach mask on top of the Voronoi result. The Voronoi
@@ -333,7 +383,7 @@ static func _apply_sea_edge(sea_mask: Array, rows: int, cols: int,
 # a small sea this often gives 0 islands, in a big one — it may give many.
 # It is called BEFORE _apply_beach, so that the beach correctly outlines the new islands.
 static func _apply_sea_islands(sea_mask: Array, rows: int, cols: int,
-        cfg: Dictionary, city_row: int, city_col: int) -> void:
+        cfg: Dictionary, city_row: int, city_col: int, announce: bool = true) -> void:
     # --- Reading the parameters with defaults ---
     var size_range: Array = cfg.get("edge_island_size", [1, 5])
     var size_min: int = 1
@@ -454,7 +504,7 @@ static func _apply_sea_islands(sea_mask: Array, rows: int, cols: int,
         islands_placed += 1
         island_index += 1
 
-    if islands_placed > 0:
+    if announce and islands_placed > 0:
         print("map_generator: islands placed in the sea: %d (the target number was %d, the sea area is %d)" %
                 [islands_placed, target, sea_area])
 

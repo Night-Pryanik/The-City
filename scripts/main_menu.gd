@@ -376,12 +376,15 @@ func _make_preview() -> Control:
     return preview
 
 # The previews show the world the current settings describe, so they are refreshed from one
-# place instead of each control knowing about them.
+# place instead of each control knowing about them. The picture of the water is built once and
+# handed to both: the two tabs show the same world, and building the sea mask twice would
+# double the cost of every change of a setting.
 func _refresh_preview():
     var side := _selected_map_size()
     var towns := _selected_town_count()
+    var picture := WorldPreview.build(side, _selected_sea_config())
     for preview in world_previews:
-        preview.set_world(side, towns)
+        preview.set_world(side, towns, picture)
 
 # The world settings of a new game: the map size, the number of towns and the seas. Every
 # setting is one line of the list, and the list grows downwards.
@@ -588,6 +591,7 @@ func _add_sea_check_row(column: VBoxContainer, key: String, label: String, toolt
     check.button_pressed = bool(_sea_default(key))
     WrappedTooltip.attach(check, tooltip)
     check.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    check.toggled.connect(func(_pressed): _refresh_preview())
     _add_sea_row(column, key, label, check, tooltip, modes,
             {"kind": SEA_CHECK, "control": check, "default": bool(_sea_default(key))}, gate)
     return check
@@ -613,6 +617,9 @@ func _make_sea_field(value: String, fractional: bool, tooltip: String) -> LineEd
     edit.text = value
     WrappedTooltip.attach(edit, tooltip)
     edit.text_changed.connect(func(text): _keep_number(edit, text, fractional))
+    # The picture follows the number while it is being typed, not only when the field loses
+    # focus: the sea is the one part of the world a setting changes by a visible amount.
+    edit.text_changed.connect(func(_text): _refresh_preview())
     edit.focus_exited.connect(_normalize_sea_fields)
     return edit
 
@@ -636,7 +643,10 @@ func _refresh_sea_rows():
 
 func _on_sea_mode_selected(_index: int):
     _refresh_sea_rows()
+    _refresh_preview()
 
+# The island checkbox refreshes the rows it switches. The picture follows the checkbox on its
+# own: every check box of the section is wired to the preview (see _add_sea_check_row).
 func _on_sea_islands_toggled(_pressed: bool):
     _refresh_sea_rows()
 

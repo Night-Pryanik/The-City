@@ -1449,6 +1449,9 @@ msgstr "Нет сохранённых игр."
 msgid "No scouted route from the city to the town — send scouts there"
 msgstr "Нет разведанного пути от города до городка — отправьте туда разведчиков"
 
+msgid "No sea"
+msgstr "Моря нет"
+
 msgid "No technology is being researched. Click to select a technology"
 msgstr "Никакая технология не изучается. Нажмите, чтобы выбрать технологию"
 
@@ -1877,6 +1880,9 @@ msgstr "Разведчики отправлены... (оплачено %d мон
 
 msgid "Sea level"
 msgstr "Уровень моря"
+
+msgid "Sea: %d%%"
+msgstr "Море: %d%%"
 
 msgid "Seas"
 msgstr "Моря"
