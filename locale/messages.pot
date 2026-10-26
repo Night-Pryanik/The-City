@@ -477,6 +477,9 @@ msgstr ""
 msgid "Amount:"
 msgstr ""
 
+msgid "An empty name gives the city a random one."
+msgstr ""
+
 msgid "Another town stands here"
 msgstr ""
 
@@ -1140,6 +1143,9 @@ msgstr ""
 msgid "Hex outside the map"
 msgstr ""
 
+msgid "Hexes: %s · Towns: %d"
+msgstr ""
+
 msgid "Hide the confirmation"
 msgstr ""
 
@@ -1543,6 +1549,12 @@ msgid "Production slots: %d"
 msgstr ""
 
 msgid "Profit (actual, average): %s / sec"
+msgstr ""
+
+msgid "Proportional"
+msgstr ""
+
+msgid "Proportional to the map size"
 msgstr ""
 
 msgid "Purchase"
@@ -2025,6 +2037,9 @@ msgstr ""
 msgid "The mod was not found."
 msgstr ""
 
+msgid "The side of the square map, in hexes."
+msgstr ""
+
 msgid "The simulation is stopped. Your actions are queued until you resume it."
 msgstr ""
 
@@ -2227,6 +2242,9 @@ msgid "Work: %d"
 msgstr ""
 
 msgid "Work: %d (%.0f sec)"
+msgstr ""
+
+msgid "World"
 msgstr ""
 
 msgid "World settings"

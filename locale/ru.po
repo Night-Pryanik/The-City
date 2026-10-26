@@ -477,6 +477,9 @@ msgstr "Уже прочитано"
 msgid "Amount:"
 msgstr "Количество:"
 
+msgid "An empty name gives the city a random one."
+msgstr "Пустое имя — город получит случайное название."
+
 msgid "Another town stands here"
 msgstr "Здесь стоит чужой городок"
 
@@ -1140,6 +1143,9 @@ msgstr "Гекс вне Кольца Влияния"
 msgid "Hex outside the map"
 msgstr "Гекс вне карты"
 
+msgid "Hexes: %s · Towns: %d"
+msgstr "Гексов: %s · Городов: %d"
+
 msgid "Hide the confirmation"
 msgstr "Скрыть подтверждение"
 
@@ -1544,6 +1550,12 @@ msgstr "Слотов производства: %d"
 
 msgid "Profit (actual, average): %s / sec"
 msgstr "Прибыль (фактическая, средняя): %s / сек"
+
+msgid "Proportional"
+msgstr "Пропорционально"
+
+msgid "Proportional to the map size"
+msgstr "Пропорционально размеру карты"
 
 msgid "Purchase"
 msgstr "Покупка"
@@ -2025,6 +2037,9 @@ msgstr "Модификация зависит сама от себя."
 msgid "The mod was not found."
 msgstr "Модификация не найдена."
 
+msgid "The side of the square map, in hexes."
+msgstr "Сторона квадратной карты в гексах."
+
 msgid "The simulation is stopped. Your actions are queued until you resume it."
 msgstr "Симуляция остановлена. Ваши действия попадут в очередь до возобновления."
 
@@ -2228,6 +2243,9 @@ msgstr "Труд: %d"
 
 msgid "Work: %d (%.0f sec)"
 msgstr "Труд: %d (%.0f сек)"
+
+msgid "World"
+msgstr "Мир"
 
 msgid "World settings"
 msgstr "Настройки мира"

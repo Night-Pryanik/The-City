@@ -1,15 +1,18 @@
-# Headless test of the world settings of a new game:
+# Headless test of the new game window:
 #   godot --headless --path . --script res://tests/test_world_settings.gd
 #
 # Covers:
-#   1. The name dialog is centred and takes nearly the whole height of the screen.
-#   2. "World settings" unfolds a panel INSIDE the dialog, under its own button, and the
-#      mods button is pushed down; a second press folds the panel back.
+#   1. The window is one dialog with three tabs (the city, the world, the mods), and it
+#      keeps ONE size: switching tabs must not resize it.
+#   2. The City tab holds the name field, the World tab the settings, the Mods tab the list.
 #   3. The map size is a preset list with "Custom size" at the end; the custom field takes
 #      only digits and is clamped to the allowed range.
 #   4. The number of towns is a plain number field: digits only, clamped to the allowed
-#      range, zero allowed.
-#   5. Neither the map size nor the number of towns is part of data/map_config.json: the
+#      range, zero allowed. The buttons beside it step the number and stop at the bounds.
+#   5. The proportional checkbox computes the count from the map size and takes the input
+#      away from the field and the buttons while it is on.
+#   6. The map preview of both tabs follows the settings.
+#   7. Neither the map size nor the number of towns is part of data/map_config.json: the
 #      world reads them from the player's choice (CityData.world_map_size / world_town_count).
 #
 # The generation of the world is not started here: the size is read through the dialog,
@@ -49,46 +52,55 @@ func _run() -> void:
         _finish(state)
         return
 
-    # --- 1. The size and the place of the dialog ---
-    # The margins are kept for the decorated rect: the frame of the window is what the
-    # player sees around the content.
-    var expected_height: int = int(screen.y) - menu.DIALOG_EDGE_MARGIN * 2
+    # --- 1. One window, three tabs, one size ---
+    var tabs: TabContainer = menu.tab_container
+    check(tabs != null, "the dialog owns a tab container", state)
+    check(tabs.get_tab_count() == 3,
+            "the window has three tabs (got %d)" % tabs.get_tab_count(), state)
+    check(tabs.get_tab_title(menu.TAB_CITY) == tr("City")
+            and tabs.get_tab_title(menu.TAB_WORLD) == tr("World")
+            and tabs.get_tab_title(menu.TAB_MODS).begins_with(tr("Mods")),
+            "the tabs are named after their question (got %s / %s / %s)" % [
+                    tabs.get_tab_title(menu.TAB_CITY), tabs.get_tab_title(menu.TAB_WORLD),
+                    tabs.get_tab_title(menu.TAB_MODS)], state)
+    check(tabs.current_tab == menu.TAB_CITY, "the city tab opens first", state)
+
     var deco_size: Vector2i = dialog.get_size_with_decorations()
     var deco_pos: Vector2i = dialog.get_position_with_decorations()
-    check(deco_size.y == expected_height,
-            "the dialog is as tall as the screen minus the margins (got %d, want %d)"
-                    % [deco_size.y, expected_height], state)
+    check(deco_size.y < int(screen.y),
+            "the window does not take the whole screen height (got %d of %d)"
+                    % [deco_size.y, int(screen.y)], state)
+    check(deco_size.x >= menu.DIALOG_CONTENT_WIDTH,
+            "the window is as wide as its widest tab (got %d)" % deco_size.x, state)
     var centre := Vector2(deco_pos) + Vector2(deco_size) / 2.0
     check(absf(centre.y - screen.y / 2.0) <= 1.0,
             "the dialog is centred vertically (centre %s)" % str(centre), state)
     check(absf(centre.x - screen.x / 2.0) <= 1.0,
             "the dialog is centred horizontally (centre %s)" % str(centre), state)
 
-    # --- 2. The panel unfolds inside the dialog ---
-    check(menu.world_settings_panel != null, "the dialog owns a world settings panel", state)
-    check(not menu.world_settings_panel.visible, "the panel starts folded", state)
-    check(menu.world_settings_panel.is_ancestor_of(menu.map_size_option),
-            "the map size lives inside the panel", state)
+    var size_before: Vector2i = dialog.size
+    for tab in [menu.TAB_WORLD, menu.TAB_MODS, menu.TAB_CITY]:
+        tabs.current_tab = tab
+        await process_frame
+        await process_frame
+        check(dialog.size == size_before,
+                "the window keeps its size on tab %d (got %s, was %s)"
+                        % [tab, str(dialog.size), str(size_before)], state)
 
-    var mods_y_folded: float = menu.mods_button.global_position.y
-    var dialog_height: int = dialog.size.y
-    menu.world_settings_button.button_pressed = true
-    await process_frame
-    await process_frame
-    check(menu.world_settings_panel.visible, "the first press unfolds the panel", state)
-    check(dialog.visible, "the panel does not close the dialog", state)
-    var mods_y_unfolded: float = menu.mods_button.global_position.y
-    check(mods_y_unfolded > mods_y_folded,
-            "the mods button moves down while the panel is open (%f -> %f)"
-                    % [mods_y_folded, mods_y_unfolded], state)
-    check(dialog.size.y == dialog_height, "the dialog keeps its height", state)
-
-    menu.world_settings_button.button_pressed = false
-    await process_frame
-    await process_frame
-    check(not menu.world_settings_panel.visible, "the second press folds the panel", state)
-    check(is_equal_approx(menu.mods_button.global_position.y, mods_y_folded),
-            "the mods button comes back", state)
+    # --- 2. Every tab holds what it is named after ---
+    check(tabs.get_tab_control(menu.TAB_CITY).is_ancestor_of(menu.city_name_edit),
+            "the name field lives on the city tab", state)
+    check(tabs.get_tab_control(menu.TAB_WORLD).is_ancestor_of(menu.map_size_option),
+            "the map size lives on the world tab", state)
+    check(tabs.get_tab_control(menu.TAB_WORLD).is_ancestor_of(menu.town_count_edit),
+            "the town count lives on the world tab", state)
+    check(tabs.get_tab_control(menu.TAB_MODS) == menu.mod_list,
+            "the mod list IS the mods tab", state)
+    check(menu.world_previews.size() == 2,
+            "the city and the world tabs each have a preview (got %d)"
+                    % menu.world_previews.size(), state)
+    check(menu._selected_town_count() == 16,
+            "the default town count is 16 (got %d)" % menu._selected_town_count(), state)
 
     # --- 3. The map size: presets and the custom side ---
     check(menu.map_size_option.item_count == menu.MAP_SIZE_PRESETS.size() + 1,
@@ -129,16 +141,25 @@ func _run() -> void:
     check(menu._selected_map_size() == 42,
             "the filtered number is the chosen side (got %d)" % menu._selected_map_size(), state)
 
-    # --- 4. The number of towns ---
-    check(menu.world_settings_panel.is_ancestor_of(menu.town_count_edit),
-            "the town count lives inside the panel", state)
-    check(menu._selected_town_count() == 16,
-            "the default town count is 16 (got %d)" % menu._selected_town_count(), state)
+    # --- 4. The number of towns and its ceiling ---
+    # The ceiling is a density, not a number: it follows the map, so one field serves a 30×30
+    # village map and a 200×200 world.
+    check(menu._max_town_count(30) == 10,
+            "a 30×30 map holds 10 towns (got %d)" % menu._max_town_count(30), state)
+    check(menu._max_town_count(60) == 40,
+            "a 60×60 map holds 40 towns (got %d)" % menu._max_town_count(60), state)
+    check(menu._max_town_count(100) == 111,
+            "a 100×100 map holds 111 towns (got %d)" % menu._max_town_count(100), state)
 
-    menu.town_count_edit.text = "99"
+    menu.map_size_option.select(1)
+    menu._on_map_size_selected(1)
+    menu.town_count_edit.text = "16"
+    menu._normalize_town_count()
+
+    menu.town_count_edit.text = "999"
     menu._normalize_town_count()
     check(menu.town_count_edit.text == "40" and menu._selected_town_count() == 40,
-            "a count above the maximum is pulled to it (got %s)" % menu.town_count_edit.text, state)
+            "a count above the ceiling is pulled to it (got %s)" % menu.town_count_edit.text, state)
 
     menu.town_count_edit.text = "0"
     menu._normalize_town_count()
@@ -152,7 +173,90 @@ func _run() -> void:
     check(menu._selected_town_count() == 12,
             "the filtered number is the chosen count (got %d)" % menu._selected_town_count(), state)
 
-    # --- 5. The size and the count are not in the data any more ---
+    # A count that does not fit the smaller map comes down with it.
+    menu.map_size_option.select(0)
+    menu._on_map_size_selected(0)
+    check(menu.town_count_edit.text == "10" and menu._selected_town_count() == 10,
+            "the count is pulled down to the ceiling of the smaller map (got %s)"
+                    % menu.town_count_edit.text, state)
+    menu.map_size_option.select(1)
+    menu._on_map_size_selected(1)
+
+    # --- 5. The step buttons and the proportional count ---
+    check(menu.proportional_check != null, "the row owns a proportional checkbox", state)
+    check(not menu.proportional_check.button_pressed, "the count is manual by default", state)
+    check(menu.town_count_edit.editable, "the field takes input by default", state)
+    check(not menu.town_count_minus.disabled and not menu.town_count_plus.disabled,
+            "the step buttons are enabled by default", state)
+
+    menu._on_town_count_step(1)
+    check(menu._selected_town_count() == 11,
+            "the plus button steps the count up (got %d)" % menu._selected_town_count(), state)
+    menu._on_town_count_step(-1)
+    menu._on_town_count_step(-1)
+    check(menu._selected_town_count() == 9,
+            "the minus button steps the count down (got %d)" % menu._selected_town_count(), state)
+
+    menu.town_count_edit.text = "40"
+    menu._on_town_count_step(1)
+    check(menu._selected_town_count() == 40, "the step stops at the ceiling of the map", state)
+    menu.town_count_edit.text = "0"
+    menu._on_town_count_step(-1)
+    check(menu._selected_town_count() == 0, "the step stops at zero", state)
+
+    # The computed count keeps the default on the medium map and follows the map size. The
+    # property is what a click on the checkbox changes; the handler is called after it in
+    # case the assignment does not report itself as a toggle.
+    menu.map_size_option.select(1)
+    menu._on_map_size_selected(1)
+    menu.proportional_check.button_pressed = true
+    menu._refresh_town_row()
+    check(not menu.town_count_edit.editable,
+            "the field is read only while the count is computed", state)
+    check(menu.town_count_minus.disabled and menu.town_count_plus.disabled,
+            "the step buttons are off while the count is computed", state)
+    check(menu._selected_town_count() == 16 and menu.town_count_edit.text == "16",
+            "the medium map keeps the default 16 towns (got %s)" % menu.town_count_edit.text, state)
+
+    menu.map_size_option.select(0)
+    menu._on_map_size_selected(0)
+    check(menu._selected_town_count() == 8,
+            "a small map gets 8 towns (got %d)" % menu._selected_town_count(), state)
+    check(menu.town_count_edit.text == "8",
+            "the field shows the computed count (got %s)" % menu.town_count_edit.text, state)
+
+    menu.map_size_option.select(4)
+    menu._on_map_size_selected(4)
+    check(menu._selected_town_count() == 53,
+            "the giant map gets 53 towns (got %d)" % menu._selected_town_count(), state)
+
+    menu.proportional_check.button_pressed = false
+    menu._refresh_town_row()
+    check(menu.town_count_edit.editable, "the field takes input again", state)
+    check(not menu.town_count_minus.disabled, "the buttons are enabled again", state)
+
+    # Back to a known state for the preview check below.
+    menu.map_size_option.select(1)
+    menu._on_map_size_selected(1)
+    menu.town_count_edit.text = "12"
+    menu._normalize_town_count()
+
+    # --- 6. The preview follows the settings ---
+    for preview in menu.world_previews:
+        check(preview.map_size == 60,
+                "the preview shows the chosen side (got %d)" % preview.map_size, state)
+        check(preview.town_count == 12,
+                "the preview shows the chosen towns (got %d)" % preview.town_count, state)
+    check(menu.world_previews[0].max_map_size == menu.MAX_MAP_SIZE,
+            "the preview knows the largest map of the game (got %d)"
+                    % menu.world_previews[0].max_map_size, state)
+
+    menu.map_size_option.select(0)
+    menu._on_map_size_selected(0)
+    check(menu.world_previews[1].map_size == 30,
+            "a preset moves the preview at once (got %d)" % menu.world_previews[1].map_size, state)
+
+    # --- 7. The size and the count are not in the data ---
     var game_data = get_root().get_node("GameData")
     check(game_data.data_loaded, "the game data is loaded by the menu", state)
     check(not game_data.map_config.has("map_rows") and not game_data.map_config.has("map_cols"),

@@ -402,9 +402,8 @@ func _test_list(state: Dictionary) -> void:
 
 # --- 9. The "New game" path -------------------------------------------------------
 
-# "New game" opens the city naming dialog, and the mods of the game live in a window of
-# their own behind a button of that dialog. The two windows keep their width: the name
-# window is as wide as the name field, the mods window as wide as the list.
+# "New game" opens one window with the mods on a tab of their own. The window keeps one
+# size: the list is its widest content, and switching tabs must not resize it.
 func _test_new_game_flow(state: Dictionary) -> void:
     _mod_manager.set_active([])
     _game_data.load_all_data()
@@ -418,49 +417,43 @@ func _test_new_game_flow(state: Dictionary) -> void:
     await process_frame
 
     var dialog = menu.new_game_dialog
-    check(dialog != null, "New game opens the city naming dialog", state)
+    check(dialog != null, "New game opens the new game dialog", state)
     if dialog == null:
         menu.free()
         return
     check(dialog.visible, "the dialog is shown", state)
     check(menu.mod_list != null, "the dialog owns the mod list", state)
-    check(not menu.mods_window.visible, "the mods window is closed at the start", state)
-    check(menu.mods_button.text == tr("Mods"), "a game without mods says so on the button", state)
-    # The name window is as wide as its own content, not as the list.
-    check(dialog.size.x < menu.mod_list.get_combined_minimum_size().x,
-            "the name window is narrower than the mod list", state)
+    check(menu.tab_container.get_tab_control(menu.TAB_MODS) == menu.mod_list,
+            "the mod list IS the mods tab", state)
+    check(menu.tab_container.get_tab_title(menu.TAB_MODS) == tr("Mods"),
+            "a game without mods says so on the tab", state)
 
-    menu.mods_button.pressed.emit()
+    var size_before: Vector2i = dialog.size
+    menu.tab_container.current_tab = menu.TAB_MODS
     await process_frame
-    check(menu.mods_window.visible, "the button opens the mods window", state)
-    check(menu.mod_list.is_visible_in_tree(), "the mod list is shown in its own window", state)
-    check(not dialog.visible, "the name dialog waits while the mods window is open", state)
-    check(menu.mods_window.size.x >= menu.mod_list.get_combined_minimum_size().x,
-            "the mods window is as wide as the list", state)
+    await process_frame
+    check(dialog.size == size_before, "the window keeps its size on the mods tab", state)
+    check(menu.mod_list.is_visible_in_tree(), "the mod list is shown on its tab", state)
 
-    var width_before: float = menu.mods_window.size.x
     var checkbox = menu.mod_list._checkboxes.get(SHIPPED_MOD, null)
-    check(checkbox != null, "the mod has a checkbox in the window", state)
+    check(checkbox != null, "the mod has a checkbox on its tab", state)
     if checkbox != null:
         checkbox.button_pressed = true
         await process_frame
         check(_mod_manager.active_ids.has(SHIPPED_MOD),
-                "the set is applied without leaving the window", state)
+                "the set is applied without leaving the tab", state)
         # The data is not rebuilt on every click: it is marked stale and rebuilt when the
         # dialog really reads it (the random name) or when the game starts.
         check(not _game_data.data_loaded, "a click marks the data stale instead of rebuilding it", state)
         menu._ensure_game_data()
         check(_game_data.products.has("glazed_tile"), "the data is rebuilt when it is needed", state)
-        check(menu.mods_button.text == "%s (1)" % tr("Mods"), "the button counts the mods", state)
-        check(menu.mods_window.size.x == width_before, "the mods window keeps its width", state)
+        check(menu.tab_container.get_tab_title(menu.TAB_MODS) == "%s (1)" % tr("Mods"),
+                "the tab counts the mods", state)
 
-    # Closing the window of the mods does not undo the choice, and the dialog of the name
-    # comes back.
-    menu.mods_window.get_ok_button().pressed.emit()
+    # Going back to the city tab does not undo the choice.
+    menu.tab_container.current_tab = menu.TAB_CITY
     await process_frame
-    check(not menu.mods_window.visible, "the mods window can be closed", state)
-    check(dialog.visible, "the name dialog comes back", state)
-    check(_mod_manager.active_ids.has(SHIPPED_MOD), "the choice survives the closing", state)
+    check(_mod_manager.active_ids.has(SHIPPED_MOD), "the choice survives the tab switch", state)
 
     menu.free()
     _mod_manager.set_active([])

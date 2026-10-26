@@ -7,8 +7,8 @@
 # stays BELOW it — its dependency has to be applied first — and the arrows refuse to
 # break that pair (ModManager.order_conflict says why).
 #
-# The list is embedded into the city naming dialog and is collapsed until the player asks
-# for it: the mods are a detail of a new game, not its first question.
+# The list is the mods TAB of the new game window: the mods of a game are a question of
+# their own, next to the city and the world.
 #
 # THE LIST ONLY COLLECTS THE CHOICE. It never touches the data: `selection_changed` hands
 # the ordered set to the host, and the host applies it (main_menu starts a new game with
@@ -28,8 +28,6 @@ const ORDER_ROW_HEIGHT := 30
 
 ## The player changed the set or its order. The host applies it.
 signal selection_changed(ids: Array)
-## The room the list needs has changed: the problems panel was shown or hidden.
-signal layout_changed
 
 # The chosen mods, in the order they are applied. A dependency is always in the list
 # together with the mod that requires it.
@@ -365,13 +363,9 @@ func _clear_problems() -> void:
     problems_label.text = ""
     _set_problems_visible(false)
 
-# The panel is not a fixed part of the list: it takes room only while it has something
-# to say, and the host has to know that the room has changed.
+# The panel is not a fixed part of the list: it takes room only while it has something to say.
 func _set_problems_visible(value: bool) -> void:
-    if problems_panel.visible == value:
-        return
     problems_panel.visible = value
-    layout_changed.emit()
 
 # The gutter is reserved (SHOW_ALWAYS) so that the rows keep their width when the list
 # starts to overflow, but an idle bar paints its grabber over the whole track. The bar

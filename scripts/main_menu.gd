@@ -8,14 +8,30 @@ const DataValidator = preload("res://scripts/data_validator.gd")
 const DataProblemsWindow = preload("res://scripts/data_problems_window.gd")
 const UiHelpers = preload("res://scripts/ui_helpers.gd")
 const ModListScene = preload("res://scenes/mod_list.tscn")
+const WorldPreview = preload("res://scripts/world_preview.gd")
 
-# The width of the city name field. It does not follow anything else: the name window is
-# sized to it and keeps that width.
+# The width of the city name field. It does not follow anything else: the name column is
+# sized to it.
 const NAME_FIELD_WIDTH := 340
 
-# The new game dialog takes nearly the whole height of the screen: the world settings
-# unfold inside it, and a tall window keeps the layout from jumping as the panel opens.
+# The content of the new game window. The width comes from the mod list, which is the
+# widest of the tabs; the height is chosen for the settings list and the map preview, and
+# the window keeps it on every tab.
+const DIALOG_CONTENT_WIDTH := 860
+const DIALOG_CONTENT_HEIGHT := 520
+const DIALOG_MIN_CONTENT_HEIGHT := 360
 const DIALOG_EDGE_MARGIN := 24
+
+# The room the map preview takes on the right of the City and World tabs, and the height of
+# one line of the settings list.
+const PREVIEW_WIDTH := 360
+const SETTING_ROW_HEIGHT := 32
+const SETTING_CONTROL_HEIGHT := 30
+const STEP_FIELD_WIDTH := 58
+
+const TAB_CITY := 0
+const TAB_WORLD := 1
+const TAB_MODS := 2
 
 # The map size presets offered in the world settings (the square side in hexes), and the
 # bounds of the custom size. The player chooses one for a new game; the default is medium.
@@ -24,11 +40,13 @@ const MIN_MAP_SIZE := 10
 const MAX_MAP_SIZE := 200
 const DEFAULT_MAP_SIZE := 60
 
-# The number of towns a new world is generated with, and the bounds of the field. The
+# The number of towns a new world is generated with, and the lower bound of the field. The
 # generator places as many as the map allows: a crowded map simply ends up with fewer.
 const DEFAULT_TOWN_COUNT := 16
 const MIN_TOWN_COUNT := 0
-const MAX_TOWN_COUNT := 40
+# The ceiling follows the map: one town per this many hexes, which is 40 on the medium map and
+# 111 on a 100×100 one. A fixed ceiling would either choke a giant map or flood a small one.
+const HEXES_PER_TOWN := 90
 
 @onready var continue_button = $VBoxContainer/ContinueButton
 @onready var new_game_button = $VBoxContainer/NewGameButton
@@ -38,23 +56,25 @@ const MAX_TOWN_COUNT := 40
 
 # The window of the saves, created on the first click on "Load game".
 var save_load_window: CanvasLayer = null
-# The dialog of a new game: the city name, and the way into the window of the mods. It is
-# built once and kept — the choice of mods survives a "Back".
+# The dialog of a new game: one window with a tab per question (the city, the world, the
+# mods). It is built once and kept — the choice of mods survives a "Back".
 var new_game_dialog: ConfirmationDialog = null
+var tab_container: TabContainer = null
 var city_name_edit: LineEdit = null
-var mods_button: Button = null
-# The world settings of a new game (the map size and the number of towns). They unfold
-# inside the name dialog, under their own button, and the mods button moves down while
-# they are open.
-var world_settings_button: Button = null
-var world_settings_panel: VBoxContainer = null
+# The world settings of a new game (the map size and the number of towns). They are read
+# once, when the game starts.
 var map_size_option: OptionButton = null
 var custom_size_row: HBoxContainer = null
 var custom_size_edit: LineEdit = null
 var town_count_edit: LineEdit = null
-# The window of the mods. A window of its own: the list is 860 px wide and the name is not,
-# and one window that changes its width under the cursor is worse than two that keep theirs.
-var mods_window: AcceptDialog = null
+var town_count_minus: Button = null
+var town_count_plus: Button = null
+# The count of towns can follow the map size instead of being chosen. While it does, the
+# field is read-only and the step buttons are off.
+var proportional_check: CheckBox = null
+# The map previews, one on the City tab and one on the World tab. Both show the same world,
+# so they are refreshed together.
+var world_previews: Array = []
 var mod_list = null
 
 func _ready():
@@ -130,68 +150,102 @@ func _on_continue_game():
         # offering a game that cannot be loaded.
         _refresh_save_buttons()
 
-# A new game starts with the city name. The mods of that game are a separate window behind
-# a button: they are a detail of the game being created, not its first question, and most
-# games are started without any.
+# A new game is one window with three tabs: the city, the world, the mods. The tab that
+# opens is the city, because the name is the only thing the player has to type; the other
+# two have working defaults.
 func _on_new_game():
     if new_game_dialog == null:
         _build_new_game_dialog()
-    if mods_window == null:
-        _build_mods_window()
     mod_list.open(ModManager.active_ids)
-    _refresh_mods_button()
+    _refresh_mods_tab()
     city_name_edit.text = tr("City")
+    tab_container.current_tab = TAB_CITY
     _popup_new_game_dialog()
+    _refresh_town_row()
+    _refresh_preview()
     city_name_edit.grab_focus()
     city_name_edit.select_all()
 
-# The name dialog is centred and takes nearly the whole height of the screen. The room
-# below the name is where the world settings unfold; the window keeps that room whether
-# they are open or not, so opening them moves nothing but the mods button.
+# The window keeps ONE size on all three tabs. The width comes from the mod list, the
+# widest of them; a window that resized itself when the player switched tabs would jump
+# under the cursor.
 #
 # The frame of a window (the title bar and the shadow) is drawn OUTSIDE the rect this
 # node reports, and the frame is what the player sees, so the margins are kept for the
 # decorated rect: a window sized by the bare rect alone would touch the screen edge.
 func _popup_new_game_dialog():
-    new_game_dialog.popup_centered()
     var screen := Vector2i(get_viewport().get_visible_rect().size)
+    tab_container.custom_minimum_size = Vector2(DIALOG_CONTENT_WIDTH, DIALOG_CONTENT_HEIGHT)
+    new_game_dialog.popup_centered()
+
+    # A screen too short for the full window takes the height from the content instead of
+    # pushing the buttons off the edge.
+    if screen.y > 0:
+        var frame := new_game_dialog.get_size_with_decorations().y - new_game_dialog.size.y
+        var room := float(screen.y - DIALOG_EDGE_MARGIN * 2) - frame
+        if room < float(DIALOG_CONTENT_HEIGHT):
+            tab_container.custom_minimum_size.y = maxf(room, float(DIALOG_MIN_CONTENT_HEIGHT))
+            new_game_dialog.reset_size()
+            new_game_dialog.popup_centered()
+
     if screen.x <= 0 or screen.y <= 0:
         return
-    var frame := new_game_dialog.get_size_with_decorations() - new_game_dialog.size
-    var height := maxi(new_game_dialog.size.y,
-            screen.y - DIALOG_EDGE_MARGIN * 2 - frame.y)
-    new_game_dialog.size = Vector2i(new_game_dialog.size.x, height)
-    var target := (screen - new_game_dialog.get_size_with_decorations()) / 2
+    var deco := new_game_dialog.get_size_with_decorations()
+    var target := (screen - deco) / 2
     new_game_dialog.position += target - new_game_dialog.get_position_with_decorations()
 
 func _build_new_game_dialog():
     var dialog = ConfirmationDialog.new()
-    dialog.title = tr("Choose a city name")
-    dialog.ok_button_text = tr("OK")
+    dialog.title = tr("New game")
+    dialog.ok_button_text = tr("Start")
     dialog.cancel_button_text = tr("Back")
 
-    # AcceptDialog stretches its single child to the content area, but it does not stack
-    # several children: every direct child would be put at the content origin, on top of
-    # the others. The rows therefore live in one column.
-    var content = VBoxContainer.new()
-    content.add_theme_constant_override("separation", 8)
-    dialog.add_child(content)
+    # AcceptDialog stretches its single child to the content area, so the tabs own the
+    # whole window. The tab container paints no background of its own: the pages would
+    # otherwise sit on a darker plate than the buttons under them.
+    tab_container = TabContainer.new()
+    tab_container.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+    dialog.add_child(tab_container)
+
+    tab_container.add_child(_page_margin(_build_city_tab()))
+    tab_container.add_child(_page_margin(_build_world_tab()))
+    tab_container.add_child(_build_mods_tab())
+    tab_container.set_tab_title(TAB_CITY, tr("City"))
+    tab_container.set_tab_title(TAB_WORLD, tr("World"))
+    tab_container.set_tab_title(TAB_MODS, tr("Mods"))
+
+    city_name_edit.text_submitted.connect(func(_text): dialog.get_ok_button().pressed.emit())
+    dialog.confirmed.connect(func(): _start_new_game(city_name_edit.text))
+    add_child(dialog)
+    new_game_dialog = dialog
+
+# The city tab: the one thing the player has to type, next to the preview of the world the
+# city will be founded in.
+func _build_city_tab() -> Control:
+    var page := HBoxContainer.new()
+    page.name = "CityTab"
+    page.add_theme_constant_override("separation", 16)
+
+    var column := VBoxContainer.new()
+    column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    column.add_theme_constant_override("separation", 10)
+    page.add_child(column)
 
     var name_row = HBoxContainer.new()
-    name_row.custom_minimum_size = Vector2(0, 30)
+    name_row.custom_minimum_size = Vector2(0, SETTING_CONTROL_HEIGHT)
     name_row.add_theme_constant_override("separation", 4)
     city_name_edit = LineEdit.new()
     city_name_edit.text = tr("City")
-    # The field keeps its own width. The mod list is 860 px wide when it is unfolded, and
-    # a name field stretched to that width reads as a text area, not as a name.
-    city_name_edit.custom_minimum_size = Vector2(NAME_FIELD_WIDTH, 30)
+    # The field keeps its own width: a name field stretched across the tab reads as a text
+    # area, not as a name.
+    city_name_edit.custom_minimum_size = Vector2(NAME_FIELD_WIDTH, SETTING_CONTROL_HEIGHT)
     city_name_edit.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
     city_name_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     city_name_edit.select_all_on_focus = true
     name_row.add_child(city_name_edit)
 
     var random_button = Button.new()
-    random_button.custom_minimum_size = Vector2(30, 30)
+    random_button.custom_minimum_size = Vector2(SETTING_CONTROL_HEIGHT, SETTING_CONTROL_HEIGHT)
     random_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     random_button.expand_icon = true
     random_button.icon = load("res://icons/dice.svg")
@@ -203,77 +257,112 @@ func _build_new_game_dialog():
         city_name_edit.grab_focus()
     )
     name_row.add_child(random_button)
-    content.add_child(name_row)
+    column.add_child(name_row)
 
-    # The world settings unfold right under their own button: the panel is part of the
-    # dialog, so the player can keep the settings in view while the game is being set up.
-    world_settings_button = Button.new()
-    world_settings_button.text = tr("World settings")
-    world_settings_button.toggle_mode = true
-    world_settings_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-    world_settings_button.toggled.connect(_on_world_settings_toggled)
-    content.add_child(world_settings_button)
+    var hint := Label.new()
+    hint.text = tr("An empty name gives the city a random one.")
+    hint.add_theme_font_size_override("font_size", 12)
+    hint.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+    hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    # A wrapped label reports its minimum height at its minimum width, which would be the
+    # height of its longest word.
+    hint.custom_minimum_size = Vector2(300, 0)
+    column.add_child(hint)
 
-    _build_world_settings_panel(content)
+    page.add_child(_make_preview())
+    return page
 
-    # The name is one question and the mods are another, with a window of their own: the
-    # line keeps the button of the second window apart from the name of the first.
-    var separator := HSeparator.new()
-    content.add_child(separator)
+# The world tab: the settings, one line each, and the preview of what they produce. The
+# list scrolls, so the tab takes any number of settings without growing the window.
+func _build_world_tab() -> Control:
+    var page := HBoxContainer.new()
+    page.name = "WorldTab"
+    page.add_theme_constant_override("separation", 16)
 
-    mods_button = Button.new()
-    mods_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-    mods_button.pressed.connect(_open_mods_window)
-    content.add_child(mods_button)
+    var scroll := ScrollContainer.new()
+    scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    page.add_child(scroll)
 
-    city_name_edit.text_submitted.connect(func(_text): dialog.get_ok_button().pressed.emit())
-    dialog.confirmed.connect(func(): _start_new_game(city_name_edit.text))
-    dialog.canceled.connect(_on_new_game_canceled)
-    add_child(dialog)
-    new_game_dialog = dialog
-
-# The list fills its window: an AcceptDialog stretches its child to the content area, so
-# the window is exactly as wide as the list and keeps that width.
-func _build_mods_window():
-    var window := AcceptDialog.new()
-    window.title = tr("Mods")
-    window.ok_button_text = tr("Close")
-    window.confirmed.connect(_on_mods_window_closed)
-    window.canceled.connect(_on_mods_window_closed)
-
-    mod_list = ModListScene.instantiate()
-    mod_list.selection_changed.connect(_on_mods_changed)
-    mod_list.layout_changed.connect(_on_mod_list_layout_changed)
-    window.add_child(mod_list)
-    add_child(window)
-    mods_window = window
-
-# The world settings of a new game. For now they hold the map size and the number of towns;
-# the column grows downwards as more settings are added, and the mods button is pushed down
-# with it.
-func _build_world_settings_panel(parent: VBoxContainer):
-    world_settings_panel = VBoxContainer.new()
-    world_settings_panel.visible = false
-    world_settings_panel.add_theme_constant_override("separation", 8)
-    parent.add_child(world_settings_panel)
-
-    # The settings sit a little deeper than their button, so that the nesting reads
-    # without a frame around the panel.
-    var margin := MarginContainer.new()
-    margin.add_theme_constant_override("margin_left", 12)
-    world_settings_panel.add_child(margin)
+    # A scroll container clips at its own edge, and a control that ends exactly there loses
+    # the border the focus ring draws on it. The padding keeps every row off the edge.
+    var padding := MarginContainer.new()
+    padding.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    padding.add_theme_constant_override("margin_right", 6)
+    scroll.add_child(padding)
 
     var column := VBoxContainer.new()
+    column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     column.add_theme_constant_override("separation", 8)
-    margin.add_child(column)
+    padding.add_child(column)
 
+    _build_world_settings(column)
+    page.add_child(_make_preview())
+    return page
+
+# The mods tab. The list IS the tab: it is 860 px wide, and that is what sets the width of
+# the whole window. It takes no margins — it was laid out for a window of its own.
+func _build_mods_tab() -> Control:
+    mod_list = ModListScene.instantiate()
+    mod_list.selection_changed.connect(_on_mods_changed)
+    return mod_list
+
+# The room between the settings of a tab and its edges. The mod list is the one page that
+# does without it: it is a window's worth of content on its own.
+func _page_margin(page: Control) -> Control:
+    var margin := MarginContainer.new()
+    margin.add_theme_constant_override("margin_left", 12)
+    margin.add_theme_constant_override("margin_top", 10)
+    margin.add_theme_constant_override("margin_right", 12)
+    margin.add_theme_constant_override("margin_bottom", 12)
+    margin.add_child(page)
+    return margin
+
+# One line of the settings list: the name of the setting on the left, its control on the
+# right. The controls keep their own width, so their right edges line up.
+func _add_setting_row(column: VBoxContainer, text: String, control: Control,
+        tooltip: String = "") -> HBoxContainer:
+    var row := HBoxContainer.new()
+    row.custom_minimum_size = Vector2(0, SETTING_ROW_HEIGHT)
+    row.add_theme_constant_override("separation", 12)
+
+    var label := Label.new()
+    label.text = text
+    label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    label.tooltip_text = tooltip
+    row.add_child(label)
+
+    control.size_flags_horizontal = Control.SIZE_SHRINK_END
+    control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    row.add_child(control)
+
+    column.add_child(row)
+    return row
+
+# The map preview of a tab. Both tabs that have room for one get their own copy: the tabs
+# are separate subtrees, and a node cannot be in two of them at once.
+func _make_preview() -> Control:
+    var preview = WorldPreview.new()
+    preview.custom_minimum_size = Vector2(PREVIEW_WIDTH, 240)
+    preview.size_flags_horizontal = Control.SIZE_SHRINK_END
+    preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    preview.max_map_size = MAX_MAP_SIZE
+    world_previews.append(preview)
+    return preview
+
+# The previews show the world the current settings describe, so they are refreshed from one
+# place instead of each control knowing about them.
+func _refresh_preview():
+    var side := _selected_map_size()
+    var towns := _selected_town_count()
+    for preview in world_previews:
+        preview.set_world(side, towns)
+
+# The world settings of a new game. For now they hold the map size and the number of
+# towns; every setting is one line of the list, and the list grows downwards.
+func _build_world_settings(column: VBoxContainer):
     # The map size: a preset dropdown and a custom side field that appears only when
     # "Custom size" is chosen. The map is square, so one side applies to width and height.
-    var heading := Label.new()
-    heading.text = tr("Map size")
-    heading.theme_type_variation = &"SectionHeading"
-    column.add_child(heading)
-
     map_size_option = OptionButton.new()
     map_size_option.add_item(tr("Small (30×30)"))
     map_size_option.add_item(tr("Medium (60×60)"))
@@ -283,75 +372,151 @@ func _build_world_settings_panel(parent: VBoxContainer):
     map_size_option.add_item(tr("Custom size"))
     map_size_option.select(MAP_SIZE_PRESETS.find(DEFAULT_MAP_SIZE))
     map_size_option.item_selected.connect(_on_map_size_selected)
-    column.add_child(map_size_option)
+    map_size_option.custom_minimum_size = Vector2(200, SETTING_CONTROL_HEIGHT)
+    _add_setting_row(column, tr("Map size"), map_size_option,
+            tr("The side of the square map, in hexes."))
 
-    custom_size_row = HBoxContainer.new()
-    custom_size_row.add_theme_constant_override("separation", 6)
-    custom_size_row.visible = false
-    var custom_label := Label.new()
-    custom_label.text = tr("Side length")
-    custom_size_row.add_child(custom_label)
     custom_size_edit = LineEdit.new()
-    custom_size_edit.custom_minimum_size = Vector2(80, 30)
+    custom_size_edit.custom_minimum_size = Vector2(90, SETTING_CONTROL_HEIGHT)
     custom_size_edit.max_length = 3
     custom_size_edit.tooltip_text = tr("A whole number from %d to %d.") % [MIN_MAP_SIZE, MAX_MAP_SIZE]
     custom_size_edit.text_changed.connect(_on_custom_size_text_changed)
     custom_size_edit.focus_exited.connect(_normalize_custom_size)
-    custom_size_row.add_child(custom_size_edit)
-    column.add_child(custom_size_row)
+    custom_size_row = _add_setting_row(column, tr("Side length"), custom_size_edit)
+    custom_size_row.visible = false
 
-    # The towns: one number, typed directly. The map size decides how many of them fit,
-    # so the field is not tied to the presets above it.
-    var towns_heading := Label.new()
-    towns_heading.text = tr("Towns")
-    towns_heading.theme_type_variation = &"SectionHeading"
-    column.add_child(towns_heading)
-
-    var town_row = HBoxContainer.new()
-    town_row.add_theme_constant_override("separation", 6)
-    var town_label := Label.new()
-    town_label.text = tr("Number of towns")
-    town_row.add_child(town_label)
+    # The towns: a number that can be typed or stepped with the buttons beside it. The map
+    # size decides how many of them fit, so the field is not tied to the presets above it.
     town_count_edit = LineEdit.new()
-    town_count_edit.custom_minimum_size = Vector2(80, 30)
-    town_count_edit.max_length = 2
+    town_count_edit.custom_minimum_size = Vector2(STEP_FIELD_WIDTH, SETTING_CONTROL_HEIGHT)
+    town_count_edit.max_length = 3
     town_count_edit.text = str(DEFAULT_TOWN_COUNT)
-    town_count_edit.tooltip_text = tr("A whole number from %d to %d. Zero leaves the map without towns.") \
-            % [MIN_TOWN_COUNT, MAX_TOWN_COUNT]
+    town_count_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
     town_count_edit.text_changed.connect(_on_town_count_text_changed)
     town_count_edit.focus_exited.connect(_normalize_town_count)
-    town_row.add_child(town_count_edit)
-    column.add_child(town_row)
 
-func _on_world_settings_toggled(expanded: bool):
-    world_settings_panel.visible = expanded
+    var stepper := HBoxContainer.new()
+    stepper.add_theme_constant_override("separation", 4)
+    town_count_minus = _make_step_button("−", -1)
+    town_count_plus = _make_step_button("+", 1)
+    stepper.add_child(town_count_minus)
+    stepper.add_child(town_count_edit)
+    stepper.add_child(town_count_plus)
+
+    # The checkbox ties the count to the map size. The number is then computed, and neither
+    # the field nor the buttons take input.
+    proportional_check = CheckBox.new()
+    proportional_check.text = tr("Proportional")
+    proportional_check.tooltip_text = tr("Proportional to the map size")
+    proportional_check.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    proportional_check.toggled.connect(_on_proportional_toggled)
+
+    var towns_control := HBoxContainer.new()
+    towns_control.add_theme_constant_override("separation", 8)
+    towns_control.add_child(proportional_check)
+    towns_control.add_child(stepper)
+    _add_setting_row(column, tr("Number of towns"), towns_control)
+
+# A square button with a sign on it. The two of them and the field between them read as one
+# control, so they share the height of the field.
+func _make_step_button(sign: String, step: int) -> Button:
+    var button := Button.new()
+    button.text = sign
+    button.custom_minimum_size = Vector2(SETTING_CONTROL_HEIGHT, SETTING_CONTROL_HEIGHT)
+    button.pressed.connect(_on_town_count_step.bind(step))
+    return button
 
 # The custom row is shown only when the player picked "Custom size" (the last item).
 func _on_map_size_selected(index: int):
     var custom := index == MAP_SIZE_PRESETS.size()
     custom_size_row.visible = custom
+    if custom and custom_size_edit.text.strip_edges().is_empty():
+        custom_size_edit.text = str(DEFAULT_MAP_SIZE)
+    _refresh_town_row()
+    _refresh_preview()
     if not custom:
         return
-    if custom_size_edit.text.strip_edges().is_empty():
-        custom_size_edit.text = str(DEFAULT_MAP_SIZE)
     custom_size_edit.grab_focus()
     custom_size_edit.select_all()
 
 # The side input accepts only digits: the map size is a whole positive number.
 func _on_custom_size_text_changed(text: String):
     _keep_digits(custom_size_edit, text)
+    # A half-typed number is clamped to the nearest bound, and the preview would jump to
+    # that bound on every keystroke: it follows only a value that is already valid.
+    var raw := custom_size_edit.text.strip_edges()
+    if not raw.is_empty() and int(raw) >= MIN_MAP_SIZE and int(raw) <= MAX_MAP_SIZE:
+        _refresh_town_row()
+        _refresh_preview()
 
 # A number outside the allowed range is pulled to the nearest bound when the field loses
 # focus, so the player sees the value the game is about to use.
 func _normalize_custom_size():
     custom_size_edit.text = str(_selected_map_size())
+    _refresh_town_row()
+    _refresh_preview()
 
 # The town count is a whole number of the same kind.
 func _on_town_count_text_changed(text: String):
     _keep_digits(town_count_edit, text)
+    var raw := town_count_edit.text.strip_edges()
+    if not raw.is_empty() and int(raw) <= _max_town_count(_selected_map_size()):
+        _refresh_preview()
 
 func _normalize_town_count():
     town_count_edit.text = str(_selected_town_count())
+    _refresh_preview()
+
+# The buttons step the number and stop at the bounds, so a click never produces a value the
+# field would have to clamp on the next focus change.
+func _on_town_count_step(step: int):
+    var value := clampi(_selected_town_count() + step, MIN_TOWN_COUNT,
+            _max_town_count(_selected_map_size()))
+    town_count_edit.text = str(value)
+    _refresh_preview()
+
+func _on_proportional_toggled(_pressed: bool):
+    _refresh_town_row()
+    _refresh_preview()
+
+# Brings the town row in line with the rest of the settings. The ceiling follows the map, so a
+# count typed for a bigger world comes down when the map shrinks; the computed count replaces
+# the typed one while the checkbox is on, and the field then takes no input — a number the
+# player cannot change must not look editable.
+func _refresh_town_row():
+    if proportional_check == null:
+        return
+    var side := _selected_map_size()
+    var ceiling := _max_town_count(side)
+    var proportional := proportional_check.button_pressed
+
+    town_count_edit.max_length = str(ceiling).length()
+    town_count_edit.tooltip_text = tr("A whole number from %d to %d. Zero leaves the map without towns.") \
+            % [MIN_TOWN_COUNT, ceiling]
+
+    town_count_edit.editable = not proportional
+    town_count_minus.disabled = proportional
+    town_count_plus.disabled = proportional
+
+    if proportional:
+        # A field that cannot be typed into must not keep the caret of the keyboard focus.
+        if town_count_edit.has_focus():
+            town_count_edit.release_focus()
+        town_count_edit.text = str(_proportional_town_count(side))
+    else:
+        town_count_edit.text = str(_selected_town_count())
+
+# The most towns a map of this size may hold. The ceiling is a density, not a number: it is
+# what makes the same field usable on a 30×30 village map and on a 200×200 world.
+func _max_town_count(side: int) -> int:
+    return maxi(1, roundi(float(side) * float(side) / float(HEXES_PER_TOWN)))
+
+# The count that matches the map. It keeps the default 16 towns on the medium map and follows
+# the SIDE of the map rather than its area: an area-proportional 200×200 world would be 178
+# towns, and the density thins out as the map grows instead.
+func _proportional_town_count(side: int) -> int:
+    return clampi(roundi(DEFAULT_TOWN_COUNT * float(side) / float(DEFAULT_MAP_SIZE)),
+            MIN_TOWN_COUNT, _max_town_count(side))
 
 # Both numeric fields of the world settings take digits only. The field is rewritten only
 # when the input really holds something else, so the caret does not jump on every keystroke.
@@ -377,54 +542,18 @@ func _selected_map_size() -> int:
         return DEFAULT_MAP_SIZE
     return clampi(int(raw), MIN_MAP_SIZE, MAX_MAP_SIZE)
 
-# The number of towns the map will be generated with. Falls back to the default when the
-# settings have not been built (a direct start of a new game).
+# The number of towns the map will be generated with. While the count follows the map size
+# it is computed, not read. Falls back to the default when the settings have not been built
+# (a direct start of a new game).
 func _selected_town_count() -> int:
+    if proportional_check != null and proportional_check.button_pressed:
+        return _proportional_town_count(_selected_map_size())
     if town_count_edit == null:
         return DEFAULT_TOWN_COUNT
     var raw := town_count_edit.text.strip_edges()
     if raw.is_empty():
         return DEFAULT_TOWN_COUNT
-    return clampi(int(raw), MIN_TOWN_COUNT, MAX_TOWN_COUNT)
-
-# One window at a time: a window of the mods is exclusive, so the dialog of the name steps
-# aside and comes back when the mods are closed. Neither of the two ever changes its width.
-func _open_mods_window():
-    new_game_dialog.hide()
-    mods_window.popup_centered()
-    _refit_mods_window()
-
-func _on_mods_window_closed():
-    _refresh_mods_button()
-    if new_game_dialog != null:
-        _popup_new_game_dialog()
-        city_name_edit.grab_focus()
-
-# The mods window belongs to the dialog of a new game: a game that is not started leaves
-# no window behind it. The world settings live inside the dialog and go away with it.
-func _on_new_game_canceled():
-    if mods_window != null:
-        mods_window.hide()
-
-# The problems panel takes room only while it has something to say, so the window is
-# refitted when the list reports that its room has changed. The width does not change: the
-# panel spans the list, it does not widen it.
-func _on_mod_list_layout_changed():
-    _refit_mods_window()
-
-# The minimum size of the list is known only after its container has been sorted, so the
-# refit waits a frame. It is also what puts the window in the middle of the screen: the
-# size a fresh popup computes may be the one of a list that has not been laid out yet.
-func _refit_mods_window():
-    if mods_window == null or not mods_window.visible:
-        return
-    await get_tree().process_frame
-    if not mods_window.visible:
-        return
-    mods_window.reset_size()
-    var screen: Vector2 = get_viewport().get_visible_rect().size
-    if screen.x > 0.0 and screen.y > 0.0:
-        mods_window.position = Vector2i((screen - Vector2(mods_window.size)) * 0.5)
+    return clampi(int(raw), MIN_TOWN_COUNT, _max_town_count(_selected_map_size()))
 
 # The set is handed over at once, so the game that starts runs exactly the data the
 # player has chosen. The data itself is rebuilt later, when something really reads it:
@@ -432,7 +561,7 @@ func _refit_mods_window():
 # known without it.
 func _on_mods_changed(mod_ids: Array):
     ModManager.set_active(mod_ids)
-    _refresh_mods_button()
+    _refresh_mods_tab()
 
 # The random name is the only thing inside this dialog that reads the data, and the data
 # is stale as soon as the set changes (ModManager drops it). The start of the game
@@ -441,11 +570,14 @@ func _ensure_game_data():
     if not GameData.data_loaded:
         GameData.load_all_data()
 
-# The caption tells at a glance that a game is about to start with mods, without opening
-# the window of the mods.
-func _refresh_mods_button():
+# The title of the tab tells at a glance that a game is about to start with mods, without
+# opening the tab.
+func _refresh_mods_tab():
+    if tab_container == null or mod_list == null:
+        return
     var count: int = mod_list.selected_ids().size()
-    mods_button.text = tr("Mods") if count == 0 else "%s (%d)" % [tr("Mods"), count]
+    tab_container.set_tab_title(TAB_MODS,
+            tr("Mods") if count == 0 else "%s (%d)" % [tr("Mods"), count])
 
 func _start_new_game(city_name: String):
     # Empty input — we substitute a random name.
