@@ -14,12 +14,15 @@
 #   6. The map preview of both tabs follows the settings.
 #   7. Neither the map size nor the number of towns is part of data/map_config.json: the
 #      world reads them from the player's choice (CityData.world_map_size / world_town_count).
+#   8. The "Seas" section: the mode dropdown, the rows of the chosen mode only, a tooltip on
+#      every control, the numeric fields and the ranges they are clamped to.
 #
 # The generation of the world is not started here: the size is read through the dialog,
 # and test_new_game_loading covers the path from a new game to a generated map.
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
+const WRAPPED_TOOLTIP = preload("res://scripts/wrapped_tooltip.gd")
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const SCREEN := Vector2i(1152, 768)
@@ -256,13 +259,145 @@ func _run() -> void:
     check(menu.world_previews[1].map_size == 30,
             "a preset moves the preview at once (got %d)" % menu.world_previews[1].map_size, state)
 
-    # --- 7. The size and the count are not in the data ---
+    # --- 7. The seas ---
+    tabs.current_tab = menu.TAB_WORLD
+    await process_frame
+    check(tabs.get_tab_control(menu.TAB_WORLD).is_ancestor_of(menu.sea_mode_option),
+            "the sea mode lives on the world tab", state)
+    check(menu.sea_mode_option.item_count == menu.SEA_MODES.size(),
+            "the mode is a dropdown of the generation modes (got %d items)"
+                    % menu.sea_mode_option.item_count, state)
+    check(menu.sea_mode_option.get_item_text(0) == tr("None"),
+            "the first mode is the one without a sea (got %s)"
+                    % menu.sea_mode_option.get_item_text(0), state)
+
+    var sea: Dictionary = menu._selected_sea_config()
+    check(sea["mode"] == "edge", "a new game starts with the coastal strips (got %s)"
+            % str(sea["mode"]), state)
+    for key in get_root().get_node("CityData").DEFAULT_SEA.keys():
+        check(sea.has(key), "the sea configuration keeps the field %s" % key, state)
+
+    # The rows of the mode that is not chosen stay out of the list: the islands belong to
+    # the coastal strips, the elevation field has its own settings.
+    check(menu.sea_controls["edge_island_size"]["row"].visible,
+            "the island settings are available for the coasts", state)
+    check(not menu.sea_controls["noise_strength"]["row"].visible,
+            "the elevation field settings are hidden for the coasts", state)
+    check(menu.sea_controls["beach"]["row"].visible,
+            "the common settings are available for the coasts", state)
+
+    menu.sea_mode_option.select(menu.SEA_MODES.find("noise"))
+    menu._on_sea_mode_selected(menu.SEA_MODES.find("noise"))
+    check(menu._selected_sea_config()["mode"] == "noise",
+            "the chosen mode is read back (got %s)" % str(menu._selected_sea_config()["mode"]),
+            state)
+    check(menu.sea_controls["noise_strength"]["row"].visible,
+            "the elevation field settings appear with the noise mode", state)
+    check(not menu.sea_controls["edge_island_size"]["row"].visible,
+            "the island settings are hidden for the noise mode", state)
+    check(menu.sea_controls["max_sea_depth"]["row"].visible,
+            "the common settings stay with the noise mode", state)
+
+    menu.sea_mode_option.select(menu.SEA_MODES.find("none"))
+    menu._on_sea_mode_selected(menu.SEA_MODES.find("none"))
+    check(menu._selected_sea_config()["mode"] == "none",
+            "the mode without a sea is read back", state)
+    for key in ["beach", "max_sea_depth", "edge_island_size", "noise_strength"]:
+        check(not menu.sea_controls[key]["row"].visible,
+                "%s is hidden while there is no sea" % key, state)
+
+    menu.sea_mode_option.select(menu.SEA_MODES.find("edge"))
+    menu._on_sea_mode_selected(menu.SEA_MODES.find("edge"))
+
+    # The island settings belong to the island checkbox: while it is off the group leaves
+    # the list, heading and all.
+    var islands_check: CheckBox = menu.sea_controls["edge_islands_enabled"]["control"]
+    check(islands_check.button_pressed, "islands are grown by default", state)
+    check(menu.sea_controls["edge_island_size"]["row"].visible,
+            "the island settings are shown while islands are grown", state)
+
+    islands_check.button_pressed = false
+    menu._on_sea_islands_toggled(false)
+    for key in ["edge_island_size", "edge_island_density", "edge_island_min_distance",
+            "edge_island_max_attempts"]:
+        check(not menu.sea_controls[key]["row"].visible,
+                "%s is hidden while islands are off" % key, state)
+    check(not _row_of(menu.sea_rows, tr("Islands in the seas")).visible,
+            "the heading of the island group goes with it", state)
+    check(menu.sea_controls["edge_islands_enabled"]["row"].visible,
+            "the island checkbox itself stays", state)
+    check(menu.sea_controls["edge_width_min"]["row"].visible,
+            "the rest of the coast settings stays", state)
+
+    islands_check.button_pressed = true
+    menu._on_sea_islands_toggled(true)
+    check(menu.sea_controls["edge_island_size"]["row"].visible,
+            "the island settings come back with the checkbox", state)
+
+    # Every control explains itself with the comment the setting had in the data. The hints
+    # are long, so they ride on the wrapping carrier (scripts/wrapped_tooltip.gd): the
+    # engine's own tooltip never breaks a line.
+    for key in menu.sea_controls.keys():
+        var spec: Dictionary = menu.sea_controls[key]
+        var controls: Array = [spec["from"], spec["to"]] if spec["kind"] == menu.SEA_PAIR \
+                else [spec["control"]]
+        controls.append(spec["row"].get_child(0))
+        for control in controls:
+            var carrier = WRAPPED_TOOLTIP.find_carrier(control)
+            check(carrier != null and not carrier.tooltip_text.is_empty(),
+                    "the sea setting %s has a tooltip" % key, state)
+    check(WRAPPED_TOOLTIP.find_carrier(menu.sea_mode_option) != null,
+            "the mode dropdown has a tooltip", state)
+
+    # A whole number takes digits only and is clamped to its bounds.
+    var depth_edit: LineEdit = menu.sea_controls["max_sea_depth"]["control"]
+    depth_edit.text = ""
+    menu._keep_number(depth_edit, "2a8", false)
+    check(depth_edit.text == "28", "the sea field keeps the digits only (got %s)"
+            % depth_edit.text, state)
+    depth_edit.text = "999"
+    menu._normalize_sea_fields()
+    check(depth_edit.text == "100" and int(menu._selected_sea_config()["max_sea_depth"]) == 100,
+            "a depth above the maximum is pulled to it (got %s)" % depth_edit.text, state)
+    depth_edit.text = ""
+    menu._normalize_sea_fields()
+    check(depth_edit.text == "28",
+            "an empty field falls back to the default (got %s)" % depth_edit.text, state)
+
+    # A fraction takes a decimal point and a minus sign.
+    var level_edit: LineEdit = menu.sea_controls["noise_sea_level"]["control"]
+    level_edit.text = "-0.25"
+    menu._normalize_sea_fields()
+    check(level_edit.text == "-0.25", "the fraction keeps its sign and point (got %s)"
+            % level_edit.text, state)
+    check(is_equal_approx(float(menu._selected_sea_config()["noise_sea_level"]), -0.25),
+            "the fraction is read back (got %s)"
+                    % str(menu._selected_sea_config()["noise_sea_level"]), state)
+    menu._keep_number(level_edit, "1.2.3", true)
+    check(level_edit.text == "1.23", "a fraction keeps a single point (got %s)"
+            % level_edit.text, state)
+
+    # The bounds of a range stay in order: the "from" never rises above the "to".
+    var size_spec: Dictionary = menu.sea_controls["edge_island_size"]
+    size_spec["from"].text = "9"
+    size_spec["to"].text = "2"
+    menu._normalize_sea_fields()
+    check(size_spec["from"].text == "9" and size_spec["to"].text == "9",
+            "a range keeps its bounds in order (got %s – %s)"
+                    % [size_spec["from"].text, size_spec["to"].text], state)
+    check(menu._selected_sea_config()["edge_island_size"] == [9, 9],
+            "the range is read back as a pair (got %s)"
+                    % str(menu._selected_sea_config()["edge_island_size"]), state)
+
+    # --- 8. The size and the count are not in the data ---
     var game_data = get_root().get_node("GameData")
     check(game_data.data_loaded, "the game data is loaded by the menu", state)
     check(not game_data.map_config.has("map_rows") and not game_data.map_config.has("map_cols"),
             "the map size is not part of data/map_config.json", state)
     check(not game_data.map_config.has("num_towns"),
             "the number of towns is not part of data/map_config.json", state)
+    check(not game_data.map_config.has("sea"),
+            "the sea settings are not part of data/map_config.json", state)
     check(game_data.map_config.has("start_ring_rows"),
             "the rest of the map configuration is still read", state)
     var city_data = get_root().get_node("CityData")
@@ -270,6 +405,9 @@ func _run() -> void:
             "a new game starts from the medium map (got %d)" % city_data.world_map_size, state)
     check(city_data.world_town_count == 16,
             "a new game starts with 16 towns (got %d)" % city_data.world_town_count, state)
+    check(str(city_data.world_sea.get("mode", "")) == "edge",
+            "a new game starts with the default sea (got %s)"
+                    % str(city_data.world_sea.get("mode", "")), state)
 
     get_root().remove_child(menu)
     menu.free()
@@ -283,6 +421,18 @@ func _finish(state: Dictionary) -> void:
     else:
         print("WORLD SETTINGS TEST OK")
         quit(0)
+
+# The line of the settings list that carries `text` — a row (its first child is the label) or
+# a heading (the label itself).
+func _row_of(rows: Array, text: String) -> Control:
+    for entry in rows:
+        var row: Control = entry["row"]
+        if row is Label and row.text == text:
+            return row
+        if row.get_child_count() > 0 and row.get_child(0) is Label \
+                and row.get_child(0).text == text:
+            return row
+    return null
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if not condition:

@@ -7,6 +7,7 @@ const WATCHDOG = preload("res://tests/watchdog.gd")
 # be in the global cache at compile time of this file (the same reason the other
 # tests load HexUtils/MapHelpers by path).
 var _gdata = null
+var _cdata = null
 var _sea = null
 var _hu = null
 var _mh = null
@@ -20,6 +21,7 @@ func _run() -> void:
     await process_frame
     get_root().get_node("SaveManager").new_game()
     _gdata = get_root().get_node("GameData")
+    _cdata = get_root().get_node("CityData")
     _sea = load("res://scripts/sea_manager.gd")
     _hu = load("res://scripts/HexUtils.gd")
     _mh = load("res://scripts/map_helpers.gd")
@@ -45,7 +47,7 @@ func _test_local_coast_width(state: Dictionary) -> void:
     var rows := 40
     var cols := 40
     var max_depth := 5
-    var previous_sea: Dictionary = _gdata.map_config.get("sea", {}).duplicate(true)
+    var previous_sea: Dictionary = _cdata.world_sea.duplicate(true)
     var test_sea := previous_sea.duplicate(true)
     test_sea["mode"] = "edge"
     test_sea["sides"] = [1, 1]
@@ -55,7 +57,7 @@ func _test_local_coast_width(state: Dictionary) -> void:
     test_sea["edge_width_max"] = 18
     test_sea["edge_envelope_strength"] = 0.0
     test_sea["edge_islands_enabled"] = false
-    _gdata.map_config["sea"] = test_sea
+    _cdata.world_sea = test_sea
     seed(31415)
     var tile_data := _make_tile_data(rows, cols)
     var sea_mask: Array = _sea.apply_sea(tile_data, rows, cols, 20, 20)
@@ -98,7 +100,7 @@ func _test_local_coast_width(state: Dictionary) -> void:
         check(absi(widths[index] - widths[index - 1]) <= 2,
             "neighboring coast sections should not have abrupt depth changes", state)
     check(not shallow_mask[20][20], "deep sea should remain beyond the shallow belt", state)
-    _gdata.map_config["sea"] = previous_sea
+    _cdata.world_sea = previous_sea
 
 func _test_harbor_connectivity(state: Dictionary) -> void:
     var rows := 7
@@ -145,7 +147,7 @@ func _test_harbor_connectivity(state: Dictionary) -> void:
 func _test_islands_do_not_add_shallows(state: Dictionary) -> void:
     var rows := 40
     var cols := 40
-    var previous_sea: Dictionary = _gdata.map_config.get("sea", {}).duplicate(true)
+    var previous_sea: Dictionary = _cdata.world_sea.duplicate(true)
     var test_sea := previous_sea.duplicate(true)
     test_sea["mode"] = "edge"
     test_sea["sides"] = [1, 1]
@@ -160,17 +162,17 @@ func _test_islands_do_not_add_shallows(state: Dictionary) -> void:
     test_sea["edge_island_max_attempts"] = 1000
 
     test_sea["edge_islands_enabled"] = false
-    _gdata.map_config["sea"] = test_sea
+    _cdata.world_sea = test_sea
     seed(987654)
     var mainland_only_tiles := _make_tile_data(rows, cols)
     _sea.apply_sea(mainland_only_tiles, rows, cols, 20, 20)
 
     test_sea["edge_islands_enabled"] = true
-    _gdata.map_config["sea"] = test_sea
+    _cdata.world_sea = test_sea
     seed(987654)
     var island_tiles := _make_tile_data(rows, cols)
     _sea.apply_sea(island_tiles, rows, cols, 20, 20)
-    _gdata.map_config["sea"] = previous_sea
+    _cdata.world_sea = previous_sea
 
     var island_hexes := 0
     for row in range(rows):
@@ -185,7 +187,7 @@ func _test_islands_do_not_add_shallows(state: Dictionary) -> void:
     check(island_hexes > 0, "the test setup should generate at least one island", state)
 
 func _test_generated_sea_and_resources(state: Dictionary) -> void:
-    var previous_sea: Dictionary = _gdata.map_config.get("sea", {}).duplicate(true)
+    var previous_sea: Dictionary = _cdata.world_sea.duplicate(true)
     var test_sea := previous_sea.duplicate(true)
     test_sea["mode"] = "edge"
     test_sea["sides"] = [1, 1]
@@ -196,7 +198,7 @@ func _test_generated_sea_and_resources(state: Dictionary) -> void:
     test_sea["edge_width_max"] = 18
     test_sea["edge_envelope_strength"] = 0.0
     test_sea["edge_islands_enabled"] = false
-    _gdata.map_config["sea"] = test_sea
+    _cdata.world_sea = test_sea
 
     seed(20261006)
     var rows := 40
@@ -208,7 +210,7 @@ func _test_generated_sea_and_resources(state: Dictionary) -> void:
         rows, cols, city_row, city_col,
         _gdata.raw_resources,
         generator.make_terrain_counts(rows, cols))
-    _gdata.map_config["sea"] = previous_sea
+    _cdata.world_sea = previous_sea
 
     var sea_mask := _make_mask(rows, cols)
     var shallow_count := 0

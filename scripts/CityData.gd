@@ -88,6 +88,38 @@ var world_map_size: int = 60
 # The number of towns the world is generated with, chosen by the player in the world settings
 # of a new game. Read by town_manager.generate_towns; a loaded game restores its own towns.
 var world_town_count: int = 16
+
+# The sea generation settings a new game starts from. The player changes them in the world
+# settings of a new game (the "Seas" section), and SeaManager reads the result from
+# world_sea. The meaning of the fields is described in docs.md, "Seas and beaches".
+# The field name prefix tells which mode it belongs to: "edge_*" is read only in the "edge"
+# mode, "noise_*" only in the "noise" mode, the rest is common to all modes.
+const DEFAULT_SEA := {
+    "mode": "edge",
+    "sides": [1, 2],
+    "beach": true,
+    "max_sea_depth": 28,
+    "coast_max_depth": 3,
+    "edge_width_min": 0,
+    "edge_width_max": 45,
+    "edge_envelope_strength": 0.5,
+    "edge_islands_enabled": true,
+    "edge_island_size": [1, 5],
+    "edge_island_density": 0.03,
+    "edge_island_min_distance": 3,
+    "edge_island_max_attempts": 60,
+    "noise_sea_level": 0.0,
+    "noise_strength": 0.35,
+    "noise_edge_gradient": 1.0,
+    "noise_city_bump": 0.5,
+    "noise_city_bump_radius": 8,
+}
+
+# The sea generation settings of the world being generated, chosen by the player in the
+# world settings of a new game. The sea is built from them at generation time, so they are
+# not part of the save: a loaded game restores its own map.
+var world_sea: Dictionary = DEFAULT_SEA.duplicate(true)
+
 var food_for_new_settler: int = 1000
 var food_per_citizen: int = 10
     # The record of the FACT of the write-off on the internal market for the tick. A separate counter

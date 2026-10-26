@@ -519,27 +519,6 @@ const MODIFIER_FIELDS := {
     }},
 }
 
-const SEA_CONFIG_FIELDS := {
-    "mode": LEAF,
-    "sides": LEAF,
-    "beach": LEAF,
-    "max_sea_depth": LEAF,
-    "coast_max_depth": LEAF,
-    "edge_width_min": LEAF,
-    "edge_width_max": LEAF,
-    "edge_envelope_strength": LEAF,
-    "edge_islands_enabled": LEAF,
-    "edge_island_size": LEAF,
-    "edge_island_density": LEAF,
-    "edge_island_min_distance": LEAF,
-    "edge_island_max_attempts": LEAF,
-    "noise_sea_level": LEAF,
-    "noise_strength": LEAF,
-    "noise_edge_gradient": LEAF,
-    "noise_city_bump": LEAF,
-    "noise_city_bump_radius": LEAF,
-}
-
 # The climate block: the belts of the temperature, the moisture field and the cleanup of the zones
 # (see map_generator._apply_climate).
 const CLIMATE_FIELDS := {
@@ -564,7 +543,6 @@ const MAP_CONFIG_FIELDS := {
     "target_cluster": LEAF,
     "terrain_config": {"id_map": {"density": LEAF, "target_cluster": LEAF}, "keys": KEY_TERRAINS},
     "climate": CLIMATE_FIELDS,
-    "sea": SEA_CONFIG_FIELDS,
     "num_main_rivers": LEAF,
     "num_tributaries": LEAF,
     "min_river_length": LEAF,

@@ -399,6 +399,12 @@ msgstr ""
 msgid "0"
 msgstr ""
 
+msgid "0 — a solid strip from edge to edge, about 0.7 — a bay in the middle of a side with land at its ends, 1 — only the peak of the bay."
+msgstr ""
+
+msgid "0 — islands everywhere, 1 — the sea strictly at the edges of the map."
+msgstr ""
+
 msgid "0.50 sec"
 msgstr ""
 
@@ -526,6 +532,12 @@ msgid "Back"
 msgstr ""
 
 msgid "Base: %.1f/sec"
+msgstr ""
+
+msgid "Bays"
+msgstr ""
+
+msgid "Beaches"
 msgstr ""
 
 msgid "Biome %s has an unknown %s \"%s\"."
@@ -780,6 +792,15 @@ msgstr ""
 msgid "Close this panel and leave the deal as it is"
 msgstr ""
 
+msgid "Coast raggedness"
+msgstr ""
+
+msgid "Coasts"
+msgstr ""
+
+msgid "Coasts — strips with bays along the map edges; Noise — the sea comes from an elevation field; None — no sea at all."
+msgstr ""
+
 msgid "Collapse panel"
 msgstr ""
 
@@ -871,6 +892,9 @@ msgid "Consumption rule references a nonexistent goods group"
 msgstr ""
 
 msgid "Consumption rule references a nonexistent product"
+msgstr ""
+
+msgid "Continentality"
 msgstr ""
 
 msgid "Continue game"
@@ -984,6 +1008,9 @@ msgstr ""
 msgid "Disallowed characters in an identifier"
 msgstr ""
 
+msgid "Distance between islands"
+msgstr ""
+
 msgid "Diversity"
 msgstr ""
 
@@ -997,6 +1024,9 @@ msgid "Down"
 msgstr ""
 
 msgid "Edge scrolling speed"
+msgstr ""
+
+msgid "Edges with sea"
 msgstr ""
 
 msgid "Edit the contract"
@@ -1101,6 +1131,9 @@ msgstr ""
 msgid "Game saved."
 msgstr ""
 
+msgid "Generate islands"
+msgstr ""
+
 msgid "Generating relief..."
 msgstr ""
 
@@ -1117,6 +1150,12 @@ msgid "Go to the town"
 msgstr ""
 
 msgid "Greek"
+msgstr ""
+
+msgid "Grow islands inside the seas."
+msgstr ""
+
+msgid "Guaranteed land radius"
 msgstr ""
 
 msgid "HUD message display time"
@@ -1153,6 +1192,15 @@ msgid "Hide the editor"
 msgstr ""
 
 msgid "Historical background:"
+msgstr ""
+
+msgid "How far the sea may reach from the map edge, in hexes, so that it does not eat the map."
+msgstr ""
+
+msgid "How many map edges get a sea: from the minimum to the maximum. Zero leaves the map without a sea."
+msgstr ""
+
+msgid "How many times the generator tries to find a free spot for an island before it gives up."
 msgstr ""
 
 msgid "Huge (150×150)"
@@ -1212,6 +1260,18 @@ msgstr ""
 msgid "Irrigation Canal"
 msgstr ""
 
+msgid "Island density"
+msgstr ""
+
+msgid "Island search attempts"
+msgstr ""
+
+msgid "Island size"
+msgstr ""
+
+msgid "Islands in the seas"
+msgstr ""
+
 msgid "It is a key of a dictionary: the game looks it up by name, finds nothing and silently ignores the value under the key. Check the spelling."
 msgstr ""
 
@@ -1231,6 +1291,12 @@ msgid "Keep the deal"
 msgstr ""
 
 msgid "Key of a dictionary names a nonexistent entity"
+msgstr ""
+
+msgid "Land around the city"
+msgstr ""
+
+msgid "Land next to the sea becomes a beach."
 msgstr ""
 
 msgid "Language"
@@ -1281,6 +1347,9 @@ msgstr ""
 msgid "Market ("
 msgstr ""
 
+msgid "Maximum sea depth"
+msgstr ""
+
 msgid "Maybe you meant the goods group \"@%s\"?"
 msgstr ""
 
@@ -1296,6 +1365,9 @@ msgstr ""
 msgid "Missing: "
 msgstr ""
 
+msgid "Mode"
+msgstr ""
+
 msgid "Mods"
 msgstr ""
 
@@ -1306,6 +1378,9 @@ msgid "Move the mod down"
 msgstr ""
 
 msgid "Move the mod up"
+msgstr ""
+
+msgid "Narrowest coast"
 msgstr ""
 
 msgid "New era"
@@ -1390,6 +1465,12 @@ msgid "No work available: construction limit (number of citizens) reached"
 msgstr ""
 
 msgid "Nobody consumes anything yet"
+msgstr ""
+
+msgid "Noise"
+msgstr ""
+
+msgid "None"
 msgstr ""
 
 msgid "Nonexistent product in a goods group"
@@ -1794,6 +1875,12 @@ msgstr ""
 msgid "Scouts sent... (%d coins paid from the treasury)"
 msgstr ""
 
+msgid "Sea level"
+msgstr ""
+
+msgid "Seas"
+msgstr ""
+
 msgid "Section %d/%d"
 msgstr ""
 
@@ -1825,6 +1912,9 @@ msgid "Send the scouts"
 msgstr ""
 
 msgid "Settings"
+msgstr ""
+
+msgid "Shallow water depth"
 msgstr ""
 
 msgid "Shaping landscape..."
@@ -1962,6 +2052,9 @@ msgstr ""
 msgid "The amount must be a positive whole number"
 msgstr ""
 
+msgid "The amplitude of the elevation noise: how ragged the coast is and how many islands it makes."
+msgstr ""
+
 msgid "The area does not border explored territory"
 msgstr ""
 
@@ -1989,7 +2082,13 @@ msgstr ""
 msgid "The contract is already closed."
 msgstr ""
 
+msgid "The deepest shallow water off the coast, in hexes; the depth varies smoothly along the shore."
+msgstr ""
+
 msgid "The dependency \"%s\" is not a valid identifier."
+msgstr ""
+
+msgid "The elevation hill around the city: it guarantees that the city starts on a continent."
 msgstr ""
 
 msgid "The game does not read this field: its value is silently lost. Fields allowed here: %s."
@@ -2008,6 +2107,12 @@ msgid "The identifier \"%s\" may consist of latin letters, digits and underscore
 msgstr ""
 
 msgid "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
+msgstr ""
+
+msgid "The land/sea threshold: a hex at or below it is sea."
+msgstr ""
+
+msgid "The least distance between two islands, in hexes, so that they do not stick together."
 msgstr ""
 
 msgid "The loader does not read this key, so everything under it is ignored. Check the spelling of the collection name."
@@ -2037,6 +2142,15 @@ msgstr ""
 msgid "The mod was not found."
 msgstr ""
 
+msgid "The narrowest coastal strip, in hexes. Zero lets the shore break into bays."
+msgstr ""
+
+msgid "The number of islands follows the area of the sea: the area times this share, plus a random spread. A small sea often gets none, a large one may get many."
+msgstr ""
+
+msgid "The radius around the city that is always land, in hexes."
+msgstr ""
+
 msgid "The side of the square map, in hexes."
 msgstr ""
 
@@ -2047,6 +2161,9 @@ msgid "The simulation resumed."
 msgstr ""
 
 msgid "The simulation resumed. Starting: %s"
+msgstr ""
+
+msgid "The smallest and the largest island, in hexes."
 msgstr ""
 
 msgid "The temperature is one of: cold, mild, hot; the humidity — one of: wet, dry. The generator compares the values literally, so a biome with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another biome."
@@ -2071,6 +2188,9 @@ msgid "The town is already connected by a road"
 msgstr ""
 
 msgid "The town is not on the map anymore"
+msgstr ""
+
+msgid "The widest coastal strip, in hexes."
 msgstr ""
 
 msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."
@@ -2224,6 +2344,9 @@ msgid "Video"
 msgstr ""
 
 msgid "What the technology gives:"
+msgstr ""
+
+msgid "Widest coast"
 msgstr ""
 
 msgid "Will produce:"

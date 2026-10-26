@@ -91,18 +91,17 @@ static func find_carrier(control: Control) -> WrappedTooltip:
 
 # The content of a wrapping tooltip: a Label that breaks `for_text` at `max_width`.
 #
-# The minimum width is applied ONLY to text that really is wider than the limit. A Label
-# with autowrap and no minimum width reports the whole text in one line as its minimum
-# size, so the tooltip would run off the window anyway; a minimum width given to EVERY
-# tooltip would turn a two-word hint into a wide empty bar.
+# The width is always given explicitly: a wrapping label reports the width of a single
+# character as its minimum size, so a popup left to itself collapses into a column one
+# letter wide. The text keeps its natural width up to the limit, and the limit only
+# constrains the hints that do not fit in one line.
 static func build(for_text: String, max_width: float = DEFAULT_MAX_WIDTH) -> Label:
 	var label := Label.new()
 	label.text = for_text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	# The content of a tooltip needs no mouse of its own: the text belongs to the carrier.
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if natural_width(label, for_text) > max_width:
-		label.custom_minimum_size = Vector2(max_width, 0.0)
+	label.custom_minimum_size = Vector2(minf(natural_width(label, for_text), max_width), 0.0)
 	return label
 
 

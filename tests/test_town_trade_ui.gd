@@ -544,8 +544,8 @@ func _test_warning(town: Dictionary) -> void:
         _check(warn_tip.tooltip_text.contains("100"),
             "the warning tooltip must name the route throughput (got \"%s\")"
                 % warn_tip.tooltip_text)
-        # The same rule as the supply line: the hint is long, so it must come out of the
-        # wrapping mechanism instead of the single line the engine builds by itself.
+        # The hint is long, so it must come out of the wrapping mechanism instead of the
+        # single line the engine builds by itself.
         var warn_content: Label = WRAPPED_TOOLTIP.build(warn_tip.tooltip_text)
         _check(warn_content.autowrap_mode != TextServer.AUTOWRAP_OFF,
             "the route warning tooltip must be wrapping, otherwise it is a single unreadable line")

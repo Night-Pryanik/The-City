@@ -9,8 +9,7 @@
 # Checked:
 #   1. BUILD. A hint wider than the limit is constrained to it and wraps; a SHORT hint
 #      keeps its natural width (a limit given to every tooltip would turn a two-word hint
-#      into a wide empty bar), and the width of the text is measured over its widest line.
-#   2. ATTACH. The carrier covers the whole control and follows it on resize, it catches
+#      into a wide empty bar), and the width of the text is measured over its widest line.#   2. ATTACH. The carrier covers the whole control and follows it on resize, it catches
 #      the mouse for the tooltip but lets the clicks through to the control below
 #      (MOUSE_FILTER_PASS), and the control itself is made hoverable.
 #   3. ONE CARRIER. attach() is idempotent: a hint rebuilt on every change (the route
@@ -78,14 +77,19 @@ func _test_build() -> void:
         "the content must not take the mouse from the carrier (got %d)"
             % long_content.mouse_filter)
 
-    # A short hint must keep its own width.
+    # A short hint must keep its own width: it is neither stretched to the limit nor left
+    # without one, which would collapse the popup into a column one letter wide.
     var short_content: Label = WT.build(SHORT_HINT)
-    _check(short_content.custom_minimum_size.x == 0.0,
+    var short_natural: float = WT.natural_width(short_content, SHORT_HINT)
+    _check(short_content.custom_minimum_size.x < WT.DEFAULT_MAX_WIDTH,
         "a short hint must not be stretched to the limit (got %s)"
             % str(short_content.custom_minimum_size))
+    _check(is_equal_approx(short_content.get_combined_minimum_size().x, short_natural),
+        "a short hint must be as wide as its text (got %.1f px for a text of %.1f px)"
+            % [short_content.get_combined_minimum_size().x, short_natural])
 
     # The width of the text is the width of its WIDEST line: a hint may carry line breaks
-    # of its own (the supply line does).
+    # of its own (the route-capacity warning does).
     var multiline := "one two three\nfour five six seven eight nine ten eleven twelve thirteen fourteen fifteen"
     _check(WT.natural_width(long_content, multiline)
             > WT.natural_width(long_content, "one two three"),

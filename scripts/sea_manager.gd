@@ -31,9 +31,10 @@ class_name SeaManager
 const MARSH_CHANCE := 0.15
 
 
-# Returns the sea configuration from data/map_config.json (the "sea" block).
+# Returns the sea configuration chosen in the world settings of a new game
+# (CityData.world_sea; the fields are described in docs.md, "Seas and beaches").
 static func sea_config() -> Dictionary:
-    return GameData.map_config.get("sea", {})
+    return CityData.world_sea
 
 
 # Returns true if the hex (row, col) is marked as sea (the temporary flag _is_sea).
@@ -43,7 +44,7 @@ static func is_sea_hex(tile_data: Array, row: int, col: int) -> bool:
 
 # Generates the sea mask on the map BEFORE the Voronoi algorithm.
 # It returns a 2D bool array: true = the hex is sea.
-# Two modes are supported (see data/map_config.json, the "sea" block):
+# Two modes are supported (see CityData.world_sea):
 #   - "noise" (variant A): elevation = the gradient from the edge + noise + city_bump;
 #     land = elevation > sea_level.
 #   - "edge" (variant B): a sea strip at the chosen edges, the width is a smooth 1D noise.

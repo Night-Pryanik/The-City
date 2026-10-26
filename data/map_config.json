@@ -83,48 +83,6 @@
     "cover_smoothing": true
   },
 
-  // --- Sea generation ---
-  // The sea does NOT take part in the Voronoi algorithm (it is not in terrain_config).
-  // It is generated as a mask BEFORE Voronoi and is re-applied on top of
-  // the Voronoi result so as not to be overwritten.
-  // The field name prefix tells which mode it belongs to:
-  //   edge_*  — is read only in the "edge" mode;
-  //   noise_* — is read only in the "noise" mode;
-  //   no prefix — common to all modes.
-  "sea": {
-    // --- Common (all modes) ---
-    "mode": "edge",              // "none" (no sea) | "edge" (coastal strips with bays) | "noise" (elevation field)
-    "sides": [1, 2],             // the range [min, max] of the number of map edges with sea; [0,0] — no sea
-    "beach": true,               // true: land adjacent to the sea becomes a beach (beach)
-    "max_sea_depth": 28,         // the limit of the sea depth from the map edge (in hexes), so that the sea does not "eat" the map
-    // Maximum shallow-water depth from each coast; the local depth varies smoothly.
-    // Values below 1 are treated as 1.
-    "coast_max_depth": 3,
-
-    // --- Only the "edge" mode ---
-    "edge_width_min": 0,           // the minimum strip width (in hexes); 0 allows the coast to break into bays
-    "edge_width_max": 45,          // the maximum strip width (in hexes)
-    "edge_envelope_strength": 0.5, // bays: 0 = a solid strip from edge to edge, ~0.7 = a bay in the middle of a side and land at the edges, 1 = only the peak of the bay
-    // --- Islands in the seas (only the "edge" mode) ---
-    // Islands are groups of land hexes "grown" inside the sea. The number
-    // is adjusted to the area of the sea: target = sea_area * edge_island_density,
-    // and then the spread randi_range(0, target + 1). In a small sea (low
-    // area) this often gives 0 islands, in a big one — it may give many.
-    // The size of a particular island (in hexes) is random in the range [min, max].
-    "edge_islands_enabled": true,   // enable island generation in the seas
-    "edge_island_size": [1, 5],    // the range of island sizes in hexes: [minimum, maximum]
-    "edge_island_density": 0.03,  // base density: target = sea_area * density (and then random 0..target+1)
-    "edge_island_min_distance": 3,  // the minimum distance between islands (in hexes), so that they do not stick together
-    "edge_island_max_attempts": 60,// the max attempts to find a place for the seed point (protection against an infinite loop)
-
-    // --- Only the "noise" mode ---
-    "noise_sea_level": 0.0,      // the "land/sea" threshold: elevation <= threshold = sea
-    "noise_strength": 0.35,      // the amplitude of the elevation noise (raggedness of the coast, islands)
-    "noise_edge_gradient": 1,    // continentality: 0 = islands everywhere, 1 = sea strictly at the edges
-    "noise_city_bump": 0.5,      // the elevation "hill" around the city: guarantees the starting continent
-    "noise_city_bump_radius": 8  // the radius of guaranteed land around the city (in hexes)
-  },
-
     // --- River generation ---
     // Main rivers: the source in the mountains, the mouth in a lake or the sea.
     // They do not intersect each other.

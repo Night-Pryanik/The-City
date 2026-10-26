@@ -48,6 +48,21 @@ const MIN_TOWN_COUNT := 0
 # 111 on a 100×100 one. A fixed ceiling would either choke a giant map or flood a small one.
 const HEXES_PER_TOWN := 90
 
+# The sea generation modes, in the order of the dropdown. The values are the "mode" field of
+# the sea configuration (CityData.world_sea); "none" leaves the map without a sea.
+const SEA_MODES: Array[String] = ["none", "edge", "noise"]
+const SEA_MODE_EDGE := "edge"
+const SEA_MODE_NOISE := "noise"
+
+# The kinds of the controls of the "Seas" section: a whole number, a fraction, a pair of
+# whole numbers ("from" and "to") and a checkbox.
+const SEA_INT := "int"
+const SEA_FLOAT := "float"
+const SEA_PAIR := "pair"
+const SEA_CHECK := "check"
+
+const SEA_FIELD_WIDTH := 86
+
 @onready var continue_button = $VBoxContainer/ContinueButton
 @onready var new_game_button = $VBoxContainer/NewGameButton
 @onready var load_game_button = $VBoxContainer/LoadGameButton
@@ -72,6 +87,11 @@ var town_count_plus: Button = null
 # The count of towns can follow the map size instead of being chosen. While it does, the
 # field is read-only and the step buttons are off.
 var proportional_check: CheckBox = null
+# The "Seas" section of the world settings: the mode dropdown, one entry per sea setting
+# (keyed by its field in CityData.world_sea) and the rows with the modes they belong to.
+var sea_mode_option: OptionButton = null
+var sea_controls: Dictionary = {}
+var sea_rows: Array = []
 # The map previews, one on the City tab and one on the World tab. Both show the same world,
 # so they are refreshed together.
 var world_previews: Array = []
@@ -162,6 +182,7 @@ func _on_new_game():
     tab_container.current_tab = TAB_CITY
     _popup_new_game_dialog()
     _refresh_town_row()
+    _refresh_sea_rows()
     _refresh_preview()
     city_name_edit.grab_focus()
     city_name_edit.select_all()
@@ -320,6 +341,9 @@ func _page_margin(page: Control) -> Control:
 
 # One line of the settings list: the name of the setting on the left, its control on the
 # right. The controls keep their own width, so their right edges line up.
+#
+# The hint of a row is long enough to need breaking, and the engine's own tooltip never
+# breaks a line (see scripts/wrapped_tooltip.gd), so it is wrapped.
 func _add_setting_row(column: VBoxContainer, text: String, control: Control,
         tooltip: String = "") -> HBoxContainer:
     var row := HBoxContainer.new()
@@ -329,7 +353,8 @@ func _add_setting_row(column: VBoxContainer, text: String, control: Control,
     var label := Label.new()
     label.text = text
     label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    label.tooltip_text = tooltip
+    if not tooltip.is_empty():
+        WrappedTooltip.attach(label, tooltip)
     row.add_child(label)
 
     control.size_flags_horizontal = Control.SIZE_SHRINK_END
@@ -358,8 +383,8 @@ func _refresh_preview():
     for preview in world_previews:
         preview.set_world(side, towns)
 
-# The world settings of a new game. For now they hold the map size and the number of
-# towns; every setting is one line of the list, and the list grows downwards.
+# The world settings of a new game: the map size, the number of towns and the seas. Every
+# setting is one line of the list, and the list grows downwards.
 func _build_world_settings(column: VBoxContainer):
     # The map size: a preset dropdown and a custom side field that appears only when
     # "Custom size" is chosen. The map is square, so one side applies to width and height.
@@ -416,6 +441,283 @@ func _build_world_settings(column: VBoxContainer):
     towns_control.add_child(proportional_check)
     towns_control.add_child(stepper)
     _add_setting_row(column, tr("Number of towns"), towns_control)
+
+    _build_sea_settings(column)
+
+# The "Seas" section: how the seas of the world are generated. The rows follow the modes of
+# the generator (CityData.world_sea): the coastal strips own the island settings, the
+# elevation field owns its own, and the common settings are shared by the two. A row is
+# shown only while its mode is chosen, so the list never offers a setting the chosen mode
+# would ignore.
+func _build_sea_settings(column: VBoxContainer):
+    _add_section_header(column, tr("Seas"))
+
+    sea_mode_option = OptionButton.new()
+    sea_mode_option.add_item(tr("None"))
+    sea_mode_option.add_item(tr("Coasts"))
+    sea_mode_option.add_item(tr("Noise"))
+    sea_mode_option.custom_minimum_size = Vector2(200, SETTING_CONTROL_HEIGHT)
+    sea_mode_option.select(maxi(0, SEA_MODES.find(str(_sea_default("mode")))))
+    sea_mode_option.item_selected.connect(_on_sea_mode_selected)
+    var mode_tooltip := tr("Coasts — strips with bays along the map edges; Noise — the sea comes from an elevation field; None — no sea at all.")
+    WrappedTooltip.attach(sea_mode_option, mode_tooltip)
+    _add_setting_row(column, tr("Mode"), sea_mode_option, mode_tooltip)
+
+    var both: Array = [SEA_MODE_EDGE, SEA_MODE_NOISE]
+    var edge: Array = [SEA_MODE_EDGE]
+    var noise: Array = [SEA_MODE_NOISE]
+
+    _add_sea_pair_row(column, "sides", tr("Edges with sea"),
+            tr("How many map edges get a sea: from the minimum to the maximum. Zero leaves the map without a sea."),
+            0, 4, both)
+    _add_sea_check_row(column, "beach", tr("Beaches"),
+            tr("Land next to the sea becomes a beach."), both)
+    _add_sea_int_row(column, "max_sea_depth", tr("Maximum sea depth"),
+            tr("How far the sea may reach from the map edge, in hexes, so that it does not eat the map."),
+            1, 100, both)
+    _add_sea_int_row(column, "coast_max_depth", tr("Shallow water depth"),
+            tr("The deepest shallow water off the coast, in hexes; the depth varies smoothly along the shore."),
+            1, 20, both)
+
+    _add_sea_int_row(column, "edge_width_min", tr("Narrowest coast"),
+            tr("The narrowest coastal strip, in hexes. Zero lets the shore break into bays."),
+            0, 100, edge)
+    _add_sea_int_row(column, "edge_width_max", tr("Widest coast"),
+            tr("The widest coastal strip, in hexes."), 0, 100, edge)
+    _add_sea_float_row(column, "edge_envelope_strength", tr("Bays"),
+            tr("0 — a solid strip from edge to edge, about 0.7 — a bay in the middle of a side with land at its ends, 1 — only the peak of the bay."),
+            0.0, 1.0, edge)
+
+    # The island settings belong to the island checkbox: while it is off there is nothing to
+    # set up, so they leave the list with their heading.
+    var islands_header: Dictionary = _add_sea_subheader(column, tr("Islands in the seas"), edge)
+    var islands_check: CheckBox = _add_sea_check_row(column, "edge_islands_enabled",
+            tr("Generate islands"), tr("Grow islands inside the seas."), edge)
+    islands_header["gate"] = islands_check
+    islands_check.toggled.connect(_on_sea_islands_toggled)
+    _add_sea_pair_row(column, "edge_island_size", tr("Island size"),
+            tr("The smallest and the largest island, in hexes."), 1, 50, edge, islands_check)
+    _add_sea_float_row(column, "edge_island_density", tr("Island density"),
+            tr("The number of islands follows the area of the sea: the area times this share, plus a random spread. A small sea often gets none, a large one may get many."),
+            0.0, 1.0, edge, islands_check)
+    _add_sea_int_row(column, "edge_island_min_distance", tr("Distance between islands"),
+            tr("The least distance between two islands, in hexes, so that they do not stick together."),
+            0, 50, edge, islands_check)
+    _add_sea_int_row(column, "edge_island_max_attempts", tr("Island search attempts"),
+            tr("How many times the generator tries to find a free spot for an island before it gives up."),
+            1, 1000, edge, islands_check)
+    _add_sea_float_row(column, "noise_sea_level", tr("Sea level"),
+            tr("The land/sea threshold: a hex at or below it is sea."), -1.0, 1.0, noise)
+    _add_sea_float_row(column, "noise_strength", tr("Coast raggedness"),
+            tr("The amplitude of the elevation noise: how ragged the coast is and how many islands it makes."),
+            0.0, 2.0, noise)
+    _add_sea_float_row(column, "noise_edge_gradient", tr("Continentality"),
+            tr("0 — islands everywhere, 1 — the sea strictly at the edges of the map."),
+            0.0, 1.0, noise)
+    _add_sea_float_row(column, "noise_city_bump", tr("Land around the city"),
+            tr("The elevation hill around the city: it guarantees that the city starts on a continent."),
+            0.0, 5.0, noise)
+    _add_sea_int_row(column, "noise_city_bump_radius", tr("Guaranteed land radius"),
+            tr("The radius around the city that is always land, in hexes."), 0, 50, noise)
+
+# A heading of the settings list, with a line above it: the sections of a long list read
+# apart, and the line tells where the next one starts.
+func _add_section_header(column: VBoxContainer, text: String):
+    var separator := HSeparator.new()
+    separator.custom_minimum_size = Vector2(0, 14)
+    column.add_child(separator)
+
+    var label := Label.new()
+    label.text = text
+    label.add_theme_font_size_override("font_size", 16)
+    column.add_child(label)
+
+# A heading inside a section, one size below it. The returned entry is the line itself: a
+# heading that introduces a group gated by a checkbox takes the gate after the checkbox is
+# built (see _add_sea_row).
+func _add_sea_subheader(column: VBoxContainer, text: String, modes: Array) -> Dictionary:
+    var label := Label.new()
+    label.text = text
+    label.add_theme_font_size_override("font_size", 13)
+    column.add_child(label)
+    var entry := {"row": label, "modes": modes}
+    sea_rows.append(entry)
+    return entry
+
+# A whole-number row of the "Seas" section.
+func _add_sea_int_row(column: VBoxContainer, key: String, label: String, tooltip: String,
+        lo: int, hi: int, modes: Array, gate: BaseButton = null):
+    var edit := _make_sea_field(str(int(_sea_default(key))), false, tooltip)
+    _add_sea_row(column, key, label, edit, tooltip, modes,
+            {"kind": SEA_INT, "control": edit, "lo": lo, "hi": hi,
+                    "default": int(_sea_default(key))}, gate)
+
+# A fractional row of the "Seas" section.
+func _add_sea_float_row(column: VBoxContainer, key: String, label: String, tooltip: String,
+        lo: float, hi: float, modes: Array, gate: BaseButton = null):
+    var edit := _make_sea_field(_format_number(float(_sea_default(key))), true, tooltip)
+    _add_sea_row(column, key, label, edit, tooltip, modes,
+            {"kind": SEA_FLOAT, "control": edit, "lo": lo, "hi": hi,
+                    "default": float(_sea_default(key))}, gate)
+
+# A row of two whole numbers — the bounds of a range. The two fields read as one value, so
+# they stand together in one control.
+func _add_sea_pair_row(column: VBoxContainer, key: String, label: String, tooltip: String,
+        lo: int, hi: int, modes: Array, gate: BaseButton = null):
+    var default: Array = _sea_default(key)
+    var from_edit := _make_sea_field(str(int(default[0])), false, tooltip)
+    var to_edit := _make_sea_field(str(int(default[1])), false, tooltip)
+
+    var box := HBoxContainer.new()
+    box.add_theme_constant_override("separation", 6)
+    box.add_child(from_edit)
+    var dash := Label.new()
+    dash.text = "–"
+    box.add_child(dash)
+    box.add_child(to_edit)
+
+    _add_sea_row(column, key, label, box, tooltip, modes,
+            {"kind": SEA_PAIR, "from": from_edit, "to": to_edit, "lo": lo, "hi": hi,
+                    "default": [int(default[0]), int(default[1])]}, gate)
+
+# A checkbox row of the "Seas" section. It is returned, because the rows it switches may
+# hang on it.
+func _add_sea_check_row(column: VBoxContainer, key: String, label: String, tooltip: String,
+        modes: Array, gate: BaseButton = null) -> CheckBox:
+    var check := CheckBox.new()
+    check.button_pressed = bool(_sea_default(key))
+    WrappedTooltip.attach(check, tooltip)
+    check.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    _add_sea_row(column, key, label, check, tooltip, modes,
+            {"kind": SEA_CHECK, "control": check, "default": bool(_sea_default(key))}, gate)
+    return check
+
+# Registers a line of the "Seas" section: it is drawn like every other setting, and it is
+# remembered with the modes it belongs to and the checkbox that switches it on (see
+# _refresh_sea_rows), and with the control that holds its value (see _selected_sea_config).
+func _add_sea_row(column: VBoxContainer, key: String, label: String, control: Control,
+        tooltip: String, modes: Array, spec: Dictionary, gate: BaseButton = null):
+    var row := _add_setting_row(column, label, control, tooltip)
+    sea_rows.append({"row": row, "modes": modes, "gate": gate})
+    spec["row"] = row
+    sea_controls[key] = spec
+
+# A field of the "Seas" section. A whole number keeps the digits, a fraction also keeps a
+# single decimal point and a leading minus. The field is rewritten only when the input
+# really holds something else, so the caret does not jump on every keystroke.
+func _make_sea_field(value: String, fractional: bool, tooltip: String) -> LineEdit:
+    var edit := LineEdit.new()
+    edit.custom_minimum_size = Vector2(SEA_FIELD_WIDTH, SETTING_CONTROL_HEIGHT)
+    edit.max_length = 6
+    edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+    edit.text = value
+    WrappedTooltip.attach(edit, tooltip)
+    edit.text_changed.connect(func(text): _keep_number(edit, text, fractional))
+    edit.focus_exited.connect(_normalize_sea_fields)
+    return edit
+
+# The value of a sea setting a new game starts from (CityData.DEFAULT_SEA).
+func _sea_default(key: String):
+    return CityData.DEFAULT_SEA.get(key)
+
+# The rows of the "Seas" section follow the chosen mode, and the rows of a group follow the
+# checkbox that switches the group on. A row that is not shown keeps its value: switching
+# back and forth does not lose it.
+func _refresh_sea_rows():
+    if sea_mode_option == null:
+        return
+    var mode: String = SEA_MODES[maxi(0, sea_mode_option.selected)]
+    for entry in sea_rows:
+        var shown: bool = mode in entry["modes"]
+        var gate: BaseButton = entry.get("gate")
+        if shown and gate != null:
+            shown = gate.button_pressed
+        entry["row"].visible = shown
+
+func _on_sea_mode_selected(_index: int):
+    _refresh_sea_rows()
+
+func _on_sea_islands_toggled(_pressed: bool):
+    _refresh_sea_rows()
+
+# The sea configuration the world will be generated with. Every row is read, including the
+# rows of a mode that is not chosen: the generator ignores the fields of the other mode, and
+# the values are then kept while the player compares the two.
+func _selected_sea_config() -> Dictionary:
+    var cfg: Dictionary = CityData.DEFAULT_SEA.duplicate(true)
+    if sea_mode_option == null:
+        return cfg
+    cfg["mode"] = SEA_MODES[maxi(0, sea_mode_option.selected)]
+    for key in sea_controls.keys():
+        var spec: Dictionary = sea_controls[key]
+        match spec["kind"]:
+            SEA_CHECK:
+                cfg[key] = spec["control"].button_pressed
+            SEA_INT:
+                cfg[key] = _read_whole(spec["control"], spec["lo"], spec["hi"], spec["default"])
+            SEA_FLOAT:
+                cfg[key] = _read_fraction(spec["control"], spec["lo"], spec["hi"], spec["default"])
+            SEA_PAIR:
+                cfg[key] = _read_pair(spec)
+    return cfg
+
+# A whole number of a sea setting. An empty or a malformed field is read as the default of
+# the setting: the game must never be started with a number that cannot be parsed.
+func _read_whole(edit: LineEdit, lo: int, hi: int, fallback: int) -> int:
+    var raw := edit.text.strip_edges()
+    if not raw.is_valid_int():
+        return clampi(fallback, lo, hi)
+    return clampi(int(raw), lo, hi)
+
+func _read_fraction(edit: LineEdit, lo: float, hi: float, fallback: float) -> float:
+    var raw := edit.text.strip_edges()
+    if not raw.is_valid_float():
+        return clampf(fallback, lo, hi)
+    return clampf(float(raw), lo, hi)
+
+# The bounds of a range, kept in order: the "from" never rises above the "to".
+func _read_pair(spec: Dictionary) -> Array:
+    var lo: int = spec["lo"]
+    var hi: int = spec["hi"]
+    var from_value := _read_whole(spec["from"], lo, hi, int(spec["default"][0]))
+    var to_value := _read_whole(spec["to"], lo, hi, int(spec["default"][1]))
+    return [from_value, maxi(from_value, to_value)]
+
+# Every field of the "Seas" section shows the value the game will use: a number outside the
+# allowed range is pulled to the nearest bound when the field loses focus.
+func _normalize_sea_fields():
+    for spec in sea_controls.values():
+        match spec["kind"]:
+            SEA_INT:
+                spec["control"].text = str(_read_whole(spec["control"], spec["lo"],
+                        spec["hi"], spec["default"]))
+            SEA_FLOAT:
+                spec["control"].text = _format_number(_read_fraction(spec["control"],
+                        spec["lo"], spec["hi"], spec["default"]))
+            SEA_PAIR:
+                var pair := _read_pair(spec)
+                spec["from"].text = str(pair[0])
+                spec["to"].text = str(pair[1])
+
+# A fraction of a sea setting, without the trailing zeros of a longer number.
+func _format_number(value: float) -> String:
+    return String.num(value, 3)
+
+# The fields of the "Seas" section take digits only; a fraction also takes a decimal point
+# and a minus sign at the front.
+func _keep_number(edit: LineEdit, text: String, fractional: bool):
+    var filtered := ""
+    var has_point := false
+    for ch in text:
+        if ch.is_valid_int():
+            filtered += ch
+        elif ch == "-" and filtered.is_empty():
+            filtered += ch
+        elif ch == "." and fractional and not has_point:
+            has_point = true
+            filtered += ch
+    if filtered != text:
+        edit.text = filtered
 
 # A square button with a sign on it. The two of them and the field between them read as one
 # control, so they share the height of the field.
@@ -587,6 +889,7 @@ func _start_new_game(city_name: String):
     CityData.city_name = city_name.strip_edges()
     CityData.world_map_size = _selected_map_size()
     CityData.world_town_count = _selected_town_count()
+    CityData.world_sea = _selected_sea_config()
     # The overlay is hung on the ROOT, not on the menu: the scene change frees the
     # menu, and the world generation runs inside MainMap. MainMap updates the very
     # same bar and removes it when the world is ready.

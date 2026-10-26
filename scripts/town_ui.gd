@@ -86,9 +86,6 @@ const UiHelpers = preload("res://scripts/ui_helpers.gd")
 # (see the script), so the window does not need an icon asset for it.
 const WarningBadge = preload("res://scripts/warning_badge.gd")
 
-# The wrapping tooltip. The hints of this window are long, and the built-in tooltip
-# draws its text in a single line (see the script and docs.md, "Tooltips").
-
 signal closed()
 
 # The foundation of the town trade: the window has assembled a buy/sell order and
@@ -1672,9 +1669,9 @@ func _update_warning_badge(amount: int) -> void:
     _warning_badge.visible = over
     if over:
         # The hint names the numbers and is therefore rebuilt on every change of the
-        # amount. WrappedTooltip.attach is idempotent: the badge keeps ONE carrier and
-        # only the text is replaced (see the note on the supply line in
-        # _build_trade_panel).
+        # amount. The engine draws a tooltip in a single line and never breaks it, so the
+        # text goes through the wrapping carrier (see wrapped_tooltip.gd); attach() is
+        # idempotent, so the badge keeps ONE carrier and only the text is replaced.
         WrappedTooltip.attach(_warning_badge,
                 tr("The amount %d exceeds the route throughput (%s units/sec).\nThe surplus will queue on the road and arrive later.") % [amount, _format_speed(capacity)])
 

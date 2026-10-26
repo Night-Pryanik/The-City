@@ -399,6 +399,12 @@ msgstr ". Уже построенные участки (%d) останутся"
 msgid "0"
 msgstr "0"
 
+msgid "0 — a solid strip from edge to edge, about 0.7 — a bay in the middle of a side with land at its ends, 1 — only the peak of the bay."
+msgstr "0 — сплошная полоса от края до края, около 0.7 — бухта в середине стороны и земля по её краям, 1 — только вершина бухты."
+
+msgid "0 — islands everywhere, 1 — the sea strictly at the edges of the map."
+msgstr "0 — острова повсюду, 1 — море строго у краёв карты."
+
 msgid "0.50 sec"
 msgstr "0,50 сек"
 
@@ -527,6 +533,12 @@ msgstr "Назад"
 
 msgid "Base: %.1f/sec"
 msgstr "База: %.1f/сек"
+
+msgid "Bays"
+msgstr "Бухты"
+
+msgid "Beaches"
+msgstr "Пляжи"
 
 msgid "Biome %s has an unknown %s \"%s\"."
 msgstr "Биом %s: неизвестное значение %s «%s»."
@@ -780,6 +792,15 @@ msgstr "Закрыть журнал (ESC)"
 msgid "Close this panel and leave the deal as it is"
 msgstr "Закрыть панель и оставить сделку как есть"
 
+msgid "Coast raggedness"
+msgstr "Изрезанность берега"
+
+msgid "Coasts"
+msgstr "Берега"
+
+msgid "Coasts — strips with bays along the map edges; Noise — the sea comes from an elevation field; None — no sea at all."
+msgstr "Берега — полосы с бухтами вдоль краёв карты; Шум — море строится по полю высот; Нет — моря нет вовсе."
+
 msgid "Collapse panel"
 msgstr "Свернуть панель"
 
@@ -872,6 +893,9 @@ msgstr "Правило потребления ссылается на несущ
 
 msgid "Consumption rule references a nonexistent product"
 msgstr "Правило потребления ссылается на несуществующий продукт"
+
+msgid "Continentality"
+msgstr "Континентальность"
 
 msgid "Continue game"
 msgstr "Продолжить игру"
@@ -984,6 +1008,9 @@ msgstr "По убыванию"
 msgid "Disallowed characters in an identifier"
 msgstr "Недопустимые символы в идентификаторе"
 
+msgid "Distance between islands"
+msgstr "Расстояние между островами"
+
 msgid "Diversity"
 msgstr "Разнообразие"
 
@@ -998,6 +1025,9 @@ msgstr "Вниз"
 
 msgid "Edge scrolling speed"
 msgstr "Скорость прокрутки у краёв окна"
+
+msgid "Edges with sea"
+msgstr "Края с морем"
 
 msgid "Edit the contract"
 msgstr "Изменить контракт"
@@ -1101,6 +1131,9 @@ msgstr "Игра"
 msgid "Game saved."
 msgstr "Игра сохранена."
 
+msgid "Generate islands"
+msgstr "Генерировать острова"
+
 msgid "Generating relief..."
 msgstr "Генерация рельефа..."
 
@@ -1118,6 +1151,12 @@ msgstr "Перейти к городку"
 
 msgid "Greek"
 msgstr "греческая"
+
+msgid "Grow islands inside the seas."
+msgstr "Выращивать острова внутри морей."
+
+msgid "Guaranteed land radius"
+msgstr "Радиус гарантированной земли"
 
 msgid "HUD message display time"
 msgstr "Время показа сообщений в верхней панели карты"
@@ -1154,6 +1193,15 @@ msgstr "Скрыть редактор"
 
 msgid "Historical background:"
 msgstr "Историческая справка:"
+
+msgid "How far the sea may reach from the map edge, in hexes, so that it does not eat the map."
+msgstr "Насколько далеко море может зайти от края карты, в гексах, — чтобы оно не съело карту."
+
+msgid "How many map edges get a sea: from the minimum to the maximum. Zero leaves the map without a sea."
+msgstr "Сколько краёв карты получат море: от минимума до максимума. Ноль оставляет карту без моря."
+
+msgid "How many times the generator tries to find a free spot for an island before it gives up."
+msgstr "Сколько раз генератор пытается найти свободное место для острова, прежде чем сдаться."
 
 msgid "Huge (150×150)"
 msgstr "Огромная (150×150)"
@@ -1212,6 +1260,18 @@ msgstr "Интерфейс"
 msgid "Irrigation Canal"
 msgstr "Ирригационный канал"
 
+msgid "Island density"
+msgstr "Плотность островов"
+
+msgid "Island search attempts"
+msgstr "Попытки поиска острова"
+
+msgid "Island size"
+msgstr "Размер острова"
+
+msgid "Islands in the seas"
+msgstr "Острова в морях"
+
 msgid "It is a key of a dictionary: the game looks it up by name, finds nothing and silently ignores the value under the key. Check the spelling."
 msgstr "Это ключ словаря: игра ищет его по имени, ничего не находит и молча игнорирует значение под этим ключом. Проверьте написание."
 
@@ -1232,6 +1292,12 @@ msgstr "Оставить сделку"
 
 msgid "Key of a dictionary names a nonexistent entity"
 msgstr "Ключ словаря указывает на несуществующую сущность"
+
+msgid "Land around the city"
+msgstr "Земля вокруг города"
+
+msgid "Land next to the sea becomes a beach."
+msgstr "Земля рядом с морем становится пляжем."
 
 msgid "Language"
 msgstr "Язык"
@@ -1281,6 +1347,9 @@ msgstr "Пометить как прочитанное"
 msgid "Market ("
 msgstr "Рынок ("
 
+msgid "Maximum sea depth"
+msgstr "Максимальная глубина моря"
+
 msgid "Maybe you meant the goods group \"@%s\"?"
 msgstr "Возможно, вы имели в виду группу продуктов \"@%s\"?"
 
@@ -1296,6 +1365,9 @@ msgstr "Меню"
 msgid "Missing: "
 msgstr "Не хватает: "
 
+msgid "Mode"
+msgstr "Режим"
+
 msgid "Mods"
 msgstr "Модификации"
 
@@ -1307,6 +1379,9 @@ msgstr "Переместить модификацию вниз"
 
 msgid "Move the mod up"
 msgstr "Переместить модификацию вверх"
+
+msgid "Narrowest coast"
+msgstr "Минимальная ширина берега"
 
 msgid "New era"
 msgstr "Новая эпоха"
@@ -1391,6 +1466,12 @@ msgstr "Нет труда: лимит строек (число жителей) �
 
 msgid "Nobody consumes anything yet"
 msgstr "Пока никто ничего не потребляет"
+
+msgid "Noise"
+msgstr "Шум"
+
+msgid "None"
+msgstr "Нет"
 
 msgid "Nonexistent product in a goods group"
 msgstr "В группе продуктов несуществующий продукт"
@@ -1794,6 +1875,12 @@ msgstr "Разведка завершена! %s"
 msgid "Scouts sent... (%d coins paid from the treasury)"
 msgstr "Разведчики отправлены... (оплачено %d монет из казны)"
 
+msgid "Sea level"
+msgstr "Уровень моря"
+
+msgid "Seas"
+msgstr "Моря"
+
 msgid "Section %d/%d"
 msgstr "Участок %d/%d"
 
@@ -1826,6 +1913,9 @@ msgstr "Отправить разведчиков"
 
 msgid "Settings"
 msgstr "Настройки"
+
+msgid "Shallow water depth"
+msgstr "Глубина отмели"
 
 msgid "Shaping landscape..."
 msgstr "Формирование ландшафта..."
@@ -1962,6 +2052,9 @@ msgstr "Количество %d превышает пропускную спос
 msgid "The amount must be a positive whole number"
 msgstr "Количество должно быть положительным целым числом"
 
+msgid "The amplitude of the elevation noise: how ragged the coast is and how many islands it makes."
+msgstr "Амплитуда шума высот: насколько изрезан берег и сколько островов он создаёт."
+
 msgid "The area does not border explored territory"
 msgstr "Область не граничит с исследованной территорией"
 
@@ -1989,8 +2082,14 @@ msgstr "Нужен доступ города к пресной воде"
 msgid "The contract is already closed."
 msgstr "Контракт уже закрыт."
 
+msgid "The deepest shallow water off the coast, in hexes; the depth varies smoothly along the shore."
+msgstr "Наибольшая глубина отмели у берега, в гексах; вдоль берега глубина меняется плавно."
+
 msgid "The dependency \"%s\" is not a valid identifier."
 msgstr "Зависимость «%s» — недопустимый идентификатор."
+
+msgid "The elevation hill around the city: it guarantees that the city starts on a continent."
+msgstr "Возвышенность вокруг города: она гарантирует, что город начнётся на материке."
 
 msgid "The game does not read this field: its value is silently lost. Fields allowed here: %s."
 msgstr "Игра не читает это поле: значение молча теряется. Здесь допустимы поля: %s."
@@ -2009,6 +2108,12 @@ msgstr "Идентификатор «%s» может состоять тольк
 
 msgid "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
 msgstr "Шрифт интерфейса. Любой файл шрифта (.ttf, .otf), положенный в папку fonts, появляется в этом списке и применяется сразу, без перезапуска игры."
+
+msgid "The land/sea threshold: a hex at or below it is sea."
+msgstr "Порог «земля/море»: гекс на нём или ниже — море."
+
+msgid "The least distance between two islands, in hexes, so that they do not stick together."
+msgstr "Наименьшее расстояние между двумя островами, в гексах, — чтобы они не слипались."
 
 msgid "The loader does not read this key, so everything under it is ignored. Check the spelling of the collection name."
 msgstr "Загрузчик не читает этот ключ, поэтому всё, что под ним, игнорируется. Проверьте написание имени коллекции."
@@ -2037,6 +2142,15 @@ msgstr "Модификация зависит сама от себя."
 msgid "The mod was not found."
 msgstr "Модификация не найдена."
 
+msgid "The narrowest coastal strip, in hexes. Zero lets the shore break into bays."
+msgstr "Самая узкая полоса берега, в гексах. Ноль позволяет берегу распадаться на бухты."
+
+msgid "The number of islands follows the area of the sea: the area times this share, plus a random spread. A small sea often gets none, a large one may get many."
+msgstr "Число островов следует за площадью моря: площадь, умноженная на эту долю, плюс случайный разброс. В маленьком море островов часто нет, в большом их может быть много."
+
+msgid "The radius around the city that is always land, in hexes."
+msgstr "Радиус вокруг города, который всегда остаётся землёй, в гексах."
+
 msgid "The side of the square map, in hexes."
 msgstr "Сторона квадратной карты в гексах."
 
@@ -2048,6 +2162,9 @@ msgstr "Симуляция продолжена."
 
 msgid "The simulation resumed. Starting: %s"
 msgstr "Симуляция продолжена. Запуск: %s"
+
+msgid "The smallest and the largest island, in hexes."
+msgstr "Самый маленький и самый большой остров, в гексах."
 
 msgid "The temperature is one of: cold, mild, hot; the humidity — one of: wet, dry. The generator compares the values literally, so a biome with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another biome."
 msgstr "Температура — одно из значений: cold, mild, hot; влажность — одно из: wet, dry. Генератор сравнивает значения буквально, поэтому биом с любым другим написанием никогда не появится на карте: его пара осей останется пустой, и климат возьмёт другой биом той же температуры."
@@ -2072,6 +2189,9 @@ msgstr "Городок уже соединён дорогой"
 
 msgid "The town is not on the map anymore"
 msgstr "Городка больше нет на карте"
+
+msgid "The widest coastal strip, in hexes."
+msgstr "Самая широкая полоса берега, в гексах."
 
 msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."
 msgstr "Различия в написании нет, но для игры это РАЗНЫЕ идентификаторы: всё, что ссылается на «%s», не попадёт в «%s» и наоборот. При этом ссылка на «%s» ссылки НЕ ломает — он объявлен и выглядит правильно, поэтому обычные проверки битых ссылок эту опечатку и не видели. Оставьте один идентификатор и переименуйте второй во всех файлах."
@@ -2225,6 +2345,9 @@ msgstr "Видео"
 
 msgid "What the technology gives:"
 msgstr "Что даёт технология:"
+
+msgid "Widest coast"
+msgstr "Максимальная ширина берега"
 
 msgid "Will produce:"
 msgstr "Будет производить:"

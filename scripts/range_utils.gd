@@ -8,7 +8,7 @@
 #
 # Used by:
 #   - scripts/map_generator.gd (_resolve_spawn_count — the spawn_count field of resources)
-#   - scripts/sea_manager.gd   (apply_sea — the sea.sides field from map_config.json)
+#   - scripts/sea_manager.gd   (apply_sea — the sides field of CityData.world_sea)
 @tool
 class_name RangeUtils
 
