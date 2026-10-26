@@ -210,6 +210,7 @@
       "id": "spices",
       "name": "Spices",
       "products": [
+        //"black_pepper",
         "sesame",
         "cinnamon",
         //"cloves",
