@@ -96,6 +96,10 @@ var sea_rows: Array = []
 # so they are refreshed together.
 var world_previews: Array = []
 var mod_list = null
+# The seed of the preview picture. It is randomized when the dialog opens, so the coast looks
+# different on every visit; it stays the same while the player changes settings, so a change
+# of a setting is the only thing that moves the picture.
+var _preview_seed: int = 0
 
 func _ready():
     # The data comes first: the tooltip of "Continue game" names the era of the save,
@@ -183,6 +187,7 @@ func _on_new_game():
     _popup_new_game_dialog()
     _refresh_town_row()
     _refresh_sea_rows()
+    _preview_seed = randi()
     _refresh_preview()
     city_name_edit.grab_focus()
     city_name_edit.select_all()
@@ -382,7 +387,7 @@ func _make_preview() -> Control:
 func _refresh_preview():
     var side := _selected_map_size()
     var towns := _selected_town_count()
-    var picture := WorldPreview.build(side, _selected_sea_config())
+    var picture := WorldPreview.build(side, _selected_sea_config(), _preview_seed)
     for preview in world_previews:
         preview.set_world(side, towns, picture)
 

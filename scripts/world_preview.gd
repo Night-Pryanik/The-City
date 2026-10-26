@@ -9,12 +9,12 @@
 # than by a second, hand-written rule: SeaManager builds the sea mask on the real map grid, and
 # the mask is averaged down to the cells of the picture.
 #
-# It is a SAMPLE of the settings and never the world the player is about to get. The generator
-# is pinned to one seed, so the same settings always draw the same coast and a change of a
-# setting is the only thing that moves the picture; the world generation rolls its own dice.
-# The real world is kept out of here on purpose: a player who saw it would plan the first moves
-# from the menu — "there is a town west of my start, I will grow that way" — and the map would
-# be explored before it is built.
+# It is a SAMPLE of the settings and never the world the player is about to get. The caller
+# picks the seed, so the same settings always draw the same coast within one dialog session
+# and a change of a setting is the only thing that moves the picture; the world generation
+# rolls its own dice. The real world is kept out of here on purpose: a player who saw it would
+# plan the first moves from the menu — "there is a town west of my start, I will grow that way"
+# — and the map would be explored before it is built.
 #
 # The towns are schematic — a sunflower spiral rather than the placement of the generator —
 # and a town stands only where there is land. The gold point in the middle is the player's
@@ -60,10 +60,6 @@ const GOLDEN_ANGLE := 2.399963229
 # on, so a finer grid would cost time and show nothing.
 const GRID_MAX := 120
 
-# The seed of the build. The water is drawn at random, and a preview that rolled the dice on
-# every change of a setting would hide the change behind a new coastline.
-const PREVIEW_SEED := 20261026
-
 # The largest map the preview can show. The game hands its own limit over, so the picture
 # and the dropdown cannot drift apart.
 var max_map_size := 200
@@ -90,7 +86,7 @@ func _init() -> void:
 # moves it here as well. A cell of the picture takes the kind of the majority of the hexes it
 # covers; the shallow band and the beach are worked out on that grid, because at this size
 # they are one or two cells wide whatever their depth in hexes.
-static func build(size: int, sea: Dictionary) -> Dictionary:
+static func build(size: int, sea: Dictionary, preview_seed: int = 20261026) -> Dictionary:
     var grid := mini(maxi(size, 1), GRID_MAX)
     var city := int(size / 2.0)
 
@@ -99,7 +95,7 @@ static func build(size: int, sea: Dictionary) -> Dictionary:
     # picture, and the world the player gets is a different roll of the same dice. Nothing may
     # depend on the state the preview leaves — the world generation reseeds the generator before
     # it starts anyway, and that is the second of the two guards against handing over the map.
-    seed(PREVIEW_SEED)
+    seed(preview_seed)
     var mask: Array = SeaManager.build_sea_mask(size, size, city, city, sea)
     SeaManager.grow_sea_islands(mask, size, size, city, city, sea, false)
     randomize()
