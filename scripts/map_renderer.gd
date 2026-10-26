@@ -158,8 +158,6 @@ func _get_viewport_size() -> Vector2:
 # the unexplored hexes outside the Region are a real fog of war, and
 # for them the function simply returns early.
 func _get_visible_hex_range() -> Dictionary:
-    var viewport_size = _get_viewport_size()
-
     var offset_x = main_map.offset_x + main_map.scroll_offset.x
     var offset_y = main_map.offset_y + main_map.scroll_offset.y
 
@@ -170,12 +168,13 @@ func _get_visible_hex_range() -> Dictionary:
     # The rectangle of the viewport in the map coordinates (before the offset). The
     # viewport is converted into the LOCAL pixels of the map: a zoom below 1 puts more of
     # the world on the same screen, and without the division the outer strip would stay
-    # blank. The zoom is the one the map is DRAWN for (see main_map.get_draw_zoom).
-    var visible_size: Vector2 = viewport_size / main_map.get_draw_zoom()
-    var world_left = - offset_x
-    var world_top = - offset_y
-    var world_right = world_left + visible_size.x
-    var world_bottom = world_top + visible_size.y
+    # blank. The rectangle comes from main_map, which also includes the strip a running
+    # zoom-out animation is about to uncover (see main_map.get_draw_screen_rect).
+    var screen_rect: Rect2 = _get_screen_rect()
+    var world_left = screen_rect.position.x - offset_x
+    var world_top = screen_rect.position.y - offset_y
+    var world_right = screen_rect.end.x - offset_x
+    var world_bottom = screen_rect.end.y - offset_y
 
     # A margin of 2 hexes, to account for the offset of the odd rows
     # and the partially visible hexes at the edges of the screen.
@@ -206,10 +205,12 @@ func _get_visible_hex_range() -> Dictionary:
 # _collect_river_segments), therefore the rectangle must be in the same system.
 # `-offset_x / -offset_y` here would mean the WORLD coordinate system and
 # would clip everything - exactly so the rivers once disappeared from the map.
-# The zoom magnifies the local pixels, so the screen covers viewport / zoom of them — the
-# zoom the map was drawn for, which during a zoom-out gesture is already the target one.
+# main_map adds the endpoint of a running zoom-out gesture to the rectangle, because
+# the transform moves the screen away from the position the drawing was baked for.
 func _get_screen_rect() -> Rect2:
-    return Rect2(Vector2.ZERO, _get_viewport_size() / main_map.get_draw_zoom())
+    if main_map == null:
+        return Rect2(Vector2.ZERO, _get_viewport_size())
+    return main_map.get_draw_screen_rect(_get_viewport_size())
 
 # Checks whether the rectangle (in the local coordinates of the map) intersects the viewport.
 func _is_rect_visible(rect: Rect2) -> bool:

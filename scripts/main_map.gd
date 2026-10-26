@@ -3224,14 +3224,18 @@ func _apply_zoom_view() -> void:
     if map_renderer == null:
         return
     map_renderer.scale = Vector2(zoom, zoom)
+    map_renderer.position = _zoom_view_position(zoom)
+
+# The position of the renderer for a zoom of the running gesture (see _apply_zoom_view).
+func _zoom_view_position(value: float) -> Vector2:
     var shift: Vector2 = _zoom_anchor - (_zoom_world + Vector2(offset_x, offset_y)
-            + scroll_offset) * zoom
+            + scroll_offset) * value
     var max_scroll = get_max_scroll()
-    var settled: Vector2 = scroll_offset + shift / zoom
+    var settled: Vector2 = scroll_offset + shift / value
     var clamped := Vector2(
             clampf(settled.x, -max_scroll.x, max_scroll.x),
             clampf(settled.y, -max_scroll.y, max_scroll.y))
-    map_renderer.position = shift + (clamped - settled) * zoom
+    return shift + (clamped - settled) * value
 
 # Ends the gesture: the shift accumulated by the animation is folded into the scroll offset,
 # so the map returns to its usual state. The drawing bakes the offset in, therefore this is
@@ -3254,6 +3258,18 @@ func _settle_zoom() -> void:
 # area that is about to be uncovered must be in it already.
 func get_draw_zoom() -> float:
     return _draw_zoom
+
+# The rectangle in the LOCAL pixels of the map that the recorded drawing has to cover.
+# A zoom-out gesture draws the map once for the target zoom and then only moves the renderer,
+# so the screen drifts away from the position the geometry was baked for. Merging the
+# endpoint of the gesture keeps the strip the transform is about to uncover in the drawing;
+# without it the strip stays blank until the settle redraws the map.
+func get_draw_screen_rect(viewport_size: Vector2) -> Rect2:
+    var rect := Rect2(-map_renderer.position / zoom, viewport_size / zoom)
+    if zoom_target < zoom:
+        var end_position: Vector2 = _zoom_view_position(_draw_zoom)
+        rect = rect.merge(Rect2(-end_position / _draw_zoom, viewport_size / _draw_zoom))
+    return rect
 
 # The map draws in its own LOCAL pixels; the renderer scales them by the zoom and shifts
 # them by its position (a gesture moves the transform instead of redrawing the map).

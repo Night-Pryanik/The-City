@@ -14,6 +14,9 @@
 #      world for the same cursor distance.
 #   7. A gesture at the border of the reachable area keeps the clamp of the scroll: the
 #      shift the animation carries never leaves the boundary, so the settle cannot jump.
+#   8. A zoom-out gesture draws the strip the animation is about to uncover: the transform
+#      moves the screen away from the position the drawing was baked for, so the culling
+#      rectangle must include the endpoint of the gesture.
 #
 # The viewport of a headless run is square and much smaller than the game window, so the
 # checks use the zoom-independent invariants and never the absolute layout of the map.
@@ -54,6 +57,8 @@ func _run() -> void:
         _test_scroll_speed(state, main_map)
     if WATCHDOG.wants_case("edge_clamp"):
         await _test_edge_clamp(state, main_map)
+    if WATCHDOG.wants_case("coverage"):
+        await _test_zoom_out_coverage(state, main_map)
 
     _finish(state)
 
@@ -314,6 +319,58 @@ func _test_edge_clamp(state: Dictionary, main_map) -> void:
             and absf(main_map.scroll_offset.y) <= max_scroll.y + 0.5,
         "the scroll must stay inside the reachable area (%s, limit %s)"
             % [str(main_map.scroll_offset), str(max_scroll)], state)
+
+    main_map.set_zoom(1.0)
+    main_map._calc_offsets()
+    main_map.scroll_offset = Vector2.ZERO
+
+# -------------------------------------------------------
+# 8. The drawing covers the strip a zoom-out uncovers
+# -------------------------------------------------------
+# The gesture draws the map once for the target zoom and then only moves the renderer, so
+# the screen drifts away from the position the geometry was baked for. The culling
+# rectangle of that drawing has to include the endpoint of the gesture; otherwise the
+# uncovered strip stays blank until the settle redraws the map.
+func _test_zoom_out_coverage(state: Dictionary, main_map) -> void:
+    var renderer = main_map.map_renderer
+    var ih = main_map.input_handler
+    var viewport: Vector2 = renderer._get_viewport_size()
+
+    main_map.set_zoom(1.0)
+    main_map._calc_offsets()
+    main_map.scroll_offset = Vector2.ZERO
+    await process_frame
+
+    # A big jump: every notch in one frame, straight to ZOOM_MIN, with the cursor away
+    # from the origin so the transform carries the map by a large shift.
+    var anchor: Vector2 = viewport * 0.85
+    for _i in range(20):
+        main_map.zoom_by(1.0 / main_map.ZOOM_STEP, anchor)
+    check(is_equal_approx(main_map.zoom_target, main_map.ZOOM_MIN),
+        "the gesture must reach ZOOM_MIN before the check (got %.4f)"
+            % main_map.zoom_target, state)
+
+    # The frame the drawing is recorded on: this is the rectangle the renderer culls with.
+    ih.handle_process(1.0 / 60.0)
+    var drawn: Rect2 = renderer._get_screen_rect().grow(1.0)
+    var frames: int = 0
+    for _i in range(120):
+        ih.handle_process(1.0 / 60.0)
+        if is_equal_approx(main_map.zoom, main_map.zoom_target):
+            break
+        frames += 1
+        var visible := Rect2(
+                -renderer.position / main_map.zoom,
+                viewport / main_map.zoom)
+        check(drawn.encloses(visible),
+            "the drawing of the gesture must cover the screen on every animation frame "
+                + "(frame %d, zoom %.3f, position %s, visible %s, drawn %s)"
+                % [frames, main_map.zoom, str(renderer.position), str(visible), str(drawn)],
+            state)
+        if not drawn.encloses(visible):
+            break
+    check(frames > 0, "the animation must have run at least one frame after the drawing",
+        state)
 
     main_map.set_zoom(1.0)
     main_map._calc_offsets()

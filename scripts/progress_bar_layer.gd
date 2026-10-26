@@ -41,13 +41,14 @@ func _get_visible_hex_range() -> Dictionary:
     var x_spacing = radius * sqrt(3.0)
     var y_spacing = radius * 1.5
 
-    var world_left = - offset_x
-    var world_top = - offset_y
-    # The zoom magnifies the local pixels of the map, so the screen covers
-    # viewport / zoom of them — the zoom the map was drawn for.
-    var visible_size: Vector2 = viewport_size / main_map.get_draw_zoom()
-    var world_right = world_left + visible_size.x
-    var world_bottom = world_top + visible_size.y
+    # The screen rectangle in the local pixels of the map, including the strip a running
+    # zoom-out animation is about to uncover (see main_map.get_draw_screen_rect): the bars
+    # there must be drawn by the same pass as the rest of the map.
+    var screen_rect: Rect2 = main_map.get_draw_screen_rect(viewport_size)
+    var world_left = screen_rect.position.x - offset_x
+    var world_top = screen_rect.position.y - offset_y
+    var world_right = screen_rect.end.x - offset_x
+    var world_bottom = screen_rect.end.y - offset_y
 
     var margin = 2
 
