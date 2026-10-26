@@ -36,6 +36,7 @@
       "type": "product",
       "category": "fruits",
       "icon": "yucca_fruit.png"
-    }
+    },
+    { "id": "pistachio", "price": 12, "name": "Pistachio", "type": "product", "category": "fruits", "icon": "pistachio.png" }
   ]
 }

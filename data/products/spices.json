@@ -1,5 +1,10 @@
 {
   "resources": [
-    { "id": "sesame", "price": 12, "name": "Sesame", "type": "product", "category": "spices", "icon": "sesame.png" }
+    { "id": "sesame", "price": 12, "name": "Sesame", "type": "product", "category": "spices", "icon": "sesame.png" },
+    { "id": "saffron", "price": 60, "name": "Saffron", "type": "product", "category": "spices", "icon": "saffron.png" },
+    { "id": "cinnamon", "price": 14, "name": "Cinnamon", "type": "product", "category": "spices", "icon": "cinnamon.png" },
+    { "id": "nutmeg", "price": 18, "name": "Nutmeg", "type": "product", "category": "spices", "icon": "nutmeg.png" },
+    { "id": "vanilla", "price": 25, "name": "Vanilla", "type": "product", "category": "spices", "icon": "vanilla.png" },
+    { "id": "chili", "price": 10, "name": "Chili", "type": "product", "category": "spices", "icon": "chili.png" }
   ]
 }
