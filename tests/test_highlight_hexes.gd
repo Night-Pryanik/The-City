@@ -1,7 +1,7 @@
-# Headless test of hex hover/selection highlighting (map_renderer, PHASES 2.5 and 3.5):
+# Headless test of hex hover/selection highlighting (map_highlight_layer):
 #   godot --headless --path . --script res://tests/test_highlight_hexes.gd
 #
-# The renderer highlights the set of hexes returned by
+# The highlight layer draws the set of hexes returned by
 # expansion_manager.get_highlight_hexes(row, col):
 #   - a hex in the Influence Ring → only itself;
 #   - outside the Ring → the whole scouting/purchase chunk (get_chunk_hexes);

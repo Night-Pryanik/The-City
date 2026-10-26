@@ -358,10 +358,9 @@ func _set_scroll_offset(offset: Vector2):
     main_map.scroll_offset = Vector2(
         clamp(offset.x, -max_scroll.x, max_scroll.x),
         clamp(offset.y, -max_scroll.y, max_scroll.y))
-    map_renderer.queue_redraw()
-    map_renderer.queue_redraw_for_scroll()
-    if progress_bar_layer:
-        progress_bar_layer.queue_redraw()
+    # The map is drawn in the world coordinates, so the pan is only a transform of the
+    # renderer: panning never re-records the drawing.
+    main_map.apply_view_transform()
 
 func _apply_scroll(scroll: Vector2):
     # The speed is set in SCREEN pixels per second (the slider of the settings menu), so
@@ -475,7 +474,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
         if is_dragging:
             var delta = mouse_pos - drag_start_mouse
             # The map must stay glued to the cursor: the delta is in screen pixels, and
-            # one screen pixel covers 1 / zoom local ones.
+            # one screen pixel covers 1 / zoom world units.
             _set_scroll_offset(drag_start_scroll_offset + delta / main_map.zoom)
             return
 
@@ -506,7 +505,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
     # We do NOT call queue_redraw() directly here: expansion_manager.update_hovered_chunk()
     # / clear_hovered_chunk() emit the chunk_hovered signal ONLY on a real
     # chunk change, and that signal is connected to main_map._on_chunk_hovered(),
-    # which calls map_renderer.queue_redraw(). In this way we get rid of the extra
+    # which redraws only the highlight layer. In this way we get rid of the extra
     # redraws of the whole map on every mouse movement.
     var h = _interactive_hex_at(event.global_position.x, event.global_position.y)
     if h != null and not main_map.tile_data[h.row][h.col].get("in_influence", false):
@@ -560,15 +559,12 @@ func _pixel_to_hex(mx: float, my: float):
     var x_spacing = radius * sqrt(3.0)
     var y_spacing = radius * 1.5
 
-    # The map draws in its own LOCAL pixels and the zoom magnifies them, therefore the
-    # cursor is converted into the local space first and the whole hit test below runs in
-    # local coordinates.
-    var local: Vector2 = main_map.screen_to_local(Vector2(mx, my))
-    var local_x = local.x
-    var local_y = local.y
-
-    var world_x = local_x - (main_map.offset_x + main_map.scroll_offset.x)
-    var world_y = local_y - (main_map.offset_y + main_map.scroll_offset.y)
+    # The map draws in the world coordinates and the camera is applied by the renderer,
+    # so the cursor is converted into the world space first and the whole hit test below runs
+    # in world coordinates.
+    var world: Vector2 = main_map.screen_to_local(Vector2(mx, my))
+    var world_x = world.x
+    var world_y = world.y
 
     var approx_row = int(round(world_y / y_spacing))
     var approx_col = int(round(world_x / x_spacing))
@@ -582,10 +578,8 @@ func _pixel_to_hex(mx: float, my: float):
             if col < 0 or col >= main_map.map_cols:
                 continue
             var center = HexUtils.hex_center(row, col, radius)
-            center.x += main_map.offset_x + main_map.scroll_offset.x
-            center.y += main_map.offset_y + main_map.scroll_offset.y
             var verts = HexUtils.hex_vertices(center.x, center.y, radius)
-            if HexUtils.point_in_polygon(local_x, local_y, verts):
+            if HexUtils.point_in_polygon(world_x, world_y, verts):
                 return {"row": row, "col": col}
     return null
 

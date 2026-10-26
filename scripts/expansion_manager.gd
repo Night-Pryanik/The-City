@@ -220,7 +220,7 @@ func _get_explored_chunk_hexes(start_row: int, start_col: int) -> Array:
     return chunk
 
 # Returns the hexes that need to be highlighted when hovering or selecting the hex
-# (row, col) — the single source of truth for the renderer (PHASE 2.5 hover and PHASE 3.5
+# (row, col) — the single source of truth for the highlight layer (the hover and the
 # selection), so that the highlight does not diverge from the chunk the panel
 # actions work with:
 #   - a hex in the Influence Ring — only it itself;

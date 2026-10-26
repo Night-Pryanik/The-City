@@ -20,6 +20,7 @@
 [ext_resource type="PackedScene" uid="uid://k2vtownujaab" path="res://scenes/TownUI.tscn" id="17_twnui"]
 [ext_resource type="Script" uid="uid://1b62pk8bfd16" path="res://scripts/unread_dot.gd" id="18_unread"]
 [ext_resource type="Script" path="res://scripts/fps_counter.gd" id="19_fpscnt"]
+[ext_resource type="Script" path="res://scripts/map_highlight_layer.gd" id="20_hilayer"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -33,6 +34,9 @@ script = ExtResource("1_5hgy3")
 
 [node name="MapRenderer" type="Node2D" parent="." unique_id=1095572482]
 script = ExtResource("6_82ayj")
+
+[node name="HighlightLayer" type="Node2D" parent="MapRenderer" unique_id=1095572484]
+script = ExtResource("20_hilayer")
 
 [node name="ProgressBarLayer" type="Node2D" parent="MapRenderer" unique_id=1095572483]
 script = ExtResource("14_pblayer")

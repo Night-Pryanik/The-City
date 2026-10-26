@@ -49,35 +49,25 @@ var tile_data = []
 # no index of its own for the renderer any more.
 var icon_textures = {}
 
-# A reference to the main node for the access to offset_x, offset_y, scroll_offset, build_manager and CityData
+# A reference to the main node for the access to build_manager, CityData, the map bounds
+# and the camera (the drawn area depends on the scrollable range).
 var main_map: Node
 
-# A cache of the smoothed (meandering) points of the rivers in the WORLD coordinates (without the offset).
-# The smoothing of the rivers (_generate_natural_river + _chaikin_smooth) is an expensive operation,
-# which earlier was performed on every frame when the map was scrolled. The points of the rivers in the world
-# coordinates do not change when panning, therefore the recalculation is needed only once
-# per river. When scrolling it is enough to add the offset to the smoothed world points
-# and perform the clipping. The key of the cache is a compact serialization of the coordinates of the river.
+# The smoothed (meandering) points of the rivers in the world coordinates. The smoothing
+# (_generate_natural_river + _chaikin_smooth) is expensive and the geometry does not depend on
+# the view, so it is computed once per river. The cache key is a compact serialization of the
+# coordinates of the river.
 var _river_smooth_cache: Dictionary = {}
 
-# The per-frame geometry of the rivers: the polylines of every river that intersects the cached
-# rectangle, clipped by the screen and by the fog of war, keyed by _river_index. The key of
-# validity is the offset the geometry was built for; within main_map.MAP_CACHE_MARGIN of it the
-# entries are reused as they are (only _river_frame_offset moves), so panning does not re-clip
-# anything. A change of the fog of war drops the cache (see invalidate_town_influence_cache).
+# The drawn runs of the rivers in the world coordinates, keyed by _river_index: the polylines
+# clipped by the drawn area and split by the fog of war. The map is drawn in world coordinates
+# and pans by the transform of this node, therefore the runs stay valid while the map is
+# scrolled or zoomed. The cache is dropped when the fog of war changes
+# (see invalidate_town_influence_cache) or when the drawn area outgrows _river_cache_rect
+# (a zoom-out gesture, a wider Region).
 var _river_frame_cache: Dictionary = {}
-var _river_frame_cache_offset: Vector2 = Vector2.ZERO
-# The zoom the clipped geometry was built for. The clip rectangle follows the zoom (see
-# _get_cache_rect), and zooming out exposes area the cache does not cover — only that
-# direction needs a rebuild: zooming in clips away geometry the cache already holds.
-var _river_frame_cache_zoom: float = 1.0
-# The current world -> screen offset, added at the drawing of the river polylines.
-var _river_frame_offset: Vector2 = Vector2.ZERO
-# Set by queue_redraw_for_scroll and consumed once per frame: the caches are re-checked lazily,
-# so that several scroll steps within one frame do not rebuild them several times.
-var _scroll_since_cache := false
-# Counts the actual rebuilds of the geometry of the rivers. If the pan cache works, a continuous
-# scroll of many frames must give far fewer rebuilds than frames - the test relies on it.
+var _river_cache_rect: Rect2 = Rect2()
+# Counts the actual rebuilds of the river geometry; the river rendering test relies on it.
 var _river_frame_rebuilds: int = 0
 
 # Counts the actual repaints of the map. The map is redrawn on demand, so a state change
@@ -100,9 +90,6 @@ var draw_calls: int = 0
 # light cached draw_line for the borders.
 var _town_cache_version: int = 0
 var _town_cache_built_version: int = -1
-# The world -> screen offset the fill texture of the rings was built for. It is reused while the
-# map is scrolled within main_map.MAP_CACHE_MARGIN of it.
-var _cache_built_offset: Vector2 = Vector2(INF, INF)
 # The region borders for which the current cache is built. If the cache is built
 # before a change of the epoch (the Region has expanded) - it is invalid and is rebuilt.
 var _cache_region_start_row: int = -1
@@ -129,7 +116,6 @@ func initialize(td, main_node):
     # so as not to keep the outdated smoothed points of the previous map.
     _river_smooth_cache.clear()
     _river_frame_cache.clear()
-    _invalidate_screen_caches()
     # The rings of the towns could have changed (a new map / a load of a save):
     # we reset the cache of their render - it will be lazily rebuilt from the next frame.
     invalidate_town_influence_cache()
@@ -141,10 +127,10 @@ func _get_viewport_size() -> Vector2:
         return Vector2(1152, 768)
     return get_viewport_rect().size
 
-# Returns a dictionary with the borders of the visible hexes (inclusive),
-# limited by the area reachable by the scroll of the map (scout_reach).
-# It is used for the viewport culling: instead of an iteration over the whole map
-# we draw only those hexes which intersect the rectangle of the screen.
+# The hexes the map is drawn for. The drawing is recorded in world coordinates and the map
+# pans and zooms by the transform of this node, so the range cannot follow the cursor: it
+# has to cover every position the scroll clamp allows at the zoom the drawing was made for.
+# That is exactly main_map.get_scout_reach_bounds() — the scrollable area of the map.
 #
 # The area is wider than the Region - this is needed for the two scenarios:
 #   1. After the scouting, the hexes in the fog of war (outside the Region) must
@@ -157,64 +143,35 @@ func _get_viewport_size() -> Vector2:
 # `_draw_hex` and `_draw_hex_overlays` themselves decide what to draw:
 # the unexplored hexes outside the Region are a real fog of war, and
 # for them the function simply returns early.
-func _get_visible_hex_range() -> Dictionary:
-    var offset_x = main_map.offset_x + main_map.scroll_offset.x
-    var offset_y = main_map.offset_y + main_map.scroll_offset.y
+func _get_draw_hex_range() -> Dictionary:
+    if main_map == null:
+        return {"row_start": 0, "row_end": 0, "col_start": 0, "col_end": 0}
+    return main_map.get_scout_reach_bounds()
 
-    var radius = main_map.HEX_RADIUS
-    var x_spacing = radius * sqrt(3.0)
-    var y_spacing = radius * 1.5
+# The rectangle of the world covered by the drawing: the hex range grown by the hex radius,
+# used to cull the geometry which is not bound to the hex grid (the roads, the rivers).
+func _get_draw_rect() -> Rect2:
+    var hex_range: Dictionary = _get_draw_hex_range()
+    var radius: float = main_map.HEX_RADIUS
+    var x_spacing := radius * sqrt(3.0)
+    var y_spacing := radius * 1.5
+    var left: float = float(hex_range.col_start) * x_spacing - radius * 2.0
+    var top: float = float(hex_range.row_start) * y_spacing - radius * 2.0
+    var right: float = (float(hex_range.col_end) + 1.0) * x_spacing + radius * 2.0
+    var bottom: float = (float(hex_range.row_end) + 1.0) * y_spacing + radius * 3.0
+    return Rect2(left, top, right - left, bottom - top)
 
-    # The rectangle of the viewport in the map coordinates (before the offset). The
-    # viewport is converted into the LOCAL pixels of the map: a zoom below 1 puts more of
-    # the world on the same screen, and without the division the outer strip would stay
-    # blank. The rectangle comes from main_map, which also includes the strip a running
-    # zoom-out animation is about to uncover (see main_map.get_draw_screen_rect).
-    var screen_rect: Rect2 = _get_screen_rect()
-    var world_left = screen_rect.position.x - offset_x
-    var world_top = screen_rect.position.y - offset_y
-    var world_right = screen_rect.end.x - offset_x
-    var world_bottom = screen_rect.end.y - offset_y
-
-    # A margin of 2 hexes, to account for the offset of the odd rows
-    # and the partially visible hexes at the edges of the screen.
-    var margin = 2
-
-    var col_start = int(floor(world_left / x_spacing)) - margin
-    var col_end = int(ceil(world_right / x_spacing)) + margin
-    var row_start = int(floor(world_top / y_spacing)) - margin
-    var row_end = int(ceil(world_bottom / y_spacing)) + margin
-
-    # We limit it by the area reachable by the scroll of the map (scout_reach).
-    var reach = main_map.get_scout_reach_bounds()
-    col_start = max(col_start, reach.col_start)
-    col_end = min(col_end, reach.col_end)
-    row_start = max(row_start, reach.row_start)
-    row_end = min(row_end, reach.row_end)
-
-    return {
-        "row_start": row_start,
-        "row_end": row_end,
-        "col_start": col_start,
-        "col_end": col_end
-    }
-
-# The screen rectangle in the LOCAL coordinates of the map — the single source
-# of truth both for the viewport culling and for the clipping of the rivers.
-# The invariant: everything that we clip is already shifted by the offset (see
-# _collect_river_segments), therefore the rectangle must be in the same system.
-# `-offset_x / -offset_y` here would mean the WORLD coordinate system and
-# would clip everything - exactly so the rivers once disappeared from the map.
-# main_map adds the endpoint of a running zoom-out gesture to the rectangle, because
-# the transform moves the screen away from the position the drawing was baked for.
+# The part of the world the screen currently shows, in world coordinates: the transform of
+# this node maps it to the screen. Only the layers that are redrawn while the map moves
+# (the progress bars) cull by it; the recorded layers have to cover the whole scrollable area.
 func _get_screen_rect() -> Rect2:
     if main_map == null:
         return Rect2(Vector2.ZERO, _get_viewport_size())
     return main_map.get_draw_screen_rect(_get_viewport_size())
 
-# Checks whether the rectangle (in the local coordinates of the map) intersects the viewport.
+# Checks whether the rectangle (in world coordinates) intersects the drawn area.
 func _is_rect_visible(rect: Rect2) -> bool:
-    return rect.intersects(_get_screen_rect())
+    return rect.intersects(_get_draw_rect())
 
 func load_icons():
     icon_textures.clear()
@@ -265,17 +222,17 @@ func _draw():
     # must not flash behind the loading screen of a new game).
     if main_map == null or main_map.world_generating:
         return
-    # We compute the visible range of the hexes (the viewport culling): we draw only those
-    # hexes which intersect the rectangle of the screen.
-    var visible_range = _get_visible_hex_range()
 
-    # PHASE 1: We draw all the hexes which got on the screen within the reach
-    # of the scroll. The hexes of the Region - in detail, the unexplored hexes beyond
-    # its limits (the fog of war) are not drawn at all (see _draw_hex). The scouted
-    # hexes outside the Region are drawn darkened: they can be selected and scouts
-    # sent there - but only after the study of Cartography. Beyond the
-    # limits of the reach of the scroll nothing is drawn at all (see
-    # _get_visible_hex_range).
+    # The drawing is in WORLD coordinates; the view is applied by the transform of this node.
+    # A scroll therefore does not re-record anything: the recorded commands are replayed
+    # where the transform puts them. This is why the range is the whole scrollable area
+    # (see _get_draw_hex_range) and not the screen rectangle.
+    var visible_range = _get_draw_hex_range()
+
+    # PHASE 1: The hexes of the drawn area. The hexes of the Region - in detail, the
+    # unexplored hexes beyond its limits (the fog of war) are not drawn at all (see
+    # _draw_hex). The scouted hexes outside the Region are drawn darkened: they can be
+    # selected and scouts sent there - but only after the study of Cartography.
     for row in range(visible_range.row_start, visible_range.row_end + 1):
         for col in range(visible_range.col_start, visible_range.col_end + 1):
             _draw_hex(row, col)
@@ -307,8 +264,9 @@ func _draw():
     # PHASE 2.75: We draw the rivers
     _draw_rivers()
 
-    # PHASE 2.5: We draw the highlighting for the scouting and the purchase (it is always active,
-    # but before the study of Cartography - only within the limits of the Region)
+    # PHASE 2.5: The fill of the scouted hexes outside the Region. The chunk under the cursor
+    # is a separate layer (see map_highlight_layer.gd): the hover changes far more often than
+    # the rest of the map, and re-recording the whole map for it would stall the pan.
     _draw_exploration_highlights()
 
     # PHASE 3: We draw the icons of the resources, the improvements and the other overlays
@@ -316,33 +274,8 @@ func _draw():
         for col in range(visible_range.col_start, visible_range.col_end + 1):
             _draw_hex_overlays(row, col)
 
-    # PHASE 3.5: We draw the highlighting of the selected hex (a click with the LMB, the control panel).
-    # A frame + a light fill, so that the selected hex is well visible over
-    # the overlays, but does not cover the icon of the resource/improvement.
-    if main_map.control_panel and main_map.control_panel.has_selection():
-        var sel = main_map.control_panel.get_selected_hex()
-        if sel != null:
-            # The fill + the frame. The set of the hexes is computed by
-            # expansion_manager.get_highlight_hexes(): a hex in the Influence Ring -
-            # only the hex itself; outside the Ring - the whole chunk of the scouting/purchase (the same
-            # chunk with which the actions of the panel work, see
-            # control_panel._collect_region_actions); if there is no chunk
-            # (a scouted hex outside the Region or a hex in the influence ring of a foreign
-            # town) - the hex itself, so that the click is not "silent". The chunk can
-            # include the hexes in the Region and in the fog of war nearby.
-            # The colours are by the type of the chunk (the scouting/the claiming × possible/impossible), see
-            # _get_highlight_style; the style is computed once for the whole set.
-            var selected_hexes: Array = main_map.expansion_manager.get_highlight_hexes(sel.row, sel.col)
-            var style: Dictionary = _get_highlight_style(selected_hexes, sel.row, sel.col, true)
-            for highlight_hex in selected_hexes:
-                _draw_selected_hex_highlight(highlight_hex.row, highlight_hex.col, style)
-
     # PHASE 4: We draw the city at the end
-    var offset_pos = Vector2(
-        main_map.offset_x + main_map.scroll_offset.x,
-        main_map.offset_y + main_map.scroll_offset.y
-    )
-    var city_center = HexUtils.hex_center(main_map.city_row, main_map.city_col, main_map.HEX_RADIUS) + offset_pos
+    var city_center = HexUtils.hex_center(main_map.city_row, main_map.city_col, main_map.HEX_RADIUS)
     if icon_textures.has("city"):
         var tex = icon_textures["city"]
         var icon_rect = Rect2(
@@ -401,10 +334,6 @@ func _draw_hex(row: int, col: int):
         return
 
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
-    var offset_x = main_map.offset_x + main_map.scroll_offset.x
-    var offset_y = main_map.offset_y + main_map.scroll_offset.y
-    center.x += offset_x
-    center.y += offset_y
     var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
 
     var closed_vertices = PackedVector2Array()
@@ -414,7 +343,6 @@ func _draw_hex(row: int, col: int):
     var terrain_color = Color.BLACK
     var terrain = tile.terrain
     var terrain_icon_name = tile.get("terrain_icon", "")
-
     if row == main_map.city_row and col == main_map.city_col:
         if GameData.terrains.has(terrain):
             var t = GameData.terrains[terrain]
@@ -507,14 +435,16 @@ func invalidate_town_influence_cache() -> void:
     # The old ImageTexture is released automatically (ref-count) on
     # the overwrite of the reference in _build_town_fill_texture().
     _town_cache_version += 1
-    # The records of the built offset are dropped as well: they are written by the builder, and
-    # with them stale the rebuild would keep reusing a screen-sized cache of the old offset.
-    _cache_built_offset = Vector2(INF, INF)
     # The river geometry is clipped by the fog of war (see _collect_river_segments), so a change
     # of the fog makes it stale too. This is the single hook of the fog changes (the scouting,
     # the claiming, the transition to the next era, the debug reveal), therefore the river cache
     # is dropped here instead of at every call site.
     _river_frame_cache.clear()
+    # The highlighting depends on the fog as well (the chunk and its style), and it is a separate
+    # layer that the redraw of the map does not touch.
+    var layer := get_node_or_null("HighlightLayer")
+    if layer:
+        layer.queue_redraw()
 
 func _ensure_town_influence_cache(_visible_range: Dictionary) -> void:
     if main_map == null:
@@ -524,30 +454,13 @@ func _ensure_town_influence_cache(_visible_range: Dictionary) -> void:
             or _cache_region_end_row != main_map.region_end_row \
             or _cache_region_start_col != main_map.region_start_col \
             or _cache_region_end_col != main_map.region_end_col
-    # The fill of the rings is drawn in the screen coordinates (see _draw_town_influence), so the
-    # pre-rendered texture is tied to the offset it was built for. It is reused while the map is
-    # scrolled within the cached margin, otherwise the segments of the borders would lag behind
-    # the fill - therefore a drift past that bound rebuilds the cache too.
-    var offset = Vector2(
-        main_map.offset_x + main_map.scroll_offset.x,
-        main_map.offset_y + main_map.scroll_offset.y
-    )
-    var offset_drifted := true
-    if not is_inf(_cache_built_offset.x):
-        offset_drifted = maxf(absf(offset.x - _cache_built_offset.x),
-                absf(offset.y - _cache_built_offset.y)) > main_map.MAP_CACHE_MARGIN
-    if _town_cache_built_version == _town_cache_version and not region_changed and not offset_drifted:
+    if _town_cache_built_version == _town_cache_version and not region_changed:
         return
     _town_cache_built_version = _town_cache_version
     _cache_region_start_row = main_map.region_start_row
     _cache_region_end_row = main_map.region_end_row
     _cache_region_start_col = main_map.region_start_col
     _cache_region_end_col = main_map.region_end_col
-    # The reference offset is remembered AFTER the expensive build below, because the build
-    # itself goes through _draw_rivers -> _build_river_frame_cache, which needs a valid
-    # _cache_built_offset to decide whether the river geometry can be reused. Writing it here
-    # would make _flush_scroll_cache_invalidation see "no drift" and skip the invalidation of
-    # the rivers, so their cache would never be dropped after a long pan.
 
     # --- Step 1: the unique hexes of the fill + the world segments of the borders ---
     _influence_fill_centers = []
@@ -647,16 +560,15 @@ func _ensure_town_influence_cache(_visible_range: Dictionary) -> void:
     _build_town_fill_texture()
 
     # A pre-render of the fill of the influence rings into ONE RGBA texture, which covers the whole
-    # area of the fill. The texture is built in the "world" pixels
-    # (without the scroll offset): when scrolling, a frame only adds the offset and does one
-    # draw_texture_rect. The Godot class Image has no vector primitives (only
-    # fill/fill_rect/set_pixel), therefore the hexes are filled row by row through
-    # fill_rect by the table of the half widths (a pointy-top hex with the flat sides
-    # the left and right borders are vertical).
+    # area of the fill. The texture is built in the world pixels: the map itself is recorded in
+    # world coordinates, so the fill is one draw_texture_rect at the recorded position. The Godot
+    # class Image has no vector primitives (only fill/fill_rect/set_pixel), therefore the hexes
+    # are filled row by row through fill_rect by the table of the half widths (a pointy-top hex
+    # with the flat sides has vertical left and right borders).
     #
     # If the area of the fill is too large for one texture (the limit of 4096 px) -
     # we leave _influence_fill_texture = null, and _draw_town_influence draws
-    # the fill by the cached polygons (without the duplicates and the trigonometry per frame).
+    # the fill by the cached polygons (without the duplicates and the trigonometry).
     
 func _build_town_fill_texture() -> void:
     _influence_fill_texture = null
@@ -746,22 +658,19 @@ func _get_region_visible_range(visible_range: Dictionary) -> Dictionary:
 # for the hexes inside the REGION (see _get_region_visible_range): behind the fog of war
 # the rings are not drawn, so as not to "give away" the unexplored territory, although
 # the fog itself is now drawn and is available for the scouting.
-# One frame = one draw_texture_rect (the texture is cut by Ring+Region).
+# One drawing = one draw_texture_rect (the texture is cut by Ring+Region).
 # The fallback to the polygons - only in the editor or with too large a Region.
 func _draw_town_influence(visible_range: Dictionary) -> void:
     if main_map == null:
         return
     var radius: float = main_map.HEX_RADIUS
-    var offset_x: float = main_map.offset_x + main_map.scroll_offset.x
-    var offset_y: float = main_map.offset_y + main_map.scroll_offset.y
     _ensure_town_influence_cache(visible_range)
     if _influence_fill_texture != null:
         draw_texture_rect(_influence_fill_texture, Rect2(
-                _influence_texture_origin.x + offset_x,
-                _influence_texture_origin.y + offset_y,
+                _influence_texture_origin.x,
+                _influence_texture_origin.y,
                 _influence_texture_size.x,
                 _influence_texture_size.y), false, Color(1, 1, 1, 1))
-        _cache_built_offset = Vector2(offset_x, offset_y)
         return
     # Fallback: the drawing by the hexes (the editor / the Region larger than 4096px).
     var region_visible = _get_region_visible_range(visible_range)
@@ -772,14 +681,13 @@ func _draw_town_influence(visible_range: Dictionary) -> void:
         if row < region_visible.row_start or row > region_visible.row_end \
                 or col < region_visible.col_start or col > region_visible.col_end:
             continue
-        var cx: float = float(h.cx) + offset_x
-        var cy: float = float(h.cy) + offset_y
+        var cx: float = float(h.cx)
+        var cy: float = float(h.cy)
         if not _is_rect_visible(Rect2(cx - radius, cy - radius, radius * 2, radius * 2)):
             continue
         var vertices = HexUtils.hex_vertices(cx, cy, radius)
         var fill_color := Color(h.cr, h.cg, h.cb, h.ca)
         draw_colored_polygon(vertices, fill_color)
-    _cache_built_offset = Vector2(offset_x, offset_y)
 
     # Draws the borders of the influence rings of EACH town with its own colour (PHASE 1.7.1).
     # It is drawn right after the fill of the rings (PHASE 1.7) and before the roads/rivers/icons.
@@ -794,8 +702,8 @@ func _draw_town_influence(visible_range: Dictionary) -> void:
     # hexes of one ring) are not drawn. Beyond the edge of the map the edges are not drawn -
     # there is no hex-neighbour there, and the ring simply ends.
     # The segments are computed ONCE in _ensure_town_influence_cache() and are stored in the
-    # world coordinates (without the offset). Per frame - only the translation by the offset,
-    # the viewport check and the draw_line: without the trigonometry and the allocations of the dictionaries.
+    # world coordinates. The drawing only culls them by the drawn area and calls draw_line:
+    # without the trigonometry and the allocations of the dictionaries.
     #
     # The visibility — the same as that of the fill: only the Ring + the Region. The clipping of the rings on
     # the starting Region is already applied to the data (in town_manager), so the foreign
@@ -805,8 +713,6 @@ func _draw_town_influence_borders(visible_range: Dictionary) -> void:
         return
     _ensure_town_influence_cache(visible_range)
     var region_visible = _get_region_visible_range(visible_range)
-    var offset_x: float = main_map.offset_x + main_map.scroll_offset.x
-    var offset_y: float = main_map.offset_y + main_map.scroll_offset.y
     for seg in _influence_border_segments:
         var row: int = int(seg.row)
         var col: int = int(seg.col)
@@ -814,9 +720,9 @@ func _draw_town_influence_borders(visible_range: Dictionary) -> void:
         if row < region_visible.row_start or row > region_visible.row_end \
                 or col < region_visible.col_start or col > region_visible.col_end:
             continue
-        var p1 := Vector2(float(seg.p1x) + offset_x, float(seg.p1y) + offset_y)
-        var p2 := Vector2(float(seg.p2x) + offset_x, float(seg.p2y) + offset_y)
-        # The viewport culling of a segment by its bounding box.
+        var p1 := Vector2(float(seg.p1x), float(seg.p1y))
+        var p2 := Vector2(float(seg.p2x), float(seg.p2y))
+        # The culling of a segment by its bounding box against the drawn area.
         if not _is_rect_visible(Rect2(
                 minf(p1.x, p2.x) - TOWN_INFLUENCE_BORDER_WIDTH,
                 minf(p1.y, p2.y) - TOWN_INFLUENCE_BORDER_WIDTH,
@@ -896,8 +802,6 @@ func _draw_hex_overlays(row: int, col: int):
         return
 
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
-    center.x += main_map.offset_x + main_map.scroll_offset.x
-    center.y += main_map.offset_y + main_map.scroll_offset.y
 
     # The resources of the Region outside the Influence Ring are hidden until the area is scouted.
     # (The progress bars below are drawn regardless of the visibility of the resource.)
@@ -1313,31 +1217,6 @@ func _get_highlight_style(chunk: Array, anchor_row: int, anchor_col: int, select
         return {"fill": Color(0.58, 0.68, 0.75, 0.18), "border": Color(0.5, 0.57, 0.63, 0.8), "width": 3.0}
     return {"fill": Color(0.58, 0.68, 0.75, 0.22), "border": Color(0.5, 0.57, 0.63, 0.85), "width": 2.0}
 
-# Draws the highlighting of the selected hex: a semi-transparent fill + a bright frame.
-# It is called both for a single hex in the Influence Ring, and for each
-# hex of a SELECTED chunk (Phase 3.5). The colours are taken from style - see
-# _get_highlight_style (the four types of the chunks: the scouting/the claiming × possible/
-# impossible). The chunk can go beyond the limits of the Region - in this case a part of its
-# hexes lies in the fog of war, and the highlighting must be visible there as well (identically
-# to the Region). We do NOT filter by the visibility: the hexes are already limited either by the Influence
-# Ring (the single call), or by `scout_reach_bounds` (the call from the chunk), and
-# outside the viewport the canvas itself will cut the drawing.
-func _draw_selected_hex_highlight(row: int, col: int, style: Dictionary):
-    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
-    center.x += main_map.offset_x + main_map.scroll_offset.x
-    center.y += main_map.offset_y + main_map.scroll_offset.y
-    var vertices = PackedVector2Array()
-    vertices.append_array(HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS))
-
-    # A semi-transparent fill (over the terrain, but under the icons of the resources/the improvements).
-    draw_colored_polygon(vertices, style.fill)
-
-    # A bright frame.
-    var closed_vertices = PackedVector2Array()
-    closed_vertices.append_array(vertices)
-    closed_vertices.append(vertices[0])
-    draw_polyline(closed_vertices, style.border, style.width)
-
 # Draws a filled (complex) asterisk.
 func _draw_star(cx: float, cy: float, r_outer: float, r_inner: float, color: Color):
     var points = PackedVector2Array()
@@ -1655,13 +1534,10 @@ func _draw_road_segments(segments: Dictionary, hide_in_fog: bool,
         if hide_in_fog and not is_town_road_segment_visible(row1, col1, row2, col2):
             continue
 
-        # The viewport culling: we skip the road segments which do not intersect the screen.
+        # The culling of the segments outside the drawn area: they can never be seen,
+        # because the scroll clamp does not let the screen there.
         var c1 = HexUtils.hex_center(row1, col1, main_map.HEX_RADIUS)
-        c1.x += main_map.offset_x + main_map.scroll_offset.x
-        c1.y += main_map.offset_y + main_map.scroll_offset.y
         var c2 = HexUtils.hex_center(row2, col2, main_map.HEX_RADIUS)
-        c2.x += main_map.offset_x + main_map.scroll_offset.x
-        c2.y += main_map.offset_y + main_map.scroll_offset.y
         var road_rect = Rect2(
             min(c1.x, c2.x) - main_map.HEX_RADIUS,
             min(c1.y, c2.y) - main_map.HEX_RADIUS,
@@ -1704,7 +1580,6 @@ func _draw_rivers():
         return
     if not main_map.has_node("RiverManager"):
         return
-    _flush_scroll_cache_invalidation()
     var river_manager = main_map.get_node("RiverManager")
     var radius = main_map.HEX_RADIUS
     _build_river_frame_cache(radius)
@@ -1728,28 +1603,17 @@ func _draw_river_list(river_list: Array,
         shore_color: Color, shore_width: float,
         body_color: Color, body_width: float,
         highlight_color: Color, highlight_width: float):
-    # The rivers are drawn in segments, not as whole polylines: only the runs that actually
-    # intersect the screen are shifted by the offset and handed to draw_polyline. The geometry
-    # cached for the screen plus the pan margin contains far more points than the screen shows
-    # (a lightly meandering river has ~50 points per hex), and shifting those per frame costs
-    # more than the drawing itself.
-    var screen: Rect2 = _get_screen_rect()
-    var offset: Vector2 = _river_frame_offset
+    # The rivers are drawn in runs, not as whole polylines: a lightly meandering river
+    # has ~50 points per hex, and the geometry of the drawn area is far larger than one screen.
     for river in river_list:
         var entry = _river_frame_cache.get(_river_index(river))
         if entry == null:
             continue
         for seg in entry["segments"]:
-            if not seg["rect"].intersects(screen):
-                continue
             var run: PackedVector2Array = seg["points"]
-            var out := PackedVector2Array()
-            out.resize(run.size())
-            for i in range(run.size()):
-                out[i] = run[i] + offset
-            draw_polyline(out, shore_color, shore_width, true)
-            draw_polyline(out, body_color, body_width, true)
-            draw_polyline(out, highlight_color, highlight_width, true)
+            draw_polyline(run, shore_color, shore_width, true)
+            draw_polyline(run, body_color, body_width, true)
+            draw_polyline(run, highlight_color, highlight_width, true)
 
 
 # The identity of a river inside _river_frame_cache: a river is a plain Array, and arrays are
@@ -1766,87 +1630,69 @@ func _points_hash(river: Array) -> int:
     return roundi(p.x * 10.0) * 31 + roundi(p.y * 10.0)
 
 
-# Rebuilds the per-frame geometry of the rivers: the viewport culling, the smoothing (cached),
-# the clipping by the screen rectangle and by the fog of war, and the grouping of the visible
-# points by the style.
-# The caches are keyed by the current offset and are reused while the map is scrolled by no more
-# than the cached margin - that is what removes the per-frame cost of the pan.
+# Rebuilds the geometry of the rivers: the culling by the drawn area, the smoothing (cached),
+# the clipping by the drawn area and by the fog of war. The geometry is in world coordinates
+# and does not depend on the view, therefore it is rebuilt only when the fog of war or the
+# river list changes - never on a scroll.
 func _build_river_frame_cache(radius: float) -> void:
-    var offset_x = main_map.offset_x + main_map.scroll_offset.x
-    var offset_y = main_map.offset_y + main_map.scroll_offset.y
-    _river_frame_offset = Vector2(offset_x, offset_y)
     var river_manager = main_map.get_node("RiverManager")
     var all_rivers: Array = river_manager.get_main_rivers() + river_manager.get_tributaries()
+    var draw_rect: Rect2 = _get_draw_rect()
 
-    if not _river_frame_cache.is_empty():
-        var cached_offset: Vector2 = _river_frame_cache_offset
-        var drift = absf(offset_x - cached_offset.x)
-        drift = maxf(drift, absf(offset_y - cached_offset.y))
-        var zoom_exposes_more: bool = main_map.get_draw_zoom() < _river_frame_cache_zoom
-        if drift <= main_map.MAP_CACHE_MARGIN and not zoom_exposes_more:
-            # A new river (or a changed path) invalidates the cache: the list of the rivers is
-            # the cache key, and on a loaded save it differs from the generated one.
-            #
-            # The check must NOT demand an entry for every river: _collect_river_segments stores
-            # only the rivers intersecting the cached rectangle, so having just a few of them is
-            # the normal state, and the old "cache size == river count" test therefore failed on
-            # EVERY frame and destroyed the whole point of the cache. Instead we require that
-            # every river present in the cache still exists in the current list.
-            var fresh := true
-            var rivers_by_index := {}
-            for river in all_rivers:
-                rivers_by_index[_river_index(river)] = true
-            for key in _river_frame_cache.keys():
-                if not rivers_by_index.has(key):
-                    fresh = false
-                    break
-            if fresh:
-                return
+    if not _river_frame_cache.is_empty() and _river_cache_rect.encloses(draw_rect):
+        # A new river (or a changed path) invalidates the cache: the list of the rivers is
+        # the cache key, and on a loaded save it differs from the generated one.
+        #
+        # The check must NOT demand an entry for every river: _collect_river_segments stores
+        # only the rivers intersecting the drawn area, so having just a few of them is
+        # the normal state. Instead we require that every river present in the cache still
+        # exists in the current list.
+        var fresh := true
+        var rivers_by_index := {}
+        for river in all_rivers:
+            rivers_by_index[_river_index(river)] = true
+        for key in _river_frame_cache.keys():
+            if not rivers_by_index.has(key):
+                fresh = false
+                break
+        if fresh:
+            return
 
     _river_frame_cache.clear()
-    _river_frame_cache_offset = Vector2(offset_x, offset_y)
-    _river_frame_cache_zoom = main_map.get_draw_zoom()
     _river_frame_rebuilds += 1
-
-    # The world -> screen offset of the cached geometry is the current one; the margin around the
-    # visible area makes the cache valid for the same pan distance in any direction.
-    var screen_rect = _get_cache_rect()
+    _river_cache_rect = draw_rect
 
     for river in all_rivers:
         if river.size() < 2:
             continue
-        # The viewport culling: a river entirely outside the cached rectangle cannot appear
-        # on the screen within the margin, therefore it costs nothing at the drawing.
+        # A river entirely outside the drawn area can never be seen (the scroll clamp does not
+        # let the screen there), therefore it costs nothing at the drawing.
         var min_x = INF
         var max_x = - INF
         var min_y = INF
         var max_y = - INF
         for pt in river:
-            var px = pt.x + offset_x
-            var py = pt.y + offset_y
-            min_x = minf(min_x, px)
-            max_x = maxf(max_x, px)
-            min_y = minf(min_y, py)
-            max_y = maxf(max_y, py)
+            min_x = minf(min_x, pt.x)
+            max_x = maxf(max_x, pt.x)
+            min_y = minf(min_y, pt.y)
+            max_y = maxf(max_y, pt.y)
         var river_rect = Rect2(
             min_x - radius,
             min_y - radius,
             (max_x - min_x) + radius * 2.0,
             (max_y - min_y) + radius * 2.0
         )
-        if not river_rect.intersects(screen_rect):
+        if not river_rect.intersects(draw_rect):
             continue
 
         _river_frame_cache[_river_index(river)] = {
-            "segments": _collect_river_segments(river, offset_x, offset_y, radius)
+            "segments": _collect_river_segments(river, radius)
         }
 
 
-# The visible runs of ONE river in the WORLD coordinates, together with the screen-space bounds
-# of each run. The smoothed meanders are cached per river in the world coordinates, so a pan
-# within the cached margin does not rebuild them.
-func _collect_river_segments(river: Array, offset_x: float, offset_y: float,
-        radius: float) -> Array:
+# The visible runs of ONE river in the world coordinates, together with the world-space bounds
+# of each run. The smoothed meanders are cached per river in the world coordinates.
+func _collect_river_segments(river: Array, radius: float) -> Array:
     var segments: Array = []
     var cache_key = "%d|" % river.size() + _points_to_cache_key(river)
     var smooth_points: PackedVector2Array
@@ -1859,39 +1705,23 @@ func _collect_river_segments(river: Array, offset_x: float, offset_y: float,
         smooth_points = _generate_natural_river(world_points, radius)
         _river_smooth_cache[cache_key] = smooth_points
 
-    # The points are in the world coordinates and the clipping happens in the screen ones: the
-    # cache rectangle translated by the negated offset covers exactly the world points whose
-    # screen position falls inside the cached rectangle.
-    var clipped_lines = _clip_river_to_rect(
-        river_points_with_offset(smooth_points, offset_x, offset_y),
-        _get_cache_rect()
-    )
-    for line in clipped_lines:
+    # The runs hidden by the fog of war are dropped: the terrain of an unexplored hex is not
+    # drawn at all (see _draw_hex), so a river drawn there would float over the black void.
+    # The clipping by the drawn area comes first, so the fog of war is tested only for
+    # the points that can actually be seen.
+    for line in _clip_river_to_rect(smooth_points, _get_draw_rect()):
         if line.size() < 2:
             continue
-        # Back to the world coordinates: the fog of war is a property of the map, so the split
-        # by it must not depend on the current offset (the smoothed points are cached in the
-        # world coordinates as well).
-        var world_line := PackedVector2Array()
-        world_line.resize(line.size())
-        for i in range(line.size()):
-            world_line[i] = line[i] - Vector2(offset_x, offset_y)
-        # The runs hidden by the fog of war are dropped: the terrain of an unexplored hex is not
-        # drawn at all (see _draw_hex), so a river drawn there would float over the black void.
-        # The split happens after the rectangle clipping, so the fog of war is tested only for
-        # the points that are actually on the screen.
-        for run in _split_line_by_fog(world_line, radius):
+        for run in _split_line_by_fog(line, radius):
             var min_x = INF
             var max_x = - INF
             var min_y = INF
             var max_y = - INF
             for pt in run:
-                var sx = pt.x + offset_x
-                var sy = pt.y + offset_y
-                min_x = minf(min_x, sx)
-                max_x = maxf(max_x, sx)
-                min_y = minf(min_y, sy)
-                max_y = maxf(max_y, sy)
+                min_x = minf(min_x, pt.x)
+                max_x = maxf(max_x, pt.x)
+                min_y = minf(min_y, pt.y)
+                max_y = maxf(max_y, pt.y)
             var width = (max_x - min_x) + 2.0 * radius
             var height = (max_y - min_y) + 2.0 * radius
             segments.append({
@@ -1986,56 +1816,6 @@ func _nearest_hex(pos: Vector2, radius: float) -> Vector2i:
     return best
 
 
-# The rectangle of the cached river geometry: the visible area grown by the pan margin
-# on each side. It follows the zoom (see _get_screen_rect); zooming out widens it, and
-# _build_river_frame_cache rebuilds the geometry when the cache no longer covers it.
-func _get_cache_rect() -> Rect2:
-    return _get_screen_rect().grow(main_map.MAP_CACHE_MARGIN)
-
-
-func river_points_with_offset(points: PackedVector2Array, dx: float, dy: float) -> PackedVector2Array:
-    var shifted := PackedVector2Array()
-    shifted.resize(points.size())
-    for i in range(points.size()):
-        shifted[i] = Vector2(points[i].x + dx, points[i].y + dy)
-    return shifted
-
-
-# Called by the input handler after every change of the scroll offset. The screen-sized caches of
-# the map (the influence rings of the towns, the river geometry) are built for a concrete offset;
-# they stay valid while the map is scrolled by no more than the cached margin. The redraw itself
-# must still be requested, so this only records that the staleness has to be re-checked.
-func queue_redraw_for_scroll() -> void:
-    _scroll_since_cache = true
-    queue_redraw()
-
-
-# Re-checks the validity of the caches at the beginning of a frame: once the pan has left the
-# cached margin, the screen-sized caches are rebuilt for the new offset.
-func _flush_scroll_cache_invalidation() -> void:
-    if not _scroll_since_cache:
-        return
-    _scroll_since_cache = false
-    var offset = Vector2(
-        main_map.offset_x + main_map.scroll_offset.x,
-        main_map.offset_y + main_map.scroll_offset.y
-    )
-    if is_inf(_cache_built_offset.x):
-        return
-    var drift = maxf(absf(offset.x - _cache_built_offset.x),
-            absf(offset.y - _cache_built_offset.y))
-    if drift > main_map.MAP_CACHE_MARGIN:
-        _invalidate_screen_caches()
-
-
-# Drops the screen-sized caches of the map, so that they are rebuilt for the current offset
-# on the next frame.
-func _invalidate_screen_caches() -> void:
-    # The river geometry is clipped by the fog of war as well (see _collect_river_segments),
-    # therefore it is tied to the same screen-sized caches and dropped by the same call.
-    invalidate_town_influence_cache()
-
-
 # Clips the segment (start -> end) by the rectangle rect (the Liang-Barsky algorithm).
 # Returns [Vector2, Vector2] for the visible part, or [] if the segment is outside the rect.
 func _clip_segment_to_rect(start: Vector2, end: Vector2, rect: Rect2) -> Array:
@@ -2111,13 +1891,8 @@ func _generate_natural_road(
 ) -> Array:
     var segments = 3
     var points = []
-    var main = get_parent()
     var center1 = HexUtils.hex_center(row1, col1, radius)
-    center1.x += main.offset_x + main.scroll_offset.x
-    center1.y += main.offset_y + main.scroll_offset.y
     var center2 = HexUtils.hex_center(row2, col2, radius)
-    center2.x += main.offset_x + main.scroll_offset.x
-    center2.y += main.offset_y + main.scroll_offset.y
     
     points.append(center1)
     for i in range(1, segments):
@@ -2140,9 +1915,10 @@ func _generate_natural_river(river_points: PackedVector2Array, radius: float) ->
         return river_points
 
     # The sample step sets the point count of the meanders, and that count is what the frame
-    # pays for: every point is shifted by the scroll offset and handed to draw_polyline. The
-    # wave period is 2*PI/frequency ~= 7 * sample_step, so a step larger than a quarter of the
-    # wavelength stops improving the shape (the Chaikin pass below rounds what is left).
+    # pays for: the smoothed run is cached in the world coordinates and replayed by draw_polyline
+    # on every pan. The wave period is 2*PI/frequency ~= 7 * sample_step, so a step larger than
+    # a quarter of the wavelength stops improving the shape (the Chaikin pass below rounds what
+    # is left).
     var sample_step = max(radius * 0.35, 14.0)
     var amplitude = max(radius * 0.16, 7.0)
     var frequency = 0.9 / max(sample_step, 1.0)
@@ -2209,18 +1985,13 @@ func _generate_natural_river(river_points: PackedVector2Array, radius: float) ->
     return _chaikin_smooth(curved_points, 2)
 
 func _draw_exploration_highlights():
-    var main = get_parent()
-    var expansion_manager = main.get_node("ExpansionManager")
-    if not expansion_manager:
-        return
+    var visible_range = _get_draw_hex_range()
 
-    var visible_range = _get_visible_hex_range()
-
-    # --- 1. The highlighting of the scouted hexes (only in the visible area) ---
-    # Outside the visible area (the fog of war) the terrain is not drawn by the renderer, therefore
-    # a fill for the scouted hexes is not needed there.
-    for row in range(visible_range.row_start, visible_range.row_end + 1):
-        for col in range(visible_range.col_start, visible_range.col_end + 1):
+    # The highlighting of the scouted hexes. The chunk under the cursor is drawn by a separate
+    # layer (see map_highlight_layer.gd): the hover changes far more often than the map, and
+    # re-recording the whole map for it would stall the pan.
+    for row in range(visible_range["row_start"], visible_range["row_end"] + 1):
+        for col in range(visible_range["col_start"], visible_range["col_end"] + 1):
             var tile = tile_data[row][col]
             if tile.get("in_influence", false):
                 continue
@@ -2228,57 +1999,12 @@ func _draw_exploration_highlights():
             if not is_explored:
                 continue
             var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
-            center.x += main.offset_x + main.scroll_offset.x
-            center.y += main.offset_y + main.scroll_offset.y
             var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
             # Scouted: only the fill - there is deliberately no white frame here
             # it merged with the grid of the hexes and visually "inflated"
             # the scouted area. The frame is drawn only by the hover/the selection of the chunk
-            # (see _draw_selected_hex_highlight).
+            # (see map_highlight_layer.gd).
             draw_colored_polygon(vertices, Color(0.652, 0.855, 0.652, 0.25))
-
-    # --- 2. The highlighting of the selected chunk (the Region + the fog of war) ---
-    # The chunk can include the hexes in the fog of war (the scouting) - the highlighting is drawn
-    # FOR EACH hex of the chunk, without a filter by the visible area. Otherwise in the fog
-    # the player does not see which exactly the area is selected now and where the
-    # scouts will go. The colour depends on the type of the chunk (the scouting/the claiming × possible/
-    # impossible - see _get_highlight_style): the tone of the action and its mutedness.
-    #
-    # Before the study of Cartography the highlighting does NOT go beyond the limits of the Region: there
-    # the scouting is unavailable, and the highlighting on the dark canvas of the fog would only
-    # confuse the player (see main_map.is_cartography_researched). The chunks
-    # collected by expansion_manager already comply with this rule - the filter below is
-    # an insurance (for example, an outdated current_chunk after the load of a save).
-    var chunk: Array = expansion_manager.current_chunk
-    var anchor = expansion_manager.current_hover_hex
-    if chunk.is_empty():
-        # There is no chunk under the cursor (a scouted hex outside the Region or a hex in the
-        # influence ring of a foreign town): we highlight the hex under the cursor itself -
-        # with the same colour as that of the chunk. Otherwise the hovering would be "silent", and a
-        # click on such a hex already gives the highlighting (see PHASE 3.5 and
-        # expansion_manager.get_highlight_hexes).
-        if anchor == null:
-            return
-        chunk = expansion_manager.get_highlight_hexes(anchor.row, anchor.col)
-    if anchor == null:
-        # An outdated current_chunk without a hex under the cursor (an insurance):
-        # we take the first hex of the chunk as the reference point for the classification.
-        anchor = chunk[0]
-    var style: Dictionary = _get_highlight_style(chunk, anchor.row, anchor.col, false)
-
-    var cartography: bool = main_map.is_cartography_researched()
-    for hex in chunk:
-        if not cartography and not main_map.is_valid_hex(hex.row, hex.col):
-            continue
-        var center = HexUtils.hex_center(hex.row, hex.col, main_map.HEX_RADIUS)
-        center.x += main.offset_x + main.scroll_offset.x
-        center.y += main.offset_y + main.scroll_offset.y
-        var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
-        draw_colored_polygon(vertices, style.fill)
-        var closed_verts = PackedVector2Array()
-        closed_verts.append_array(vertices)
-        closed_verts.append(vertices[0])
-        draw_polyline(closed_verts, style.border, style.width)
 
 # Returns a compact string key for the cache of the smoothed river.
 # It serializes the coordinates of the points of the river (the world ones, without the offset). It is used by

@@ -276,10 +276,8 @@ func _hovered(ih) -> Variant:
     return ih._hovered_hex
 
 func _hex_center(main_map, row: int, col: int) -> Vector2:
-    var center: Vector2 = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
-    center.x += main_map.offset_x + main_map.scroll_offset.x
-    center.y += main_map.offset_y + main_map.scroll_offset.y
-    return center
+    var world: Vector2 = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
+    return world * main_map.zoom + main_map.map_renderer.position
 
 func _motion(ih, pos: Vector2) -> void:
     var ev = InputEventMouseMotion.new()

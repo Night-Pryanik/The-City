@@ -228,7 +228,7 @@ func _check_texture_covers_hexes(main_map, r, state: Dictionary) -> void:
 
 # Forcefully rebuilds the render cache (as the draw frame does).
 func _rebuild(r) -> void:
-    r._ensure_town_influence_cache(r._get_visible_hex_range())
+    r._ensure_town_influence_cache(r._get_draw_hex_range())
 
 func _is_filled(r, row: int, col: int) -> bool:
     for h in r.get_town_fill_hexes():

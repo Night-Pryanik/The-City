@@ -43,6 +43,9 @@ func _run() -> void:
     # settings.cfg is not touched — whatever it is, both sides must agree on it.
     main_map.apply_settings()
     main_map.use_edge_scrolling = false
+    # The scroll offset is measured in world units: pin the zoom that converts the screen
+    # speed into them, so the saved zoom of the machine does not shape the result.
+    main_map.set_zoom(1.0)
     var speed: float = ih.scroll_speed
     check(is_equal_approx(speed, clampf(main_map.edge_scroll_speed, 100.0, 1000.0)),
             "the keyboard must take the speed of the edge scrolling (handler %.1f, setting %.1f)"

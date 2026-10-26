@@ -134,10 +134,6 @@ var zoom_target: float = 1.0
 var _zoom_anchor: Vector2 = Vector2.ZERO
 # The world point under the anchor, fixed for the whole gesture.
 var _zoom_world: Vector2 = Vector2.ZERO
-# The zoom the recorded drawing was built for. A gesture draws the map ONCE and then only
-# moves the transform of the renderer, therefore the culling and the screen-sized caches
-# have to cover the widest zoom of the gesture — the target one when zooming out.
-var _draw_zoom: float = 1.0
 
 # The absolute boundaries of the visible window "Ring + Region" (inclusive).
 # The Region is the only zone where the chunks can be BOUGHT (claimed).
@@ -196,12 +192,6 @@ var use_edge_scrolling = true
 # user://settings.cfg). The clamp itself lives in InputHandler — this value is passed
 # through as it is.
 var edge_scroll_speed: float = 300.0
-# The margin (in pixels) of the pre-render of the screen-sized layers of the map. The layers
-# that are cached by the renderer as a screen-sized texture (the influence rings of the towns)
-# are rendered into a rectangle larger than the viewport by this margin on each side. While the
-# scroll stays within the margin, the texture is reused as is and only its position in the world
-# changes - therefore a pan does not rebuild the cache every frame.
-const MAP_CACHE_MARGIN := 512.0
 var tooltip_delay: float = 0.5
 var extended_tooltip_delay: float = 1.0
 var building_detail_delay: float = 0.5
@@ -287,6 +277,7 @@ const MAP_TOOLTIP_LEAVE_GRACE: float = 0.35
 @onready var pause_menu = $PauseMenu
 @onready var build_manager = $BuildManager
 @onready var map_renderer = $MapRenderer
+@onready var highlight_layer = $MapRenderer/HighlightLayer
 @onready var progress_bar_layer = $MapRenderer/ProgressBarLayer
 @onready var road_manager = $RoadManager
 @onready var project_manager = $ProjectManager
@@ -344,6 +335,7 @@ func _ready():
     if Engine.is_editor_hint():
         _initialize_map()
         map_renderer.initialize(tile_data, self)
+        highlight_layer.initialize(self)
         progress_bar_layer.initialize(tile_data, self)
         map_renderer.queue_redraw()
         return
@@ -575,6 +567,7 @@ func _ready():
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
         map_renderer.initialize(tile_data, self)
+        highlight_layer.initialize(self)
         progress_bar_layer.initialize(tile_data, self)
     else:
         randomize()
@@ -593,6 +586,7 @@ func _ready():
         # (the towns and their improvements are already placed in _initialize_map).
         _rebuild_town_roads()
         map_renderer.initialize(tile_data, self)
+        highlight_layer.initialize(self)
         progress_bar_layer.initialize(tile_data, self)
 
     _load_settings()
@@ -1560,6 +1554,22 @@ func _calc_offsets():
     )
     offset_x = offsets.x
     offset_y = offsets.y
+    apply_view_transform()
+
+# Applies the current camera (the offset and the scroll) to the renderer. The map is drawn in
+# the world coordinates, so this transform IS the pan and the zoom: no drawing is re-recorded.
+func apply_view_transform() -> void:
+    if map_renderer == null:
+        return
+    map_renderer.scale = Vector2(zoom, zoom)
+    map_renderer.position = _view_position(zoom)
+
+# Where the renderer must sit for the camera of scroll_offset read through offsets at `value`.
+func _view_position(value: float) -> Vector2:
+    return _view_position_for(scroll_offset, value)
+
+func _view_position_for(scroll: Vector2, value: float) -> Vector2:
+    return Vector2(offset_x + scroll.x, offset_y + scroll.y) * value
 
 func update_tooltip_text(row: int, col: int):
     # The insurance of the public entry point: for a hex in the fog of war the tooltip is not
@@ -1620,12 +1630,12 @@ func redraw_progress_layer():
 # shows the information/actions in the control panel.
 func select_hex(row: int, col: int):
     control_panel.select_hex(row, col)
-    map_renderer.queue_redraw()
+    highlight_layer.queue_redraw()
 
 # Removes the selection from the hex and clears the control panel.
 func clear_selection():
     control_panel.clear_selection()
-    map_renderer.queue_redraw()
+    highlight_layer.queue_redraw()
 
 # The handler of the completion/cancellation/pause of a build: it updates the control panel,
 # so that it does not show the outdated state (for example, the "Build" button
@@ -2508,14 +2518,6 @@ func _on_building_upgrade_completed(_build_key: String, idx: int, upgrade_to: St
     # CityData.complete_building_upgrade, the panel of the city will update itself.
     CityData.complete_building_upgrade(idx, upgrade_to)
 
-func pixel_to_hex(mx: float, my: float):
-    # The helper works in the local pixels of the map; the caller passes screen ones.
-    return MapHelpers.pixel_to_hex(mx / zoom, my / zoom,
-        region_start_row, region_end_row,
-        region_start_col, region_end_col,
-        offset_x, offset_y,
-        scroll_offset, HEX_RADIUS)
-
 func _setup_research_hud():
     # We create the panel of the research: a button with the icon of the technology + a progress bar.
     # We place it between the label of the date and the "City" button.
@@ -2875,6 +2877,8 @@ func _on_research_error(message: String, message_type: int = 1):
 
 func _on_research_completed(tech_id: String):
     map_renderer.queue_redraw()
+    # Cartography changes which hexes the highlighting may cover.
+    highlight_layer.queue_redraw()
     _redraw_progress_layer()
     # We show the window of the learned technology and pause the game,
     # so that the player cannot interact with the map and the HUD while the window is open.
@@ -3165,8 +3169,7 @@ func center_on_hex(row: int, col: int) -> void:
             - get_viewport_rect().size / (2.0 * zoom))
     scroll_offset.x = clamp(scroll_offset.x, -max_scroll.x, max_scroll.x)
     scroll_offset.y = clamp(scroll_offset.y, -max_scroll.y, max_scroll.y)
-    map_renderer.queue_redraw()
-    map_renderer.queue_redraw_for_scroll()
+    apply_view_transform()
     if progress_bar_layer:
         progress_bar_layer.queue_redraw()
 
@@ -3177,25 +3180,15 @@ func zoom_by(factor: float, anchor: Vector2) -> void:
     # The anchor is re-read from the CURRENT visual state, so a spin in the middle of an
     # animation continues from where the map actually is on the screen.
     _zoom_anchor = anchor
-    _zoom_world = screen_to_local(anchor) - Vector2(offset_x, offset_y) - scroll_offset
+    _zoom_world = screen_to_local(anchor)
     zoom_target = clampf(zoom_target * factor, ZOOM_MIN, ZOOM_MAX)
-    # Zooming out uncovers area the recorded commands do not contain: the map is drawn once
-    # for the widest zoom of the gesture. Zooming in needs nothing — the drawing already
-    # covers more than the screen will show.
-    var widest: float = minf(zoom, zoom_target)
-    if widest < _draw_zoom:
-        _draw_zoom = widest
-        _request_map_redraw()
 
 # Sets the zoom without an animation. Used when the value comes from the settings.
 func set_zoom(value: float) -> void:
     zoom = clampf(value, ZOOM_MIN, ZOOM_MAX)
     zoom_target = zoom
-    _draw_zoom = zoom
-    if map_renderer:
-        map_renderer.position = Vector2.ZERO
-        map_renderer.scale = Vector2(zoom, zoom)
-    _request_map_redraw()
+    apply_view_transform()
+    _redraw_view_layers()
 
 # Snaps a running animation to its target. The drag and the jump of the camera must not
 # fight the animation: both write scroll_offset, and the loser would make the map twitch.
@@ -3240,6 +3233,9 @@ func _apply_zoom_view() -> void:
     map_renderer.position = _zoom_view_position(zoom)
 
 # The position of the renderer for a zoom of the running gesture (see _apply_zoom_view).
+# The scroll the gesture will settle on is clamped by the same limit the drag obeys: without
+# it a gesture at the edge of the reachable area would carry the map beyond the boundary for
+# the whole animation and snap it back at the end. Here the ANCHOR slides instead.
 func _zoom_view_position(value: float) -> Vector2:
     var shift: Vector2 = _zoom_anchor - (_zoom_world + Vector2(offset_x, offset_y)
             + scroll_offset) * value
@@ -3248,54 +3244,47 @@ func _zoom_view_position(value: float) -> Vector2:
     var clamped := Vector2(
             clampf(settled.x, -max_scroll.x, max_scroll.x),
             clampf(settled.y, -max_scroll.y, max_scroll.y))
-    return shift + (clamped - settled) * value
+    return _view_position_for(clamped, value)
 
 # Ends the gesture: the shift accumulated by the animation is folded into the scroll offset,
-# so the map returns to its usual state. The drawing bakes the offset in, therefore this is
-# the one redraw of the whole gesture.
+# so the map returns to its usual state. The drawing is in the world coordinates, therefore
+# only the transform changes.
 func _settle_zoom() -> void:
     if map_renderer == null:
         return
-    scroll_offset += map_renderer.position / zoom
+    scroll_offset = map_renderer.position / zoom - Vector2(offset_x, offset_y)
     var max_scroll = get_max_scroll()
     scroll_offset = Vector2(
             clampf(scroll_offset.x, -max_scroll.x, max_scroll.x),
             clampf(scroll_offset.y, -max_scroll.y, max_scroll.y))
-    map_renderer.position = Vector2.ZERO
-    map_renderer.scale = Vector2(zoom, zoom)
-    _draw_zoom = zoom
-    _request_map_redraw()
+    apply_view_transform()
+    _redraw_view_layers()
 
-# The zoom the map was last DRAWN for. Every culling decision reads it instead of `zoom`:
-# during a zoom-out gesture the drawing is made for the target zoom, and the hexes of the
-# area that is about to be uncovered must be in it already.
-func get_draw_zoom() -> float:
-    return _draw_zoom
-
-# The rectangle in the LOCAL pixels of the map that the recorded drawing has to cover.
-# A zoom-out gesture draws the map once for the target zoom and then only moves the renderer,
-# so the screen drifts away from the position the geometry was baked for. Merging the
-# endpoint of the gesture keeps the strip the transform is about to uncover in the drawing;
-# without it the strip stays blank until the settle redraws the map.
+# The rectangle in the WORLD coordinates that the screen shows now. During a zoom-out gesture
+# it is merged with the endpoint of the animation: the layer of the progress bars is culled by
+# this rectangle and must already cover the strip the transform is about to uncover.
 func get_draw_screen_rect(viewport_size: Vector2) -> Rect2:
     var rect := Rect2(-map_renderer.position / zoom, viewport_size / zoom)
     if zoom_target < zoom:
-        var end_position: Vector2 = _zoom_view_position(_draw_zoom)
-        rect = rect.merge(Rect2(-end_position / _draw_zoom, viewport_size / _draw_zoom))
+        var end_position: Vector2 = _zoom_view_position(zoom_target)
+        rect = rect.merge(Rect2(-end_position / zoom_target, viewport_size / zoom_target))
     return rect
 
-# The map draws in its own LOCAL pixels; the renderer scales them by the zoom and shifts
-# them by its position (a gesture moves the transform instead of redrawing the map).
+# The map draws in the WORLD coordinates; the renderer applies the camera (the position and
+# the zoom), so a screen point maps to the world as (pos - position) / zoom.
 func screen_to_local(pos: Vector2) -> Vector2:
     if map_renderer == null:
         return pos / zoom
     return (pos - map_renderer.position) / zoom
 
-func _request_map_redraw() -> void:
-    if map_renderer:
-        map_renderer.queue_redraw_for_scroll()
+# Redraws the layers that are drawn per frame or per interaction. The map itself is not
+# touched: its drawing is in the world coordinates and covers the whole reachable area, so a
+# change of the view only moves the transform of the renderer.
+func _redraw_view_layers() -> void:
     if progress_bar_layer:
         progress_bar_layer.queue_redraw()
+    if highlight_layer:
+        highlight_layer.queue_redraw()
 
 # The zoom is a view preference, not a part of the game state: it lives in settings.cfg
 # next to the scroll speed. Written when a gesture settles, so a spin of the wheel does
@@ -3323,6 +3312,8 @@ func _on_expansion_button_pressed():
     pass
 
 func _on_expansion_mode_changed(_active: bool):
+    # Toggling the mode drops current_chunk without emitting chunk_hovered.
+    highlight_layer.queue_redraw()
     map_renderer.queue_redraw()
 
 func _on_territory_expanded(_row: int, _col: int, cost: int):
@@ -3480,9 +3471,10 @@ func get_scout_reach_bounds() -> Dictionary:
     # of the scrolling: world = -offset - scroll .. -offset - scroll + viewport.
     # The viewport is taken in LOCAL pixels: a zoom below 1 shows more of the world than
     # the window itself, and the hexes of that extra strip must stay drawable and
-    # clickable, otherwise the zoomed-out map would end in a dead band. The zoom is the one
-    # the map is DRAWN for — a gesture draws it for the widest zoom of the gesture.
-    var visible_size: Vector2 = viewport_size / _draw_zoom
+    # clickable, otherwise the zoomed-out map would end in a dead band. The widest zoom is
+    # assumed: the drawing must cover every zoom the game allows, then no change of the
+    # zoom ever has to re-record it.
+    var visible_size: Vector2 = viewport_size / ZOOM_MIN
     var world_left = - (offset_x + max_scroll.x)
     var world_right = - offset_x + max_scroll.x + visible_size.x
     var world_top = - (offset_y + max_scroll.y)
@@ -3503,7 +3495,7 @@ func get_scout_reach_bounds() -> Dictionary:
     }
 
 func _on_chunk_hovered(_chunk: Array):
-    map_renderer.queue_redraw()
+    highlight_layer.queue_redraw()
 
 # Loads the map parameters for a new game. The map size is chosen by the player
 # in the world settings (CityData.world_map_size); the rest of the parameters come

@@ -1,25 +1,20 @@
 # Headless test for river rendering (map_renderer, PHASE 2.75):
 #   godot --headless --path . --script res://tests/test_river_rendering.gd
 #
-# The regression this test catches: river points get shifted by offset and from
-# that moment live in SCREEN coordinates, but they were clipped against the
-# rectangle Rect2(Vector2(-offset_x, -offset_y), ...), that is, against the
-# WORLD window. When the map is centered (offset_x ~ -2280) the window drifted
-# far off screen, and _clip_river_to_rect returned [] for every river — the
-# rivers stayed in the data (river_edges, access to fresh water) but were not
-# drawn.
+# The map is drawn in world coordinates and the view is applied by the transform of the
+# renderer, so the river geometry does not depend on the scroll offset: it is built once for
+# the whole scrollable area (main_map.get_scout_reach_bounds) and replayed while the map pans.
 #
 # Checked against live data of the real MainMap scene (new game):
 #   1. River data is intact: there are main rivers/tributaries and hexes with
 #      river_edges.
-#   2. The screen rectangle starts at zero screen coordinates — it must be in
-#      the same system as the shifted points.
-#   3. On the live map at least one river actually yields non-empty lines, and
-#      all their points lie inside the screen (clipping to the screen, not
-#      discarding).
-#   4. Scrolling the map (scroll_offset) does not "kill" rendering: the same
-#      river stays visible.
-#   5. A river entirely off screen is not drawn (culling still works).
+#   2. The drawn rectangle is in world coordinates, has a positive size and covers the city.
+#   3. On the live map at least one river actually yields non-empty lines, and all their
+#      points lie inside the drawn rectangle (clipping, not discarding).
+#   4. Scrolling does not rebuild the geometry and does not change it.
+#   5. A river entirely outside the drawn rectangle is not collected (culling still works).
+#   6. The drawn rectangle covers the whole reachable map.
+#   7. A fog change (invalidate_town_influence_cache) rebuilds the geometry once.
 #
 # The whole map is revealed before the rendering checks: the rivers are clipped by
 # the fog of war (see _collect_river_segments), and the explored area of a fresh
@@ -27,7 +22,7 @@
 # depends on the random seed of the generated map — on some seeds no river point
 # is visible at all, and the checks below would fail on a correctly working
 # renderer. The fog itself is covered by test_river_fog, so here the reveal only
-# makes the precondition ("a river is on screen") deterministic.
+# makes the precondition ("a river is drawn") deterministic.
 extends SceneTree
 
 # Hang watchdog: without it a broken _run() coroutine looks like eternal
@@ -71,120 +66,93 @@ func _run() -> void:
     # --- 1a. The whole map is revealed (see the header) ---
     main_map.debug_open_whole_map()
 
-    # --- 2. The screen rectangle — in screen coordinates ---
-    var screen_rect: Rect2 = r._get_screen_rect()
-    check(screen_rect.position == Vector2.ZERO,
-        "the screen rectangle must start at zero screen coordinates", state)
-    check(screen_rect.size.x > 0.0 and screen_rect.size.y > 0.0,
-        "the screen size must be positive (got %s)" % str(screen_rect.size),
-        state)
+    # --- 2. The drawn rectangle is in world coordinates ---
+    var draw_rect: Rect2 = r._get_draw_rect()
+    check(draw_rect.size.x > 0.0 and draw_rect.size.y > 0.0,
+        "the drawn rectangle must have a positive size (got %s)" % str(draw_rect.size), state)
+    var city_center = HexUtils.hex_center(main_map.city_row, main_map.city_col, radius)
+    check(draw_rect.has_point(city_center),
+        "the drawn rectangle must cover the city (rect %s, city %s)"
+            % [str(draw_rect), str(city_center)], state)
 
-    # --- 3. At least one river is visible and clipped to the screen ---
-    # The screen rectangle is padded by main_map.MAP_CACHE_MARGIN (as is the
-    # render cache), so the loop iterates over scroll probes until the map is
-    # positioned so that rivers fall into the frame.
+    # --- 3. At least one river is drawn, clipped to the drawn rectangle ---
     var all_rivers: Array = main_rivers + tributaries
-    var visible_rivers: int = 0
+    var drawn_rivers: int = 0
     var outside: Array = []
-    var probes: Array = _candidate_scrolls(main_map, all_rivers)
-    for probe in probes:
-        var visible_in_probe: int = 0
-        var outside_in_probe: Array = []
-        for river in all_rivers:
-            var lines: Array = _lines(r, river, main_map, probe)
-            if lines.is_empty():
-                continue
-            visible_in_probe += 1
-            outside_in_probe.append_array(_points_outside(
-                lines, screen_rect, main_map.MAP_CACHE_MARGIN))
-        if visible_in_probe > visible_rivers:
-            visible_rivers = visible_in_probe
-            outside = outside_in_probe
-    check(visible_rivers > 0,
-        "at least one river must cross the screen (polylines: %d)" % visible_rivers, state)
+    var total_points: int = 0
+    for river in all_rivers:
+        var segments: Array = _segments(r, river, radius)
+        if segments.is_empty():
+            continue
+        drawn_rivers += 1
+        for seg in segments:
+            total_points += seg["points"].size()
+            outside.append_array(_points_outside([seg["points"]], draw_rect, radius))
+    check(drawn_rivers > 0,
+        "at least one river must be drawn (rivers with segments: %d)" % drawn_rivers, state)
+    check(total_points > 0, "the drawn rivers must have points (got %d)" % total_points, state)
     check(outside.is_empty(),
-        "points of a drawn river must not go off screen (violators: %s)"
+        "points of a drawn river must lie inside the drawn rectangle (violators: %s)"
             % str(outside), state)
 
-    # --- 4. Scrolling does not break rendering ---
-    # The standard way of scrolling in the game is right-clicking a city button; we take
-    # the same shift, but centered on a river instead of the city: the city is not
-    # guaranteed to stand next to water, while the point of the check is the scroll
-    # itself (a large non-zero offset), not the target of the camera.
-    var scroll_target: Vector2 = Vector2.ZERO
-    for river in all_rivers:
-        if river.size() >= 2:
-            scroll_target = river[river.size() / 2]
-            break
-    var scroll = - (scroll_target
-        + Vector2(main_map.offset_x, main_map.offset_y) - r._get_viewport_size() / 2.0)
-    var visible_after_scroll: int = 0
-    for river in all_rivers:
-        if not _lines(r, river, main_map, scroll).is_empty():
-            visible_after_scroll += 1
-    check(visible_after_scroll > 0,
-        "after scrolling the rivers must stay visible (polylines: %d)"
-            % visible_after_scroll, state)
+    # --- 4. Scrolling neither rebuilds nor changes the geometry ---
+    r._river_frame_cache.clear()
+    r._build_river_frame_cache(radius)
+    var signature_before: Array = _signature(r)
+    var rebuilds_before: int = r._river_frame_rebuilds
+    var max_scroll: Vector2 = main_map.get_max_scroll()
+    for i in range(12):
+        var t: float = float(i) / 11.0
+        main_map.scroll_offset = Vector2(
+            lerpf(-max_scroll.x, max_scroll.x, t) * 0.9,
+            lerpf(max_scroll.y, -max_scroll.y, t) * 0.9)
+        main_map.apply_view_transform()
+        r._build_river_frame_cache(radius)
+    check(r._river_frame_rebuilds == rebuilds_before,
+        "panning must not rebuild the river geometry (rebuilds %d)"
+            % (r._river_frame_rebuilds - rebuilds_before), state)
+    check(_signature(r) == signature_before,
+        "panning must not change the drawn river geometry", state)
+    main_map.scroll_offset = Vector2.ZERO
+    main_map.apply_view_transform()
 
     # --- 5. Culling still works ---
-    # A river entirely off screen (in world coordinates far beyond the right
-    # edge) must not yield a single line.
+    # A river entirely outside the scrollable area is not collected at all.
     var far_river: Array = []
-    var far_x: float = screen_rect.size.x - main_map.offset_x + 5000.0
+    var far_x: float = draw_rect.end.x + 5000.0
     for i in range(6):
         far_river.append(Vector2(far_x + i * 100.0, 500.0 + i * 40.0))
-    check(_lines(r, far_river, main_map).is_empty(),
-        "a river entirely off screen must not be drawn", state)
+    check(_segments(r, far_river, radius).is_empty(),
+        "a river outside the drawn area must not be collected", state)
 
-    # --- 6. The geometry cache is not rebuilt on every scroll frame ---
-    # Rebuilding the cache (smoothing + clipping) is the most expensive part of
-    # river rendering: it used to run on EVERY scroll frame. Now the geometry
-    # lives until the map moves away from the remembered shift by more than
-    # MAP_CACHE_MARGIN. We count the real rebuilds via the renderer counter and
-    # compare with the number of frames: there must be MANY TIMES fewer
-    # rebuilds.
-    main_map.scroll_offset = Vector2.ZERO
-    r.queue_redraw_for_scroll()
-    r._flush_scroll_cache_invalidation()
-    r._build_river_frame_cache(radius)          # build the cache for zero shift
-    var rebuilds_before: int = r._river_frame_rebuilds
-    # The step is deliberately smaller than the margin, the frames suffice for
-    # several margins of scrolling: without the cache there would be a rebuild
-    # on EVERY frame (= steps).
-    var steps: int = 20
-    var step_px: float = main_map.MAP_CACHE_MARGIN / 3.0
-    for i in range(1, steps + 1):
-        main_map.scroll_offset = Vector2(float(i) * step_px, 0.0)
-        r.queue_redraw_for_scroll()
-        r._flush_scroll_cache_invalidation()
-        r._build_river_frame_cache(radius)
-    var rebuilds: int = r._river_frame_rebuilds - rebuilds_before
-    check(rebuilds < steps,
-        "the river geometry cache must not be rebuilt on every scroll frame (rebuilds %d over %d frames)"
-            % [rebuilds, steps], state)
-    # Scrolling several margins forward must rebuild the cache (otherwise at the
-    # new position rivers would be drawn using the old, already departed
-    # clipping rectangle).
-    var before_far: int = r._river_frame_rebuilds
-    main_map.scroll_offset = Vector2(main_map.MAP_CACHE_MARGIN * 4.0, 0.0)
-    r.queue_redraw_for_scroll()
-    r._flush_scroll_cache_invalidation()
-    r._build_river_frame_cache(radius)
-    check(r._river_frame_rebuilds > before_far,
-        "scrolling beyond the margin must rebuild the river geometry", state)
+    # --- 6. The drawn rectangle covers the whole reachable map ---
+    # With the whole map revealed and the scroll allowed over the whole map, the recorded
+    # drawing must contain every hex: a pan to any reachable position shows no bare strip.
+    var corners: Array = [
+        Vector2i(0, 0),
+        Vector2i(0, main_map.map_cols - 1),
+        Vector2i(main_map.map_rows - 1, 0),
+        Vector2i(main_map.map_rows - 1, main_map.map_cols - 1),
+    ]
+    var uncovered: Array = []
+    for corner in corners:
+        var center = HexUtils.hex_center(corner.x, corner.y, radius)
+        if not draw_rect.has_point(center):
+            uncovered.append(center)
+    check(uncovered.is_empty(),
+        "the drawn rectangle must cover every corner of the map (uncovered: %s)"
+            % str(uncovered), state)
 
-    # --- 7. The cache points are world-space, the shift is applied at draw time ---
-    # Otherwise scrolling within the margin would show the river not where it is.
-    r._river_frame_cache.clear()
-    main_map.scroll_offset = Vector2.ZERO
-    r.queue_redraw_for_scroll()
-    r._flush_scroll_cache_invalidation()
+    # --- 7. A fog change drops the geometry, the next draw rebuilds it once ---
+    r.invalidate_town_influence_cache()
+    var before_rebuild: int = r._river_frame_rebuilds
     r._build_river_frame_cache(radius)
-    var cache_offset_zero = r._river_frame_cache_offset
-    check(cache_offset_zero.x == main_map.offset_x and cache_offset_zero.y == main_map.offset_y,
-        "the cache must remember the shift it was built for (got %s, expected %s)"
-            % [str(cache_offset_zero), str(Vector2(main_map.offset_x, main_map.offset_y))],
-        state)
+    check(r._river_frame_rebuilds == before_rebuild + 1,
+        "a fog change must rebuild the river geometry once (rebuilds %d)"
+            % (r._river_frame_rebuilds - before_rebuild), state)
+    r._build_river_frame_cache(radius)
+    check(r._river_frame_rebuilds == before_rebuild + 1,
+        "a second draw with the same state must not rebuild again", state)
 
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)
@@ -196,51 +164,33 @@ func _run() -> void:
         print("RIVER RENDERING TEST OK")
         quit(0)
 
-# Probe map shifts: center the camera on the middle of each river. The render
-# cache covers the screen with a MAP_CACHE_MARGIN pad, and outside it rivers are
-# drawn only after a rebuild — the probes guarantee that at least one river
-# falls into the frame.
-func _candidate_scrolls(main_map, rivers: Array) -> Array:
-    var out: Array = [Vector2.ZERO]
-    for river in rivers:
-        if river.is_empty():
-            continue
-        var mid: Vector2 = river[river.size() / 2]
-        out.append(- (mid + Vector2(main_map.offset_x, main_map.offset_y)
-            - main_map.map_renderer._get_viewport_size() / 2.0))
-    return out
+func _segments(r, river: Array, radius: float) -> Array:
+    return r._collect_river_segments(river, radius)
 
-# Screen polylines for one river — exactly the path used by rendering
-# (_draw_river_list -> _build_river_frame_cache. The result is reduced to the
-# screen coordinates of the same shift as in the test.
-func _lines(r, river: Array, main_map, extra_scroll: Vector2 = Vector2.ZERO) -> Array:
-    var offset_x: float = main_map.offset_x + main_map.scroll_offset.x + extra_scroll.x
-    var offset_y: float = main_map.offset_y + main_map.scroll_offset.y + extra_scroll.y
-    var segments: Array = r._collect_river_segments(river, offset_x, offset_y, main_map.HEX_RADIUS)
+# The drawn geometry in a comparable form: the runs and their points.
+func _signature(r) -> Array:
     var out: Array = []
-    for seg in segments:
-        var line: PackedVector2Array = seg["points"]
-        var shifted := PackedVector2Array()
-        shifted.resize(line.size())
-        for i in range(line.size()):
-            shifted[i] = line[i] + Vector2(offset_x, offset_y)
-        out.append(shifted)
+    for key in r._river_frame_cache.keys():
+        var runs: Array = []
+        for seg in r._river_frame_cache[key]["segments"]:
+            var pts: Array = []
+            for pt in seg["points"]:
+                pts.append(pt)
+            runs.append(pts)
+        out.append([key, runs])
     return out
 
-# Polyline points that went beyond the render cache. The finished river lines
-# are clipped by the screen rectangle WITH a PAD of main_map.MAP_CACHE_MARGIN
-# (cache of screen size), so that is what is checked, not the bare screen. The
-# tolerance is the width of the drawn line: it is drawn with an outline and
-# mentally goes slightly beyond the clipped rectangle.
-func _points_outside(lines: Array, screen_rect: Rect2, cache_margin: float) -> Array:
-    var margin: float = 16.0 + cache_margin
+# Polyline points that went beyond the drawn rectangle. The tolerance is the width of the
+# drawn line: it has an outline and mentally goes slightly beyond the clipped rectangle.
+func _points_outside(runs: Array, draw_rect: Rect2, radius: float) -> Array:
+    var margin: float = 16.0 + radius
     var grown := Rect2(
-        screen_rect.position - Vector2(margin, margin),
-        screen_rect.size + Vector2(margin, margin) * 2.0
+        draw_rect.position - Vector2(margin, margin),
+        draw_rect.size + Vector2(margin, margin) * 2.0
     )
     var bad: Array = []
-    for line in lines:
-        for pt in line:
+    for run in runs:
+        for pt in run:
             if not grown.has_point(pt):
                 bad.append(pt)
     return bad

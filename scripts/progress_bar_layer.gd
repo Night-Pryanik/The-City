@@ -29,26 +29,21 @@ func _draw():
 # starting hex of a scouting chunk may lie in the fog of war (beyond the Region) —
 # this is only possible after researching Cartography — and the scouting
 # progress bar must be visible there too.
+# This layer is redrawn every frame while something is in progress, so its culling follows
+# the actual view (main_map.get_draw_screen_rect) instead of the whole drawable area.
 func _get_visible_hex_range() -> Dictionary:
-    var viewport_size = Vector2(1152, 768)
-    if not Engine.is_editor_hint():
-        viewport_size = get_viewport_rect().size
-
-    var offset_x = main_map.offset_x + main_map.scroll_offset.x
-    var offset_y = main_map.offset_y + main_map.scroll_offset.y
-
     var radius = main_map.HEX_RADIUS
     var x_spacing = radius * sqrt(3.0)
     var y_spacing = radius * 1.5
 
-    # The screen rectangle in the local pixels of the map, including the strip a running
+    # The screen rectangle in the world coordinates of the map, including the strip a running
     # zoom-out animation is about to uncover (see main_map.get_draw_screen_rect): the bars
     # there must be drawn by the same pass as the rest of the map.
-    var screen_rect: Rect2 = main_map.get_draw_screen_rect(viewport_size)
-    var world_left = screen_rect.position.x - offset_x
-    var world_top = screen_rect.position.y - offset_y
-    var world_right = screen_rect.end.x - offset_x
-    var world_bottom = screen_rect.end.y - offset_y
+    var screen_rect: Rect2 = main_map.map_renderer._get_screen_rect()
+    var world_left = screen_rect.position.x
+    var world_top = screen_rect.position.y
+    var world_right = screen_rect.end.x
+    var world_bottom = screen_rect.end.y
 
     var margin = 2
 
@@ -77,8 +72,6 @@ func _draw_progress_bars(row: int, col: int):
     if main_map == null:
         return
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
-    center.x += main_map.offset_x + main_map.scroll_offset.x
-    center.y += main_map.offset_y + main_map.scroll_offset.y
 
     var tile = tile_data[row][col]
 

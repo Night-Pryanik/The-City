@@ -299,15 +299,16 @@ func _test_edge_clamp(state: Dictionary, main_map) -> void:
         ih.handle_process(1.0 / 60.0)
     check(not is_equal_approx(main_map.zoom, main_map.zoom_target),
         "the gesture must still be running in the middle of the check", state)
-    var carried: Vector2 = main_map.scroll_offset + main_map.map_renderer.position / main_map.zoom
+    var carried: Vector2 = main_map.map_renderer.position / main_map.zoom \
+            - Vector2(main_map.offset_x, main_map.offset_y)
     check(absf(carried.x) <= max_scroll.x + 0.5 and absf(carried.y) <= max_scroll.y + 0.5,
         "the animation must not carry the map beyond the reachable area (%s, limit %s)"
             % [str(carried), str(max_scroll)], state)
 
     # The settle folds the carried shift into the scroll offset: the map must not move.
-    var before: Vector2 = _visual_hex(main_map, row, col)
+    var before: Vector2 = _hex_screen(main_map, row, col)
     main_map._settle_zoom()
-    var after: Vector2 = _visual_hex(main_map, row, col)
+    var after: Vector2 = _hex_screen(main_map, row, col)
     check(after.distance_to(before) < 0.5,
         "the settle must not move the map (%.2f px)" % after.distance_to(before), state)
 
@@ -327,10 +328,9 @@ func _test_edge_clamp(state: Dictionary, main_map) -> void:
 # -------------------------------------------------------
 # 8. The drawing covers the strip a zoom-out uncovers
 # -------------------------------------------------------
-# The gesture draws the map once for the target zoom and then only moves the renderer, so
-# the screen drifts away from the position the geometry was baked for. The culling
-# rectangle of that drawing has to include the endpoint of the gesture; otherwise the
-# uncovered strip stays blank until the settle redraws the map.
+# The map is recorded once for the whole reachable area of the widest zoom (ZOOM_MIN),
+# therefore the visible world rectangle stays inside the drawn one on every animation frame,
+# and neither the animation nor the settle re-records the map.
 func _test_zoom_out_coverage(state: Dictionary, main_map) -> void:
     var renderer = main_map.map_renderer
     var ih = main_map.input_handler
@@ -344,15 +344,14 @@ func _test_zoom_out_coverage(state: Dictionary, main_map) -> void:
     # A big jump: every notch in one frame, straight to ZOOM_MIN, with the cursor away
     # from the origin so the transform carries the map by a large shift.
     var anchor: Vector2 = viewport * 0.85
+    var draw_calls_before: int = renderer.draw_calls
     for _i in range(20):
         main_map.zoom_by(1.0 / main_map.ZOOM_STEP, anchor)
     check(is_equal_approx(main_map.zoom_target, main_map.ZOOM_MIN),
         "the gesture must reach ZOOM_MIN before the check (got %.4f)"
             % main_map.zoom_target, state)
 
-    # The frame the drawing is recorded on: this is the rectangle the renderer culls with.
-    ih.handle_process(1.0 / 60.0)
-    var drawn: Rect2 = renderer._get_screen_rect().grow(1.0)
+    var drawn: Rect2 = renderer._get_draw_rect().grow(1.0)
     var frames: int = 0
     for _i in range(120):
         ih.handle_process(1.0 / 60.0)
@@ -371,23 +370,19 @@ func _test_zoom_out_coverage(state: Dictionary, main_map) -> void:
             break
     check(frames > 0, "the animation must have run at least one frame after the drawing",
         state)
+    check(renderer.draw_calls == draw_calls_before,
+        "the zoom gesture must not re-record the map (draws during the gesture: %d)"
+            % (renderer.draw_calls - draw_calls_before), state)
 
     main_map.set_zoom(1.0)
     main_map._calc_offsets()
     main_map.scroll_offset = Vector2.ZERO
 
-# The screen position of the centre of a hex: the map draws at local pixels and the
-# renderer scales them, so screen = local * zoom.
+# The screen position of the centre of a hex: the map is drawn in world coordinates and the
+# renderer places them, so screen = world * zoom + position.
 func _hex_screen(main_map, row: int, col: int) -> Vector2:
-    var local: Vector2 = HexUtils.hex_center(row, col, main_map.HEX_RADIUS) \
-        + Vector2(main_map.offset_x, main_map.offset_y) + main_map.scroll_offset
-    return local * main_map.zoom
-
-# The same, but including the transform shift of a gesture that has not settled yet.
-func _visual_hex(main_map, row: int, col: int) -> Vector2:
-    var local: Vector2 = HexUtils.hex_center(row, col, main_map.HEX_RADIUS) \
-        + Vector2(main_map.offset_x, main_map.offset_y) + main_map.scroll_offset
-    return local * main_map.zoom + main_map.map_renderer.position
+    var world: Vector2 = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
+    return world * main_map.zoom + main_map.map_renderer.position
 
 func check(cond: bool, message: String, state: Dictionary) -> void:
     if cond:
