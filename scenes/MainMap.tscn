@@ -19,6 +19,7 @@
 [ext_resource type="Script" uid="uid://bcysm6it5igvq" path="res://scripts/town_manager.gd" id="16_twnmgr"]
 [ext_resource type="PackedScene" uid="uid://k2vtownujaab" path="res://scenes/TownUI.tscn" id="17_twnui"]
 [ext_resource type="Script" uid="uid://1b62pk8bfd16" path="res://scripts/unread_dot.gd" id="18_unread"]
+[ext_resource type="Script" path="res://scripts/fps_counter.gd" id="19_fpscnt"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -148,9 +149,16 @@ size_flags_vertical = 4
 tooltip_text = "Stop the simulation. Your actions are queued until you resume it (SPACE)"
 expand_icon = true
 
+[node name="FpsLabel" type="Label" parent="TopRightLayer/TopRightPanel/TopRightBox"]
+custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+text = "FPS: 60"
+script = ExtResource("19_fpscnt")
+
 [node name="MenuButton" type="Button" parent="TopRightLayer/TopRightPanel/TopRightBox" unique_id=2000000004]
 layout_mode = 2
-size_flags_horizontal = 3
 text = "Menu"
 
 [node name="PauseMenu" parent="." unique_id=513166833 instance=ExtResource("3_2t08r")]

@@ -1065,6 +1065,9 @@ msgstr "Дополнительные материалы:"
 msgid "Extra output:"
 msgstr "Дополнительный выход:"
 
+msgid "FPS: 60"
+msgstr "FPS: 60"
+
 msgid "Failed to build the road"
 msgstr "Дорогу построить не удалось"
 
@@ -1557,6 +1560,9 @@ msgstr "Приостановить апгрейд"
 msgid "Paused"
 msgstr "Приостановлено"
 
+msgid "Performance"
+msgstr "Производительность"
+
 msgid "Permanent"
 msgstr "Постоянно"
 
@@ -1928,6 +1934,9 @@ msgstr "Глубина отмели"
 
 msgid "Shaping landscape..."
 msgstr "Формирование ландшафта..."
+
+msgid "Show FPS counter"
+msgstr "Показывать счётчик FPS"
 
 msgid "Show borders between tiles"
 msgstr "Показывать границы между клетками"

@@ -1065,6 +1065,9 @@ msgstr ""
 msgid "Extra output:"
 msgstr ""
 
+msgid "FPS: 60"
+msgstr ""
+
 msgid "Failed to build the road"
 msgstr ""
 
@@ -1557,6 +1560,9 @@ msgstr ""
 msgid "Paused"
 msgstr ""
 
+msgid "Performance"
+msgstr ""
+
 msgid "Permanent"
 msgstr ""
 
@@ -1927,6 +1933,9 @@ msgid "Shallow water depth"
 msgstr ""
 
 msgid "Shaping landscape..."
+msgstr ""
+
+msgid "Show FPS counter"
 msgstr ""
 
 msgid "Show borders between tiles"

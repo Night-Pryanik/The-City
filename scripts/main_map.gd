@@ -216,6 +216,14 @@ var hud_message_duration: float = 3.0
 # Whether the wall clock is shown in the top right corner of the HUD (the key
 # interface/show_clock in user://settings.cfg, on by default).
 var show_clock: bool = true
+# Whether the frame rate counter is shown next to the Menu button (the key
+# interface/show_fps in user://settings.cfg, on by default).
+var show_fps: bool = true
+
+# The top right panel is anchored to the right edge of the screen with this margin.
+const TOP_RIGHT_MARGIN := 40.0
+# The panel is never lower than the buttons of the scene.
+const TOP_RIGHT_PANEL_MIN_HEIGHT := 31.0
 
 # The last "era" of the display on which the HUD label of the treasury has been updated.
 # The tick path (city_updated → _on_city_data_updated) redraws the label
@@ -273,6 +281,9 @@ const MAP_TOOLTIP_LEAVE_GRACE: float = 0.35
 @onready var menu_button = $TopRightLayer/TopRightPanel/TopRightBox/MenuButton
 @onready var pause_button = $TopRightLayer/TopRightPanel/TopRightBox/PauseButton
 @onready var clock_label = $TopRightLayer/TopRightPanel/TopRightBox/ClockLabel
+@onready var fps_label = $TopRightLayer/TopRightPanel/TopRightBox/FpsLabel
+@onready var top_right_panel = $TopRightLayer/TopRightPanel
+@onready var top_right_box = $TopRightLayer/TopRightPanel/TopRightBox
 @onready var pause_menu = $PauseMenu
 @onready var build_manager = $BuildManager
 @onready var map_renderer = $MapRenderer
@@ -607,6 +618,8 @@ func _ready():
     city_ui.set_building_detail_delay(building_detail_delay)
     hud.set_message_duration(hud_message_duration)
     _setup_clock()
+    top_right_box.minimum_size_changed.connect(_fit_top_right_panel)
+    _apply_fps_visibility()
     CityData.set_resource_display_interval(resource_display_interval)
     # The planned consumption on the tab "Resources" (the tooltip and the dynamics "≈") is counted
     # by the workers worker_manager — we pass the reference into the UI of the city.
@@ -3843,6 +3856,7 @@ func _load_settings():
         resource_display_interval = settings_config.get_value("game", "resource_display_interval", 1.0)
         hud_message_duration = settings_config.get_value("interface", "hud_message_duration", 3.0)
         show_clock = settings_config.get_value("interface", "show_clock", true)
+        show_fps = settings_config.get_value("interface", "show_fps", true)
         set_zoom(settings_config.get_value("interface", "zoom", 1.0))
     else:
         show_hex_borders = true
@@ -3854,6 +3868,7 @@ func _load_settings():
         resource_display_interval = 1.0
         hud_message_duration = 3.0
         show_clock = true
+        show_fps = true
         set_zoom(1.0)
 
 func apply_settings():
@@ -3864,6 +3879,7 @@ func apply_settings():
     city_ui.set_building_detail_delay(building_detail_delay)
     hud.set_message_duration(hud_message_duration)
     _apply_clock_visibility()
+    _apply_fps_visibility()
     # set_resource_display_interval raises the era on a change of the value — we immediately
     # pick it up and update the HUD label of the treasury, so that the player sees the effect
     # of the new interval without waiting for the nearest city_updated.
@@ -3951,6 +3967,30 @@ func _apply_clock_visibility() -> void:
             # The label comes back with the text of the scene ("00:00"): the timer would
             # fix it within a second, but the player should see the real time at once.
             _update_clock()
+    _fit_top_right_panel()
+
+# The visibility of the frame rate counter follows the setting
+# "Interface → Show FPS counter".
+func _apply_fps_visibility() -> void:
+    if fps_label:
+        fps_label.visible = show_fps
+    _fit_top_right_panel()
+
+# The top right panel is anchored to the right edge and takes the size of its
+# contents. A fixed width would either leave an empty strip over the map (the
+# panel blocks the map hover under it) or cut the buttons off, as the font is a
+# setting of the player.
+func _fit_top_right_panel() -> void:
+    if not top_right_box or not top_right_panel:
+        return
+    var content: Vector2 = top_right_box.get_combined_minimum_size()
+    var panel_size := Vector2(
+        ceilf(content.x), maxf(content.y, TOP_RIGHT_PANEL_MIN_HEIGHT))
+    # The offsets are set directly: both anchors of the panel sit on the right edge,
+    # and position is measured from the left of the viewport, not from the anchor.
+    top_right_panel.offset_left = -TOP_RIGHT_MARGIN - panel_size.x
+    top_right_panel.offset_right = -TOP_RIGHT_MARGIN
+    top_right_panel.offset_bottom = panel_size.y
 
 func _update_clock() -> void:
     if not clock_label or not clock_label.visible:

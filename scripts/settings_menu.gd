@@ -27,6 +27,7 @@ extends Control
 @onready var hud_message_duration_value_label: Label = find_child(
     "HudMessageDurationValueLabel", true, false)
 @onready var clock_checkbox: CheckBox = find_child("ClockCheckBox", true, false)
+@onready var fps_checkbox: CheckBox = find_child("FpsCheckBox", true, false)
 
 var config = ConfigFile.new()
 
@@ -48,6 +49,7 @@ func _ready():
             or not hud_message_duration_slider \
             or not hud_message_duration_value_label \
             or not clock_checkbox \
+            or not fps_checkbox \
             or not language_option_button \
             or not font_option_button
     if missing_controls:
@@ -57,6 +59,7 @@ func _ready():
     hex_borders_checkbox.add_theme_color_override("font_color", Color.WHITE)
     edge_scrolling_checkbox.add_theme_color_override("font_color", Color.WHITE)
     clock_checkbox.add_theme_color_override("font_color", Color.WHITE)
+    fps_checkbox.add_theme_color_override("font_color", Color.WHITE)
     language_option_button.add_theme_color_override("font_color", Color.WHITE)
     font_option_button.add_theme_color_override("font_color", Color.WHITE)
     edge_scroll_speed_value_label.add_theme_color_override("font_color", Color.WHITE)
@@ -80,6 +83,7 @@ func _ready():
     resource_display_interval_slider.value_changed.connect(_on_resource_display_interval_changed)
     hud_message_duration_slider.value_changed.connect(_on_hud_message_duration_changed)
     clock_checkbox.toggled.connect(_on_clock_toggled)
+    fps_checkbox.toggled.connect(_on_fps_toggled)
     language_option_button.item_selected.connect(_on_language_selected)
     font_option_button.item_selected.connect(_on_font_selected)
 
@@ -173,6 +177,7 @@ func load_settings():
         hud_message_duration_slider.value = config.get_value(
             "interface", "hud_message_duration", 3.0)
         clock_checkbox.button_pressed = config.get_value("interface", "show_clock", true)
+        fps_checkbox.button_pressed = config.get_value("interface", "show_fps", true)
     else:
         hex_borders_checkbox.button_pressed = true
         edge_scrolling_checkbox.button_pressed = true
@@ -183,6 +188,7 @@ func load_settings():
         resource_display_interval_slider.value = 1.0
         hud_message_duration_slider.value = 3.0
         clock_checkbox.button_pressed = true
+        fps_checkbox.button_pressed = true
     # The minimum value of the extended tooltip cannot be less than the main one
     extended_tooltip_delay_slider.min_value = tooltip_delay_slider.value
     _update_edge_scroll_speed_label()
@@ -215,6 +221,7 @@ func save_settings():
     config.set_value("game", "resource_display_interval", resource_display_interval_slider.value)
     config.set_value("interface", "hud_message_duration", hud_message_duration_slider.value)
     config.set_value("interface", "show_clock", clock_checkbox.button_pressed)
+    config.set_value("interface", "show_fps", fps_checkbox.button_pressed)
     config.save("user://settings.cfg")
 
 func _apply_to_game():
@@ -269,6 +276,10 @@ func _on_hud_message_duration_changed(_value: float):
     _apply_to_game()
 
 func _on_clock_toggled(_pressed: bool):
+    save_settings()
+    _apply_to_game()
+
+func _on_fps_toggled(_pressed: bool):
     save_settings()
     _apply_to_game()
 
