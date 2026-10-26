@@ -407,10 +407,15 @@ func _make_preview() -> Control:
 # place instead of each control knowing about them. The picture of the water is built once and
 # handed to both: the two tabs show the same world, and building the sea mask twice would
 # double the cost of every change of a setting.
+func _resolved_sea_config(seed_value: int = 0) -> Dictionary:
+    var cfg := _selected_sea_config()
+    cfg["sides"] = SeaManager.resolve_sides(cfg, seed_value)
+    return cfg
+
 func _refresh_preview():
     var side := _selected_map_size()
     var towns := _selected_town_count()
-    var picture := WorldPreview.build(side, _selected_sea_config(), _preview_seed)
+    var picture := WorldPreview.build(side, _resolved_sea_config(_preview_seed), _preview_seed)
     for preview in world_previews:
         preview.set_world(side, towns, picture)
 
@@ -934,7 +939,7 @@ func _start_new_game(city_name: String):
     CityData.city_name = city_name.strip_edges()
     CityData.world_map_size = _selected_map_size()
     CityData.world_town_count = _selected_town_count()
-    CityData.world_sea = _selected_sea_config()
+    CityData.world_sea = _resolved_sea_config(_preview_seed)
     # The overlay is hung on the ROOT, not on the menu: the scene change frees the
     # menu, and the world generation runs inside MainMap. MainMap updates the very
     # same bar and removes it when the world is ready.
