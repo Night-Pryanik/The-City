@@ -50,6 +50,7 @@ const AREA_C1 := 14
 
 var _tm = null
 var _gdata = null
+var _cdata = null
 
 func _initialize() -> void:
     WATCHDOG.arm(self)
@@ -59,6 +60,7 @@ func _run() -> void:
     var state = {"failed": false}
     get_root().get_node("SaveManager").new_game()
     _gdata = get_root().get_node("GameData")
+    _cdata = get_root().get_node("CityData")
     _tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(_tm)
 
@@ -344,14 +346,13 @@ func _test_generate_towns_remembers_player_area(state: Dictionary) -> void:
                 continue
             tile_data[r][c]["resource"] = RES_A if (r + c) % 2 == 0 else RES_B
 
-    var map_config: Dictionary = _gdata.map_config
-    var saved_num_towns = map_config.get("num_towns", 8)
-    map_config["num_towns"] = 4
+    var saved_town_count: int = _cdata.world_town_count
+    _cdata.world_town_count = 4
     # The start area is the central 13x13 hexes, "era-2" is the whole map.
     _tm.generate_towns(tile_data, rows, cols, 20, 20,
             14, 26, 14, 26,
             0, rows - 1, 0, cols - 1)
-    map_config["num_towns"] = saved_num_towns
+    _cdata.world_town_count = saved_town_count
 
     check(_tm.player_start_area == {
             "start_row": 14, "end_row": 26, "start_col": 14, "end_col": 26},

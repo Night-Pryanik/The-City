@@ -133,49 +133,6 @@
     "num_main_rivers": 3,      // The number of main rivers
     "num_tributaries": 5,      // The number of tributaries
     "min_river_length": 8,     // The minimum length of a main river (in path points)
-    "min_tributary_length": 4, // The minimum length of a tributary (in path points)
-
-    // --- Town (small settlement) generation ---
-    // Towns appear at the start of the game and can later be used
-    // for trade. There is no functionality at the moment: on a town hex
-    // building any improvement and any special action is forbidden.
-    //
-    // The town territory (the influence ring, radius 3) NEVER overlaps
-    // the player's starting area — the Influence Ring + the Region of the 1st era:
-    // its hexes are cut out of the ring, and its resources are not counted as
-    // points of attraction (see player_start_area in scripts/town_manager.gd).
-    //
-    // Priorities (the algorithm goes through them strictly from top to bottom,
-    // see the details in scripts/town_manager.gd):
-    //   1) multi_resource — the hex has 2+ DIFFERENT resources within
-    //      MAX_ATTRACTION_DISTANCE (3 hexes), that is, "a cluster of resources in
-    //      the vicinity"; a resource within a radius of 3 from which a town
-    //      already stands does not participate in the count (one cluster does not
-    //      pull two towns);
-    //   2) strategic — a strategic resource (resource.strategic == true)
-    //      within a radius of 3 hexes;
-    //   3) river — a hex along which a river flows (river_edges is non-empty);
-    //   4) lake_coast — a land hex adjacent to a lake (terrain == "lake");
-    //   5) sea_coast — a sea coast (terrain == "beach").
-    // The water priorities are strictly single hexes: a town by the water is
-    // placed DIRECTLY on a river hex / a lake shore / a beach, and not "within
-    // 3 hexes of the water".
-    //
-    // The priorities are NOT equal in value. STEP 0: the base is the topmost
-    // priority that has a valid hex ANYWHERE on the map (a full walk, without
-    // giving up after N random attempts). The generator moves on to the
-    // next priority ONLY when the current one is exhausted across the whole map,
-    // so a town will not settle by a lake/sea while there is a free place with
-    // a cluster of resources.
-    // STEPS 1..N: local refinement — within a radius of REFINEMENT_RADIUS
-    // (2 hexes) from the current hex, a hex is searched for that satisfies ALL
-    // the priorities already earned AND the new one. If none is found — the
-    // priority is skipped, the position does not
-    // change, and the cascade goes to the next priority.
-    // The secondary priority (TERRAIN_PREFERENCE in town_manager.gd): after
-    // the cascade, the position is softly refined by terrain type — plain/sand →
-    // hills → deserts → swamps/marshes → mountains, keeping the earned
-    // priorities.
-    "num_towns": 16             // The number of towns on the map
+    "min_tributary_length": 4  // The minimum length of a tributary (in path points)
   }
 }

@@ -35,7 +35,7 @@ const WATCHDOG = preload("res://tests/watchdog.gd")
 
 var _tm = null
 var _rm = null
-var _gdata = null
+var _cdata = null
 var _hex_utils = null
 var _map_helpers = null
 
@@ -50,7 +50,7 @@ func _run() -> void:
     # GameData/CityData are unavailable at the compile stage of this file.
     # new_game() also loads all the data (improvements, resources, city_names).
     get_root().get_node("SaveManager").new_game()
-    _gdata = get_root().get_node("GameData")
+    _cdata = get_root().get_node("CityData")
     _hex_utils = load("res://scripts/HexUtils.gd")
     _map_helpers = load("res://scripts/map_helpers.gd")
 
@@ -148,9 +148,8 @@ func _make_town_map(rows: int, cols: int, city_row: int, city_col: int,
                 free_hexes.append(Vector2i(r, c))
     _fill_resource_carpet(tile_data, free_hexes)
 
-    var map_config: Dictionary = _gdata.map_config
-    var saved_num_towns = map_config.get("num_towns", 8)
-    map_config["num_towns"] = num_towns
+    var saved_town_count: int = _cdata.world_town_count
+    _cdata.world_town_count = num_towns
     # The forbidden zone around the city is 3 hexes in each direction, not the
     # city hex itself. In the real game the towns are excluded from the starting
     # area (Ring + Region), so a town's influence ring (radius 3) never
@@ -161,7 +160,7 @@ func _make_town_map(rows: int, cols: int, city_row: int, city_col: int,
     _tm.generate_towns(tile_data, rows, cols, city_row, city_col,
             city_row - 3, city_row + 3, city_col - 3, city_col + 3,
             0, rows - 1, 0, cols - 1)                # "era-2" = the whole map
-    map_config["num_towns"] = saved_num_towns
+    _cdata.world_town_count = saved_town_count
     return tile_data
 
 # Places improvements in the town rings — just as the game itself does

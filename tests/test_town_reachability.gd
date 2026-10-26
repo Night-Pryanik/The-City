@@ -29,7 +29,7 @@ const WATCHDOG = preload("res://tests/watchdog.gd")
 const MAX_ATTRACTION_DISTANCE := 3
 
 var _tm = null
-var _gdata = null
+var _cdata = null
 var _hex_utils = null
 var _map_helpers = null
 
@@ -45,7 +45,7 @@ func _run() -> void:
     # also loads all the data (resources, terrains, city_names).
     var save_manager = get_root().get_node("SaveManager")
     save_manager.new_game()
-    _gdata = get_root().get_node("GameData")
+    _cdata = get_root().get_node("CityData")
     _hex_utils = load("res://scripts/HexUtils.gd")
     _map_helpers = load("res://scripts/map_helpers.gd")
 
@@ -329,13 +329,12 @@ func _test_generate_towns_all_on_mainland(state: Dictionary) -> void:
             tile_data[r][c]["resource"] = "copper_deposit" if (r + c) % 3 == 0 \
                     else ("sheep" if (r + c) % 2 == 0 else "cows")
 
-    var map_config: Dictionary = _gdata.map_config
-    var saved_num_towns = map_config.get("num_towns", 8)
-    map_config["num_towns"] = 6
+    var saved_town_count: int = _cdata.world_town_count
+    _cdata.world_town_count = 6
     _tm.generate_towns(tile_data, rows, cols, city_row, city_col,
             0, 1, 0, 1,                      # the starting area is small — the towns are outside
             0, rows - 1, 0, cols - 1)        # "era 2" = the whole map
-    map_config["num_towns"] = saved_num_towns
+    _cdata.world_town_count = saved_town_count
 
     check(_tm.town_hexes.size() == 6,
             "expected 6 towns, placed %d" % _tm.town_hexes.size(), state)

@@ -7,8 +7,10 @@
 #      mods button is pushed down; a second press folds the panel back.
 #   3. The map size is a preset list with "Custom size" at the end; the custom field takes
 #      only digits and is clamped to the allowed range.
-#   4. The map size is no longer part of data/map_config.json: the map reads it from the
-#      player's choice (CityData.world_map_size).
+#   4. The number of towns is a plain number field: digits only, clamped to the allowed
+#      range, zero allowed.
+#   5. Neither the map size nor the number of towns is part of data/map_config.json: the
+#      world reads them from the player's choice (CityData.world_map_size / world_town_count).
 #
 # The generation of the world is not started here: the size is read through the dialog,
 # and test_new_game_loading covers the path from a new game to a generated map.
@@ -127,16 +129,43 @@ func _run() -> void:
     check(menu._selected_map_size() == 42,
             "the filtered number is the chosen side (got %d)" % menu._selected_map_size(), state)
 
-    # --- 4. The size is not in the data any more ---
+    # --- 4. The number of towns ---
+    check(menu.world_settings_panel.is_ancestor_of(menu.town_count_edit),
+            "the town count lives inside the panel", state)
+    check(menu._selected_town_count() == 16,
+            "the default town count is 16 (got %d)" % menu._selected_town_count(), state)
+
+    menu.town_count_edit.text = "99"
+    menu._normalize_town_count()
+    check(menu.town_count_edit.text == "40" and menu._selected_town_count() == 40,
+            "a count above the maximum is pulled to it (got %s)" % menu.town_count_edit.text, state)
+
+    menu.town_count_edit.text = "0"
+    menu._normalize_town_count()
+    check(menu._selected_town_count() == 0,
+            "zero towns is a valid choice (got %d)" % menu._selected_town_count(), state)
+
+    menu.town_count_edit.text = ""
+    menu._on_town_count_text_changed("1x2")
+    check(menu.town_count_edit.text == "12",
+            "the field keeps the digits only (got %s)" % menu.town_count_edit.text, state)
+    check(menu._selected_town_count() == 12,
+            "the filtered number is the chosen count (got %d)" % menu._selected_town_count(), state)
+
+    # --- 5. The size and the count are not in the data any more ---
     var game_data = get_root().get_node("GameData")
     check(game_data.data_loaded, "the game data is loaded by the menu", state)
     check(not game_data.map_config.has("map_rows") and not game_data.map_config.has("map_cols"),
             "the map size is not part of data/map_config.json", state)
+    check(not game_data.map_config.has("num_towns"),
+            "the number of towns is not part of data/map_config.json", state)
     check(game_data.map_config.has("start_ring_rows"),
             "the rest of the map configuration is still read", state)
     var city_data = get_root().get_node("CityData")
     check(city_data.world_map_size == 60,
             "a new game starts from the medium map (got %d)" % city_data.world_map_size, state)
+    check(city_data.world_town_count == 16,
+            "a new game starts with 16 towns (got %d)" % city_data.world_town_count, state)
 
     get_root().remove_child(menu)
     menu.free()

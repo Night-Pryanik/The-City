@@ -24,6 +24,12 @@ const MIN_MAP_SIZE := 10
 const MAX_MAP_SIZE := 200
 const DEFAULT_MAP_SIZE := 60
 
+# The number of towns a new world is generated with, and the bounds of the field. The
+# generator places as many as the map allows: a crowded map simply ends up with fewer.
+const DEFAULT_TOWN_COUNT := 16
+const MIN_TOWN_COUNT := 0
+const MAX_TOWN_COUNT := 40
+
 @onready var continue_button = $VBoxContainer/ContinueButton
 @onready var new_game_button = $VBoxContainer/NewGameButton
 @onready var load_game_button = $VBoxContainer/LoadGameButton
@@ -37,13 +43,15 @@ var save_load_window: CanvasLayer = null
 var new_game_dialog: ConfirmationDialog = null
 var city_name_edit: LineEdit = null
 var mods_button: Button = null
-# The world settings of a new game (the map size). They unfold inside the name dialog,
-# under their own button, and the mods button moves down while they are open.
+# The world settings of a new game (the map size and the number of towns). They unfold
+# inside the name dialog, under their own button, and the mods button moves down while
+# they are open.
 var world_settings_button: Button = null
 var world_settings_panel: VBoxContainer = null
 var map_size_option: OptionButton = null
 var custom_size_row: HBoxContainer = null
 var custom_size_edit: LineEdit = null
+var town_count_edit: LineEdit = null
 # The window of the mods. A window of its own: the list is 860 px wide and the name is not,
 # and one window that changes its width under the cursor is worse than two that keep theirs.
 var mods_window: AcceptDialog = null
@@ -240,8 +248,9 @@ func _build_mods_window():
     add_child(window)
     mods_window = window
 
-# The world settings of a new game. For now they hold only the map size; the column grows
-# downwards as more settings are added, and the mods button is pushed down with it.
+# The world settings of a new game. For now they hold the map size and the number of towns;
+# the column grows downwards as more settings are added, and the mods button is pushed down
+# with it.
 func _build_world_settings_panel(parent: VBoxContainer):
     world_settings_panel = VBoxContainer.new()
     world_settings_panel.visible = false
@@ -291,6 +300,29 @@ func _build_world_settings_panel(parent: VBoxContainer):
     custom_size_row.add_child(custom_size_edit)
     column.add_child(custom_size_row)
 
+    # The towns: one number, typed directly. The map size decides how many of them fit,
+    # so the field is not tied to the presets above it.
+    var towns_heading := Label.new()
+    towns_heading.text = tr("Towns")
+    towns_heading.theme_type_variation = &"SectionHeading"
+    column.add_child(towns_heading)
+
+    var town_row = HBoxContainer.new()
+    town_row.add_theme_constant_override("separation", 6)
+    var town_label := Label.new()
+    town_label.text = tr("Number of towns")
+    town_row.add_child(town_label)
+    town_count_edit = LineEdit.new()
+    town_count_edit.custom_minimum_size = Vector2(80, 30)
+    town_count_edit.max_length = 2
+    town_count_edit.text = str(DEFAULT_TOWN_COUNT)
+    town_count_edit.tooltip_text = tr("A whole number from %d to %d. Zero leaves the map without towns.") \
+            % [MIN_TOWN_COUNT, MAX_TOWN_COUNT]
+    town_count_edit.text_changed.connect(_on_town_count_text_changed)
+    town_count_edit.focus_exited.connect(_normalize_town_count)
+    town_row.add_child(town_count_edit)
+    column.add_child(town_row)
+
 func _on_world_settings_toggled(expanded: bool):
     world_settings_panel.visible = expanded
 
@@ -307,17 +339,29 @@ func _on_map_size_selected(index: int):
 
 # The side input accepts only digits: the map size is a whole positive number.
 func _on_custom_size_text_changed(text: String):
-    var filtered := ""
-    for ch in text:
-        if ch.is_valid_int():
-            filtered += ch
-    if filtered != text:
-        custom_size_edit.text = filtered
+    _keep_digits(custom_size_edit, text)
 
 # A number outside the allowed range is pulled to the nearest bound when the field loses
 # focus, so the player sees the value the game is about to use.
 func _normalize_custom_size():
     custom_size_edit.text = str(_selected_map_size())
+
+# The town count is a whole number of the same kind.
+func _on_town_count_text_changed(text: String):
+    _keep_digits(town_count_edit, text)
+
+func _normalize_town_count():
+    town_count_edit.text = str(_selected_town_count())
+
+# Both numeric fields of the world settings take digits only. The field is rewritten only
+# when the input really holds something else, so the caret does not jump on every keystroke.
+func _keep_digits(edit: LineEdit, text: String):
+    var filtered := ""
+    for ch in text:
+        if ch.is_valid_int():
+            filtered += ch
+    if filtered != text:
+        edit.text = filtered
 
 # The side of the square map chosen in the world settings. For a preset it is its fixed
 # value; for "Custom size" it is the clamped number in the input field. Falls back to the
@@ -332,6 +376,16 @@ func _selected_map_size() -> int:
     if raw.is_empty():
         return DEFAULT_MAP_SIZE
     return clampi(int(raw), MIN_MAP_SIZE, MAX_MAP_SIZE)
+
+# The number of towns the map will be generated with. Falls back to the default when the
+# settings have not been built (a direct start of a new game).
+func _selected_town_count() -> int:
+    if town_count_edit == null:
+        return DEFAULT_TOWN_COUNT
+    var raw := town_count_edit.text.strip_edges()
+    if raw.is_empty():
+        return DEFAULT_TOWN_COUNT
+    return clampi(int(raw), MIN_TOWN_COUNT, MAX_TOWN_COUNT)
 
 # One window at a time: a window of the mods is exclusive, so the dialog of the name steps
 # aside and comes back when the mods are closed. Neither of the two ever changes its width.
@@ -400,6 +454,7 @@ func _start_new_game(city_name: String):
     SaveManager.new_game()
     CityData.city_name = city_name.strip_edges()
     CityData.world_map_size = _selected_map_size()
+    CityData.world_town_count = _selected_town_count()
     # The overlay is hung on the ROOT, not on the menu: the scene change frees the
     # menu, and the world generation runs inside MainMap. MainMap updates the very
     # same bar and removes it when the world is ready.

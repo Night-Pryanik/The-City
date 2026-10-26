@@ -1427,9 +1427,9 @@ func _initialize_map():
 
     # --- The towns (the small settlements) ---
     # They are placed AFTER the rivers, so that river_edges have already been set and
-    # are used as the points of attraction (priority 2). The number and the priorities
-    # of the points of attraction are in data/map_config.json, the section "num_towns".
-    # The details are in scripts/town_manager.gd.
+    # are used as the points of attraction (priority 2). The number of the towns is chosen
+    # by the player in the world settings of a new game (CityData.world_town_count),
+    # the priorities are fixed in scripts/town_manager.gd.
     #
     # We pass two areas:
     #   exclusion_* — the starting visible area (the Ring + the starting Region).

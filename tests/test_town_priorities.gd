@@ -18,8 +18,9 @@
 #   6. An empty map (no resources, no rivers, no lakes, no beaches) → the town
 #      is not placed (empty dictionary).
 #   7. generate_towns(): on a synthetic map with an excess of resources,
-#      ALL num_towns towns are placed, and each one actually satisfies the base
-#      priority (2+ different resources within MAX_ATTRACTION_DISTANCE).
+#      ALL the towns asked for (CityData.world_town_count) are placed, and each one
+#      actually satisfies the base priority (2+ different resources within
+#      MAX_ATTRACTION_DISTANCE).
 extends SceneTree
 
 # Hang watchdog: without it, a broken _run() coroutine looks from the outside like an
@@ -31,6 +32,7 @@ const MAX_ATTRACTION_DISTANCE := 3
 
 var _tm = null
 var _gdata = null
+var _cdata = null
 var _hex_utils = null
 
 func _initialize():
@@ -46,6 +48,7 @@ func _run() -> void:
     var save_manager = get_root().get_node("SaveManager")
     save_manager.new_game()
     _gdata = get_root().get_node("GameData")
+    _cdata = get_root().get_node("CityData")
     # The global class is also taken through load(): in --script mode the name
     # HexUtils is not guaranteed at the compilation stage of the test.
     _hex_utils = load("res://scripts/HexUtils.gd")
@@ -420,13 +423,12 @@ func _test_generate_towns_places_all(state: Dictionary) -> void:
                 free_hexes.append(Vector2i(r, c))
     _fill_resource_carpet(tile_data, free_hexes)
 
-    var map_config: Dictionary = _gdata.map_config
-    var saved_num_towns = map_config.get("num_towns", 8)
-    map_config["num_towns"] = 5
+    var saved_town_count: int = _cdata.world_town_count
+    _cdata.world_town_count = 5
     _tm.generate_towns(tile_data, rows, cols, 20, 20,
             0, 0, 0, 0,                # starting forbidden zone (the city hex)
             0, rows - 1, 0, cols - 1)  # "era-2" = the whole map: no extra town needed
-    map_config["num_towns"] = saved_num_towns
+    _cdata.world_town_count = saved_town_count
 
     check(_tm.town_hexes.size() == 5,
             "expected 5 towns, placed %d" % _tm.town_hexes.size(), state)

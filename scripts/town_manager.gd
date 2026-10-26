@@ -96,8 +96,8 @@
 # is preserved, so the new town falls into the new "strip" between
 # era 1 and era 2 - that is, it appears for the player exactly on the transition to era 2.
 # --- The configuration ---
-#   data/map_config.json: "num_towns" - the target number of towns (moderately 8
-#   for a map of 60x60). If 0 or negative - the towns are not generated.
+#   CityData.world_town_count - the target number of towns, chosen by the player in the
+#   world settings of a new game. If 0 or negative - the towns are not generated.
 # --- Save/load ---
 # The list of the hexes is saved as [[row, col], ...] in SaveManager.saved_data["towns"]
 # and is restored in main_map._ready (after the load of tile_data).
@@ -787,7 +787,7 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
             if tile_data[r][c] != null:
                 tile_data[r][c]["has_town"] = false
 
-    var num_towns: int = int(GameData.map_config.get("num_towns", 8))
+    var num_towns: int = CityData.world_town_count
     if num_towns <= 0:
         print("town_manager: num_towns=", num_towns, " — the towns are not generated")
         _mask_cache_valid = false

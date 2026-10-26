@@ -569,7 +569,6 @@ const MAP_CONFIG_FIELDS := {
     "num_tributaries": LEAF,
     "min_river_length": LEAF,
     "min_tributary_length": LEAF,
-    "num_towns": LEAF,
 }
 
 # The balance is grouped into blocks by the system that owns the constants; the block names are a

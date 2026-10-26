@@ -444,6 +444,9 @@ msgstr ""
 msgid "A whole number from %d to %d."
 msgstr ""
 
+msgid "A whole number from %d to %d. Zero leaves the map without towns."
+msgstr ""
+
 msgid "Active bonuses: (coming later)"
 msgstr ""
 
@@ -1398,6 +1401,9 @@ msgstr ""
 msgid "Nothing to upgrade: %s"
 msgstr ""
 
+msgid "Number of towns"
+msgstr ""
+
 msgid "OFF"
 msgstr ""
 
@@ -2104,6 +2110,9 @@ msgid "Town"
 msgstr ""
 
 msgid "Town %d"
+msgstr ""
+
+msgid "Towns"
 msgstr ""
 
 msgid "Trade"

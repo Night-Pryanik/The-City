@@ -444,6 +444,9 @@ msgstr "Изучается технология"
 msgid "A whole number from %d to %d."
 msgstr "Целое число от %d до %d."
 
+msgid "A whole number from %d to %d. Zero leaves the map without towns."
+msgstr "Целое число от %d до %d. Ноль — карта без городков."
+
 msgid "Active bonuses: (coming later)"
 msgstr "Активные бонусы: (будут позже)"
 
@@ -1398,6 +1401,9 @@ msgstr "Улучшать нечего"
 msgid "Nothing to upgrade: %s"
 msgstr "Улучшать нечего: %s"
 
+msgid "Number of towns"
+msgstr "Количество городков"
+
 msgid "OFF"
 msgstr "выкл"
 
@@ -2105,6 +2111,9 @@ msgstr "Городок"
 
 msgid "Town %d"
 msgstr "Городок %d"
+
+msgid "Towns"
+msgstr "Городки"
 
 msgid "Trade"
 msgstr "Торговля"
