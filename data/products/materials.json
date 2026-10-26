@@ -350,6 +350,11 @@
       "category": "material",
       "unlock_tech": "wood_processing",
       "icon": "oak_wood.png"
-    }
+    },
+    { "id": "sunflower", "price": 5, "name": "Sunflower Seeds", "type": "product", "category": "material", "unlock_tech": "oil_making", "icon": "sunflower.png" },
+    { "id": "rapeseed", "price": 5, "name": "Rapeseed", "type": "product", "category": "material", "unlock_tech": "oil_making", "icon": "rapeseed.png" },
+    { "id": "hops", "price": 6, "name": "Hops", "type": "product", "category": "material", "icon": "hops.png" },
+    { "id": "tobacco", "price": 10, "name": "Tobacco", "type": "product", "category": "material", "icon": "tobacco.png" },
+    { "id": "sugar_cane", "price": 7, "name": "Sugar Cane", "type": "product", "category": "material", "icon": "sugar_cane.png" }
   ]
 }

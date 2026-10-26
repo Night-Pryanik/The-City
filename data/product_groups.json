@@ -64,12 +64,11 @@
       "id": "oil_crops",
       "name": "Oil Crops",
       "products": [
-      //  "sunflower",
+        "sunflower",
         "sesame",
-      //  "rapeseed",
+        "rapeseed",
         "flax",
         "soybean",
-      //  "peanut",
         "olives",
         "kenaf"
       ]
@@ -211,13 +210,13 @@
       "id": "spices",
       "name": "Spices",
       "products": [
-        "sesame"
-        //"black_pepper",
-        //"cinnamon",
+        "sesame",
+        "cinnamon",
         //"cloves",
-        //"nutmeg",
-        //"saffron",
-        //"vanilla"
+        "nutmeg",
+        "saffron",
+        "vanilla",
+        "chili"
       ]
     },
     {

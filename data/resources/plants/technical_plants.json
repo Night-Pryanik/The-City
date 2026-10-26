@@ -376,6 +376,168 @@
       "produces": { "velvetleaf": 10, "feed": 40 },
       "icon": "velvetleaf_field.png",
       "color": [ 200, 255, 200 ]
+    },
+    {
+      "id": "sunflower_field", "price": 5,
+      "name": "Sunflower",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "oil_seeds",
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [
+        "none"
+      ],
+      "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "sunflower": 10, "feed": 40 },
+      "icon": "sunflower.png",
+      "color": [ 255, 200, 50 ]
+    },
+    {
+      "id": "rapeseed_field", "price": 5,
+      "name": "Rapeseed",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "oil_seeds",
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [
+        "none"
+      ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "rapeseed": 10, "feed": 40 },
+      "icon": "rapeseed.png",
+      "color": [ 255, 255, 100 ]
+    },
+    {
+      "id": "saffron_crocus", "price": 15,
+      "name": "Saffron",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "spice_plants",
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [
+        "none"
+      ],
+      "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "saffron": 5 },
+      "icon": "saffron.png",
+      "color": [ 255, 100, 50 ]
+    },
+    {
+      "id": "cinnamon_tree", "price": 12,
+      "name": "Cinnamon",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "spice_plants",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [
+        "tropical_rainforest", "tropical_rainforest_sparse"
+      ],
+      "allowed_climate_zones": [ "tropical_dry", "tropical_wet" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "cinnamon": 10 },
+      "icon": "cinnamon.png",
+      "color": [ 160, 100, 60 ]
+    },
+    {
+      "id": "nutmeg_tree", "price": 14,
+      "name": "Nutmeg",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "spice_plants",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [
+        "tropical_rainforest", "tropical_rainforest_sparse"
+      ],
+      "allowed_climate_zones": [ "tropical_wet" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "nutmeg": 8 },
+      "icon": "nutmeg.png",
+      "color": [ 140, 90, 50 ]
+    },
+    {
+      "id": "vanilla_orchid", "price": 16,
+      "name": "Vanilla",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "spice_plants",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [
+        "tropical_rainforest", "tropical_rainforest_sparse"
+      ],
+      "allowed_climate_zones": [ "tropical_wet" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "vanilla": 6 },
+      "icon": "vanilla.png",
+      "color": [ 220, 180, 140 ]
+    },
+    {
+      "id": "hops_field", "price": 6,
+      "name": "Hops",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "brewing_plants",
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [
+        "none"
+      ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "hops": 10 },
+      "icon": "hops.png",
+      "color": [ 120, 180, 60 ]
+    },
+    {
+      "id": "tobacco_field", "price": 8,
+      "name": "Tobacco",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "technical_crops",
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [
+        "none"
+      ],
+      "allowed_climate_zones": [ "savanna_dry", "savanna_wet", "tropical_dry" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "tobacco": 10 },
+      "icon": "tobacco.png",
+      "color": [ 180, 140, 60 ]
+    },
+    {
+      "id": "sugar_cane", "price": 7,
+      "name": "Sugar Cane",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "sugar_plants",
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [
+        "none"
+      ],
+      "allowed_climate_zones": [ "savanna_wet", "tropical_wet" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "sugar_cane": 10 },
+      "icon": "sugar_cane.png",
+      "color": [ 150, 200, 100 ]
     }
   ]
 }

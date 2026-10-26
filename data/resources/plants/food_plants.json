@@ -497,6 +497,25 @@
       "produces": { "chickpeas": 10, "feed": 60 },
       "icon": "chickpeas.png",
       "color": [ 200, 170, 100 ]
+    },
+    {
+      "id": "pistachio_field", "price": 8,
+      "name": "Pistachio",
+      "type": "raw",
+      "category": "plants",
+      "group": "extra_food_plants",
+      "subgroup": "nuts",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [
+        "none"
+      ],
+      "allowed_climate_zones": [ "savanna_dry", "steppe", "prairie" ],
+      "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "pistachio": 8 },
+      "icon": "pistachio.png",
+      "color": [ 120, 180, 80 ]
     }
   ]
 }
