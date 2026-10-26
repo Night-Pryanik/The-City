@@ -10,11 +10,10 @@
 # the mask is averaged down to the cells of the picture.
 #
 # It is a SAMPLE of the settings and never the world the player is about to get. The caller
-# picks the seed, so the same settings always draw the same coast within one dialog session
-# and a change of a setting is the only thing that moves the picture; the world generation
-# rolls its own dice. The real world is kept out of here on purpose: a player who saw it would
-# plan the first moves from the menu — "there is a town west of my start, I will grow that way"
-# — and the map would be explored before it is built.
+# picks the seed, so the same settings keep the same coast until the player rerolls the preview;
+# the world generation rolls its own dice. The real world is kept out of here on purpose: a
+# player who saw it would plan the first moves from the menu — "there is a town west of my start,
+# I will grow that way" — and the map would be explored before it is built.
 #
 # The towns are schematic — a sunflower spiral rather than the placement of the generator —
 # and a town stands only where there is land. The gold point in the middle is the player's

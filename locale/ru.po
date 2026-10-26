@@ -1701,6 +1701,9 @@ msgstr "Ссылка на несуществующую профессию"
 msgid "Reference to a nonexistent technology"
 msgstr "Ссылка на несуществующую технологию"
 
+msgid "Regenerate"
+msgstr "Перегенерировать"
+
 msgid "Remove \"%s\" from the queue. It has not started yet and nothing has been spent"
 msgstr "Убрать «%s» из очереди. Действие ещё не началось, затрат не было"
 
@@ -2231,6 +2234,9 @@ msgstr "Здесь — кольцо влияния чужого городка, 
 
 msgid "This is the city itself"
 msgstr "Это сам город"
+
+msgid "This map is only an approximate preview; the actual world will be generated separately and may differ."
+msgstr "Это приблизительный макет: реальная карта будет сгенерирована отдельно и может отличаться."
 
 msgid "This mod is required by \"%s\"."
 msgstr "Эта модификация требуется для «%s»."

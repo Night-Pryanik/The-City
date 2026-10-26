@@ -115,6 +115,29 @@ func _run() -> void:
     check(menu._selected_town_count() == 16,
             "the default town count is 16 (got %d)" % menu._selected_town_count(), state)
 
+    var regenerate_button: Button = null
+    for preview in menu.world_previews:
+        var preview_parent = preview.get_parent()
+        var button: Button = preview_parent.get_node_or_null("RegeneratePreviewButton")
+        var disclaimer: Label = preview_parent.get_node_or_null("PreviewDisclaimerLabel")
+        check(button != null and button.text == tr("Regenerate"),
+                "each preview has a regenerate button", state)
+        check(disclaimer != null and disclaimer.text == tr(
+                "This map is only an approximate preview; the actual world will be generated separately and may differ."),
+                "each preview explains that the actual world may differ", state)
+        if regenerate_button == null:
+            regenerate_button = button
+    if regenerate_button != null:
+        var preview_seed_before: int = menu._preview_seed
+        var map_size_before: int = menu._selected_map_size()
+        var town_count_before: int = menu._selected_town_count()
+        regenerate_button.pressed.emit()
+        check(menu._preview_seed != preview_seed_before,
+                "regenerating changes the preview seed", state)
+        check(menu._selected_map_size() == map_size_before
+                and menu._selected_town_count() == town_count_before,
+                "regenerating leaves the selected world settings unchanged", state)
+
     # --- 3. The map size: presets and the custom side ---
     check(menu.map_size_option.item_count == menu.MAP_SIZE_PRESETS.size() + 1,
             "the list is the presets plus the custom item (%d items)"

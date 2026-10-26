@@ -96,9 +96,8 @@ var sea_rows: Array = []
 # so they are refreshed together.
 var world_previews: Array = []
 var mod_list = null
-# The seed of the preview picture. It is randomized when the dialog opens, so the coast looks
-# different on every visit; it stays the same while the player changes settings, so a change
-# of a setting is the only thing that moves the picture.
+# The preview seed stays fixed while settings change, keeping those changes comparable. The
+# player can reroll it explicitly with the button beside either preview.
 var _preview_seed: int = 0
 
 func _ready():
@@ -372,13 +371,37 @@ func _add_setting_row(column: VBoxContainer, text: String, control: Control,
 # The map preview of a tab. Both tabs that have room for one get their own copy: the tabs
 # are separate subtrees, and a node cannot be in two of them at once.
 func _make_preview() -> Control:
+    var column := VBoxContainer.new()
+    column.custom_minimum_size = Vector2(PREVIEW_WIDTH, 0)
+    column.size_flags_horizontal = Control.SIZE_SHRINK_END
+    column.add_theme_constant_override("separation", 6)
+
     var preview = WorldPreview.new()
+    preview.name = "WorldPreview"
     preview.custom_minimum_size = Vector2(PREVIEW_WIDTH, 240)
-    preview.size_flags_horizontal = Control.SIZE_SHRINK_END
+    preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
     preview.max_map_size = MAX_MAP_SIZE
     world_previews.append(preview)
-    return preview
+    column.add_child(preview)
+
+    var regenerate_button := Button.new()
+    regenerate_button.name = "RegeneratePreviewButton"
+    regenerate_button.text = tr("Regenerate")
+    regenerate_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    regenerate_button.pressed.connect(_regenerate_preview)
+    column.add_child(regenerate_button)
+
+    var disclaimer := Label.new()
+    disclaimer.name = "PreviewDisclaimerLabel"
+    disclaimer.text = tr("This map is only an approximate preview; the actual world will be generated separately and may differ.")
+    disclaimer.custom_minimum_size = Vector2(PREVIEW_WIDTH - 24, 0)
+    disclaimer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    disclaimer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    disclaimer.add_theme_font_size_override("font_size", 12)
+    disclaimer.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+    column.add_child(disclaimer)
+    return column
 
 # The previews show the world the current settings describe, so they are refreshed from one
 # place instead of each control knowing about them. The picture of the water is built once and
@@ -390,6 +413,13 @@ func _refresh_preview():
     var picture := WorldPreview.build(side, _selected_sea_config(), _preview_seed)
     for preview in world_previews:
         preview.set_world(side, towns, picture)
+
+func _regenerate_preview():
+    var next_seed := randi()
+    if next_seed == _preview_seed:
+        next_seed += 1
+    _preview_seed = next_seed
+    _refresh_preview()
 
 # The world settings of a new game: the map size, the number of towns and the seas. Every
 # setting is one line of the list, and the list grows downwards.
