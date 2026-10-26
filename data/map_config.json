@@ -1,10 +1,6 @@
 {
   // The configuration of the world map.
-  // The dimensions of the hex map (in hexes).
   "map_config": {
-    "map_rows": 60,        // How many rows of hexes the whole map has (the world height)
-    "map_cols": 60,        // How many columns of hexes the whole map has (the world width)
-
     // The starting Influence Ring (the city territory at the start of the game).
     "start_ring_rows": 7,   // The height of the starting ring in hexes
     "start_ring_cols": 9,   // The width of the starting ring in hexes

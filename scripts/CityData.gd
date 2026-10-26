@@ -82,6 +82,9 @@ var idle_population: int = 1 # the free citizens (not busy anywhere)
 # The name of the city — it is chosen by the player in the dialog at the start of a new game.
 # An empty string = the name is not set yet (then it is not drawn on the map).
 var city_name: String = ""
+# The side of the square world map (in hexes), chosen by the player in the world settings
+# of a new game. Applied in main_map._load_map_config; a loaded game restores its own size.
+var world_map_size: int = 60
 var food_for_new_settler: int = 1000
 var food_per_citizen: int = 10
     # The record of the FACT of the write-off on the internal market for the tick. A separate counter

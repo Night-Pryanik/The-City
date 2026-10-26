@@ -441,6 +441,9 @@ msgstr ""
 msgid "A technology is being researched"
 msgstr ""
 
+msgid "A whole number from %d to %d."
+msgstr ""
+
 msgid "Active bonuses: (coming later)"
 msgstr ""
 
@@ -936,6 +939,9 @@ msgstr ""
 msgid "Culture:"
 msgstr ""
 
+msgid "Custom size"
+msgstr ""
+
 msgid "Cyrillic"
 msgstr ""
 
@@ -1095,6 +1101,9 @@ msgstr ""
 msgid "Generating seas..."
 msgstr ""
 
+msgid "Giant (200×200)"
+msgstr ""
+
 msgid "Go to the technology list"
 msgstr ""
 
@@ -1135,6 +1144,9 @@ msgid "Hide the editor"
 msgstr ""
 
 msgid "Historical background:"
+msgstr ""
+
+msgid "Huge (150×150)"
 msgstr ""
 
 msgid "Icon of group \"%s\" taken from goods \"%s\""
@@ -1221,6 +1233,9 @@ msgstr ""
 msgid "Language of the system"
 msgstr ""
 
+msgid "Large (100×100)"
+msgstr ""
+
 msgid "Left-click on a hex to place: %s"
 msgstr ""
 
@@ -1242,6 +1257,9 @@ msgstr ""
 msgid "Map movement at window edges"
 msgstr ""
 
+msgid "Map size"
+msgstr ""
+
 msgid "Map tooltip delay"
 msgstr ""
 
@@ -1258,6 +1276,9 @@ msgid "Maybe you meant the goods group \"@%s\"?"
 msgstr ""
 
 msgid "Maybe you meant the product \"%s\"?"
+msgstr ""
+
+msgid "Medium (60×60)"
 msgstr ""
 
 msgid "Menu"
@@ -1797,7 +1818,13 @@ msgstr ""
 msgid "Show clock"
 msgstr ""
 
+msgid "Side length"
+msgstr ""
+
 msgid "Slot %d:"
+msgstr ""
+
+msgid "Small (30×30)"
 msgstr ""
 
 msgid "Sold %d units of %s to %s."
@@ -2191,6 +2218,9 @@ msgid "Work: %d"
 msgstr ""
 
 msgid "Work: %d (%.0f sec)"
+msgstr ""
+
+msgid "World settings"
 msgstr ""
 
 msgid "X"
@@ -2600,6 +2630,10 @@ msgstr ""
 
 msgctxt "buildings.name"
 msgid "Slaughterhouse"
+msgstr ""
+
+msgctxt "buildings.name"
+msgid "Small (30×30)"
 msgstr ""
 
 msgctxt "buildings.name"

@@ -230,9 +230,10 @@ func load_all_data(mod_dirs: Array = []):
         if merged_data.has(key):
             qualities[key] = merged_data[key]
 
-    # NEW: we load the world map configuration (dimensions, starting ring, region).
+    # We load the world map configuration (starting ring, region).
     # The data/map_config.json file contains the "map_config" key with the parameters:
-    # map_rows / map_cols / start_ring_rows / start_ring_cols / region_width.
+    # start_ring_rows / start_ring_cols / region_width. The map size itself is chosen
+    # by the player in the world settings of a new game (CityData.world_map_size).
     map_config = merged_data.get("map_config", {})
 
     # NEW: we load the professions of workers at improvements (data/professions.json).

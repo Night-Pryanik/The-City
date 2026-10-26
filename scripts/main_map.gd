@@ -26,9 +26,10 @@ const ZOOM_SETTLE_EPS: float = 0.001
 # --- The dimensions and the boundaries of the world/window ---
 
 # The main parameters (map_rows, map_cols, start_ring_rows, start_ring_cols,
-# region_width) are loaded from data/map_config.json in _load_map_config().
+# region_width) are set in _load_map_config(). The map size comes from the
+# world settings of a new game; the ring region region come from data/map_config.json.
 # They are NOT constants, because:
-#   1) the values come from the JSON;
+#   1) the map size is chosen by the player;
 #   2) on the transition to the next era the Ring and the Region expand.
 var map_rows: int = 60 # The whole map: the rows (hexes)
 var map_cols: int = 60 # The whole map: the columns (hexes)
@@ -3475,23 +3476,21 @@ func get_scout_reach_bounds() -> Dictionary:
 func _on_chunk_hovered(_chunk: Array):
     map_renderer.queue_redraw()
 
-# Loads the parameters of the map/window from data/map_config.json (through GameData).
-# The values are used as the starting ones for a new game.
+# Loads the map parameters for a new game. The map size is chosen by the player
+# in the world settings (CityData.world_map_size); the rest of the parameters come
+# from data/map_config.json (through GameData). A loaded game overrides the size
+# from its save via _apply_saved_map_state.
 func _load_map_config():
+    var size: int = CityData.world_map_size
+    if size < 10:
+        size = 60
+    map_rows = size
+    map_cols = size
+
     var cfg: Dictionary = GameData.map_config
-    if cfg.is_empty():
-        # The config is not found — we use the default values.
-        map_rows = 200
-        map_cols = 200
-        start_ring_rows = 7
-        start_ring_cols = 5
-        region_width = 2
-    else:
-        map_rows = int(cfg.get("map_rows", 200))
-        map_cols = int(cfg.get("map_cols", 200))
-        start_ring_rows = int(cfg.get("start_ring_rows", 7))
-        start_ring_cols = int(cfg.get("start_ring_cols", 5))
-        region_width = int(cfg.get("region_width", 2))
+    start_ring_rows = int(cfg.get("start_ring_rows", 7))
+    start_ring_cols = int(cfg.get("start_ring_cols", 5))
+    region_width = int(cfg.get("region_width", 2))
 
     # The city is always at the centre of the whole map.
     city_row = int(map_rows / 2.0)

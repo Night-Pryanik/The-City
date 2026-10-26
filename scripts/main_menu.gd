@@ -13,6 +13,17 @@ const ModListScene = preload("res://scenes/mod_list.tscn")
 # sized to it and keeps that width.
 const NAME_FIELD_WIDTH := 340
 
+# The new game dialog takes nearly the whole height of the screen: the world settings
+# unfold inside it, and a tall window keeps the layout from jumping as the panel opens.
+const DIALOG_EDGE_MARGIN := 24
+
+# The map size presets offered in the world settings (the square side in hexes), and the
+# bounds of the custom size. The player chooses one for a new game; the default is medium.
+const MAP_SIZE_PRESETS: Array[int] = [30, 60, 100, 150, 200]
+const MIN_MAP_SIZE := 10
+const MAX_MAP_SIZE := 200
+const DEFAULT_MAP_SIZE := 60
+
 @onready var continue_button = $VBoxContainer/ContinueButton
 @onready var new_game_button = $VBoxContainer/NewGameButton
 @onready var load_game_button = $VBoxContainer/LoadGameButton
@@ -26,6 +37,13 @@ var save_load_window: CanvasLayer = null
 var new_game_dialog: ConfirmationDialog = null
 var city_name_edit: LineEdit = null
 var mods_button: Button = null
+# The world settings of a new game (the map size). They unfold inside the name dialog,
+# under their own button, and the mods button moves down while they are open.
+var world_settings_button: Button = null
+var world_settings_panel: VBoxContainer = null
+var map_size_option: OptionButton = null
+var custom_size_row: HBoxContainer = null
+var custom_size_edit: LineEdit = null
 # The window of the mods. A window of its own: the list is 860 px wide and the name is not,
 # and one window that changes its width under the cursor is worse than two that keep theirs.
 var mods_window: AcceptDialog = null
@@ -115,9 +133,28 @@ func _on_new_game():
     mod_list.open(ModManager.active_ids)
     _refresh_mods_button()
     city_name_edit.text = tr("City")
-    new_game_dialog.popup_centered()
+    _popup_new_game_dialog()
     city_name_edit.grab_focus()
     city_name_edit.select_all()
+
+# The name dialog is centred and takes nearly the whole height of the screen. The room
+# below the name is where the world settings unfold; the window keeps that room whether
+# they are open or not, so opening them moves nothing but the mods button.
+#
+# The frame of a window (the title bar and the shadow) is drawn OUTSIDE the rect this
+# node reports, and the frame is what the player sees, so the margins are kept for the
+# decorated rect: a window sized by the bare rect alone would touch the screen edge.
+func _popup_new_game_dialog():
+    new_game_dialog.popup_centered()
+    var screen := Vector2i(get_viewport().get_visible_rect().size)
+    if screen.x <= 0 or screen.y <= 0:
+        return
+    var frame := new_game_dialog.get_size_with_decorations() - new_game_dialog.size
+    var height := maxi(new_game_dialog.size.y,
+            screen.y - DIALOG_EDGE_MARGIN * 2 - frame.y)
+    new_game_dialog.size = Vector2i(new_game_dialog.size.x, height)
+    var target := (screen - new_game_dialog.get_size_with_decorations()) / 2
+    new_game_dialog.position += target - new_game_dialog.get_position_with_decorations()
 
 func _build_new_game_dialog():
     var dialog = ConfirmationDialog.new()
@@ -125,8 +162,9 @@ func _build_new_game_dialog():
     dialog.ok_button_text = tr("OK")
     dialog.cancel_button_text = tr("Back")
 
-    # An AcceptDialog does not arrange its children: every direct child is put at the
-    # content origin, on top of the others. The rows live in a column of their own.
+    # AcceptDialog stretches its single child to the content area, but it does not stack
+    # several children: every direct child would be put at the content origin, on top of
+    # the others. The rows therefore live in one column.
     var content = VBoxContainer.new()
     content.add_theme_constant_override("separation", 8)
     dialog.add_child(content)
@@ -158,6 +196,17 @@ func _build_new_game_dialog():
     )
     name_row.add_child(random_button)
     content.add_child(name_row)
+
+    # The world settings unfold right under their own button: the panel is part of the
+    # dialog, so the player can keep the settings in view while the game is being set up.
+    world_settings_button = Button.new()
+    world_settings_button.text = tr("World settings")
+    world_settings_button.toggle_mode = true
+    world_settings_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+    world_settings_button.toggled.connect(_on_world_settings_toggled)
+    content.add_child(world_settings_button)
+
+    _build_world_settings_panel(content)
 
     # The name is one question and the mods are another, with a window of their own: the
     # line keeps the button of the second window apart from the name of the first.
@@ -191,6 +240,99 @@ func _build_mods_window():
     add_child(window)
     mods_window = window
 
+# The world settings of a new game. For now they hold only the map size; the column grows
+# downwards as more settings are added, and the mods button is pushed down with it.
+func _build_world_settings_panel(parent: VBoxContainer):
+    world_settings_panel = VBoxContainer.new()
+    world_settings_panel.visible = false
+    world_settings_panel.add_theme_constant_override("separation", 8)
+    parent.add_child(world_settings_panel)
+
+    # The settings sit a little deeper than their button, so that the nesting reads
+    # without a frame around the panel.
+    var margin := MarginContainer.new()
+    margin.add_theme_constant_override("margin_left", 12)
+    world_settings_panel.add_child(margin)
+
+    var column := VBoxContainer.new()
+    column.add_theme_constant_override("separation", 8)
+    margin.add_child(column)
+
+    # The map size: a preset dropdown and a custom side field that appears only when
+    # "Custom size" is chosen. The map is square, so one side applies to width and height.
+    var heading := Label.new()
+    heading.text = tr("Map size")
+    heading.theme_type_variation = &"SectionHeading"
+    column.add_child(heading)
+
+    map_size_option = OptionButton.new()
+    map_size_option.add_item(tr("Small (30×30)"))
+    map_size_option.add_item(tr("Medium (60×60)"))
+    map_size_option.add_item(tr("Large (100×100)"))
+    map_size_option.add_item(tr("Huge (150×150)"))
+    map_size_option.add_item(tr("Giant (200×200)"))
+    map_size_option.add_item(tr("Custom size"))
+    map_size_option.select(MAP_SIZE_PRESETS.find(DEFAULT_MAP_SIZE))
+    map_size_option.item_selected.connect(_on_map_size_selected)
+    column.add_child(map_size_option)
+
+    custom_size_row = HBoxContainer.new()
+    custom_size_row.add_theme_constant_override("separation", 6)
+    custom_size_row.visible = false
+    var custom_label := Label.new()
+    custom_label.text = tr("Side length")
+    custom_size_row.add_child(custom_label)
+    custom_size_edit = LineEdit.new()
+    custom_size_edit.custom_minimum_size = Vector2(80, 30)
+    custom_size_edit.max_length = 3
+    custom_size_edit.tooltip_text = tr("A whole number from %d to %d.") % [MIN_MAP_SIZE, MAX_MAP_SIZE]
+    custom_size_edit.text_changed.connect(_on_custom_size_text_changed)
+    custom_size_edit.focus_exited.connect(_normalize_custom_size)
+    custom_size_row.add_child(custom_size_edit)
+    column.add_child(custom_size_row)
+
+func _on_world_settings_toggled(expanded: bool):
+    world_settings_panel.visible = expanded
+
+# The custom row is shown only when the player picked "Custom size" (the last item).
+func _on_map_size_selected(index: int):
+    var custom := index == MAP_SIZE_PRESETS.size()
+    custom_size_row.visible = custom
+    if not custom:
+        return
+    if custom_size_edit.text.strip_edges().is_empty():
+        custom_size_edit.text = str(DEFAULT_MAP_SIZE)
+    custom_size_edit.grab_focus()
+    custom_size_edit.select_all()
+
+# The side input accepts only digits: the map size is a whole positive number.
+func _on_custom_size_text_changed(text: String):
+    var filtered := ""
+    for ch in text:
+        if ch.is_valid_int():
+            filtered += ch
+    if filtered != text:
+        custom_size_edit.text = filtered
+
+# A number outside the allowed range is pulled to the nearest bound when the field loses
+# focus, so the player sees the value the game is about to use.
+func _normalize_custom_size():
+    custom_size_edit.text = str(_selected_map_size())
+
+# The side of the square map chosen in the world settings. For a preset it is its fixed
+# value; for "Custom size" it is the clamped number in the input field. Falls back to the
+# default when the settings have not been built (a direct start of a new game).
+func _selected_map_size() -> int:
+    if map_size_option == null:
+        return DEFAULT_MAP_SIZE
+    var index := map_size_option.selected
+    if index >= 0 and index < MAP_SIZE_PRESETS.size():
+        return MAP_SIZE_PRESETS[index]
+    var raw := custom_size_edit.text.strip_edges()
+    if raw.is_empty():
+        return DEFAULT_MAP_SIZE
+    return clampi(int(raw), MIN_MAP_SIZE, MAX_MAP_SIZE)
+
 # One window at a time: a window of the mods is exclusive, so the dialog of the name steps
 # aside and comes back when the mods are closed. Neither of the two ever changes its width.
 func _open_mods_window():
@@ -201,11 +343,11 @@ func _open_mods_window():
 func _on_mods_window_closed():
     _refresh_mods_button()
     if new_game_dialog != null:
-        new_game_dialog.popup_centered()
+        _popup_new_game_dialog()
         city_name_edit.grab_focus()
 
 # The mods window belongs to the dialog of a new game: a game that is not started leaves
-# no window behind it.
+# no window behind it. The world settings live inside the dialog and go away with it.
 func _on_new_game_canceled():
     if mods_window != null:
         mods_window.hide()
@@ -257,6 +399,7 @@ func _start_new_game(city_name: String):
         city_name = GameData.get_random_city_name()
     SaveManager.new_game()
     CityData.city_name = city_name.strip_edges()
+    CityData.world_map_size = _selected_map_size()
     # The overlay is hung on the ROOT, not on the menu: the scene change frees the
     # menu, and the world generation runs inside MainMap. MainMap updates the very
     # same bar and removes it when the world is ready.

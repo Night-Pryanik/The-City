@@ -441,6 +441,9 @@ msgstr "К гексу уже проложена дорога"
 msgid "A technology is being researched"
 msgstr "Изучается технология"
 
+msgid "A whole number from %d to %d."
+msgstr "Целое число от %d до %d."
+
 msgid "Active bonuses: (coming later)"
 msgstr "Активные бонусы: (будут позже)"
 
@@ -936,6 +939,9 @@ msgstr "Создание нового мира..."
 msgid "Culture:"
 msgstr "Культура:"
 
+msgid "Custom size"
+msgstr "Свой размер"
+
 msgid "Cyrillic"
 msgstr "кириллица"
 
@@ -1095,6 +1101,9 @@ msgstr "Генерация рельефа..."
 msgid "Generating seas..."
 msgstr "Генерация морей..."
 
+msgid "Giant (200×200)"
+msgstr "Гигантская (200×200)"
+
 msgid "Go to the technology list"
 msgstr "Перейти к списку технологий"
 
@@ -1136,6 +1145,9 @@ msgstr "Скрыть редактор"
 
 msgid "Historical background:"
 msgstr "Историческая справка:"
+
+msgid "Huge (150×150)"
+msgstr "Огромная (150×150)"
 
 msgid "Icon of group \"%s\" taken from goods \"%s\""
 msgstr "Иконка группы «%s» взята у товара «%s»"
@@ -1221,6 +1233,9 @@ msgstr "Язык интерфейса и игровых данных. Пункт
 msgid "Language of the system"
 msgstr "Язык системы"
 
+msgid "Large (100×100)"
+msgstr "Большая (100×100)"
+
 msgid "Left-click on a hex to place: %s"
 msgstr "Кликните левой кнопкой по гексу, чтобы разместить: %s"
 
@@ -1242,6 +1257,9 @@ msgstr "Перемещение карты"
 msgid "Map movement at window edges"
 msgstr "Перемещение карты у краёв окна"
 
+msgid "Map size"
+msgstr "Размер карты"
+
 msgid "Map tooltip delay"
 msgstr "Задержка появления всплывающей подсказки на карте"
 
@@ -1259,6 +1277,9 @@ msgstr "Возможно, вы имели в виду группу продук�
 
 msgid "Maybe you meant the product \"%s\"?"
 msgstr "Возможно, вы имели в виду продукт \"%s\"?"
+
+msgid "Medium (60×60)"
+msgstr "Средняя (60×60)"
 
 msgid "Menu"
 msgstr "Меню"
@@ -1797,8 +1818,14 @@ msgstr "Показывать границы между клетками"
 msgid "Show clock"
 msgstr "Показывать часы"
 
+msgid "Side length"
+msgstr "Длина стороны"
+
 msgid "Slot %d:"
 msgstr "Слот %d:"
+
+msgid "Small (30×30)"
+msgstr "Маленькая (30×30)"
 
 msgid "Sold %d units of %s to %s."
 msgstr "Продано %d ед. %s в городок %s."
@@ -2192,6 +2219,9 @@ msgstr "Труд: %d"
 
 msgid "Work: %d (%.0f sec)"
 msgstr "Труд: %d (%.0f сек)"
+
+msgid "World settings"
+msgstr "Настройки мира"
 
 msgid "X"
 msgstr "X"
@@ -2601,6 +2631,10 @@ msgstr "Дом шелкопряда"
 msgctxt "buildings.name"
 msgid "Slaughterhouse"
 msgstr "Бойня"
+
+msgctxt "buildings.name"
+msgid "Small (30×30)"
+msgstr "Маленькая (30×30)"
 
 msgctxt "buildings.name"
 msgid "Smelter"

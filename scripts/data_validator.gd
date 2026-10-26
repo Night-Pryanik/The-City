@@ -558,8 +558,6 @@ const CLIMATE_FIELDS := {
 }
 
 const MAP_CONFIG_FIELDS := {
-    "map_rows": LEAF,
-    "map_cols": LEAF,
     "start_ring_rows": LEAF,
     "start_ring_cols": LEAF,
     "region_width": LEAF,
