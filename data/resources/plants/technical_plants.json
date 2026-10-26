@@ -538,6 +538,24 @@
       "produces": { "sugar_cane": 10 },
       "icon": "sugar_cane.png",
       "color": [ 150, 200, 100 ]
+    },
+    {
+      "id": "chili_field", "price": 7,
+      "name": "Chili",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "spice_plants",
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [
+        "none"
+      ],
+      "allowed_climate_zones": [ "savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "chili": 10 },
+      "icon": "chili.png",
+      "color": [ 200, 80, 40 ]
     }
   ]
 }
