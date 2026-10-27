@@ -35,42 +35,50 @@ current_tab = 0
 layout_mode = 2
 metadata/_tab_index = 0
 
-[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/Игра" unique_id=871000001]
+[node name="Scroll" type="ScrollContainer" parent="TabContainer/Игра"]
 layout_mode = 1
-anchors_preset = 10
+anchors_preset = 15
 anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/Игра/Scroll" unique_id=871000001]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="LanguageLabel" type="Label" parent="TabContainer/Игра/VBoxContainer"]
+[node name="LanguageLabel" type="Label" parent="TabContainer/Игра/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Language"
 
-[node name="LanguageHint" type="Label" parent="TabContainer/Игра/VBoxContainer"]
+[node name="LanguageHint" type="Label" parent="TabContainer/Игра/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "Language of the interface and of the game data. The option \"Language of the system\" follows the language of your operating system."
 autowrap_mode = 3
 
-[node name="LanguageOptionButton" type="OptionButton" parent="TabContainer/Игра/VBoxContainer"]
+[node name="LanguageOptionButton" type="OptionButton" parent="TabContainer/Игра/Scroll/VBoxContainer"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="TabContainer/Игра/VBoxContainer" unique_id=871000002]
+[node name="Label" type="Label" parent="TabContainer/Игра/Scroll/VBoxContainer" unique_id=871000002]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Resource data refresh interval"
 
-[node name="LabelHint" type="Label" parent="TabContainer/Игра/VBoxContainer" unique_id=871000003]
+[node name="LabelHint" type="Label" parent="TabContainer/Игра/Scroll/VBoxContainer" unique_id=871000003]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
 autowrap_mode = 3
 
-[node name="HBoxContainer" type="HBoxContainer" parent="TabContainer/Игра/VBoxContainer" unique_id=871000004]
+[node name="HBoxContainer" type="HBoxContainer" parent="TabContainer/Игра/Scroll/VBoxContainer" unique_id=871000004]
 layout_mode = 2
 
-[node name="ResourceDisplayIntervalSlider" type="HSlider" parent="TabContainer/Игра/VBoxContainer/HBoxContainer" unique_id=871000005]
+[node name="ResourceDisplayIntervalSlider" type="HSlider" parent="TabContainer/Игра/Scroll/VBoxContainer/HBoxContainer" unique_id=871000005]
 custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 min_value = 1.0
@@ -78,7 +86,7 @@ max_value = 5.0
 step = 1.0
 value = 1.0
 
-[node name="ResourceDisplayIntervalValueLabel" type="Label" parent="TabContainer/Игра/VBoxContainer/HBoxContainer" unique_id=871000006]
+[node name="ResourceDisplayIntervalValueLabel" type="Label" parent="TabContainer/Игра/Scroll/VBoxContainer/HBoxContainer" unique_id=871000006]
 custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 text = "1 sec"
@@ -98,72 +106,80 @@ visible = false
 layout_mode = 2
 metadata/_tab_index = 3
 
-[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/Интерфейс" unique_id=1636219491]
+[node name="Scroll" type="ScrollContainer" parent="TabContainer/Интерфейс"]
 layout_mode = 1
-anchors_preset = 10
+anchors_preset = 15
 anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/Интерфейс/Scroll" unique_id=1636219491]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="FontLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="FontLabel" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Font"
 
-[node name="FontHint" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="FontHint" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
 autowrap_mode = 3
 
-[node name="FontOptionButton" type="OptionButton" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="FontOptionButton" type="OptionButton" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 size_flags_horizontal = 0
 
-[node name="ThemeLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="ThemeLabel" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Interface theme"
 
-[node name="ThemeHint" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="ThemeHint" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "The colours of every window, panel and control. The choice applies at once and is remembered; a theme file put into the presets folder appears here without restarting the game."
 autowrap_mode = 3
 
-[node name="ThemeOptionButton" type="OptionButton" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="ThemeOptionButton" type="OptionButton" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 size_flags_horizontal = 0
 
-[node name="Label" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639215]
+[node name="Label" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer" unique_id=1054639215]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Tile borders"
 
-[node name="HexBordersCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1647564177]
+[node name="HexBordersCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/Scroll/VBoxContainer" unique_id=1647564177]
 layout_mode = 2
 text = "Show borders between tiles"
 
-[node name="Label2" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1944413823]
+[node name="Label2" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer" unique_id=1944413823]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Map movement"
 
-[node name="EdgeScrollingCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1099766743]
+[node name="EdgeScrollingCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/Scroll/VBoxContainer" unique_id=1099766743]
 layout_mode = 2
 text = "Map movement at window edges"
 
-[node name="Label7" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="Label7" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Edge scrolling speed"
 
-[node name="HBoxContainer5" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="HBoxContainer5" type="HBoxContainer" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 
-[node name="EdgeScrollSpeedSlider" type="HSlider" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer5"]
+[node name="EdgeScrollSpeedSlider" type="HSlider" parent="TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer5"]
 custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 min_value = 100.0
@@ -171,20 +187,20 @@ max_value = 1000.0
 step = 50.0
 value = 300.0
 
-[node name="EdgeScrollSpeedValueLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer5"]
+[node name="EdgeScrollSpeedValueLabel" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer5"]
 custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 text = "300 px/s"
 
-[node name="Label3" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639220]
+[node name="Label3" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer" unique_id=1054639220]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Map tooltip delay"
 
-[node name="HBoxContainer" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639221]
+[node name="HBoxContainer" type="HBoxContainer" parent="TabContainer/Интерфейс/Scroll/VBoxContainer" unique_id=1054639221]
 layout_mode = 2
 
-[node name="TooltipDelaySlider" type="HSlider" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer" unique_id=1054639222]
+[node name="TooltipDelaySlider" type="HSlider" parent="TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer" unique_id=1054639222]
 custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 min_value = 0.0
@@ -192,20 +208,20 @@ max_value = 2.0
 step = 0.25
 value = 0.5
 
-[node name="TooltipDelayValueLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer" unique_id=1054639223]
+[node name="TooltipDelayValueLabel" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer" unique_id=1054639223]
 custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 text = "0.50 sec"
 
-[node name="Label4" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639224]
+[node name="Label4" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer" unique_id=1054639224]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Extended map tooltip delay"
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639225]
+[node name="HBoxContainer2" type="HBoxContainer" parent="TabContainer/Интерфейс/Scroll/VBoxContainer" unique_id=1054639225]
 layout_mode = 2
 
-[node name="ExtendedTooltipDelaySlider" type="HSlider" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer2" unique_id=1054639226]
+[node name="ExtendedTooltipDelaySlider" type="HSlider" parent="TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer2" unique_id=1054639226]
 custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 min_value = 0.0
@@ -213,20 +229,20 @@ max_value = 5.0
 step = 0.25
 value = 1.0
 
-[node name="ExtendedTooltipDelayValueLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer2" unique_id=1054639227]
+[node name="ExtendedTooltipDelayValueLabel" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer2" unique_id=1054639227]
 custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 text = "1.00 sec"
 
-[node name="Label5" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639228]
+[node name="Label5" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer" unique_id=1054639228]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Tooltip delay (building details, treasury breakdown)"
 
-[node name="HBoxContainer3" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639229]
+[node name="HBoxContainer3" type="HBoxContainer" parent="TabContainer/Интерфейс/Scroll/VBoxContainer" unique_id=1054639229]
 layout_mode = 2
 
-[node name="BuildingDetailDelaySlider" type="HSlider" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer3" unique_id=1054639230]
+[node name="BuildingDetailDelaySlider" type="HSlider" parent="TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer3" unique_id=1054639230]
 custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 min_value = 0.0
@@ -234,20 +250,20 @@ max_value = 2.0
 step = 0.25
 value = 0.5
 
-[node name="BuildingDetailDelayValueLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer3" unique_id=1054639231]
+[node name="BuildingDetailDelayValueLabel" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer3" unique_id=1054639231]
 custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 text = "0.50 sec"
 
-[node name="Label6" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="Label6" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "HUD message display time"
 
-[node name="HBoxContainer4" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="HBoxContainer4" type="HBoxContainer" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 
-[node name="HudMessageDurationSlider" type="HSlider" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer4"]
+[node name="HudMessageDurationSlider" type="HSlider" parent="TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer4"]
 custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 min_value = 1.0
@@ -255,26 +271,26 @@ max_value = 10.0
 step = 0.5
 value = 3.0
 
-[node name="HudMessageDurationValueLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer4"]
+[node name="HudMessageDurationValueLabel" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer4"]
 custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 text = "3.0 sec"
 
-[node name="Label8" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="Label8" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Clock"
 
-[node name="ClockCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="ClockCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 text = "Show clock"
 
-[node name="Label9" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="Label9" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
 text = "Performance"
 
-[node name="FpsCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/VBoxContainer"]
+[node name="FpsCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 text = "Show FPS counter"
 
@@ -297,5 +313,5 @@ text = "Back"
 ; on. The block is declared here as data — the mechanism is scripts/settings_block.gd.
 [node name="EdgeScrollSpeedBlock" type="Node" parent="."]
 script = ExtResource("2_blk01")
-gate = NodePath("../TabContainer/Интерфейс/VBoxContainer/EdgeScrollingCheckBox")
-dependents = [NodePath("../TabContainer/Интерфейс/VBoxContainer/Label7"), NodePath("../TabContainer/Интерфейс/VBoxContainer/HBoxContainer5")]
+gate = NodePath("../TabContainer/Интерфейс/Scroll/VBoxContainer/EdgeScrollingCheckBox")
+dependents = [NodePath("../TabContainer/Интерфейс/Scroll/VBoxContainer/Label7"), NodePath("../TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer5")]
