@@ -20,6 +20,8 @@
 # is not switched on, and the list says what is wrong with it.
 extends VBoxContainer
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 const ROW_INDENT := 6
 const MAX_SHOWN_PROBLEMS := 5
 const NAME_FONT_SIZE := 18
@@ -117,21 +119,21 @@ func _make_row(manifest: Dictionary) -> Control:
     var authors := Label.new()
     authors.text = tr("by %s") % ", ".join(PackedStringArray(manifest["authors"]))
     authors.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
-    authors.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+    authors.theme_type_variation = &"MutedLabel"
     authors.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     column.add_child(authors)
 
     var description := Label.new()
     description.text = str(manifest["description"])
     description.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
-    description.add_theme_color_override("font_color", Color(0.78, 0.78, 0.78))
+    description.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     description.visible = not description.text.is_empty()
     column.add_child(description)
 
     var status := Label.new()
     status.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
-    status.add_theme_color_override("font_color", Color(0.95, 0.75, 0.4))
+    status.add_theme_color_override("font_color", UI_THEME.color("warning"))
     status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     column.add_child(status)
     _status_labels[mod_id] = status
@@ -152,7 +154,7 @@ func _make_header_line(manifest: Dictionary) -> Control:
     var version := Label.new()
     version.text = str(manifest["version"])
     version.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
-    version.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+    version.theme_type_variation = &"MutedLabel"
     version.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     line.add_child(version)
 
@@ -162,7 +164,7 @@ func _make_hint(text: String) -> Label:
     var label := Label.new()
     label.text = text
     label.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
-    label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+    label.theme_type_variation = &"MutedLabel"
     label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     return label
 
@@ -343,7 +345,7 @@ func _names_of(ids: Array) -> String:
 
 func _show_message(text: String) -> void:
     problems_label.text = text
-    problems_label.add_theme_color_override("font_color", Color(0.95, 0.75, 0.4))
+    problems_label.add_theme_color_override("font_color", UI_THEME.color("warning"))
     _set_problems_visible(not text.is_empty())
 
 func _show_problems(problems: Array) -> void:
@@ -356,7 +358,8 @@ func _show_problems(problems: Array) -> void:
     for problem in problems:
         push_warning("Mod data: " + str(problem.get("message", "")))
     problems_label.text = "\n".join(PackedStringArray(lines))
-    problems_label.add_theme_color_override("font_color", Color(1.0, 0.62, 0.62))
+    problems_label.add_theme_color_override(
+            "font_color", UI_THEME.color("expense").lightened(0.45))
     _set_problems_visible(true)
 
 func _clear_problems() -> void:

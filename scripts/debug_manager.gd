@@ -4,6 +4,8 @@
 # under the window is blocked while the menu is open.
 extends Control
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 var main_map: Node
 var is_open: bool = false
 
@@ -61,14 +63,7 @@ func _build_ui():
     _panel.mouse_filter = Control.MOUSE_FILTER_STOP
     add_child(_panel)
 
-    var style = StyleBoxFlat.new()
-    style.bg_color = Color(0.15, 0.15, 0.15, 0.95)
-    style.border_width_left = 2
-    style.border_width_top = 2
-    style.border_width_right = 2
-    style.border_width_bottom = 2
-    style.border_color = Color(0.5, 0.5, 0.5)
-    _panel.add_theme_stylebox_override("panel", style)
+    _panel.add_theme_stylebox_override("panel", UI_THEME.window_plate())
 
     # The title (dragging)
     _title_bar = Panel.new()
@@ -78,13 +73,12 @@ func _build_ui():
     _panel.add_child(_title_bar)
 
     var title_style = StyleBoxFlat.new()
-    title_style.bg_color = Color(0.25, 0.25, 0.25, 1.0)
+    title_style.bg_color = UI_THEME.color("control_bg")
     _title_bar.add_theme_stylebox_override("panel", title_style)
 
     _title_label = Label.new()
     _title_label.text = tr("Debug menu")
     _title_label.position = Vector2(8, 6)
-    _title_label.add_theme_color_override("font_color", Color.WHITE)
     _title_label.add_theme_font_size_override("font_size", 16)
     _title_bar.add_child(_title_label)
 
@@ -107,7 +101,7 @@ func _build_ui():
     # The status row (hints)
     _status_label = Label.new()
     _status_label.text = ""
-    _status_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
+    _status_label.add_theme_color_override("font_color", UI_THEME.color("warning"))
     _status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _content_vbox.add_child(_status_label)
 

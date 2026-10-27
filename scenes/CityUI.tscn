@@ -2,18 +2,6 @@
 
 [ext_resource type="Script" uid="uid://db8sfnu5rqjpf" path="res://scripts/city_ui.gd" id="1_sxg55"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dxjuo"]
-bg_color = Color(0.15686275, 0.15686275, 0.15686275, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yrkmr"]
-bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s5pkp"]
-bg_color = Color(0.11764706, 0.11764706, 0.11764706, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jhs18"]
-bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
-
 [node name="CityUi" type="Control" unique_id=1004795705]
 layout_mode = 3
 anchors_preset = 0
@@ -30,7 +18,7 @@ offset_right = 1253.0
 offset_bottom = 768.0
 grow_horizontal = 0
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_dxjuo")
+theme_type_variation = &"SurfacePanel"
 
 [node name="VBoxContainer" type="VBoxContainer" parent="RightPanel" unique_id=1613617050]
 layout_mode = 1
@@ -53,7 +41,7 @@ anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 50.0
 grow_horizontal = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_yrkmr")
+theme_type_variation = &"SurfaceRaised"
 
 [node name="TabBar" type="HBoxContainer" parent="TabBarPanel" unique_id=388558789]
 layout_mode = 1
@@ -122,7 +110,7 @@ offset_right = 824.0
 offset_bottom = 768.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_s5pkp")
+theme_type_variation = &"SurfaceInset"
 
 [node name="ResourcesPanel" type="Control" parent="ContentPanel" unique_id=939479849]
 layout_mode = 1
@@ -456,7 +444,7 @@ offset_top = 718.0
 offset_bottom = 768.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_jhs18")
+theme_type_variation = &"SurfaceRaised"
 
 [node name="MessageLabel" type="Label" parent="BottomPanel" unique_id=2138032127]
 layout_mode = 1

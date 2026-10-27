@@ -1,0 +1,46 @@
+{
+    "id": "classic",
+    "name_key": "Theme: Classic",
+    "chrome": {
+        "panel_bg": "#1C1C1CF5",
+        "panel_border": "#737373",
+        "control_bg": "#333338",
+        "control_hover": "#4D4D57",
+        "control_pressed": "#212126",
+        "control_disabled": "#262626",
+        "control_border": "#9E9EA8",
+        "control_border_disabled": "#545454",
+        "text": "#FFFFFF",
+        "text_secondary": "#CCCCCC",
+        "text_muted": "#A6A6A6",
+        "info": "#73BFFF",
+        "accent": "#C8C8C8",
+        "accent_hover": "#DCDCDC",
+        "accent_text": "#000000",
+        "field_bg": "#26262A",
+        "field_border": "#4D4D57",
+        "focus_border": "#9E9EA8",
+        "track": "#262626",
+        "fill": "#4D7FBF",
+        "tab_active_bg": "#2B2B2B",
+        "tab_active_text": "#FFFFFF",
+        "tooltip_bg": "#333333",
+        "tooltip_border": "#999999",
+        "scrollbar": "#4D4D4D",
+        "scrollbar_hover": "#7A7A7A",
+        "hairline": "#8C8C8C",
+        "row_hover": "#3F3F3F",
+        "row_selected": "#4D4D4D"
+    },
+    "data": {
+        "price": "#FF8100",
+        "quality": "#4DFFEA",
+        "income": "#4DD94D",
+        "expense": "#E64D4D",
+        "warning": "#FFD933"
+    },
+    "metrics": {
+        "panel_radius": 4,
+        "control_radius": 3
+    }
+}

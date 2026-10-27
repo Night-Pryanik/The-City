@@ -3,16 +3,6 @@
 [ext_resource type="Script" uid="uid://waateaq3ll8s" path="res://scripts/settings_menu.gd" id="1_05p07"]
 [ext_resource type="Script" uid="uid://c4v61lty6k4kt" path="res://scripts/settings_block.gd" id="2_blk01"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_myx47"]
-bg_color = Color(0.29803923, 0.29803923, 0.29803923, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_background"]
-bg_color = Color(0.29803923, 0.29803923, 0.29803923, 1)
-
 [node name="SettingsMenu" type="Control" unique_id=1171873180]
 layout_mode = 3
 anchors_preset = 15
@@ -30,7 +20,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_background")
+theme_type_variation = &"SurfacePanel"
 
 [node name="TabContainer" type="TabContainer" parent="." unique_id=2037806971]
 layout_mode = 1
@@ -39,7 +29,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_myx47")
 current_tab = 0
 
 [node name="Игра" type="Control" parent="TabContainer" unique_id=539487562]

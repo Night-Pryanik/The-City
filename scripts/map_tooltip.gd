@@ -1,5 +1,7 @@
 class_name MapTooltip
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 var _tooltip_text_label: RichTextLabel
 var _tooltip_products_container: VBoxContainer
 var _map_renderer
@@ -21,7 +23,8 @@ var _extended_col: int = -1
 
 # The colour of the road-capacity note in the "Produces:" rows. The note explains that the
 # route, not the improvement, is the limit, so it is set apart from the name and the number.
-const ROUTE_SHORTFALL_COLOR := Color(0.95, 0.35, 0.35)
+static func route_shortfall_color() -> Color:
+    return UI_THEME.color("expense")
 
 # The road icon that replaces the word "route" in the road-capacity note. The full note
 # ("(route 10 units/sec)") was long: in the narrow left column of the panel the row ran past
@@ -234,7 +237,7 @@ func _append_route_shortfall(item: Dictionary, prod_id: String, shortfall: Dicti
     item["route_text"] = " %s %s" % [_format_speed(
             float(shortfall[prod_id].get("avg_speed", 0.0))),
             TranslationServer.translate("units/sec")]
-    item["route_color"] = ROUTE_SHORTFALL_COLOR
+    item["route_color"] = route_shortfall_color()
 
 
 # Formats a speed for the rows: whole numbers without the decimal part (10, not 10.0), the
@@ -266,17 +269,18 @@ func delivery_lines(row: int, col: int) -> Array:
     var in_transit := int(status.get("in_transit", 0))
     if pending <= 0 and in_transit <= 0:
         return lines
-    lines.append({"type": "label", "text": tr("Delivery:"), "color": Color(0.8, 0.8, 0.8)})
+    lines.append({"type": "label", "text": tr("Delivery:"),
+            "color": UI_THEME.color("text_secondary")})
     if pending > 0:
         # The queue is exactly what the route cannot carry fast enough: it is the
         # visible sign of the road being the bottleneck, hence the warm colour.
         lines.append({"type": "label", "text": tr("  Waiting to ship: %d units") % pending,
-                "color": Color(0.95, 0.75, 0.35)})
+                "color": UI_THEME.color("warning")})
     if in_transit > 0:
         lines.append({"type": "label",
                 "text": tr("  In transit: %d units (arriving within %s sec)")
                         % [in_transit, _format_speed(float(status.get("eta", 0.0)))],
-                "color": Color(0.7, 0.9, 0.7)})
+                "color": UI_THEME.color("income").lightened(0.35)})
     return lines
 
 
@@ -302,7 +306,7 @@ func render_products(products: Array, container: Node, word_wrap: bool = false):
             var label = Label.new()
             label.text = item.get("text", "")
             label.autowrap_mode = wrap_mode
-            label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+            label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
             container.add_child(label)
         elif type == "product":
             var hbox = HBoxContainer.new()
@@ -327,7 +331,7 @@ func render_products(products: Array, container: Node, word_wrap: bool = false):
                 label_item.text = "%s: %s%s" % [item.get("name", ""), amount_str, str(item.get("suffix", ""))]
             else:
                 label_item.text = item.get("name", "")
-            var item_color: Color = item.get("color", Color.WHITE)
+            var item_color: Color = item.get("color", UI_THEME.color("text"))
             label_item.add_theme_color_override("font_color", item_color)
             hbox.add_child(label_item)
             # The road-capacity note: "(" + the road icon + " 10 units/sec)". The word "route" is
@@ -337,7 +341,7 @@ func render_products(products: Array, container: Node, word_wrap: bool = false):
             # parts stay together and take as little width as possible.
             var route_text := str(item.get("route_text", ""))
             if route_text != "":
-                var route_color: Color = item.get("route_color", ROUTE_SHORTFALL_COLOR)
+                var route_color: Color = item.get("route_color", route_shortfall_color())
                 var note_box = HBoxContainer.new()
                 note_box.add_theme_constant_override("separation", 0)
                 var route_open = Label.new()
@@ -370,7 +374,8 @@ func render_products(products: Array, container: Node, word_wrap: bool = false):
             var label = Label.new()
             label.text = item.get("text", "")
             label.autowrap_mode = wrap_mode
-            label.add_theme_color_override("font_color", item.get("color", Color(0.8, 0.8, 0.8)))
+            label.add_theme_color_override("font_color",
+                    item.get("color", UI_THEME.color("text_secondary")))
             container.add_child(label)
 
 
@@ -512,7 +517,7 @@ func _collect_extended_block(row: int, col: int, tile_data: Array) -> Array:
     var road_line := road_level_line(row, col)
     if not road_line.is_empty():
         extra_products.append({"type": "label", "text": tr("Road: %s") % road_line,
-                "color": Color(0.7, 0.9, 0.7)})
+                "color": UI_THEME.color("income").lightened(0.35)})
 
     # The delivery rows sit right after the road level: both describe the connection of
     # the hex with the city, and the queue is the first thing a player looks for when
@@ -877,7 +882,8 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         result.append(item)
 
     for mod in modifiers:
-        result.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
+        result.append({"type": "label", "text": " %s" % mod.get("label", ""),
+            "color": UI_THEME.color("income").lightened(0.35)})
 
     # --- The consumption of the profession ---
     # We show the list of the resources that the profession of the worker on this hex
@@ -912,6 +918,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
                         "icon_path": cons_icon_path
                     })
                 else:
-                    result.append({"type": "label", "text": cons_label, "color": Color(0.85, 0.85, 0.85)})
+                    result.append({"type": "label", "text": cons_label,
+                        "color": UI_THEME.color("text_secondary")})
 
     return result

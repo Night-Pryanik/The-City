@@ -7,6 +7,8 @@ extends Node2D
 
 const RESOURCE_ICON_SIZE = 80
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 var tile_data = []
 var main_map: Node
 
@@ -68,6 +70,9 @@ func _get_visible_hex_range() -> Dictionary:
         "col_end": col_end
     }
 
+# The colour of a bar fill says what kind of work runs on the hex, so it is a data token
+# of the palette — the same language the numbers of the city windows speak. The track and
+# the outline are the neutral tokens that keep the bar legible over any terrain.
 func _draw_progress_bars(row: int, col: int):
     if main_map == null:
         return
@@ -89,9 +94,9 @@ func _draw_progress_bars(row: int, col: int):
                 var pasture_bar_height = 6
                 var pasture_bar_x = center.x - pasture_bar_width / 2.0
                 var pasture_bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 4
-                draw_rect(Rect2(pasture_bar_x, pasture_bar_y, pasture_bar_width, pasture_bar_height), Color(0.2, 0.2, 0.2))
-                draw_rect(Rect2(pasture_bar_x, pasture_bar_y, pasture_bar_width * fill_frac, pasture_bar_height), Color(0.85, 0.55, 0.35))
-                draw_rect(Rect2(pasture_bar_x, pasture_bar_y, pasture_bar_width, pasture_bar_height), Color.WHITE, false)
+                draw_rect(Rect2(pasture_bar_x, pasture_bar_y, pasture_bar_width, pasture_bar_height), UI_THEME.color("track"))
+                draw_rect(Rect2(pasture_bar_x, pasture_bar_y, pasture_bar_width * fill_frac, pasture_bar_height), UI_THEME.color("price"))
+                draw_rect(Rect2(pasture_bar_x, pasture_bar_y, pasture_bar_width, pasture_bar_height), UI_THEME.color("text"), false)
 
     # The progress bar of the technology research that unlocks:
     # 1) the resource itself (tech_required), or
@@ -119,10 +124,10 @@ func _draw_progress_bars(row: int, col: int):
             var bar_height = 6
             var bar_x = center.x - bar_width / 2.0
             var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 4
-            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
+            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), UI_THEME.color("track"))
             var fill_width = bar_width * CityData.research_progress
-            draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.GREEN)
-            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
+            draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), UI_THEME.color("income"))
+            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), UI_THEME.color("text"), false)
 
     if main_map.build_manager.is_building(row, col):
         var progress_data = main_map.build_manager.get_progress(row, col)
@@ -131,12 +136,12 @@ func _draw_progress_bars(row: int, col: int):
             var bar_height = 6
             var bar_x = center.x - bar_width / 2.0
             var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10
-            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
+            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), UI_THEME.color("track"))
             var work_cost = progress_data.get("work_cost", 1.0)
             var progress = progress_data.get("progress", 0.0)
             var fill_width = bar_width * clamp(progress / work_cost, 0.0, 1.0)
-            draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
-            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
+            draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), UI_THEME.color("warning"))
+            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), UI_THEME.color("text"), false)
 
     # --- The progress bar of the current stage of a staged project (a road per hex) ---
     # It is drawn on the hex that the segment under construction connects to the
@@ -152,18 +157,18 @@ func _draw_progress_bars(row: int, col: int):
             # Below the construction bar, so as not to overlap it: a hex can
             # have both an improvement being built and a road segment at once.
             var proj_bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 16
-            draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_bar_width, proj_bar_height), Color(0.2, 0.2, 0.2))
+            draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_bar_width, proj_bar_height), UI_THEME.color("track"))
             var p_work_cost = maxf(1.0, float(project_progress.get("work_cost", 1.0)))
             var p_progress = float(project_progress.get("progress", 0.0))
             var proj_fill_width = proj_bar_width * clamp(p_progress / p_work_cost, 0.0, 1.0)
             # The improvement stage in the "road → improvement" chain is painted yellow —
             # the same colour as an ordinary improvement build: the player must see
             # that an improvement is being built on the hex, and not a road segment.
-            var proj_color := Color(0.45, 0.75, 1.0)
+            var proj_color := UI_THEME.color("info")
             if str(project_progress.get("step_type", "")) == "improvement":
-                proj_color = Color(1.0, 0.85, 0.0)
+                proj_color = UI_THEME.color("warning")
             draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_fill_width, proj_bar_height), proj_color)
-            draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_bar_width, proj_bar_height), Color.WHITE, false)
+            draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_bar_width, proj_bar_height), UI_THEME.color("text"), false)
 
     # --- The territory claim progress bar (buying a chunk for labour) ---
     # It is shown on the first hex of the chunk being claimed.
@@ -173,12 +178,12 @@ func _draw_progress_bars(row: int, col: int):
         var bar_height = 6
         var bar_x = center.x - bar_width / 2.0
         var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10
-        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
+        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), UI_THEME.color("track"))
         var work_cost = expansion_progress.get("work_cost", 1.0)
         var progress = expansion_progress.get("progress", 0.0)
         var fill_width = bar_width * clamp(progress / work_cost, 0.0, 1.0)
-        draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color(0.9, 0.6, 0.2))
-        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
+        draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), UI_THEME.color("price"))
+        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), UI_THEME.color("text"), false)
 
     # --- The chunk scouting progress bar ---
     if main_map.is_scouting and not main_map.scouting_chunk.is_empty():
@@ -189,9 +194,9 @@ func _draw_progress_bars(row: int, col: int):
             var scout_bar_height = 6
             var scout_bar_x = center.x - scout_bar_width / 2.0
             var scout_bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 16
-            draw_rect(Rect2(scout_bar_x, scout_bar_y, scout_bar_width, scout_bar_height), Color(0.2, 0.2, 0.2))
-            draw_rect(Rect2(scout_bar_x, scout_bar_y, scout_bar_width * scout_progress, scout_bar_height), Color(0.2, 0.7, 0.9))
-            draw_rect(Rect2(scout_bar_x, scout_bar_y, scout_bar_width, scout_bar_height), Color.WHITE, false)
+            draw_rect(Rect2(scout_bar_x, scout_bar_y, scout_bar_width, scout_bar_height), UI_THEME.color("track"))
+            draw_rect(Rect2(scout_bar_x, scout_bar_y, scout_bar_width * scout_progress, scout_bar_height), UI_THEME.color("quality"))
+            draw_rect(Rect2(scout_bar_x, scout_bar_y, scout_bar_width, scout_bar_height), UI_THEME.color("text"), false)
 
     # --- The bar of an action that is WAITING in the queue of the active pause ---
     # The simulation is stopped, therefore the bar has no progress yet: it is drawn
@@ -205,8 +210,8 @@ func _draw_progress_bars(row: int, col: int):
             var q_bar_height = 6
             var q_bar_x = center.x - q_bar_width / 2.0
             var q_bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + float(pending.get("bar_offset", 10))
-            draw_rect(Rect2(q_bar_x, q_bar_y, q_bar_width, q_bar_height), Color(0.2, 0.2, 0.2))
-            draw_rect(Rect2(q_bar_x, q_bar_y, q_bar_width, q_bar_height), pending.get("bar_color", Color.YELLOW), false, 2.0)
+            draw_rect(Rect2(q_bar_x, q_bar_y, q_bar_width, q_bar_height), UI_THEME.color("track"))
+            draw_rect(Rect2(q_bar_x, q_bar_y, q_bar_width, q_bar_height), pending.get("bar_color", UI_THEME.color("warning")), false, 2.0)
 
 func _is_resource_revealed(tile: Dictionary) -> bool:
     return MapHelpers.is_resource_revealed(tile)

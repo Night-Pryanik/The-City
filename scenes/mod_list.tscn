@@ -2,22 +2,6 @@
 
 [ext_resource type="Script" path="res://scripts/mod_list.gd" id="1_ml"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_problems"]
-bg_color = Color(0.24, 0.16, 0.16, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.55, 0.3, 0.3, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_frame"]
-bg_color = Color(0.12, 0.12, 0.12, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.28, 0.28, 0.28, 1)
-
 [node name="ModList" type="VBoxContainer"]
 custom_minimum_size = Vector2(860, 0)
 theme_override_constants/separation = 8
@@ -26,7 +10,7 @@ script = ExtResource("1_ml")
 [node name="HintLabel" type="Label" parent="."]
 layout_mode = 2
 text = "Choose the mods for this game. Each save keeps its own set."
-theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
+theme_type_variation = &"MutedLabel"
 
 [node name="Panes" type="HBoxContainer" parent="."]
 layout_mode = 2
@@ -47,7 +31,7 @@ text = "Available mods"
 [node name="Hint" type="Label" parent="Panes/AvailablePane"]
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 12
 text = "Check a mod to add it to the game."
 autowrap_mode = 3
@@ -66,7 +50,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
+theme_type_variation = &"SurfaceInset"
 
 [node name="Scroll" type="ScrollContainer" parent="Panes/AvailablePane/ScrollArea"]
 layout_mode = 1
@@ -100,7 +84,7 @@ text = "Load order"
 [node name="Hint" type="Label" parent="Panes/SelectedPane"]
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 12
 text = "A mod lower in the list overrides the mods above it."
 autowrap_mode = 3
@@ -125,7 +109,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
+theme_type_variation = &"SurfaceInset"
 
 [node name="Scroll" type="ScrollContainer" parent="Panes/SelectedPane/Body/ScrollArea"]
 layout_mode = 1
@@ -169,7 +153,7 @@ size_flags_vertical = 3
 [node name="ProblemsPanel" type="PanelContainer" parent="."]
 visible = false
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_problems")
+theme_type_variation = &"SurfaceProblem"
 
 [node name="ProblemsMargin" type="MarginContainer" parent="ProblemsPanel"]
 layout_mode = 2

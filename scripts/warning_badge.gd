@@ -11,8 +11,14 @@
 # like the map triangle, so it needs neither a texture nor a font in the project.
 extends Control
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 const TRI_SIZE := 18.0
-const FILL_COLOR := Color(0.85, 0.15, 0.15, 0.95)
+
+static func fill_color() -> Color:
+    var fill := UI_THEME.color("expense")
+    fill.a = 0.95
+    return fill
 
 func _init() -> void:
     custom_minimum_size = Vector2(TRI_SIZE, TRI_SIZE)
@@ -33,10 +39,10 @@ func _draw() -> void:
         center + Vector2(-half * 0.9, half * 0.7),
         center + Vector2(half * 0.9, half * 0.7),
     ])
-    draw_colored_polygon(points, FILL_COLOR)
+    draw_colored_polygon(points, fill_color())
     var border := PackedVector2Array(points)
     border.append(points[0])
-    draw_polyline(border, Color.WHITE, 1.5, true)
+    draw_polyline(border, UI_THEME.color("text"), 1.5, true)
     var font := ThemeDB.fallback_font
     if font == null:
         return
@@ -44,4 +50,5 @@ func _draw() -> void:
     var text := "!"
     var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
     var text_pos := Vector2(center.x - text_size.x * 0.5, center.y + text_size.y * 0.5 - 1.0)
-    draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
+    draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size,
+            UI_THEME.color("text"))

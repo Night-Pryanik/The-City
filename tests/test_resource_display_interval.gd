@@ -283,7 +283,7 @@ func _run() -> void:
             check((q_label as RichTextLabel).vertical_alignment == VERTICAL_ALIGNMENT_CENTER,
                 "the quality label text is vertically centered", state)
             var q_expected := "[color=#%s]★[/color] %s" % [
-                res_tab.QUALITY_MARKER_COLOR.to_html(false),
+                res_tab.UiHelpers.quality_marker_color().to_html(false),
                 gd.format_quality_share_text(q_breakdown)]
             check(str((q_label as RichTextLabel).text) == q_expected,
                 "quality label = blue star + storage shares (expected: \"%s\", got: \"%s\")"

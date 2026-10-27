@@ -66,11 +66,12 @@ const CARD_SCENE = preload("res://scenes/TradeResourceCard.tscn")
 # The scene of the card of one resource (see the file of the scene — there is also a list of the nodes
 # to which this script refers).
 const UiHelpers = preload("res://scripts/ui_helpers.gd")
+const UI_THEME = preload("res://scripts/ui_theme.gd")
 
 var internal_list: Node
 var ui_helpers: Node
-# The source of the constants of the styling (QUALITY_MARKER_COLOR) — the same accent
-# of the interface as on the tab "Resources".
+# The source of the styling shared with the tab "Resources" (the quality marker, the
+# toggle highlight) — the same palette accent.
 var worker_manager: Node = null
 
 # WorkerManager is passed from main_map through city_ui.set_worker_manager.
@@ -95,14 +96,10 @@ var unavailable_open: bool = false
 # (see _apply_tooltip). A separate field, and not a check of the node: a Control in
 # Godot 4 has no is_hovered() method, and the hover is most honestly tracked
 # by the signals mouse_entered/mouse_exited.
-const COLOR_TITLE := Color(1, 1, 1, 1)
-const COLOR_CAPTION := Color(0.75, 0.75, 0.75, 1)
-const COLOR_PRICE := Color(1.0, 0.507, 0.0, 1)
-const COLOR_CONSUMPTION := Color(0.9, 0.3, 0.3, 1)
-# The states of the colour/text of the card.
-# the player sees "the price × the expense = these exact money" in one colour.
-const COLOR_INCOME := Color(1.0, 0.807, 0.2, 1)
-const COLOR_DISABLED := Color(0.62, 0.62, 0.62, 1)
+
+# The dimming of a card the market cannot trade (a forbidden resource): the whole card
+# is multiplied by this grey, so that the texts and the icons fade together.
+const DISABLED_MODULATE := Color(0.62, 0.62, 0.62, 1)
 
 func setup(list: Node, helpers: Node) -> void:
     internal_list = list
@@ -154,7 +151,7 @@ func refresh() -> void:
     if internal_list.get_child_count() == 0:
         var empty := Label.new()
         empty.text = tr("Nobody consumes anything yet")
-        empty.add_theme_color_override("font_color", COLOR_CAPTION)
+        empty.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         internal_list.add_child(empty)
 
 # The disclosure of the resources the city cannot obtain right now. The toggle button and the
@@ -382,7 +379,7 @@ func _format_quality(stock: Dictionary) -> String:
     if text == "":
         return ""
     return "[color=#%s]★[/color] %s" % [
-        UiHelpers.QUALITY_MARKER_COLOR.to_html(false), text]
+        UiHelpers.quality_marker_color().to_html(false), text]
 
 # The actual consumption on the internal market over the display window, units/sec:
 # the sum over the members of the group. fact_map is the common snapshot
@@ -411,7 +408,7 @@ func _format_rate(value: float) -> String:
 # The breakdown of the storage by quality on one line with the percentages in the colours of the levels —
 # the same format as the quality label on the tab "Resources"
 # (GameData.format_quality_share_text). The star-marker is painted with the same
-# accent colour (ui_helpers.QUALITY_MARKER_COLOR): the white marker was read
+# accent colour (ui_helpers.quality_marker_color()): the white marker was read
 # as "a quality level", although it is only the sign "there is a breakdown".
 func _create_card(display_key: String, row: Dictionary, list: Node) -> void:
     var card: PanelContainer = CARD_SCENE.instantiate()
@@ -552,11 +549,18 @@ func _update_card(ctx: Dictionary, row: Dictionary) -> void:
     # A light update: only the texts and the states of the buttons change, the nodes
     # of the cards are reused (otherwise the tooltips under the cursor would flicker).
     var card: PanelContainer = ctx["card"]
-    card.modulate = Color(1, 1, 1, 1) if enabled else COLOR_DISABLED
-    name_label.add_theme_color_override("font_color", COLOR_TITLE if enabled else COLOR_DISABLED)
-    price.add_theme_color_override("default_color", COLOR_PRICE if enabled else COLOR_DISABLED)
-    consumption.add_theme_color_override("font_color", COLOR_CONSUMPTION if enabled else COLOR_DISABLED)
-    income.add_theme_color_override("default_color", COLOR_INCOME if enabled else COLOR_DISABLED)
+    var disabled_text := UI_THEME.color("text_muted")
+    card.modulate = Color.WHITE if enabled else DISABLED_MODULATE
+    name_label.add_theme_color_override("font_color",
+            UI_THEME.color("text") if enabled else disabled_text)
+    # The price and the income are the two halves of one sum — "the price × the expense =
+    # these exact money" — so both stay in the money colours of the palette.
+    price.add_theme_color_override("default_color",
+            UI_THEME.color("price") if enabled else disabled_text)
+    consumption.add_theme_color_override("font_color",
+            UI_THEME.color("expense") if enabled else disabled_text)
+    income.add_theme_color_override("default_color",
+            UI_THEME.color("warning") if enabled else disabled_text)
     _update_priority_button(ctx["priority_btn"], str(row.get("priority", "best")))
     _update_toggle(ctx["checkbox"], enabled)
         # The composition of the list has changed — a full rebuild is needed.

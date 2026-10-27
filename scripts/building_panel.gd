@@ -4,6 +4,8 @@
 # the recipe in every slot, and pausing/resuming the individual buildings.
 extends Control
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 var building_id: String = ""
 var products: Dictionary = {}
 var raw_resources: Dictionary = {}
@@ -97,13 +99,7 @@ func _ready():
 
     panel = Panel.new()
     panel.custom_minimum_size = Vector2(460, 400)
-    # An opaque dark background for the panel
-    var style = StyleBoxFlat.new()
-    style.bg_color = Color(0.13, 0.13, 0.13, 1.0)
-    style.set_border_width_all(2)
-    style.border_color = Color(0.4, 0.4, 0.4, 1.0)
-    style.set_corner_radius_all(4)
-    panel.add_theme_stylebox_override("panel", style)
+    panel.add_theme_stylebox_override("panel", UI_THEME.window_plate())
     center.add_child(panel)
 
     var vbox = VBoxContainer.new()
@@ -156,7 +152,7 @@ func _ready():
     upgrade_tooltip_panel.visible = false
     upgrade_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_STOP
     upgrade_tooltip_panel.z_index = 1050
-    upgrade_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    upgrade_tooltip_panel.add_theme_stylebox_override("panel", UI_THEME.tooltip())
     add_child(upgrade_tooltip_panel)
 
     # The content does not catch the mouse: the cursor passes through to the panel
@@ -166,18 +162,6 @@ func _ready():
     upgrade_tooltip_content.add_theme_constant_override("separation", 4)
     upgrade_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
     upgrade_tooltip_panel.add_child(upgrade_tooltip_content)
-
-# The style of the background of the tooltip — the same as the tooltips of
-# ui_helpers: an opaque dark background with a light frame of 1px.
-func _make_tooltip_style() -> StyleBoxFlat:
-    var style = StyleBoxFlat.new()
-    style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
-    style.border_width_left = 1
-    style.border_width_top = 1
-    style.border_width_right = 1
-    style.border_width_bottom = 1
-    style.border_color = Color(0.6, 0.6, 0.6)
-    return style
 
 func open(building_id_arg: String, data: Dictionary):
     # We clear the old popups on opening (the content may have become stale, for
@@ -279,9 +263,11 @@ func _refresh():
         var header_label = Label.new()
         header_label.text = tr("Building %d%s") % [building_number, status]
         if is_idle:
-            header_label.add_theme_color_override("font_color", Color.ORANGE)
+            header_label.add_theme_color_override("font_color",
+                    UI_THEME.color("warning").lerp(UI_THEME.color("expense"), 0.35))
         else:
-            header_label.add_theme_color_override("font_color", Color.GREEN if has_worker else Color.RED)
+            header_label.add_theme_color_override("font_color",
+                    UI_THEME.color("income") if has_worker else UI_THEME.color("expense"))
         header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         header.add_child(header_label)
 
@@ -395,12 +381,7 @@ func _refresh():
                 # IMPORTANT: the popup (Window) has to be added to the tree BEFORE
                 # the content is added, otherwise the layout is not recalculated.
                 popup = PopupPanel.new()
-                var popup_style = StyleBoxFlat.new()
-                popup_style.bg_color = Color(0.15, 0.15, 0.15, 1.0)
-                popup_style.set_border_width_all(1)
-                popup_style.border_color = Color(0.4, 0.4, 0.4, 1.0)
-                popup_style.set_corner_radius_all(4)
-                popup.add_theme_stylebox_override("panel", popup_style)
+                popup.add_theme_stylebox_override("panel", UI_THEME.panel_inset())
                 popup.set_meta("popup_key", popup_key)
                 add_child(popup)
                 popup.hide()
@@ -519,7 +500,7 @@ func _fill_consumption_section(tm, indices: Array) -> float:
     var header = Label.new()
     header.text = tr("Consumes:")
     header.add_theme_font_size_override("font_size", 16)
-    header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    header.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
     consumption_box.add_child(header)
 
@@ -537,7 +518,7 @@ func _fill_consumption_section(tm, indices: Array) -> float:
         line.add_child(indent)
         var bullet = Label.new()
         bullet.text = "◦"
-        bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        bullet.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
         line.add_child(bullet)
         # The name of the resource with the icon is drawn by the shared helper
@@ -547,7 +528,7 @@ func _fill_consumption_section(tm, indices: Array) -> float:
             str(row.get("display_key", "")), all_resources))
         var rate_label = Label.new()
         rate_label.text = ": %s" % str(row.get("rate_label", ""))
-        rate_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        rate_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         rate_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         line.add_child(rate_label)
         consumption_box.add_child(line)
@@ -625,10 +606,8 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
         item_btn.custom_minimum_size.y = 30
         item_btn.focus_mode = Control.FOCUS_NONE
 
-        var normal_style = StyleBoxFlat.new()
-        normal_style.bg_color = Color(0, 0, 0, 0)
-        var hover_style = StyleBoxFlat.new()
-        hover_style.bg_color = Color(0.35, 0.35, 0.35, 1.0)
+        var normal_style = UI_THEME.row(Color.TRANSPARENT)
+        var hover_style = UI_THEME.row(UI_THEME.color("row_hover"))
         item_btn.add_theme_stylebox_override("normal", normal_style)
         item_btn.add_theme_stylebox_override("hover", hover_style)
         item_btn.add_theme_stylebox_override("pressed", hover_style)
@@ -1028,7 +1007,6 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
     var header_label = Label.new()
     header_label.text = tr("Upgrade to")
     header_label.add_theme_font_size_override("font_size", 16)
-    header_label.add_theme_color_override("font_color", Color.WHITE)
     header_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     header.add_child(header_label)
     var icon_name = String(up_data.get("icon", ""))
@@ -1045,7 +1023,6 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
     var name_label = Label.new()
     name_label.text = "«%s»" % up_data.get("name", upgrade_to)
     name_label.add_theme_font_size_override("font_size", 16)
-    name_label.add_theme_color_override("font_color", Color.WHITE)
     name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     header.add_child(name_label)
     upgrade_tooltip_content.add_child(header)
@@ -1056,7 +1033,7 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
     if work_cost > 0:
         var labor_label = Label.new()
         labor_label.text = tr("Work: %d") % work_cost
-        labor_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        labor_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         labor_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         upgrade_tooltip_content.add_child(labor_label)
 
@@ -1075,7 +1052,7 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
     if additional_req != "":
         var req_label = Label.new()
         req_label.text = tr("Requirement: city access to fresh water") if additional_req == "running_water" else tr("Requirement: ") + additional_req
-        req_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        req_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         req_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         upgrade_tooltip_content.add_child(req_label)
 
@@ -1214,7 +1191,7 @@ func _make_craft_content(craft_name: String, craft_resources, craft_result: Dict
         if not first_res:
             var sep_label = Label.new()
             sep_label.text = "+"
-            sep_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+            sep_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
             sep_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
             content.add_child(sep_label)
         first_res = false
@@ -1224,7 +1201,7 @@ func _make_craft_content(craft_name: String, craft_resources, craft_result: Dict
             if not first_variant:
                 var or_label = Label.new()
                 or_label.text = "/"
-                or_label.add_theme_color_override("font_color", Color(0.85, 0.75, 0.4))
+                or_label.add_theme_color_override("font_color", UI_THEME.color("warning").darkened(0.15))
                 or_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
                 content.add_child(or_label)
             first_variant = false
@@ -1237,7 +1214,7 @@ func _make_craft_content(craft_name: String, craft_resources, craft_result: Dict
             if amount >= 1:
                 var amount_label = Label.new()
                 amount_label.text = "x%d" % amount
-                amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+                amount_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
                 amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
                 content.add_child(amount_label)
 
@@ -1245,7 +1222,7 @@ func _make_craft_content(craft_name: String, craft_resources, craft_result: Dict
     if not craft_resources.is_empty() and not craft_result.is_empty():
         var arrow_label = Label.new()
         arrow_label.text = "->"
-        arrow_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+        arrow_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
         arrow_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         content.add_child(arrow_label)
 
@@ -1255,7 +1232,7 @@ func _make_craft_content(craft_name: String, craft_resources, craft_result: Dict
         if not first_prod:
             var sep_label = Label.new()
             sep_label.text = ","
-            sep_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+            sep_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
             sep_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
             content.add_child(sep_label)
         first_prod = false
@@ -1279,7 +1256,7 @@ func _make_craft_content(craft_name: String, craft_resources, craft_result: Dict
         if amount >= 1:
             var amount_label = Label.new()
             amount_label.text = "x%d" % amount
-            amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+            amount_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
             amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
             content.add_child(amount_label)
 

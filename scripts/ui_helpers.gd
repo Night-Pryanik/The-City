@@ -1,6 +1,8 @@
 # ui_helpers.gd
 extends Node
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 var tooltip_panel: Panel
 var tooltip_label: Label
 
@@ -58,12 +60,12 @@ const DETAIL_TOOLTIP_MAX_ROWS: int = 15
 const DETAIL_TOOLTIP_ROW_HEIGHT: float = 24.0
 const DETAIL_TOOLTIP_SCROLLBAR_WIDTH: float = 14.0
 
-# The golden colour of the money in the tooltips: the row "Price: N" and the tails
-# of the rows of the price ladder by quality ("= x1.30 = 5"). A single constant,
-# so that the price in the row tooltip is of one shade everywhere, while the stars
-# still keep the colour of THEIR level (data/qualities.json) — the colour does not
-# replace the money.
-const PRICE_TEXT_COLOR := Color(1.0, 0.507, 0.0, 1.0)
+# The colour of the money in the tooltips: the row "Price: N" and the tails of the
+# rows of the price ladder by quality ("= x1.30 = 5"). A single accessor, so that the
+# price in a row tooltip is of one shade everywhere, while the stars still keep the
+# colour of THEIR level (data/qualities.json) — the colour does not replace the money.
+static func price_text_color() -> Color:
+    return UI_THEME.color("price")
 
 # The icon that marks a sum of coins in a line of text. It follows the number —
 # "130 [icon]/sec" — because the number alone does not say what it counts, and the word
@@ -164,18 +166,22 @@ static func save_tooltip(meta: Dictionary) -> String:
     lines.append(TranslationServer.translate("Saved: %s") % save_date(int(meta.get("saved_at", 0))))
     return "\n".join(lines)
 
-# The light blue colour of the quality marker at the start of the quality label
-# (the "Resources" tab and the cards of the "Trade"). The constant lives here next
-# to PRICE_TEXT_COLOR, because both of them are elements of the FORMATTING shared
-# by several tabs, and they cannot be split into two files: a divergence of the
-# colours between the tabs is visible at once.
-const QUALITY_MARKER_COLOR := Color(0.3, 1.0, 0.918)
+# The colour of the quality marker at the start of the quality label (the "Resources"
+# tab and the cards of the "Trade"). It lives here next to price_text_color(), because
+# both of them are elements of the FORMATTING shared by several tabs, and they cannot
+# be split into two files: a divergence of the colours between the tabs is visible at
+# once.
+static func quality_marker_color() -> Color:
+    return UI_THEME.color("quality")
 
 # The colours of the name of a category header and of the side lines around it. The
 # header is shared formatting of the resource lists (the "Resources" tab of the city
 # and the trade window of a town), so it lives here next to the other shared colours.
-const CATEGORY_HEADER_NAME_COLOR := Color(0.8, 0.8, 0.8)
-const CATEGORY_HEADER_LINE_COLOR := Color(0.55, 0.55, 0.55)
+static func category_header_name_color() -> Color:
+    return UI_THEME.color("text_secondary")
+
+static func category_header_line_color() -> Color:
+    return UI_THEME.color("hairline")
 
 # The markers of a category header and of its name label. The header is a composite
 # row (a line, the name, a line), so its parts cannot be told apart by the node type;
@@ -185,18 +191,22 @@ const META_CATEGORY_NAME := "category_name"
 
 # The highlight of the active button of a toggle group. The groups of the interface that
 # switch a view (the tab bar of the city, the sections of the foreign trade) must look alike,
-# so both of them take the colours from here: the divergence of two copies of these two
-# numbers is visible at once.
-const TOGGLE_ACTIVE_COLOR := Color(0.784, 0.784, 0.784, 1.0)
-const TOGGLE_INACTIVE_COLOR := Color(0.471, 0.471, 0.471, 0.3)
-
+# so both of them take the colours from here: a divergence of two copies of these rules is
+# visible at once.
 static func highlight_toggle_button(button: Button, active: bool) -> void:
     if button == null or not is_instance_valid(button):
         return
     var style := StyleBoxFlat.new()
-    style.bg_color = TOGGLE_ACTIVE_COLOR if active else TOGGLE_INACTIVE_COLOR
+    if active:
+        style.bg_color = UI_THEME.color("accent")
+    else:
+        # A hint of the accent, dimmed: the inactive buttons of a group still read as
+        # one control with the active one.
+        style.bg_color = UI_THEME.color("accent").darkened(0.4)
+        style.bg_color.a = 0.3
     button.add_theme_stylebox_override("normal", style)
-    button.add_theme_color_override("font_color", Color.BLACK if active else Color.WHITE)
+    button.add_theme_color_override("font_color",
+            UI_THEME.color("accent_text") if active else UI_THEME.color("text"))
 
 # The header of a category group in a resource list: a solid line, the name centred,
 # a line again. The lines are stretched nodes that reach both edges of the column at
@@ -209,7 +219,7 @@ static func build_category_header(category_name: String) -> HBoxContainer:
     header.add_child(_make_category_line())
     var name_label := Label.new()
     name_label.text = category_name
-    name_label.add_theme_color_override("font_color", CATEGORY_HEADER_NAME_COLOR)
+    name_label.add_theme_color_override("font_color", category_header_name_color())
     name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     name_label.set_meta(META_CATEGORY_NAME, true)
     header.add_child(name_label)
@@ -220,7 +230,7 @@ static func build_category_header(category_name: String) -> HBoxContainer:
 # only thing that can touch the column edge exactly at any width.
 static func _make_category_line() -> ColorRect:
     var line := ColorRect.new()
-    line.color = CATEGORY_HEADER_LINE_COLOR
+    line.color = category_header_line_color()
     line.custom_minimum_size = Vector2(0, hairline_thickness())
     line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -263,17 +273,6 @@ static func device_scale(along_x: bool = false) -> float:
     return value if value > 0.0 else 1.0
 
 var message_label: Label
-# The common style of the background for all the tooltips: a fully opaque dark
-# background with a light frame of 1px.
-func _make_tooltip_style() -> StyleBoxFlat:
-    var style = StyleBoxFlat.new()
-    style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
-    style.border_width_left = 1
-    style.border_width_top = 1
-    style.border_width_right = 1
-    style.border_width_bottom = 1
-    style.border_color = Color(0.6, 0.6, 0.6)
-    return style
 
 func setup(main_ui: Control, message_lbl: Label):
     message_label = message_lbl
@@ -285,11 +284,10 @@ func setup(main_ui: Control, message_lbl: Label):
 
     tooltip_label = Label.new()
     tooltip_label.text = tr("Toggle using this product as food")
-    tooltip_label.add_theme_color_override("font_color", Color.WHITE)
     tooltip_label.add_theme_font_size_override("font_size", 14)
     tooltip_panel.add_child(tooltip_label)
 
-    tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    tooltip_panel.theme_type_variation = &"SurfaceTooltip"
 
     # The tooltip for the "Build" button
     build_tooltip_panel = Panel.new()
@@ -298,11 +296,10 @@ func setup(main_ui: Control, message_lbl: Label):
     main_ui.add_child(build_tooltip_panel)
 
     build_tooltip_label = Label.new()
-    build_tooltip_label.add_theme_color_override("font_color", Color.WHITE)
     build_tooltip_label.add_theme_font_size_override("font_size", 14)
     build_tooltip_panel.add_child(build_tooltip_label)
 
-    build_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    build_tooltip_panel.theme_type_variation = &"SurfaceTooltip"
 
     # The tooltip for the group resources
     group_tooltip_panel = Panel.new()
@@ -316,7 +313,7 @@ func setup(main_ui: Control, message_lbl: Label):
     group_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
     group_tooltip_panel.add_child(group_tooltip_content)
 
-    group_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    group_tooltip_panel.theme_type_variation = &"SurfaceTooltip"
 
     # The tooltip "who consumes the resource" of the rows drawn with the
     # consumption underline (see make_resource_entry). It lives on the same layer
@@ -333,7 +330,7 @@ func setup(main_ui: Control, message_lbl: Label):
     consumption_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
     consumption_tooltip_panel.add_child(consumption_tooltip_content)
 
-    consumption_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    consumption_tooltip_panel.theme_type_variation = &"SurfaceTooltip"
 
     # The tooltip for the progress bars of the buildings under construction
     progress_tooltip_panel = Panel.new()
@@ -343,11 +340,10 @@ func setup(main_ui: Control, message_lbl: Label):
     main_ui.add_child(progress_tooltip_panel)
 
     progress_tooltip_label = Label.new()
-    progress_tooltip_label.add_theme_color_override("font_color", Color.WHITE)
     progress_tooltip_label.add_theme_font_size_override("font_size", 14)
     progress_tooltip_panel.add_child(progress_tooltip_label)
 
-    progress_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    progress_tooltip_panel.theme_type_variation = &"SurfaceTooltip"
 
     # The tooltip for the breakdown of a storage by quality
     quality_tooltip_panel = Panel.new()
@@ -361,7 +357,7 @@ func setup(main_ui: Control, message_lbl: Label):
     quality_tooltip_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
     quality_tooltip_panel.add_child(quality_tooltip_vbox)
 
-    quality_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    quality_tooltip_panel.theme_type_variation = &"SurfaceTooltip"
 
     # The "Sources of the income/expense of a resource" tooltip (the "Resources" tab)
     flow_tooltip_panel = Panel.new()
@@ -388,7 +384,7 @@ func setup(main_ui: Control, message_lbl: Label):
     flow_tooltip_panel.add_child(flow_tooltip_scroll)
     flow_tooltip_scroll.add_child(flow_tooltip_vbox)
 
-    flow_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    flow_tooltip_panel.theme_type_variation = &"SurfaceTooltip"
 
     # The tooltip of the breakdown of the treasury (by the sources of the
     # income/expense): one for both places (the HUD of the map and the top bar of
@@ -418,7 +414,7 @@ func setup(main_ui: Control, message_lbl: Label):
     treasury_tooltip_panel.add_child(treasury_tooltip_scroll)
     treasury_tooltip_scroll.add_child(treasury_tooltip_vbox)
 
-    treasury_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    treasury_tooltip_panel.theme_type_variation = &"SurfaceTooltip"
     # The details tooltip of the selected building (the "Buildings" tab).
     detail_tooltip_panel = Panel.new()
     detail_tooltip_panel.visible = false
@@ -444,7 +440,7 @@ func setup(main_ui: Control, message_lbl: Label):
     detail_tooltip_panel.add_child(detail_tooltip_scroll)
     detail_tooltip_scroll.add_child(detail_tooltip_content)
 
-    detail_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    detail_tooltip_panel.theme_type_variation = &"SurfaceTooltip"
 
     # The tooltip of the buttons of the list of the built buildings. mouse_filter
     # IGNORE — the tooltip is "transparent" for the hover/clicks (as
@@ -462,7 +458,7 @@ func setup(main_ui: Control, message_lbl: Label):
     built_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
     built_tooltip_panel.add_child(built_tooltip_content)
 
-    built_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    built_tooltip_panel.theme_type_variation = &"SurfaceTooltip"
 
 func show_food_tooltip(mouse_pos: Vector2):
     tooltip_panel.position = mouse_pos + Vector2(15, 15)
@@ -503,7 +499,6 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
     var title = Label.new()
     title.text = group_name
     title.add_theme_font_size_override("font_size", 16)
-    title.add_theme_color_override("font_color", Color.WHITE)
     title.mouse_filter = Control.MOUSE_FILTER_IGNORE
     group_tooltip_content.add_child(title)
     
@@ -536,7 +531,6 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
         var label = Label.new()
         var special_yield = pdata.get("special_yield", {})
         label.text = pdata.get("name", prod_id)
-        label.add_theme_color_override("font_color", Color.WHITE)
         label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(label)
         product_labels.append(label)
@@ -550,7 +544,7 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
                 if price > 0:
                     var price_label = Label.new()
                     price_label.text = str(price)
-                    price_label.add_theme_color_override("font_color", PRICE_TEXT_COLOR)
+                    price_label.add_theme_color_override("font_color", price_text_color())
                     price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
                     row.add_child(price_label)
 
@@ -572,14 +566,14 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
 
                 var qty_label = Label.new()
                 qty_label.text = tr("%d units") % amount
-                qty_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+                qty_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
                 qty_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
                 row.add_child(qty_label)
 
         for yield_id in special_yield:
             var separator = Label.new()
             separator.text = " - "
-            separator.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+            separator.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
             separator.mouse_filter = Control.MOUSE_FILTER_IGNORE
             row.add_child(separator)
 
@@ -599,7 +593,7 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
             var yield_label = Label.new()
             yield_label.text = "%s: %d" % [
                 yield_data.get("name", yield_id), int(special_yield[yield_id])]
-            yield_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+            yield_label.add_theme_color_override("font_color", UI_THEME.color("warning"))
             yield_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
             row.add_child(yield_label)
         
@@ -662,7 +656,6 @@ func show_consumption_tooltip(mouse_pos: Vector2, res_key: String, _products_dat
     var title = Label.new()
     title.text = tr("Consumed by: %s") % GameData.format_resource_name(res_key)
     title.add_theme_font_size_override("font_size", 16)
-    title.add_theme_color_override("font_color", Color.WHITE)
     title.mouse_filter = Control.MOUSE_FILTER_IGNORE
     consumption_tooltip_content.add_child(title)
 
@@ -673,7 +666,7 @@ func show_consumption_tooltip(mouse_pos: Vector2, res_key: String, _products_dat
         var note = Label.new()
         note.text = tr("Any product from the group")
         note.add_theme_font_size_override("font_size", 13)
-        note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
+        note.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
         note.mouse_filter = Control.MOUSE_FILTER_IGNORE
         consumption_tooltip_content.add_child(note)
 
@@ -689,7 +682,7 @@ func show_consumption_tooltip(mouse_pos: Vector2, res_key: String, _products_dat
         var group_note = Label.new()
         group_note.text = tr("Consumed as part of the group \"%s\"") % GameData.format_resource_name(via)
         group_note.add_theme_font_size_override("font_size", 13)
-        group_note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
+        group_note.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
         group_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
         consumption_tooltip_content.add_child(group_note)
 
@@ -708,7 +701,7 @@ func show_consumption_tooltip(mouse_pos: Vector2, res_key: String, _products_dat
         if bonus > 0.0:
             row_text += tr(" (+%d%% to production)") % int(round(bonus * 100.0))
         consumption_tooltip_content.add_child(
-            _make_bullet_row("•", row_text, Color(0.9, 0.9, 0.9)))
+            _make_bullet_row("•", row_text, UI_THEME.color("text")))
 
     consumption_tooltip_content.reset_size()
     var content_min_size = consumption_tooltip_content.get_minimum_size()
@@ -896,7 +889,6 @@ func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdo
     var header = Label.new()
     header.text = tr("Resource quality levels: %s") % prod_name
     header.add_theme_font_size_override("font_size", 15)
-    header.add_theme_color_override("font_color", Color.WHITE)
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
     quality_tooltip_vbox.add_child(header)
 
@@ -927,7 +919,7 @@ func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdo
             GameData.get_quality_name(qid), count,
             GameData.get_quality_share_percent(count, quality_breakdown)
         ]
-        name_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+        name_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(name_label)
 
@@ -1031,7 +1023,7 @@ func _make_bullet_row(symbol: String, text: String, text_color: Color) -> HBoxCo
     row.mouse_filter = Control.MOUSE_FILTER_IGNORE
     var bullet = Label.new()
     bullet.text = symbol
-    bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    bullet.add_theme_color_override("font_color", UI_THEME.color("text"))
     bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
     row.add_child(bullet)
     var label = Label.new()
@@ -1044,7 +1036,8 @@ func _make_bullet_row(symbol: String, text: String, text_color: Color) -> HBoxCo
 
 # Creates a row of the price ladder by quality for the row tooltip: the stars in
 # the colour of THEIR level (data/qualities.json, get_quality_color), the price
-# calculation itself — in gold (PRICE_TEXT_COLOR). Two Labels in an HBox, and not
+# calculation itself — in the price colour of the palette (price_text_color()). Two
+# Labels in an HBox, and not
 # one Label with BBCode: that way the row acquires no dependency at all on a
 # RichTextLabel (its fit_content with the wrapping collapses the label to 1 px —
 # see resources_tab._add_quality_label), and the colours are taken from the theme
@@ -1065,7 +1058,7 @@ func _make_quality_price_row(stars: String, tail: String, level_color: Color) ->
     row.add_child(stars_label)
     var tail_label = Label.new()
     tail_label.text = tail
-    tail_label.add_theme_color_override("font_color", PRICE_TEXT_COLOR)
+    tail_label.add_theme_color_override("font_color", price_text_color())
     tail_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     row.add_child(tail_label)
     return row
@@ -1128,8 +1121,8 @@ func _format_planned_rate(amount: float, interval: float) -> String:
 # levels of quality that are REALLY in the storage (quality_breakdown), in the
 # format "★★ = x1.30 = 5" (the rows with an indent of 2 spaces). The row of the
 # ladder has two colours: the stars in the colour of their level
-# (data/qualities.json), the price calculation — in gold (PRICE_TEXT_COLOR, as the
-# row "Price: N").
+# (data/qualities.json), the price calculation — in the price colour of the palette
+# (price_text_color(), as the row "Price: N").
 # An empty breakdown or a product without a price — there are no rows.
 # quality_breakdown — the breakdown of the storage by quality
 # ({quality_id: count}, see CityData.get_quality_breakdown). It is what decides
@@ -1168,14 +1161,13 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
     var header = Label.new()
     header.text = prod_name
     header.add_theme_font_size_override("font_size", 15)
-    header.add_theme_color_override("font_color", Color.WHITE)
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
     flow_tooltip_vbox.add_child(header)
     # The current price of the resource (taking the dynamic multipliers into account).
     if price > 0.0:
         var price_label = Label.new()
         price_label.text = tr("Price: ") + _format_price(price)
-        price_label.add_theme_color_override("font_color", PRICE_TEXT_COLOR)
+        price_label.add_theme_color_override("font_color", price_text_color())
         price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(price_label)
         # The prices by quality that are REALLY in the storage: the internal market
@@ -1200,7 +1192,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
             GameData.products.get(yield_id, {}).get("name", yield_id),
             int(special_yield[yield_id])
         ]
-        yield_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.918, 1.0))
+        yield_label.add_theme_color_override("font_color", quality_marker_color())
         yield_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(yield_label)
     # The planned production: what WILL be produced by the current producers (the
@@ -1214,7 +1206,8 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         var planned_prod_title = Label.new()
         planned_prod_title.text = tr("Production (planned):")
         planned_prod_title.add_theme_font_size_override("font_size", 14)
-        planned_prod_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+        planned_prod_title.add_theme_color_override("font_color",
+                UI_THEME.color("income").lightened(0.4))
         planned_prod_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(planned_prod_title)
         var planned_prod_lines: Array = []
@@ -1232,7 +1225,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
             if int(row.count) > 1:
                 line_text += tr(" x%d") % int(row.count)
             line_text += ": %s" % _format_planned_rate(float(row.amount), float(row.interval))
-            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.3, 0.85, 0.3)))
+            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, UI_THEME.color("income")))
     # The planned consumption: who and how much WILL be written off the storage —
     # regardless of the phase of the consumption timers and of the fact of the last
     # tick.
@@ -1245,7 +1238,8 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         var planned_title = Label.new()
         planned_title.text = tr("Consumption (planned):")
         planned_title.add_theme_font_size_override("font_size", 14)
-        planned_title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.6))
+        planned_title.add_theme_color_override("font_color",
+                UI_THEME.color("expense").lightened(0.35))
         planned_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(planned_title)
         var planned_lines: Array = []
@@ -1273,7 +1267,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
             if bool(row.is_group) and not str(row.group_name).is_empty():
                 line_text += tr(" (group \"%s\")") % str(row.group_name)
             line_text += ": %s" % _format_planned_rate(float(row.amount), float(row.interval))
-            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
+            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, UI_THEME.color("expense")))
     # The explanation of the marker "≈" in the dynamics of the "Resources" tab — for
     # both plans: the production and the consumption. It is shown for any non-empty
     # plan, regardless of which section of the plan has actually been drawn.
@@ -1281,7 +1275,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         var planned_note = Label.new()
         planned_note.text = tr("≈ in the live view — the planned value per second")
         planned_note.add_theme_font_size_override("font_size", 12)
-        planned_note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
+        planned_note.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
         planned_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(planned_note)
     flow_tooltip_vbox.reset_size()
@@ -1430,7 +1424,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
     var header = make_money_label()
     header.text = tr("Treasury: %s") % money(str(balance))
     header.add_theme_font_size_override("normal_font_size", 15)
-    header.add_theme_color_override("default_color", Color(1.0, 0.85, 0.3))
+    header.add_theme_color_override("default_color", UI_THEME.color("warning"))
     treasury_tooltip_vbox.add_child(header)
 
     # --- Profit (actual, average): the types, one of which is "flat" ---
@@ -1484,7 +1478,8 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
         income_title.text = tr("Profit (actual, average): %s / sec") % money(
                 _format_rate(total_income))
         income_title.add_theme_font_size_override("normal_font_size", 14)
-        income_title.add_theme_color_override("default_color", Color(0.6, 1.0, 0.6))
+        income_title.add_theme_color_override("default_color",
+                UI_THEME.color("income").lightened(0.4))
         treasury_tooltip_vbox.add_child(income_title)
         for type_row in type_lines:
             # A "flat" type (the tax) — ONE row instead of the hierarchy:
@@ -1501,13 +1496,14 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                     flat_text += ": " + flat_label
                 flat_text += tr(" = %s / sec") % _format_rate(float(type_row.total))
                 treasury_tooltip_vbox.add_child(
-                    _make_bullet_row("•", flat_text, Color(0.85, 1.0, 0.85)))
+                    _make_bullet_row("•", flat_text, UI_THEME.color("income").lightened(0.55)))
                 continue
             # The first level of the breakdown: "• Population consumption:"
             var type_header = Label.new()
             type_header.text = "• " + tr(str(type_row.name)) + ":"
             type_header.add_theme_font_size_override("font_size", 13)
-            type_header.add_theme_color_override("font_color", Color(0.85, 1.0, 0.85))
+            type_header.add_theme_color_override("font_color",
+                    UI_THEME.color("income").lightened(0.55))
             type_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
             treasury_tooltip_vbox.add_child(type_header)
             # The sources inside a type — we sort them by the sum per source.
@@ -1533,7 +1529,8 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                     str(src_row.name), _format_rate(float(src_row.total))
                 ]
                 src_header.add_theme_font_size_override("font_size", 13)
-                src_header.add_theme_color_override("font_color", Color(0.55, 0.95, 0.55))
+                src_header.add_theme_color_override("font_color",
+                        UI_THEME.color("income").lightened(0.2))
                 src_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
                 treasury_tooltip_vbox.add_child(src_header)
                 # The products inside a source — we sort them in the descending order.
@@ -1551,7 +1548,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                         prod_name, _format_rate(prod_rate)
                     ]
                     treasury_tooltip_vbox.add_child(
-                        _make_bullet_row("    ▪", line_text, Color(0.3, 0.85, 0.3)))
+                        _make_bullet_row("    ▪", line_text, UI_THEME.color("income")))
 
     # --- Expenses (actual, over the last N sec): type → source → net sum ---
     if has_expense:
@@ -1561,7 +1558,8 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
         var expense_title = Label.new()
         expense_title.text = tr("Expenses (actual, over the last %s sec):") % window_str
         expense_title.add_theme_font_size_override("font_size", 14)
-        expense_title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.6))
+        expense_title.add_theme_color_override("font_color",
+                UI_THEME.color("expense").lightened(0.35))
         expense_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
         treasury_tooltip_vbox.add_child(expense_title)
         for expense_type in expense_by_type:
@@ -1570,7 +1568,8 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
             var expense_type_label = Label.new()
             expense_type_label.text = "  " + str(expense_type) + ":"
             expense_type_label.add_theme_font_size_override("font_size", 13)
-            expense_type_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.85))
+            expense_type_label.add_theme_color_override("font_color",
+                    UI_THEME.color("expense").lightened(0.55))
             expense_type_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
             treasury_tooltip_vbox.add_child(expense_type_label)
             var expense_lines: Array = []
@@ -1588,7 +1587,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                 var mag: int = abs(amt)
                 var line_text := "%s: %s%d" % [str(row.name), sign_char, mag]
                 treasury_tooltip_vbox.add_child(
-                    _make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
+                    _make_bullet_row("•", line_text, UI_THEME.color("expense")))
 
     # --- The bottom: a reference to the dynamics "≈" (as in the tooltip of the
     #     resources) ---
@@ -1600,7 +1599,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
     var note = Label.new()
     note.text = tr("≈ in the \"Treasury\" row — average profit and expenses over the last window, per second")
     note.add_theme_font_size_override("font_size", 12)
-    note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
+    note.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
     note.mouse_filter = Control.MOUSE_FILTER_IGNORE
     treasury_tooltip_vbox.add_child(note)
 
@@ -1609,7 +1608,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
         var no_expense_note = Label.new()
         no_expense_note.text = tr("No one-off treasury expenses in the last window")
         no_expense_note.add_theme_font_size_override("font_size", 12)
-        no_expense_note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
+        no_expense_note.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
         no_expense_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
         treasury_tooltip_vbox.add_child(no_expense_note)
 

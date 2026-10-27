@@ -4,6 +4,7 @@ extends Node2D
 # The shared formatting of the interface: the colours and the text of the readouts
 # ("Treasury: N [icon]"), assembled the same way on the map and in the city.
 const UiHelpers = preload("res://scripts/ui_helpers.gd")
+const UI_THEME = preload("res://scripts/ui_theme.gd")
 
 const HEX_RADIUS = 55
 
@@ -1927,7 +1928,7 @@ func start_road_project(row: int, col: int, road_level: int) -> bool:
             "label": title,
             "row": row,
             "col": col,
-            "bar_color": Color(0.45, 0.75, 1.0),
+            "bar_color": UI_THEME.color("info"),
             "bar_offset": 16,
             "execute": func(): start_road_project(row, col, road_level),
     }):
@@ -2009,7 +2010,7 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
             "label": title,
             "row": row,
             "col": col,
-            "bar_color": Color(0.45, 0.75, 1.0),
+            "bar_color": UI_THEME.color("info"),
             "bar_offset": 16,
             "execute": func(): start_improvement_road_project(row, col, imp_id, imp_name,
                     target_res_id, road_level),
@@ -2118,7 +2119,7 @@ func start_road_upgrade_project(row: int, col: int, road_level: int) -> bool:
             "label": tr("Upgrade road"),
             "row": row,
             "col": col,
-            "bar_color": Color(0.45, 0.75, 1.0),
+            "bar_color": UI_THEME.color("info"),
             "bar_offset": 16,
             "execute": func(): start_road_upgrade_project(row, col, road_level),
     }):
@@ -2596,7 +2597,7 @@ func _update_research_progress():
             research_label.text = "!"
         research_button.tooltip_text = tr("No technology is being researched. Click to select a technology")
         research_progress_bar.value = 0.0
-        research_progress_bar.modulate = Color(1, 1, 1, 1)
+        research_progress_bar.modulate = Color.WHITE
         _apply_research_button_warning(true)
         _last_research_hud_tech = ""
         return
@@ -2651,18 +2652,18 @@ func _update_research_progress():
         research_progress_bar.value = CityData.research_progress * 100.0
     else:
         research_progress_bar.value = 0.0
-    research_progress_bar.modulate = Color(1, 1, 1, 1)
+    research_progress_bar.modulate = Color.WHITE
     _last_research_hud_tech = tech_id
 
 func _apply_research_button_warning(warning: bool):
     # The red frame/highlighting in the absence of a research.
     var normal = StyleBoxFlat.new()
-    normal.bg_color = Color(0.3, 0.3, 0.3, 1.0)
+    normal.bg_color = UI_THEME.color("control_hover")
     normal.set_border_width_all(2)
     if warning:
-        normal.border_color = Color(1.0, 0.2, 0.2, 1.0)
+        normal.border_color = UI_THEME.color("expense")
     else:
-        normal.border_color = Color(0.4, 0.4, 0.4, 1.0)
+        normal.border_color = UI_THEME.color("panel_border")
     research_button.add_theme_stylebox_override("normal", normal)
     # We override hover/pressed/focus with the same style, so that on hover
     # the content margins do not change and the size of the button remains the same.
@@ -2670,9 +2671,9 @@ func _apply_research_button_warning(warning: bool):
     research_button.add_theme_stylebox_override("pressed", normal)
     research_button.add_theme_stylebox_override("focus", normal)
     if warning:
-        research_button.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+        research_button.add_theme_color_override("font_color", UI_THEME.color("expense"))
     else:
-        research_button.add_theme_color_override("font_color", Color.WHITE)
+        research_button.add_theme_color_override("font_color", UI_THEME.color("text"))
 
 func _on_research_hud_button_pressed():
     # The transition to the interface of the city on the tab "Technologies".
@@ -4149,7 +4150,7 @@ func start_scouting(chunk: Array):
             "label": tr("Send the scouts"),
             "row": chunk[0].row,
             "col": chunk[0].col,
-            "bar_color": Color(0.2, 0.7, 0.9),
+            "bar_color": UI_THEME.color("info").darkened(0.2),
             "bar_offset": 16,
             "execute": func(): start_scouting(chunk),
     }):

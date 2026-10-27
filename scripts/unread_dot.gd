@@ -6,10 +6,18 @@
 # triangle of the town window (warning_badge.gd).
 extends Control
 
-const FILL_COLOR := Color(0.29, 0.62, 1.0, 1.0)
-# A dark rim keeps the dot visible on the light "hovered" face of the button.
-const RIM_COLOR := Color(0.07, 0.07, 0.07, 0.9)
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 const RIM_WIDTH := 1.0
+
+static func fill_color() -> Color:
+    return UI_THEME.color("info")
+
+# A dark rim keeps the dot visible on the light "hovered" face of the button.
+static func rim_color() -> Color:
+    var rim := UI_THEME.color("panel_bg")
+    rim.a = 0.9
+    return rim
 
 func _ready() -> void:
     # The dot must not take the click of the button it sits on.
@@ -21,5 +29,5 @@ func _draw() -> void:
     if radius <= 0.0:
         return
     var center := size * 0.5
-    draw_circle(center, radius, RIM_COLOR)
-    draw_circle(center, radius - RIM_WIDTH, FILL_COLOR)
+    draw_circle(center, radius, rim_color())
+    draw_circle(center, radius - RIM_WIDTH, fill_color())

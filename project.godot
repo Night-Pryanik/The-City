@@ -23,6 +23,7 @@ CityData="*uid://c7vd7o1y3mva7"
 SaveManager="*uid://dkrcp5ixu5v1x"
 IconRegistry="*res://scripts/icon_registry.gd"
 FontManager="*res://scripts/font_manager.gd"
+ThemeManager="*res://scripts/theme_manager.gd"
 ModManager="*res://scripts/mod_manager.gd"
 
 [display]

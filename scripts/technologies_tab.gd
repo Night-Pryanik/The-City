@@ -1,6 +1,8 @@
 # technologies_tab.gd
 extends Node
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 var tech_current_label: Label
 var tech_progress_bar: ProgressBar
 var tech_available_container: Node
@@ -84,7 +86,6 @@ func _rebuild_lists():
         var name_label = Label.new()
         if is_available:
             name_label.text = tr("%s [%s] (science: %d)") % [tech["name"], era_str, tech.get("science_cost", 3)]
-            name_label.add_theme_color_override("font_color", Color.WHITE)
         else:
             var req_str = ""
             if not CityData.is_tech_era_allowed(tech_id):
@@ -95,7 +96,7 @@ func _rebuild_lists():
                 if prereq_text != "":
                     req_str = tr(" | Required: ") + prereq_text
             name_label.text = tr("%s [%s] (science: %d)%s") % [tech["name"], era_str, tech.get("science_cost", 3), req_str]
-            name_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+            name_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
         row.add_child(name_label)
 
         if is_available:
@@ -128,7 +129,7 @@ func _rebuild_lists():
             var era_str = _get_era_name(tech_data.get("era", ""))
             var lbl = Label.new()
             lbl.text = "%s [%s]" % [tech_data["name"], era_str]
-            lbl.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+            lbl.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
             tech_unlocked_container.add_child(lbl)
 
 func _on_research_button_pressed(tech_id: String):

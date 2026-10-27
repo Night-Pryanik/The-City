@@ -40,7 +40,7 @@
 #     levels that ACTUALLY sit in storage (the
 #     city_quality_detail breakdown), from worst to best. The ladder line is TWO-COLOURED:
 #     the stars — in their level colour (data/qualities.json), the price calculation —
-#     gold (ui_helpers.PRICE_TEXT_COLOR); both parts match
+#     the price colour of the palette (ui_helpers.price_text_color()); both parts match
 #     format_quality_price_scale_rows and are not collapsed by width. For levels
 #     that are not in storage (incl. with an empty breakdown), there are no lines — as
 #     for goods without a price.
@@ -529,9 +529,9 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
             "the stars of row #%d (\"%s\") must be in the colour of level \"%s\": %s instead of %s"
             % [i, str(stars_cell["text"]), qid, str(stars_cell["color"]),
                 str(gd.get_quality_color(qid))])
-        check(tail_cell["color"] == ui.PRICE_TEXT_COLOR,
+        check(tail_cell["color"] == ui.price_text_color(),
             "the price calculation of row #%d (\"%s\") must be gold: %s instead of %s"
-            % [i, str(tail_cell["text"]), str(tail_cell["color"]), str(ui.PRICE_TEXT_COLOR)])
+            % [i, str(tail_cell["text"]), str(tail_cell["color"]), str(ui.price_text_color())])
         # No part of the line has collapsed in width.
         check(float(stars_cell["width"]) > 5.0 and float(tail_cell["width"]) > 20.0,
             "row #%d collapsed in width (stars %s px, calculation %s px)"
@@ -539,7 +539,7 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
     # The star colour and the gold calculation differ at least where it is visible to the eye:
     # otherwise "stars in the level colour" would mean nothing.
     var fine_stars: Dictionary = scale_stars[1] if scale_stars.size() > 1 else {}
-    check(fine_stars.get("color", Color.BLACK) != ui.PRICE_TEXT_COLOR,
+    check(fine_stars.get("color", Color.BLACK) != ui.price_text_color(),
         "the level stars must not match in colour the gold price calculation")
     # The tooltip panel has not collapsed: its width is computed from the minimum size
     # of the content, so a narrow panel = narrow rows inside.

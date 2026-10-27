@@ -50,6 +50,7 @@ extends Node
 # The shared helpers: the highlight of the active button of a toggle group is common for the
 # tab bar of the city and for the section bar of this column.
 const UiHelpers = preload("res://scripts/ui_helpers.gd")
+const UI_THEME = preload("res://scripts/ui_theme.gd")
 
 signal town_focus_requested(row: int, col: int)
 
@@ -114,12 +115,21 @@ const EDITOR_BUTTON_SIZE := 30
 # purpose — it names the numbers — so it must not stretch the column of the deals.
 const CONFIRMATION_TEXT_WIDTH := 330
 
-const COLOR_CAPTION := Color(0.75, 0.75, 0.75, 1)
-const COLOR_PRICE := Color(1.0, 0.507, 0.0, 1)
-# The colours of the deal types: the same language as on the tab "Domestic trade" — what the
-# treasury pays is red, what fills it is gold. A purchase spends the treasury, a sale fills it.
-const COLOR_EXPENSE := Color(0.9, 0.3, 0.3, 1)
-const COLOR_INCOME := Color(1.0, 0.807, 0.2, 1)
+# The colours of the rows come from the palette, so that a card of a deal reads the same way
+# after the player changes the theme: the caption, the price, and the two directions of money.
+static func caption_color() -> Color:
+    return UI_THEME.color("text_secondary")
+
+static func price_color() -> Color:
+    return UI_THEME.color("price")
+
+# The same language as on the tab "Domestic trade" — what the treasury pays is red, what
+# fills it is gold. A purchase spends the treasury, a sale fills it.
+static func expense_color() -> Color:
+    return UI_THEME.color("expense")
+
+static func income_color() -> Color:
+    return UI_THEME.color("warning")
 
 # The scene nodes of the column (filled in setup).
 var external_panel: Control = null
@@ -499,7 +509,7 @@ func _build_deal_row(deal: Dictionary) -> HBoxContainer:
     if deal.has("amount"):
         var amount_label := Label.new()
         amount_label.text = tr("×%d") % int(deal.get("amount", 0))
-        amount_label.add_theme_color_override("font_color", COLOR_CAPTION)
+        amount_label.add_theme_color_override("font_color", caption_color())
         amount_label.custom_minimum_size = Vector2(34, 0)
         amount_label.mouse_filter = Control.MOUSE_FILTER_STOP
         amount_label.tooltip_text = tr("%d units per second") % int(deal.get("amount", 0))
@@ -507,7 +517,7 @@ func _build_deal_row(deal: Dictionary) -> HBoxContainer:
 
     var town_label := Label.new()
     town_label.text = str(deal.get("town_name", ""))
-    town_label.add_theme_color_override("font_color", COLOR_CAPTION)
+    town_label.add_theme_color_override("font_color", caption_color())
     town_label.mouse_filter = Control.MOUSE_FILTER_STOP
     row.add_child(town_label)
 
@@ -530,7 +540,7 @@ func _build_deal_row(deal: Dictionary) -> HBoxContainer:
         cost_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         cost_label.custom_minimum_size = Vector2(92, 0)
         cost_label.add_theme_color_override("default_color",
-                COLOR_INCOME if is_sale else COLOR_EXPENSE)
+                income_color() if is_sale else expense_color())
         cost_label.mouse_filter = Control.MOUSE_FILTER_STOP
         row.add_child(cost_label)
     else:
@@ -539,7 +549,7 @@ func _build_deal_row(deal: Dictionary) -> HBoxContainer:
         price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
         price_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         price_label.custom_minimum_size = Vector2(44, 0)
-        price_label.add_theme_color_override("default_color", COLOR_PRICE)
+        price_label.add_theme_color_override("default_color", price_color())
         price_label.mouse_filter = Control.MOUSE_FILTER_STOP
         row.add_child(price_label)
 
@@ -548,7 +558,7 @@ func _build_deal_row(deal: Dictionary) -> HBoxContainer:
     if deal.has("delivery_time"):
         var delivery_label := Label.new()
         delivery_label.text = tr("Delivery: %s") % _format_delay(float(deal.get("delivery_time", 0.0)))
-        delivery_label.add_theme_color_override("font_color", COLOR_CAPTION)
+        delivery_label.add_theme_color_override("font_color", caption_color())
         delivery_label.mouse_filter = Control.MOUSE_FILTER_STOP
         delivery_label.tooltip_text = tr("The time the goods spend on the road from the town to the city")
         row.add_child(delivery_label)
@@ -660,7 +670,7 @@ func _build_delivery_row(deal: Dictionary) -> HBoxContainer:
 
     var town_label := Label.new()
     town_label.text = str(deal.get("town_name", ""))
-    town_label.add_theme_color_override("font_color", COLOR_CAPTION)
+    town_label.add_theme_color_override("font_color", caption_color())
     town_label.mouse_filter = Control.MOUSE_FILTER_STOP
     row.add_child(town_label)
 
@@ -679,7 +689,7 @@ func _build_delivery_row(deal: Dictionary) -> HBoxContainer:
     amount_label.tooltip_text = _delivery_amount_hint(deal)
     amount_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
     amount_label.custom_minimum_size = Vector2(104, 0)
-    amount_label.add_theme_color_override("font_color", COLOR_PRICE)
+    amount_label.add_theme_color_override("font_color", price_color())
     amount_label.mouse_filter = Control.MOUSE_FILTER_STOP
     row.add_child(amount_label)
     var key := _deal_key(deal)
@@ -691,7 +701,7 @@ func _build_delivery_row(deal: Dictionary) -> HBoxContainer:
     if deal.has("delivery_time"):
         var delivery_label := Label.new()
         delivery_label.text = tr("Delivery: %s") % _format_delay(float(deal.get("delivery_time", 0.0)))
-        delivery_label.add_theme_color_override("font_color", COLOR_CAPTION)
+        delivery_label.add_theme_color_override("font_color", caption_color())
         delivery_label.mouse_filter = Control.MOUSE_FILTER_STOP
         delivery_label.tooltip_text = tr("The time the goods spend on the road from the town to the city")
         row.add_child(delivery_label)
@@ -936,21 +946,10 @@ func _build_deal_editor(deal: Dictionary) -> PanelContainer:
     _set_deal_amount(maxi(int(deal.get("amount", 0)), 1))
     return panel
 
-# The frame of the editor: the dark panel of the window (0.117) with a LIGHT border, so that
-# the editor reads as a separate block and not as one more row of the list.
+# The frame of the editor: the panel surface of the palette with a LIGHT border, so that the
+# editor reads as a separate block and not as one more row of the list.
 func _make_editor_style() -> StyleBoxFlat:
-    var style := StyleBoxFlat.new()
-    style.bg_color = Color(0.117, 0.117, 0.117, 1)
-    style.border_width_left = 1
-    style.border_width_top = 1
-    style.border_width_right = 1
-    style.border_width_bottom = 1
-    style.border_color = Color(0.45, 0.45, 0.45, 1)
-    style.content_margin_left = 8.0
-    style.content_margin_right = 8.0
-    style.content_margin_top = 6.0
-    style.content_margin_bottom = 6.0
-    return style
+    return UI_THEME.panel()
 
 # --- The amount field of the inline editor ---
 
@@ -1033,7 +1032,7 @@ func _update_deal_feedback() -> void:
         return
     var total := amount * _deal_unit_price(_deal_editor_deal)
     _deal_total_label.text = tr("Cost: %s") % UiHelpers.money_rate(str(total))
-    _deal_total_label.add_theme_color_override("default_color", COLOR_EXPENSE)
+    _deal_total_label.add_theme_color_override("default_color", expense_color())
 
 # The price of one unit of a deal: the price frozen at its signing, which
 # town_trade_manager.get_contracts hands over as both "unit_price" and "price". A record
@@ -1109,7 +1108,7 @@ func _deal_type_name(deal_type: String) -> String:
     return tr("Sale") if deal_type == DEAL_TYPE_SELL else tr("Purchase")
 
 func _deal_type_color(deal_type: String) -> Color:
-    return COLOR_INCOME if deal_type == DEAL_TYPE_SELL else COLOR_EXPENSE
+    return income_color() if deal_type == DEAL_TYPE_SELL else expense_color()
 
 # --- THE SECTION "TRADE PARTNERS" ---
 
@@ -1174,7 +1173,7 @@ func _build_partner_row(partner: Dictionary) -> HBoxContainer:
     distance_label.text = str(distance)
     distance_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
     distance_label.custom_minimum_size = Vector2(28, 0)
-    distance_label.modulate = Color(0.8, 0.8, 0.8)
+    distance_label.modulate = UI_THEME.color("text_secondary")
     distance_label.mouse_filter = Control.MOUSE_FILTER_STOP
     distance_label.tooltip_text = tr(" Distance to city: %d hex(es)") % distance
     row.add_child(distance_label)
@@ -1218,7 +1217,7 @@ func _border_color(partner: Dictionary) -> Color:
     var stored = partner.get("color", [])
     if stored is Array and stored.size() >= 3:
         return Color(float(stored[0]), float(stored[1]), float(stored[2]))
-    return COLOR_CAPTION
+    return caption_color()
 
 # --- THE COMMON ---
 
@@ -1233,7 +1232,7 @@ func _fill_list(container: Node, rows: Array, empty_text: String) -> void:
     if rows.is_empty():
         var empty := Label.new()
         empty.text = empty_text
-        empty.add_theme_color_override("font_color", COLOR_CAPTION)
+        empty.add_theme_color_override("font_color", caption_color())
         container.add_child(empty)
         return
     for row in rows:

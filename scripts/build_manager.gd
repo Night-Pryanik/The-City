@@ -1,6 +1,8 @@
 @tool
 extends Node
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 signal build_message(text: String, message_type: int)
 signal build_completed(row: int, col: int, imp_id: String, target_res_id)
 signal build_paused(row: int, col: int)
@@ -287,7 +289,7 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
             "label": imp_name,
             "row": row,
             "col": col,
-            "bar_color": Color.YELLOW,
+            "bar_color": UI_THEME.color("warning"),
             "bar_offset": 10,
             "execute": func(): start_build(row, col, imp_id, target_res_id, effective_road_level),
     }):

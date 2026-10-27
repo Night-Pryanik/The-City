@@ -623,7 +623,7 @@ func get_price_breakdown_for_quality(res_id: String, quality_id: String) -> Dict
 #   " = x1.30 = 5", that is, everything EXCEPT the stars.
 # The stars are returned separately not for the sake of beauty, but because of the design
 # requirement: in the row tooltip the stars are painted in the colour of the level (data/qualities.json, color), and
-# the price calculation itself — in gold (ui_helpers.PRICE_TEXT_COLOR), and by one Label with
+# the price calculation itself — in the price colour of the palette (ui_helpers.price_text_color()), and by one Label with
 # one colour for the whole row this cannot be expressed.
 # An empty string if there is nothing to show: the product has no price or the level
 # is not in the scale (without the stars there is nothing to assemble the row from).

@@ -11,16 +11,15 @@
 # the sections are cheap, and a rebuilt list always matches the data of the city.
 extends Node
 
-# The "single source of truth" script for the styling constants. It is needed at the parsing stage
-# for the const QUALITY_MARKER_COLOR below (in GDScript a constant does not see
-# the variables declared later, but it does see the preloaded scripts).
+# The "single source of truth" script for the styling constants shared with the other
+# tabs (the tooltip formatting, the toggle highlight, the quality marker).
 const UiHelpers = preload("res://scripts/ui_helpers.gd")
+const UI_THEME = preload("res://scripts/ui_theme.gd")
 
-# The blue star marker at the beginning of the quality label (see _update_quality_label).
-# The colour is taken from ui_helpers.QUALITY_MARKER_COLOR — the same interface accent
-# in the "Trade" cards: the marker must not look like a quality level,
-# therefore it does not coincide with any of the colours of data/qualities.json.
-const QUALITY_MARKER_COLOR := UiHelpers.QUALITY_MARKER_COLOR
+# The star marker at the beginning of the quality label (see _update_quality_label) takes
+# the accent of the palette from ui_helpers.quality_marker_color(), the same one as the
+# "Trade" cards: the marker must not look like a quality level, therefore it does not
+# coincide with any of the colours of data/qualities.json.
 
 # The sections of the tab.
 const SECTION_STORAGE := "storage"
@@ -299,7 +298,7 @@ func _fill_tamed_section() -> void:
     if CityData.domesticated_resources.size() > 0:
         var title = Label.new()
         title.text = tr("Tamed resources:")
-        title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+        title.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         tamed_list.add_child(title)
 
         var animal_subgroups = {}
@@ -313,7 +312,7 @@ func _fill_tamed_section() -> void:
         for subgroup in animal_subgroups.keys():
             var subgroup_label = Label.new()
             subgroup_label.text = tr("  Subgroup: ") + _get_subgroup_name(subgroup)
-            subgroup_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+            subgroup_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
             tamed_list.add_child(subgroup_label)
 
             for animal in animal_subgroups[subgroup]:
@@ -342,7 +341,7 @@ func _fill_tamed_section() -> void:
                         animal_flow_labels.append(icon_rect)
                 var animal_label = Label.new()
                 animal_label.text = animal["name"]
-                animal_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+                animal_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
                 animal_label.mouse_filter = Control.MOUSE_FILTER_PASS
                 animal_label.mouse_entered.connect(_on_flow_hover.bind(animal["id"], animal["name"]))
                 animal_label.mouse_exited.connect(_on_flow_exit.bind(animal["id"]))
@@ -439,7 +438,6 @@ func _fill_storage_section() -> void:
 
             var name_label = Label.new()
             name_label.text = "%s: %d  " % [product_name, amount]
-            name_label.add_theme_color_override("font_color", Color.WHITE)
             # An explicit MOUSE_FILTER_PASS — otherwise the Label is STOP by default, and on
             # dragging/scrolling of the parent container the mouse events
             # may be "swallowed" by the row, and mouse_entered will not fire.
@@ -450,20 +448,19 @@ func _fill_storage_section() -> void:
             # The dynamics shows only the planned indicators.
             var green_label = Label.new()
             green_label.text = _format_prod_label(prod_id)
-            green_label.add_theme_color_override("font_color", Color.GREEN)
+            green_label.add_theme_color_override("font_color", UI_THEME.color("income"))
             green_label.mouse_filter = Control.MOUSE_FILTER_PASS
             row.add_child(green_label)
             prod_labels[prod_id] = green_label
 
             var slash_label = Label.new()
             slash_label.text = " / "
-            slash_label.add_theme_color_override("font_color", Color.WHITE)
             slash_label.mouse_filter = Control.MOUSE_FILTER_PASS
             row.add_child(slash_label)
 
             var red_label = Label.new()
             red_label.text = _format_cons_label(prod_id)
-            red_label.add_theme_color_override("font_color", Color.RED)
+            red_label.add_theme_color_override("font_color", UI_THEME.color("expense"))
             red_label.mouse_filter = Control.MOUSE_FILTER_PASS
             row.add_child(red_label)
             cons_labels[prod_id] = red_label
@@ -503,13 +500,13 @@ func _fill_diversity_section() -> void:
     if total_subgroups > 0:
         var div_label = Label.new()
         div_label.text = tr("Diversity: %d subgroups") % total_subgroups
-        div_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.3))
+        div_label.add_theme_color_override("font_color", UI_THEME.color("warning"))
         diversity_list.add_child(div_label)
         diversity_label = div_label
 
         var bonus_label = Label.new()
         bonus_label.text = tr("Active bonuses: (coming later)")
-        bonus_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.3))
+        bonus_label.add_theme_color_override("font_color", UI_THEME.color("warning").darkened(0.3))
         diversity_list.add_child(bonus_label)
 
 func update_values():
@@ -636,7 +633,9 @@ func _add_quality_label(row: HBoxContainer, prod_id: String, product_name: Strin
     # RichTextLabel has its own theme (normal_font_size), and without this the text in the row
     # could differ from the neighbouring labels.
     quality_label.add_theme_font_size_override("normal_font_size", row.get_theme_font_size("font_size"))
-    quality_label.add_theme_color_override("default_color", Color(1.0, 0.85, 0.2, 0.9))
+    var marker_text_color := UI_THEME.color("warning")
+    marker_text_color.a = 0.9
+    quality_label.add_theme_color_override("default_color", marker_text_color)
     quality_label.mouse_filter = Control.MOUSE_FILTER_PASS # we pass the clicks to the parent button
     # Showing the stars on hover — the tooltip with the breakdown by quality
     quality_label.mouse_entered.connect(_on_quality_hover.bind(prod_id, product_name))
@@ -647,11 +646,8 @@ func _add_quality_label(row: HBoxContainer, prod_id: String, product_name: Strin
 
 # Updates the text of the quality label: one blue star as the sign that
 # the good has a quality, and the breakdown of the storage by levels — "★ (33%/67%)", where each
-# percentage is painted in the colour of its level.
-# Previously there were the stars of the BEST level and its share of the rest
-# ("★★★★ (67%)" for a storage of 3147 common and 6365 exceptional), and the row read
-# as "two thirds of the storage is exceptional" instead of "two thirds of the common is exceptional".
-# Now all the levels are visible at once, and the percentages honestly add up to 100%.
+# percentage is painted in the colour of its level. All the levels are visible at once, and the
+# percentages add up to 100%.
 func _update_quality_label(label: RichTextLabel, prod_id: String):
     var detail = city_quality_detail.get(prod_id, {})
     var share_text: String = GameData.format_quality_share_text(detail)
@@ -663,7 +659,7 @@ func _update_quality_label(label: RichTextLabel, prod_id: String):
     # the sign of "the good has a breakdown by quality", and not a quality level —
     # the levels are shown as the percentages on the right, each in its own colour.
     label.text = "[color=#%s]★[/color] %s" % [
-        QUALITY_MARKER_COLOR.to_html(false), share_text]
+        UiHelpers.quality_marker_color().to_html(false), share_text]
 
 # Shows the tooltip with the breakdown by quality on hover.
 func _on_quality_hover(prod_id: String, product_name: String):

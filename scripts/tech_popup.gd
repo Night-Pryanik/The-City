@@ -8,6 +8,8 @@
 # so that the player cannot interact with the map while the popup is open.
 extends Control
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 var panel: Panel
 var title_label: Label
 var description_label: Label
@@ -44,12 +46,7 @@ func _ready():
     # 560×420, so that the window by default is a bit taller and fits a typical
     # long flavor text without scrolling.
     panel.custom_minimum_size = Vector2(560, 520)
-    var style = StyleBoxFlat.new()
-    style.bg_color = Color(0.13, 0.13, 0.13, 1.0)
-    style.set_border_width_all(2)
-    style.border_color = Color(0.4, 0.4, 0.4, 1.0)
-    style.set_corner_radius_all(4)
-    panel.add_theme_stylebox_override("panel", style)
+    panel.add_theme_stylebox_override("panel", UI_THEME.window_plate())
     center.add_child(panel)
 
     var vbox = VBoxContainer.new()
@@ -63,7 +60,7 @@ func _ready():
 
     title_label = Label.new()
     title_label.add_theme_font_size_override("font_size", 22)
-    title_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+    title_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
     vbox.add_child(title_label)
 
     # We wrap the long text (description + flavor + resources) in a
@@ -84,7 +81,7 @@ func _ready():
 
     var desc_title_local = Label.new()
     desc_title = desc_title_local
-    desc_title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    desc_title.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     scroll_body.add_child(desc_title)
 
     description_label = Label.new()
@@ -94,12 +91,12 @@ func _ready():
 
     var flavor_title_local = Label.new()
     flavor_title = flavor_title_local
-    flavor_title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    flavor_title.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     scroll_body.add_child(flavor_title)
 
     flavor_label = Label.new()
     flavor_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    flavor_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+    flavor_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
     flavor_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll_body.add_child(flavor_label)
 

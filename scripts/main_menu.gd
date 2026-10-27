@@ -7,6 +7,7 @@ extends Control
 const DataValidator = preload("res://scripts/data_validator.gd")
 const DataProblemsWindow = preload("res://scripts/data_problems_window.gd")
 const UiHelpers = preload("res://scripts/ui_helpers.gd")
+const UI_THEME = preload("res://scripts/ui_theme.gd")
 const ModListScene = preload("res://scenes/mod_list.tscn")
 const WorldPreview = preload("res://scripts/world_preview.gd")
 
@@ -287,7 +288,7 @@ func _build_city_tab() -> Control:
     var hint := Label.new()
     hint.text = tr("An empty name gives the city a random one.")
     hint.add_theme_font_size_override("font_size", 12)
-    hint.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+    hint.theme_type_variation = &"MutedLabel"
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     # A wrapped label reports its minimum height at its minimum width, which would be the
     # height of its longest word.
@@ -399,7 +400,7 @@ func _make_preview() -> Control:
     disclaimer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     disclaimer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     disclaimer.add_theme_font_size_override("font_size", 12)
-    disclaimer.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+    disclaimer.theme_type_variation = &"MutedLabel"
     column.add_child(disclaimer)
     return column
 

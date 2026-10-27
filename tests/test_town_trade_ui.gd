@@ -88,6 +88,16 @@ func _money_rate(text: String) -> String:
         _money_fmt = load("res://scripts/ui_helpers.gd")
     return _money_fmt.money_rate(text)
 
+# The background of a selected row is built from the palette, so the check asks the colour
+# from the window's own script. Loaded at run time for the same reason as the money
+# formatting above.
+var _town_ui_script = null
+
+func _row_selected_color() -> Color:
+    if _town_ui_script == null:
+        _town_ui_script = load("res://scripts/town_ui.gd")
+    return _town_ui_script.row_selected_color()
+
 
 const TOWN_UI_SCENE := "res://scenes/TownUI.tscn"
 
@@ -321,7 +331,7 @@ func _test_rows(town: Dictionary) -> void:
     _click(row)
     _check(_ui._selected_key == str(row.get_meta("town_row_key", "")),
         "a click must select the row (selected key \"%s\")" % _ui._selected_key)
-    _check(row.get_theme_stylebox("panel").bg_color == _ui.ROW_SELECTED_COLOR,
+    _check(row.get_theme_stylebox("panel").bg_color == _row_selected_color(),
         "the selected row must keep the selected background")
     _check(_ui._trade_panel != null and is_instance_valid(_ui._trade_panel),
         "a click on a row must open the trade panel")

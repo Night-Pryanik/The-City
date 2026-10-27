@@ -2,6 +2,8 @@
 @tool
 extends Node
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 # The storage and the production
 var city_storage: Dictionary = {}
 # The breakdown of the storage by quality: product_id -> { "common": N, "fine": N, ... }
@@ -1865,7 +1867,7 @@ func start_research(tech_id: String) -> bool:
             "label": tech_data.get("name", tech_id),
             "row": -1,
             "col": -1,
-            "bar_color": Color.GREEN,
+            "bar_color": UI_THEME.color("income"),
             "bar_offset": 4,
             "execute": func(): start_research(tech_id),
     }):
@@ -2382,7 +2384,7 @@ func start_building_upgrade(idx: int) -> Dictionary:
                 "label": str(upgrade_data.get("name", upgrade_to)),
                 "row": -1,
                 "col": -1,
-                "bar_color": Color(0.45, 0.75, 1.0),
+                "bar_color": UI_THEME.color("info"),
                 "bar_offset": 10,
                 "execute": func(): start_building_upgrade(idx),
         }):
@@ -2578,7 +2580,7 @@ func request_build(building_id: String) -> bool:
                 "label": str(bdata.get("name", building_id)),
                 "row": -1,
                 "col": -1,
-                "bar_color": Color(0.45, 0.75, 1.0),
+                "bar_color": UI_THEME.color("info"),
                 "bar_offset": 10,
                 "execute": func(): request_build(building_id),
         }):

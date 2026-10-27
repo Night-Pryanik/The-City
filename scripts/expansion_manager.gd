@@ -1,6 +1,8 @@
 # expansion_manager.gd
 extends Node
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 # The territory costs (scouting and claiming) — in COINS from the city treasury.
 # The base price of one hex and the universal distance modifier are taken from
 # data/game_balance.json (see get_scout_cost_per_hex / get_expansion_cost_per_hex
@@ -324,7 +326,7 @@ func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
                 "label": tr("Claim the area"),
                 "row": first_hex.row,
                 "col": first_hex.col,
-                "bar_color": Color(0.9, 0.6, 0.2),
+                "bar_color": UI_THEME.color("price"),
                 "bar_offset": 10,
                 "execute": func(): handle_action(chunk, money_cost, work_cost),
         }):

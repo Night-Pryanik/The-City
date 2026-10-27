@@ -1,6 +1,8 @@
 # buildings_tab.gd
 extends Node
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 var ui_helpers: Node
 var products: Dictionary = {}
 var raw_resources: Dictionary = {}
@@ -290,7 +292,7 @@ func _refresh_construction_rows():
 
         var label = Label.new()
         label.text = base_name
-        label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
+        label.add_theme_color_override("font_color", UI_THEME.color("info").lightened(0.2))
         label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         row.add_child(label)
@@ -430,7 +432,7 @@ func get_hovered_construction_bar(mouse_pos: Vector2) -> Dictionary:
 # yellow = part of the group is working, orange = idle.
 func _get_built_status_info(working: int, idle: int, total: int) -> Dictionary:
     var text = ""
-    var color = Color.WHITE
+    var color := UI_THEME.color("text")
     if idle > 0:
         # There are idle buildings (there is a worker, but all the slots are empty)
         if total > 1:
@@ -440,13 +442,14 @@ func _get_built_status_info(working: int, idle: int, total: int) -> Dictionary:
                 text = tr("%d of %d working, %d idle") % [working, total, idle]
         else:
             text = tr("idle")
-        color = Color.ORANGE
+        color = UI_THEME.color("warning").lerp(UI_THEME.color("expense"), 0.35)
     elif total > 1:
         text = tr("%d of %d working") % [working, total]
-        color = Color.GREEN if working == total else (Color.YELLOW if working > 0 else Color.RED)
+        color = UI_THEME.color("income") if working == total \
+                else (UI_THEME.color("warning") if working > 0 else UI_THEME.color("expense"))
     else:
         text = tr("working") if working > 0 else tr("not working")
-        color = Color.GREEN if working > 0 else Color.RED
+        color = UI_THEME.color("income") if working > 0 else UI_THEME.color("expense")
     return {"text": text, "color": color}
 
 # Fills the tooltip panel of the built building: the heading, the bulleted
@@ -463,7 +466,6 @@ func _fill_built_tooltip(group: Dictionary):
     var title = Label.new()
     title.text = _built_group_title(group)
     title.add_theme_font_size_override("font_size", 16)
-    title.add_theme_color_override("font_color", Color.WHITE)
     title.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(title)
 
@@ -493,7 +495,7 @@ func _fill_built_tooltip(group: Dictionary):
 
     var footer = Label.new()
     footer.text = tr("Click — building control panel")
-    footer.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    footer.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(footer)
 
@@ -546,38 +548,38 @@ func _hide_built_tooltip():
 #   can upgrade — the instances available for an upgrade (upgradeable; the
 #     fact of availability already includes the check "the target is unlocked by a technology".
 # For a single building (total == 1) the detail-counter is omitted —
-# "1 of 1" is redundant. The colours are from the button/label palette of the project.
+# "1 of 1" is redundant. The colours come from the data tokens of the palette.
 func _get_built_states(group: Dictionary) -> Array:
     var working = int(group.get("working", 0))
     var idle = int(group.get("idle", 0))
     var total = int(group.get("total", 0))
     var upgradeable = int(group.get("upgradeable", 0))
 
-    const COLOR_WORKS := Color(0.35, 1.0, 0.35)
-    const COLOR_IDLE := Color.YELLOW
-    const COLOR_OFF := Color(1.0, 0.35, 0.35)
-    const COLOR_UPGRADE := Color(0.6, 0.8, 1.0)
+    var color_works := UI_THEME.color("income")
+    var color_idle := UI_THEME.color("warning")
+    var color_off := UI_THEME.color("expense")
+    var color_upgrade := UI_THEME.color("info").lightened(0.2)
 
     var states = []
     if total > 1:
         var properly_working = working - idle
         if properly_working > 0:
-            states.append([tr("working"), "%d" % properly_working, COLOR_WORKS])
+            states.append([tr("working"), "%d" % properly_working, color_works])
         if idle > 0:
-            states.append([tr("idle"), "%d" % idle, COLOR_IDLE])
+            states.append([tr("idle"), "%d" % idle, color_idle])
         var not_working = total - working
         if not_working > 0:
-            states.append([tr("not working"), "%d" % not_working, COLOR_OFF])
+            states.append([tr("not working"), "%d" % not_working, color_off])
     else:
         if idle > 0:
-            states.append([tr("idle"), "", COLOR_IDLE])
+            states.append([tr("idle"), "", color_idle])
         elif working > 0:
-            states.append([tr("working"), "", COLOR_WORKS])
+            states.append([tr("working"), "", color_works])
         else:
-            states.append([tr("not working"), "", COLOR_OFF])
+            states.append([tr("not working"), "", color_off])
 
     if upgradeable > 0:
-        states.append([tr("upgradeable"), "%d" % upgradeable, COLOR_UPGRADE])
+        states.append([tr("upgradeable"), "%d" % upgradeable, color_upgrade])
     return states
 
 # Sets the text colour of the button in all the states (normal, hover, pressed,
@@ -712,22 +714,22 @@ func refresh_building_detail_tooltip():
         material["amount_label"].text = "%d/%d" % [
             material["required_amount"], available_amount]
         if available_amount >= material["required_amount"]:
-            material["amount_label"].modulate = Color(0.35, 1.0, 0.35)
+            material["amount_label"].add_theme_color_override("font_color", UI_THEME.color("income"))
         else:
-            material["amount_label"].modulate = Color(1.0, 0.35, 0.35)
+            material["amount_label"].add_theme_color_override("font_color", UI_THEME.color("expense"))
 
     if is_instance_valid(_detail_requirement_label):
         var requirement_check = CityData.check_building_additional_req(
             _hovered_building_id)
         if requirement_check["ok"]:
-            _detail_requirement_label.modulate = Color(0.35, 1.0, 0.35)
+            _detail_requirement_label.add_theme_color_override("font_color", UI_THEME.color("income"))
         else:
-            _detail_requirement_label.modulate = Color(1.0, 0.35, 0.35)
+            _detail_requirement_label.add_theme_color_override("font_color", UI_THEME.color("expense"))
 
 func _make_bullet(symbol: String) -> Label:
     var bullet = Label.new()
     bullet.text = symbol
-    bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    bullet.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
     return bullet
 
@@ -738,7 +740,7 @@ func _make_bullet_row(symbol: String, text: String) -> HBoxContainer:
     row.add_child(_make_bullet(symbol))
     var label = Label.new()
     label.text = text
-    label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     row.add_child(label)
     return row
@@ -762,7 +764,6 @@ func _show_building_details(bdata: Dictionary):
     var title = Label.new()
     title.text = bdata["name"]
     title.add_theme_font_size_override("font_size", 18)
-    title.add_theme_color_override("font_color", Color.WHITE)
     title.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(title)
 
@@ -776,7 +777,7 @@ func _show_building_details(bdata: Dictionary):
         # is computed at a width of ~0 (huge), the tooltip jumps to the top edge
         # and "falls" to the cursor on the following frames of the layout.
         desc_label.custom_minimum_size = Vector2(420, 0)
-        desc_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+        desc_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         content.add_child(desc_label)
 
@@ -784,7 +785,7 @@ func _show_building_details(bdata: Dictionary):
     var cost_header = Label.new()
     cost_header.text = tr("Cost:")
     cost_header.add_theme_font_size_override("font_size", 14)
-    cost_header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    cost_header.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     cost_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(cost_header)
 
@@ -832,9 +833,9 @@ func _show_building_details(bdata: Dictionary):
                 amount_label.text = "%d/%d" % [required_amount, available_amount]
                 amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
                 if available_amount >= required_amount:
-                    amount_label.modulate = Color(0.35, 1.0, 0.35)
+                    amount_label.add_theme_color_override("font_color", UI_THEME.color("income"))
                 else:
-                    amount_label.modulate = Color(1.0, 0.35, 0.35)
+                    amount_label.add_theme_color_override("font_color", UI_THEME.color("expense"))
                 row.add_child(amount_label)
                 _detail_material_rows.append({
                     "resource_id": entry[0],
@@ -862,9 +863,9 @@ func _show_building_details(bdata: Dictionary):
         requirement_row.add_child(requirement_label)
         var requirement_check = CityData.check_building_additional_req(bdata.get("id", ""))
         if requirement_check["ok"]:
-            requirement_label.modulate = Color(0.35, 1.0, 0.35)
+            requirement_label.add_theme_color_override("font_color", UI_THEME.color("income"))
         else:
-            requirement_label.modulate = Color(1.0, 0.35, 0.35)
+            requirement_label.add_theme_color_override("font_color", UI_THEME.color("expense"))
         _detail_requirement_label = requirement_label
         content.add_child(requirement_row)
 
@@ -902,7 +903,7 @@ func _show_building_details(bdata: Dictionary):
                 str(cons.get("display_key", "")), products_data))
             var cons_rate_label = Label.new()
             cons_rate_label.text = ": %s" % str(cons.get("rate_label", ""))
-            cons_rate_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+            cons_rate_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
             cons_rate_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
             cons_row.add_child(cons_rate_label)
             content.add_child(cons_row)
@@ -928,7 +929,7 @@ func _show_building_details(bdata: Dictionary):
     var slots_label = Label.new()
     slots_label.text = tr("Production slots: %d") % int(slots)
     slots_label.add_theme_font_size_override("font_size", 14)
-    slots_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    slots_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     slots_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(slots_label)
 
@@ -1118,7 +1119,7 @@ func _refresh_recipes_list(bdata: Dictionary):
     var header = Label.new()
     header.text = tr("Available recipes:")
     header.add_theme_font_size_override("font_size", 14)
-    header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    header.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(header)
 
@@ -1142,14 +1143,14 @@ func _refresh_recipes_list(bdata: Dictionary):
         # The marker of a bulleted list
         var bullet = Label.new()
         bullet.text = "•"
-        bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        bullet.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(bullet)
 
         # The name of the recipe (the former format: "name: resources -> result")
         var name_label = Label.new()
         name_label.text = craft_name + ":"
-        name_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        name_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(name_label)
 
@@ -1194,7 +1195,7 @@ func _make_craft_content_local(_craft_name: String, craft_resources, craft_resul
             if not first:
                 var sep = Label.new()
                 sep.text = "+"
-                sep.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+                sep.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
                 sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
                 content.add_child(sep)
             first = false
@@ -1204,7 +1205,7 @@ func _make_craft_content_local(_craft_name: String, craft_resources, craft_resul
                 if not first_variant:
                     var or_sep = Label.new()
                     or_sep.text = "/"
-                    or_sep.add_theme_color_override("font_color", Color(0.85, 0.75, 0.4))
+                    or_sep.add_theme_color_override("font_color", UI_THEME.color("warning").darkened(0.15))
                     or_sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
                     content.add_child(or_sep)
                 first_variant = false
@@ -1216,14 +1217,14 @@ func _make_craft_content_local(_craft_name: String, craft_resources, craft_resul
                 if amount >= 1:
                     var amount_label = Label.new()
                     amount_label.text = "x%d" % amount
-                    amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+                    amount_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
                     amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
                     content.add_child(amount_label)
 
     if not craft_resources.is_empty() and not craft_result.is_empty():
         var arrow = Label.new()
         arrow.text = "->"
-        arrow.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+        arrow.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
         arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
         content.add_child(arrow)
 
@@ -1233,7 +1234,7 @@ func _make_craft_content_local(_craft_name: String, craft_resources, craft_resul
             if not first:
                 var sep = Label.new()
                 sep.text = ","
-                sep.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+                sep.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
                 sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
                 content.add_child(sep)
             first = false
@@ -1244,7 +1245,7 @@ func _make_craft_content_local(_craft_name: String, craft_resources, craft_resul
             if amount >= 1:
                 var amount_label = Label.new()
                 amount_label.text = "x%d" % amount
-                amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+                amount_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
                 amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
                 content.add_child(amount_label)
 

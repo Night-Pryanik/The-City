@@ -18,16 +18,23 @@
 # point.
 extends Node
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 ## The mode is switched on or off.
 signal active_changed(active: bool)
 ## A record is added to the queue or removed from it.
 signal queue_changed()
 
-# A thin orange frame around the window. It is the only constant indication that
+# A thin caution frame around the window. It is the only constant indication that
 # the simulation is stopped: the buttons look exactly as usual, and the actions
-# look as though they had already started.
-const BORDER_COLOR := Color(1.0, 0.6, 0.1, 0.9)
+# look as though they had already started. The frame means a caution, so it is the
+# blend of the warning and the loss colours of the palette.
 const BORDER_WIDTH := 2.0
+
+static func border_color() -> Color:
+    var caution := UI_THEME.color("warning").lerp(UI_THEME.color("expense"), 0.35)
+    caution.a = 0.9
+    return caution
 
 # Everything the player can click through while the simulation is stopped. The
 # map itself is NOT in the list: its _process IS the simulation, and it has to
@@ -274,7 +281,7 @@ func _draw_border() -> void:
     # lie outside the visible area and the frame would look thinner than it is.
     var inset := BORDER_WIDTH * 0.5
     var rect := Rect2(Vector2(inset, inset), _border.size - Vector2(inset * 2.0, inset * 2.0))
-    _border.draw_rect(rect, BORDER_COLOR, false, BORDER_WIDTH)
+    _border.draw_rect(rect, border_color(), false, BORDER_WIDTH)
 
 
 func _set_border_visible(on: bool) -> void:

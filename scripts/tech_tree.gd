@@ -14,6 +14,8 @@
 # Hover — the built-in tooltip with the description of the technology.
 extends Control
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 # --- The dimensions ---
 const COL_GAP: int = 80 # the horizontal gap between the columns
 const COL_PADDING: int = 24 # the indent from the edge of _inner
@@ -32,7 +34,6 @@ const UNLOCK_ICONS_MARGIN: int = 3 # the distance from the icons to the edges of
 # vertical line-separator (see ERA_LABEL_HEIGHT, ERA_LINE_*).
 const ERA_LABEL_HEIGHT: int = 64 # the height of the strip above the columns under the headings of the eras
 const ERA_LABEL_WIDTH: int = 200 # the fixed width of the heading of the era
-const ERA_LINE_COLOR := Color(0.72, 0.72, 0.75, 1.0) # the colour of the vertical separator of the eras
 const ERA_LINE_WIDTH: float = 2.0 # the thickness of the vertical separator of the eras
 
 # --- The external references (filled in in setup) ---
@@ -87,11 +88,7 @@ func _setup_science_tooltip():
     # The default Label mouse_filter IGNORE — the hover over it is not caught.
     # PASS allows accepting mouse_entered/mouse_exited.
     science_tooltip_panel.z_index = 1100
-    var style := StyleBoxFlat.new()
-    style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
-    style.set_border_width_all(1)
-    style.border_color = Color(0.6, 0.6, 0.6)
-    science_tooltip_panel.add_theme_stylebox_override("panel", style)
+    science_tooltip_panel.add_theme_stylebox_override("panel", UI_THEME.tooltip())
     add_child(science_tooltip_panel)
 
     science_tooltip_vbox = VBoxContainer.new()
@@ -104,7 +101,7 @@ func _setup_science_tooltip():
 func _make_bullet(symbol: String) -> Label:
     var bullet = Label.new()
     bullet.text = symbol
-    bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    bullet.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
     return bullet
 
@@ -115,7 +112,7 @@ func _make_bullet_row(symbol: String, text: String) -> HBoxContainer:
     row.add_child(_make_bullet(symbol))
     var label = Label.new()
     label.text = text
-    label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     row.add_child(label)
     return row
@@ -131,7 +128,7 @@ func _make_bullet_sub_row(text: String) -> HBoxContainer:
     row.add_child(_make_bullet("◦"))
     var label = Label.new()
     label.text = text
-    label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.75))
+    label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
     label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     row.add_child(label)
     return row
@@ -642,7 +639,7 @@ func _create_era_labels(layout_columns: Dictionary, num_cols: int) -> void:
             lab.size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
             lab.custom_minimum_size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
             lab.add_theme_font_size_override("font_size", 14)
-            lab.add_theme_color_override("font_color", Color(0.9, 0.9, 0.95, 1.0))
+            lab.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
             lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
             lab.position = Vector2(group["x_center"] - ERA_LABEL_WIDTH * 0.5, 0.0)
             _inner.add_child(lab)
@@ -657,7 +654,7 @@ func _create_antiquity_era_label(group: Dictionary) -> void:
             market_built = true
             break
     var count_text: String = "1/1" if market_built else "0/1"
-    var check: String = " [color=#4caf50]✔[/color]" if market_built else ""
+    var check: String = " [color=#%s]✔[/color]" % UI_THEME.color("income").to_html(false) if market_built else ""
     var icon_tag: String = ""
     var market_icon_path := IconRegistry.icon_path("market.png")
     if not market_icon_path.is_empty():
@@ -671,9 +668,13 @@ func _create_antiquity_era_label(group: Dictionary) -> void:
     rtl.size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
     rtl.custom_minimum_size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
     rtl.add_theme_font_size_override("normal_font_size", 12)
-    rtl.add_theme_color_override("default_color", Color(0.9, 0.9, 0.95, 1.0))
+    rtl.add_theme_color_override("default_color", UI_THEME.color("text_secondary"))
     rtl.position = Vector2(group["x_center"] - ERA_LABEL_WIDTH * 0.5, 0.0)
-    rtl.text = "[center]" + group["era_name"] + "[/center]\n" + tr("[center][color=#c9c9c9]Advance requirement:[/color] build ") + icon_tag + tr("Market (") + count_text + ")" + check + "[/center]"
+    # The colour of the hint is substituted after the translation, so that the text keeps
+    # the translated message as its key.
+    var hint: String = tr("[center][color=#c9c9c9]Advance requirement:[/color] build ")
+    hint = hint.replace("#c9c9c9", "#" + UI_THEME.color("text_muted").to_html(false))
+    rtl.text = "[center]" + group["era_name"] + "[/center]\n" + hint + icon_tag + tr("Market (") + count_text + ")" + check + "[/center]"
     _inner.add_child(rtl)
     _era_labels.append(rtl)
 
@@ -1099,30 +1100,30 @@ func _find_progress_in_button(btn: Button) -> ProgressBar:
 func _style_button(btn: Button, is_unlocked: bool, is_current: bool, is_available: bool, tech_id: String = ""):
     # The styles depend on the state. All the styles inherit the common properties
     # (the border, the rounding), but differ in the background.
-    var bg := Color(0.20, 0.20, 0.22)
-    var hover := Color(0.25, 0.25, 0.27)
-    var pressed := Color(0.18, 0.18, 0.20)
-    var font_col := Color(0.6, 0.6, 0.6)
+    var bg := UI_THEME.color("control_bg")
+    var hover := UI_THEME.color("control_hover").darkened(0.15)
+    var pressed := UI_THEME.color("control_bg").darkened(0.08)
+    var font_col := UI_THEME.color("text_muted")
     var modulate_col := Color(0.75, 0.75, 0.75, 0.9)
 
     if is_unlocked:
-        bg = Color(0.25, 0.45, 0.25)
-        hover = Color(0.30, 0.55, 0.30)
-        pressed = Color(0.20, 0.40, 0.20)
-        font_col = Color(0.85, 1.0, 0.85)
+        bg = UI_THEME.color("income").darkened(0.45)
+        hover = UI_THEME.color("income").darkened(0.35)
+        pressed = UI_THEME.color("income").darkened(0.5)
+        font_col = UI_THEME.color("income").lightened(0.6)
         modulate_col = Color(1, 1, 1, 0.9)
     elif is_current:
-        bg = Color(0.30, 0.40, 0.55)
-        hover = Color(0.35, 0.45, 0.65)
-        pressed = Color(0.25, 0.35, 0.50)
-        font_col = Color(1.0, 1.0, 0.7)
-        modulate_col = Color(1, 1, 1, 1)
+        bg = UI_THEME.color("fill").darkened(0.2)
+        hover = UI_THEME.color("fill").darkened(0.1)
+        pressed = UI_THEME.color("fill").darkened(0.35)
+        font_col = UI_THEME.color("warning").lightened(0.2)
+        modulate_col = Color.WHITE
     elif is_available:
-        bg = Color(0.35, 0.35, 0.40)
-        hover = Color(0.45, 0.45, 0.55)
-        pressed = Color(0.30, 0.30, 0.35)
-        font_col = Color.WHITE
-        modulate_col = Color(1, 1, 1, 1)
+        bg = UI_THEME.color("control_hover").lightened(0.05)
+        hover = UI_THEME.color("control_hover").lightened(0.2)
+        pressed = UI_THEME.color("control_pressed").lightened(0.2)
+        font_col = UI_THEME.color("text")
+        modulate_col = Color.WHITE
 
     var style_normal := _make_button_stylebox(bg)
     var style_hover := _make_button_stylebox(hover)
@@ -1138,7 +1139,7 @@ func _style_button(btn: Button, is_unlocked: bool, is_current: bool, is_availabl
     
     # The highlighting of the frame for the related technologies on hover.
     if not tech_id.is_empty() and _related_techs.has(tech_id):
-        var border_color := Color(0.3, 0.7, 1.0, 1.0)
+        var border_color := UI_THEME.color("info")
         style_normal.border_color = border_color
         style_hover.border_color = border_color
         style_pressed.border_color = border_color
@@ -1159,8 +1160,8 @@ func _make_button_stylebox(bg_color: Color, border_width: int = 1) -> StyleBoxFl
     var s := StyleBoxFlat.new()
     s.bg_color = bg_color
     s.set_border_width_all(border_width)
-    s.border_color = Color(0.10, 0.10, 0.10)
-    s.set_corner_radius_all(4)
+    s.border_color = UI_THEME.color("panel_bg").darkened(0.4)
+    s.set_corner_radius_all(int(UI_THEME.metric("panel_radius")))
     return s
 
 func refresh():
@@ -1288,7 +1289,7 @@ func _on_arrows_draw():
         _arrows_layer.draw_line(
             Vector2(x, y_top),
             Vector2(x, y_bottom),
-            ERA_LINE_COLOR,
+            UI_THEME.color("hairline"),
             ERA_LINE_WIDTH
         )
 
@@ -1296,7 +1297,7 @@ func _on_arrows_draw():
     if _hovered_tech_id.is_empty():
         return
 
-    var color_hover := Color(0.3, 0.7, 1.0, 1.0) # a bright blue for the highlighted relations
+    var color_hover := UI_THEME.color("info") # a bright accent for the highlighted relations
 
     # We build the map "parent → list of the children" from prerequisites.
     var children_map: Dictionary = {}

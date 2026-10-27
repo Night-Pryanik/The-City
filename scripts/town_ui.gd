@@ -81,6 +81,7 @@ extends Control
 # line) is built there, so the town window and the "Resources" tab of the city cannot
 # drift apart. Only the static members are used — no instance is needed.
 const UiHelpers = preload("res://scripts/ui_helpers.gd")
+const UI_THEME = preload("res://scripts/ui_theme.gd")
 
 # The red "!" triangle of the route-capacity warning. It is drawn by its own Control
 # (see the script), so the window does not need an icon asset for it.
@@ -130,9 +131,18 @@ const MAX_AMOUNT_LENGTH := 7
 # The background of a row in its three states. The normal one is fully transparent:
 # a column of dozens of rows must not look like a wall of boxes, the background
 # appears only on hover and on the selected row.
-const ROW_NORMAL_COLOR := Color(1, 1, 1, 0)
-const ROW_HOVER_COLOR := Color(1, 1, 1, 0.10)
-const ROW_SELECTED_COLOR := Color(0.30, 0.55, 0.85, 0.35)
+static func row_normal_color() -> Color:
+    return Color.TRANSPARENT
+
+static func row_hover_color() -> Color:
+    var tint := UI_THEME.color("text")
+    tint.a = 0.10
+    return tint
+
+static func row_selected_color() -> Color:
+    var tint := UI_THEME.color("fill")
+    tint.a = 0.35
+    return tint
 
 # The dimming of a row of a town whose trade is not available (there is no road to it):
 # the pool is still shown — the player reads what the town has and what it lacks — but
@@ -145,15 +155,15 @@ const ROW_DISABLED_MODULATE := Color(0.62, 0.62, 0.62, 1.0)
 const PRICE_COLUMN_WIDTH := 44
 
 # The colours of the money. The price of one unit is the same gold the "Trade" tab
-# already paints its prices with (UiHelpers.PRICE_TEXT_COLOR). The total of an order is
+# already paints its prices with (UiHelpers.price_text_color()). The total of an order is
 # red when the city PAYS and gold when the city IS PAID — the same pair the deal rows of
-# the "Foreign trade" column use (external_trade_tab.COLOR_EXPENSE / COLOR_INCOME), so a
+# the "Foreign trade" column use (external_trade_tab.color_expense / color_income), so a
 # purchase and a sale are read the same way in both windows.
-const COLOR_EXPENSE := Color(0.9, 0.3, 0.3, 1)
-const COLOR_INCOME := Color(1.0, 0.807, 0.2, 1)
+static func color_expense() -> Color:
+    return UI_THEME.color("expense")
 
-# The colour of the current-deal line in the trade panel.
-const DEAL_STATUS_TEXT_COLOR := Color(0.65, 0.65, 0.65, 1)
+static func color_income() -> Color:
+    return UI_THEME.color("warning")
 
 # The markers that let the layout be read back: a row of a trade column and the key
 # of the resource behind it (the tests and the trade panel both use them), and whether
@@ -316,7 +326,7 @@ func _build_pool_separator() -> void:
         return
     _pool_separator = ColorRect.new()
     _pool_separator.name = "PoolSeparator"
-    _pool_separator.color = UiHelpers.CATEGORY_HEADER_LINE_COLOR
+    _pool_separator.color = UiHelpers.category_header_line_color()
     _pool_separator.size_flags_vertical = Control.SIZE_FILL
     _pool_separator.mouse_filter = Control.MOUSE_FILTER_IGNORE
     columns_hbox.add_child(_pool_separator)
@@ -618,7 +628,7 @@ func _apply_buy_row_quality(quality_label: Label, resource_id: String) -> void:
         return
     quality_label.visible = true
     quality_label.text = "★"
-    quality_label.add_theme_color_override("font_color", UiHelpers.QUALITY_MARKER_COLOR)
+    quality_label.add_theme_color_override("font_color", UiHelpers.quality_marker_color())
 
 # Writes the quantity of the goods on the city warehouse into the label of a
 # purchase row. Only goods that are actually on the warehouse are shown — the
@@ -719,7 +729,7 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
     if pool == null or pool.is_empty():
         var empty_label := Label.new()
         empty_label.text = empty_text
-        empty_label.modulate = Color(0.65, 0.65, 0.65)
+        empty_label.modulate = UI_THEME.color("text_muted")
         container.add_child(empty_label)
         return
     # One entry per display name, grouped by the category of the id behind it. The
@@ -774,7 +784,7 @@ func _build_resource_row(resource_id: String, display_name: String,
     row.set_meta(META_RESOURCE_ROW, true)
     row.set_meta(META_ROW_KEY, row_key)
     row.set_meta(META_ROW_NAME, display_name)
-    row.add_theme_stylebox_override("panel", _make_row_style(ROW_NORMAL_COLOR))
+    row.add_theme_stylebox_override("panel", _make_row_style(row_normal_color()))
 
     var content := HBoxContainer.new()
     content.add_theme_constant_override("separation", 6)
@@ -804,7 +814,7 @@ func _build_resource_row(resource_id: String, display_name: String,
     price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
     price_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     price_label.custom_minimum_size = Vector2(PRICE_COLUMN_WIDTH, 0)
-    price_label.add_theme_color_override("default_color", UiHelpers.PRICE_TEXT_COLOR)
+    price_label.add_theme_color_override("default_color", UiHelpers.price_text_color())
     price_label.mouse_filter = Control.MOUSE_FILTER_STOP
     _apply_row_price(price_label, resource_id, side)
     content.add_child(price_label)
@@ -826,7 +836,7 @@ func _build_resource_row(resource_id: String, display_name: String,
         var stock_label := Label.new()
         stock_label.text = _format_stock(_stock_of(display_name))
         stock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-        stock_label.modulate = Color(0.8, 0.8, 0.8)
+        stock_label.modulate = UI_THEME.color("text_secondary")
         stock_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         content.add_child(stock_label)
         _sell_quantity_labels[display_name] = stock_label
@@ -849,7 +859,7 @@ func _build_resource_row(resource_id: String, display_name: String,
         var buy_quantity_label = Label.new()
         buy_quantity_label.name = "BuyQuantityLabel"
         buy_quantity_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-        buy_quantity_label.modulate = Color(0.8, 0.8, 0.8)
+        buy_quantity_label.modulate = UI_THEME.color("text_secondary")
         buy_quantity_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         _apply_buy_row_quantity(buy_quantity_label, resource_id)
         content.add_child(buy_quantity_label)
@@ -906,7 +916,7 @@ func _set_row_active(row: Control, active: bool) -> void:
     if row == null or not is_instance_valid(row):
         return
     row.set_meta(META_ROW_ACTIVE, active)
-    row.modulate = Color(1, 1, 1, 1) if active else ROW_DISABLED_MODULATE
+    row.modulate = Color.WHITE if active else ROW_DISABLED_MODULATE
 
 func _is_row_active(row: Control) -> bool:
     return bool(row.get_meta(META_ROW_ACTIVE, true))
@@ -1142,11 +1152,11 @@ func _free_trade_panel() -> void:
 func _apply_row_style(row: Control) -> void:
     if row == null or not is_instance_valid(row):
         return
-    var color := ROW_NORMAL_COLOR
+    var color := row_normal_color()
     if str(row.get_meta(META_ROW_KEY, "")) == _selected_key:
-        color = ROW_SELECTED_COLOR
+        color = row_selected_color()
     elif row == _hovered_row:
-        color = ROW_HOVER_COLOR
+        color = row_hover_color()
     row.add_theme_stylebox_override("panel", _make_row_style(color))
 
 func _refresh_row_styles() -> void:
@@ -1333,18 +1343,7 @@ func _build_trade_panel() -> PanelContainer:
     return panel
 
 func _make_panel_style() -> StyleBoxFlat:
-    var style := StyleBoxFlat.new()
-    style.bg_color = Color(0.11, 0.11, 0.11, 0.96)
-    style.border_width_left = 1
-    style.border_width_top = 1
-    style.border_width_right = 1
-    style.border_width_bottom = 1
-    style.border_color = Color(0.45, 0.45, 0.45, 1)
-    style.content_margin_left = 8.0
-    style.content_margin_right = 8.0
-    style.content_margin_top = 6.0
-    style.content_margin_bottom = 6.0
-    return style
+    return UI_THEME.panel()
 
 # --- The frames of the controls of the panel ---
 #
@@ -1353,13 +1352,6 @@ func _make_panel_style() -> StyleBoxFlat:
 # background they read as "dark on dark" and the player cannot see where a button
 # ends and the panel begins. Every control of the panel therefore gets an explicit
 # stylebox with a LIGHT frame, so that it is visible without hovering it.
-const CONTROL_BG_COLOR := Color(0.20, 0.20, 0.22, 1.0)
-const CONTROL_BG_HOVER_COLOR := Color(0.30, 0.30, 0.34, 1.0)
-const CONTROL_BG_PRESSED_COLOR := Color(0.13, 0.13, 0.15, 1.0)
-const CONTROL_BG_DISABLED_COLOR := Color(0.15, 0.15, 0.15, 1.0)
-const CONTROL_BORDER_COLOR := Color(0.62, 0.62, 0.66, 1.0)
-const CONTROL_BORDER_DISABLED_COLOR := Color(0.33, 0.33, 0.33, 1.0)
-
 # One stylebox of a control: the same light frame in every state, only the fill and
 # the frame colour differ.
 func _make_control_style(bg: Color, border: Color) -> StyleBoxFlat:
@@ -1390,43 +1382,55 @@ func _make_control_style(bg: Color, border: Color) -> StyleBoxFlat:
 # until the focus moves away.
 func _style_panel_button(button: Button) -> void:
     button.add_theme_stylebox_override("normal",
-            _make_control_style(CONTROL_BG_COLOR, CONTROL_BORDER_COLOR))
+            _make_control_style(UI_THEME.color("control_bg"),
+            UI_THEME.color("control_border")))
     button.add_theme_stylebox_override("hover",
-            _make_control_style(CONTROL_BG_HOVER_COLOR, CONTROL_BORDER_COLOR))
+            _make_control_style(UI_THEME.color("control_hover"),
+            UI_THEME.color("control_border")))
     button.add_theme_stylebox_override("pressed",
-            _make_control_style(CONTROL_BG_PRESSED_COLOR, CONTROL_BORDER_COLOR))
+            _make_control_style(UI_THEME.color("control_pressed"),
+            UI_THEME.color("control_border")))
     button.add_theme_stylebox_override("focus",
-            _make_control_style(CONTROL_BG_COLOR, CONTROL_BORDER_COLOR))
+            _make_control_style(UI_THEME.color("control_bg"),
+            UI_THEME.color("control_border")))
     button.add_theme_stylebox_override("disabled",
-            _make_control_style(CONTROL_BG_DISABLED_COLOR, CONTROL_BORDER_DISABLED_COLOR))
-    button.add_theme_color_override("font_color", Color(0.92, 0.92, 0.92))
-    button.add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5))
+            _make_control_style(UI_THEME.color("control_disabled"),
+            UI_THEME.color("control_border_disabled")))
+    button.add_theme_color_override("font_color", UI_THEME.color("text"))
+    button.add_theme_color_override("font_disabled_color", UI_THEME.color("text_muted"))
 
 # The frame of the "Permanent" checkbox. The stylebox of a CheckBox covers the whole
 # control, and the box itself is drawn by the theme icon — so the frame goes around
 # the box (the caption is a separate Label, see _build_trade_panel).
 func _style_check_box(check: CheckBox) -> void:
     check.add_theme_stylebox_override("normal",
-            _make_control_style(CONTROL_BG_COLOR, CONTROL_BORDER_COLOR))
+            _make_control_style(UI_THEME.color("control_bg"),
+            UI_THEME.color("control_border")))
     check.add_theme_stylebox_override("hover",
-            _make_control_style(CONTROL_BG_HOVER_COLOR, CONTROL_BORDER_COLOR))
+            _make_control_style(UI_THEME.color("control_hover"),
+            UI_THEME.color("control_border")))
     check.add_theme_stylebox_override("pressed",
-            _make_control_style(CONTROL_BG_PRESSED_COLOR, CONTROL_BORDER_COLOR))
+            _make_control_style(UI_THEME.color("control_pressed"),
+            UI_THEME.color("control_border")))
     check.add_theme_stylebox_override("focus",
-            _make_control_style(CONTROL_BG_COLOR, CONTROL_BORDER_COLOR))
+            _make_control_style(UI_THEME.color("control_bg"),
+            UI_THEME.color("control_border")))
     check.add_theme_stylebox_override("disabled",
-            _make_control_style(CONTROL_BG_DISABLED_COLOR, CONTROL_BORDER_DISABLED_COLOR))
+            _make_control_style(UI_THEME.color("control_disabled"),
+            UI_THEME.color("control_border_disabled")))
 
 # The frame of the amount field: the same light border as the buttons have. The field
 # stands between them in one row, and without the frame it would read as a hole in
 # the panel.
 func _style_amount_field(field: LineEdit) -> void:
     field.add_theme_stylebox_override("normal",
-            _make_control_style(CONTROL_BG_PRESSED_COLOR, CONTROL_BORDER_COLOR))
+            _make_control_style(UI_THEME.color("field_bg"),
+            UI_THEME.color("control_border")))
     field.add_theme_stylebox_override("focus",
-            _make_control_style(CONTROL_BG_PRESSED_COLOR, CONTROL_BORDER_COLOR))
-    field.add_theme_color_override("font_color", Color(0.95, 0.95, 0.95))
-    field.add_theme_color_override("caret_color", Color(0.95, 0.95, 0.95))
+            _make_control_style(UI_THEME.color("field_bg"),
+            UI_THEME.color("control_border")))
+    field.add_theme_color_override("font_color", UI_THEME.color("text"))
+    field.add_theme_color_override("caret_color", UI_THEME.color("text"))
 
 # A small square button with an icon and no text — the look of the "Start"/"Cancel"
 # buttons of the preview panel (control_panel._show_preview_header). The icon comes
@@ -1653,10 +1657,10 @@ func _update_total_label(amount: int) -> void:
     var total_text := UiHelpers.money_rate(str(total)) if permanent else UiHelpers.money(str(total))
     if _selected_side == SIDE_SELL:
         _total_label.text = tr("Cost: %s") % total_text
-        _total_label.add_theme_color_override("default_color", COLOR_EXPENSE)
+        _total_label.add_theme_color_override("default_color", color_expense())
     else:
         _total_label.text = tr("Income: %s") % total_text
-        _total_label.add_theme_color_override("default_color", COLOR_INCOME)
+        _total_label.add_theme_color_override("default_color", color_income())
 
 # The warning triangle is shown when the entered amount is larger than the route can
 # carry: the surplus is not lost, it queues on the road and arrives later (see
@@ -1715,7 +1719,7 @@ func _update_deal_status_label() -> void:
     else:
         _deal_status_label.text = tr("One-time deal: %d units in transit") % int(
                 deal.get("remaining", deal.get("amount", 0)))
-    _deal_status_label.add_theme_color_override("font_color", DEAL_STATUS_TEXT_COLOR)
+    _deal_status_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
 
 # --- Confirm / cancel ---
 

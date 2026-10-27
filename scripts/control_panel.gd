@@ -21,6 +21,8 @@
 #   CityData.city_updated, CityData.research_completed, expansion_manager.territory_expanded.
 extends Panel
 
+const UI_THEME = preload("res://scripts/ui_theme.gd")
+
 # The kind of the action "Improve the road". This is NOT a special action from data/special_actions.json:
 # the improvement does not change the contents of the hex and does not have its own work_cost (the price of a segment
 # is taken from the road level, see roads.json), therefore it lives as a separate
@@ -331,7 +333,7 @@ func _append_route_info(row: int, col: int) -> void:
         var road_label := Label.new()
         road_label.text = tr(" Road: %s") % road_line
         road_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        road_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+        road_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
         _products_container.add_child(road_label)
     var route: Dictionary = main_map.get_route_to_city(row, col)
     if not route.get("ok", false):
@@ -339,7 +341,7 @@ func _append_route_info(row: int, col: int) -> void:
     var route_label := Label.new()
     route_label.text = tr(" Route to the city: %d sections, average %.1f units/sec") % [int(route.get("length", 0)), float(route.get("avg_speed", 0.0))]
     route_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    route_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    route_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
     _products_container.add_child(route_label)
     # The delivery queue: what is waiting to be shipped and what is already on the road.
     # It comes from the same source as the tooltip block (see map_tooltip.delivery_lines),
@@ -348,7 +350,7 @@ func _append_route_info(row: int, col: int) -> void:
         var delivery_label := Label.new()
         delivery_label.text = str(item.get("text", ""))
         delivery_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        delivery_label.add_theme_color_override("font_color", item.get("color", Color(0.8, 0.8, 0.8)))
+        delivery_label.add_theme_color_override("font_color", item.get("color", UI_THEME.color("text_secondary")))
         _products_container.add_child(delivery_label)
 
 # --- The building of the action buttons ---
@@ -386,8 +388,8 @@ func _build_actions(row: int, col: int, tile: Dictionary):
         else:
             btn.text = "?"
             if not action.get("enabled", true):
-                btn.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
-                btn.add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5))
+                btn.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
+                btn.add_theme_color_override("font_disabled_color", UI_THEME.color("text_muted"))
         var action_data = action
         btn.pressed.connect(func():
             _on_action_pressed(action_data)
@@ -1370,7 +1372,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     var header_label = Label.new()
     header_label.text = "%s" % preview.get("label", "")
     header_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    header_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
+    header_label.add_theme_color_override("font_color", UI_THEME.color("warning").lightened(0.2))
     header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     header.add_child(header_label)
     var build_btn = Button.new()
@@ -1424,7 +1426,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var cult_label = Label.new()
             cult_label.text = tr("Culture:")
             cult_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-            cult_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+            cult_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
             _preview_container.add_child(cult_label)
 
             # The buttons of the crops go in a horizontal row with a wrapping of the rows.
@@ -1452,7 +1454,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 # An explicit frame around the chosen crop.
                 var pressed_style = StyleBoxFlat.new()
                 pressed_style.set_border_width_all(2)
-                pressed_style.border_color = Color(1.0, 0.85, 0.2) # a yellow frame
+                pressed_style.border_color = UI_THEME.color("warning") # a yellow frame
                 cult_btn.add_theme_stylebox_override("pressed", pressed_style)
                 cult_btn.add_theme_stylebox_override("hover_pressed", pressed_style)
                 cult_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
@@ -1522,7 +1524,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                     icon_path = IconRegistry.icon_path(icon_name)
                 products.append({"type": "product", "name": prod_name, "amount": float(final_amount), "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")})
             for mod in modifiers:
-                products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
+                products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": UI_THEME.color("income").lightened(0.35)})
             # We render into a SEPARATE box: render_products cleans the passed
             # container, therefore we must not give it _preview_container directly -
             # otherwise it erases the block of the choice of the crop, added above.
@@ -1572,7 +1574,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     var cost_label = Label.new()
     cost_label.text = tr("Improvement: %d work") % cost_data["cost"]
     cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    cost_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     _preview_container.add_child(cost_label)
 
     # The road to the improvement is a separate row, always, when the road can be built
@@ -1594,7 +1596,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         else:
             road_hint.text = tr(" Road to the city: not needed")
         road_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        road_hint.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+        road_hint.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
         _preview_container.add_child(road_hint)
 
         # The phased nature and the parallel start are visible only by the confirmation, and to talk
@@ -1604,21 +1606,21 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var road_steps_hint := Label.new()
             road_steps_hint.text = tr(" The road is built in sections, in parallel with the improvement")
             road_steps_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-            road_steps_hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
+            road_steps_hint.add_theme_color_override("font_color", UI_THEME.color("info").lightened(0.35))
             _preview_container.add_child(road_steps_hint)
 
     # The details of the cost (it moved here from the extended tooltip).
     var base_label = Label.new()
     base_label.text = tr(" Base: %d work") % cost_data["base_cost"]
     base_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    base_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     _preview_container.add_child(base_label)
 
     var move_cost_text = tr("impassable") if cost_data["move_cost"] >= 999.0 else str(int(cost_data["move_cost"]))
     var terrain_label = Label.new()
     terrain_label.text = tr(" Terrain: %s (move cost: %s) ×%.2f") % [cost_data["terrain_name"], move_cost_text, cost_data["terrain_mult"]]
     terrain_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    terrain_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    terrain_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
     _preview_container.add_child(terrain_label)
 
     var dist_label = Label.new()
@@ -1631,7 +1633,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     dist_text += " = ×%.2f" % cost_data["distance_mult"]
     dist_label.text = dist_text
     dist_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    dist_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    dist_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
     _preview_container.add_child(dist_label)
 
     var const_label = Label.new()
@@ -1640,7 +1642,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     else:
         const_label.text = tr(" Construction technologies: ×1.00")
     const_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    const_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    const_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
     _preview_container.add_child(const_label)
 
     # The total is the improvement PLUS the road to it, therefore the row is only there where
@@ -1650,7 +1652,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         var total_label = Label.new()
         total_label.text = tr(" Total: %d work") % cost_data["total_cost"]
         total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+        total_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         _preview_container.add_child(total_label)
 
     # The debug "Ignore building requirements": the price above remains
@@ -1665,7 +1667,7 @@ func _add_instant_hint() -> void:
     var hint := Label.new()
     hint.text = tr(" Debug: instant and free")
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    hint.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
+    hint.add_theme_color_override("font_color", UI_THEME.color("warning").lightened(0.2))
     _preview_container.add_child(hint)
 
 # Synchronises the "ghost" road and the highlighting of the ROUTE on the map with the current
@@ -1799,7 +1801,7 @@ func _build_road_level_selector(selected_level: int) -> void:
     var label := Label.new()
     label.text = tr("Road level:")
     label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     _preview_container.add_child(label)
 
     var flow := FlowContainer.new()
@@ -1824,7 +1826,7 @@ func _build_road_level_selector(selected_level: int) -> void:
         # An explicit frame around the chosen level - after the pattern of the choice of the crop.
         var pressed_style = StyleBoxFlat.new()
         pressed_style.set_border_width_all(2)
-        pressed_style.border_color = Color(1.0, 0.85, 0.2)
+        pressed_style.border_color = UI_THEME.color("warning")
         btn.add_theme_stylebox_override("pressed", pressed_style)
         btn.add_theme_stylebox_override("hover_pressed", pressed_style)
         btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
@@ -1853,32 +1855,32 @@ func _build_road_upgrade_preview(row: int, col: int) -> bool:
         var warn := Label.new()
         warn.text = " %s" % str(breakdown.get("reason", tr("Nothing to upgrade")))
         warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        warn.add_theme_color_override("font_color", Color(0.9, 0.6, 0.6))
+        warn.add_theme_color_override("font_color", UI_THEME.color("expense").lightened(0.35))
         _preview_container.add_child(warn)
         return false
 
     var target_label := Label.new()
     target_label.text = tr(" Destination: from the city to this hex along the existing road")
     target_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    target_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    target_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
     _preview_container.add_child(target_label)
 
     var cost_label := Label.new()
     cost_label.text = tr(" Cost: %d work") % int(breakdown.get("cost", 0))
     cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    cost_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     _preview_container.add_child(cost_label)
 
     var base_label := Label.new()
     base_label.text = tr(" Base: %d work per section") % GameData.get_road_work_cost(road_level)
     base_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    base_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     _preview_container.add_child(base_label)
 
     var sections_label := Label.new()
     sections_label.text = tr(" Sections to upgrade: %d") % int(breakdown.get("segments", 0))
     sections_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    sections_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    sections_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     _preview_container.add_child(sections_label)
 
     if CityData.ignore_build_requirements:
@@ -1895,7 +1897,7 @@ func _build_road_preview(row: int, col: int, _action_id: String) -> bool:
         var warn := Label.new()
         warn.text = " %s" % str(plan.get("reason", tr("Cannot build a road")))
         warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        warn.add_theme_color_override("font_color", Color(0.9, 0.6, 0.6))
+        warn.add_theme_color_override("font_color", UI_THEME.color("expense").lightened(0.35))
         _preview_container.add_child(warn)
         return false
 
@@ -1916,7 +1918,7 @@ func _build_road_preview(row: int, col: int, _action_id: String) -> bool:
     else:
         target_label.text = tr(" Destination: from the city's nearest road to this hex")
     target_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    target_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    target_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
     _preview_container.add_child(target_label)
 
     # The prices and the steps are from the SINGLE source (main_map.get_road_cost_breakdown),
@@ -1929,14 +1931,14 @@ func _build_road_preview(row: int, col: int, _action_id: String) -> bool:
         var warn2 := Label.new()
         warn2.text = " %s" % str(breakdown.get("reason", tr("Cannot build a road")))
         warn2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        warn2.add_theme_color_override("font_color", Color(0.9, 0.6, 0.6))
+        warn2.add_theme_color_override("font_color", UI_THEME.color("expense").lightened(0.35))
         _preview_container.add_child(warn2)
         return false
 
     var cost_label := Label.new()
     cost_label.text = tr(" Cost: %d work") % int(breakdown.get("cost", 0))
     cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    cost_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     _preview_container.add_child(cost_label)
 
     # The prices of the segments are DIFFERENT: each has its own terrain and its own distance from
@@ -1951,13 +1953,13 @@ func _build_road_preview(row: int, col: int, _action_id: String) -> bool:
     var step_label := Label.new()
     step_label.text = step_text
     step_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    step_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    step_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     _preview_container.add_child(step_label)
 
     var segments_label := Label.new()
     segments_label.text = tr(" New route sections: %d") % int(breakdown.get("segments", 0))
     segments_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    segments_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    segments_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     _preview_container.add_child(segments_label)
 
     # The distance: carrying the materials to the distant hexes is more expensive. A range by the
@@ -1973,7 +1975,7 @@ func _build_road_preview(row: int, col: int, _action_id: String) -> bool:
         MapHelpers.get_road_distance_mult(max_dist)]
     dist_label.text = dist_text
     dist_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    dist_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    dist_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
     _preview_container.add_child(dist_label)
 
     # The terrains on the route with the multipliers: it explains the second half of the price.
@@ -1994,7 +1996,7 @@ func _build_road_preview(row: int, col: int, _action_id: String) -> bool:
         var terr_label := Label.new()
         terr_label.text = tr(" Terrain on the route: %s") % ", ".join(parts)
         terr_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        terr_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+        terr_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
         _preview_container.add_child(terr_label)
 
     # How exactly the construction will go: the road is built BY SEGMENTS - one hex at a time,
@@ -2003,7 +2005,7 @@ func _build_road_preview(row: int, col: int, _action_id: String) -> bool:
     var steps_hint := Label.new()
     steps_hint.text = tr(" Will be built in sections: one hex at a time")
     steps_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    steps_hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
+    steps_hint.add_theme_color_override("font_color", UI_THEME.color("info").lightened(0.35))
     _preview_container.add_child(steps_hint)
 
     # The debug "Ignore building requirements" - the same row as in the

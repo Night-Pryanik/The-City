@@ -23,20 +23,33 @@ extends Control
 # cannot diverge from
 # data_validator.gd — they are read from one place.
 const DataValidator = preload("res://scripts/data_validator.gd")
+const UI_THEME = preload("res://scripts/ui_theme.gd")
 
 # The panel size for four-five problems — a typical amount at which
 # the list is fully visible without scrolling. More — a vertical
 # scrollbar appears (it was configured before as well), less — unnecessary
 # scrolling over exactly half of the screen.
 const PANEL_MIN_SIZE := Vector2(840, 680)
-const TITLE_COLOR := Color(1.0, 0.55, 0.45)
-const GROUP_COLOR := Color(0.6, 1.0, 0.6)
-const REF_ID_COLOR := Color(1.0, 0.83, 0.47)
-const WHERE_COLOR := Color(0.72, 0.72, 0.72)
+
+# The colours of the report, one per kind of line: a theme changes the whole report
+# together with the rest of the interface.
+static func title_color() -> Color:
+    return UI_THEME.color("expense").lightened(0.35)
+
+static func group_color() -> Color:
+    return UI_THEME.color("income").lightened(0.3)
+
+static func ref_id_color() -> Color:
+    return UI_THEME.color("warning").lightened(0.2)
+
+static func where_color() -> Color:
+    return UI_THEME.color("text_muted")
+
 # The path to the file with the problem — it has its own colour, so that the eye
 # immediately goes to it, and does not look for it in the solid grey text of the
 # second line.
-const FILE_COLOR := Color(0.55, 0.78, 1.0)
+static func file_color() -> Color:
+    return UI_THEME.color("info").lightened(0.15)
 
 # The window title and the summary — they are rebuilt for the current list of problems.
 var summary_label: Label
@@ -79,7 +92,7 @@ func _ready():
 
     var panel = Panel.new()
     panel.custom_minimum_size = PANEL_MIN_SIZE
-    panel.add_theme_stylebox_override("panel", _make_panel_style())
+    panel.add_theme_stylebox_override("panel", UI_THEME.window_plate())
     center.add_child(panel)
 
     var vbox = VBoxContainer.new()
@@ -94,12 +107,12 @@ func _ready():
     title_label = Label.new()
     title_label.text = tr("Errors in the game data")
     title_label.add_theme_font_size_override("font_size", 22)
-    title_label.add_theme_color_override("font_color", TITLE_COLOR)
+    title_label.add_theme_color_override("font_color", title_color())
     vbox.add_child(title_label)
 
     summary_label = Label.new()
     summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    summary_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+    summary_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     vbox.add_child(summary_label)
 
     # There may be many problems (a single typo in an id gives dozens of lines),
@@ -200,7 +213,7 @@ func _build_content(problems: Array):
             var header := Label.new()
             header.text = _check_title(kind)
             header.add_theme_font_size_override("font_size", 16)
-            header.add_theme_color_override("font_color", GROUP_COLOR)
+            header.add_theme_color_override("font_color", group_color())
             problems_box.add_child(header)
         problems_box.add_child(_make_problem_label(problem))
 
@@ -229,11 +242,10 @@ func _make_problem_label(problem: Dictionary) -> RichTextLabel:
     # takes the ready one.
     label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    # RichTextLabel has its own theme: without explicit sizes and colour the text would
-    # be smaller and paler than the neighbouring Labels.
+    # RichTextLabel has its own theme: without an explicit size the text would be
+    # smaller than the neighbouring Labels.
     label.add_theme_font_size_override("normal_font_size",
             problems_box.get_theme_font_size("font_size"))
-    label.add_theme_color_override("default_color", Color.WHITE)
     # The label must not interfere with dragging the list with the mouse.
     label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -242,12 +254,12 @@ func _make_problem_label(problem: Dictionary) -> RichTextLabel:
     # is both visible and fixable without opening all the files in data/ one by one.
     var text := "• [b]%s[/b]\n   [color=#%s]%s[/color]" % [
         marked_headline,
-        WHERE_COLOR.to_html(false),
+        where_color().to_html(false),
         str(problem.get("where", "")),
     ]
     var location := str(problem.get("location", ""))
     if not location.is_empty():
-        text += "\n   [color=#%s]%s[/color]" % [FILE_COLOR.to_html(false), location]
+        text += "\n   [color=#%s]%s[/color]" % [file_color().to_html(false), location]
     label.text = text
     return label
 
@@ -274,7 +286,7 @@ func _highlight_id(text: String, id: String) -> String:
         var after := "" if after_at >= text.length() else text.substr(after_at, 1)
         if not _is_ident_char(before) and not _is_ident_char(after):
             return text.substr(0, at) + "[color=#%s]%s[/color]" % [
-                REF_ID_COLOR.to_html(false), id] + text.substr(after_at)
+                ref_id_color().to_html(false), id] + text.substr(after_at)
         at = text.find(id, at + 1)
     return text
 
@@ -345,12 +357,3 @@ func _count_by_kind(problems: Array) -> Dictionary:
         var kind := str(problem.get("kind", ""))
         counts[kind] = int(counts.get(kind, 0)) + 1
     return counts
-
-
-func _make_panel_style() -> StyleBoxFlat:
-    var style = StyleBoxFlat.new()
-    style.bg_color = Color(0.13, 0.13, 0.13, 1.0)
-    style.set_border_width_all(2)
-    style.border_color = Color(0.4, 0.4, 0.4, 1.0)
-    style.set_corner_radius_all(4)
-    return style

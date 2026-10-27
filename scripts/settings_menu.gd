@@ -56,19 +56,6 @@ func _ready():
         print("Error: not all elements found in the settings scene!")
         return
 
-    hex_borders_checkbox.add_theme_color_override("font_color", Color.WHITE)
-    edge_scrolling_checkbox.add_theme_color_override("font_color", Color.WHITE)
-    clock_checkbox.add_theme_color_override("font_color", Color.WHITE)
-    fps_checkbox.add_theme_color_override("font_color", Color.WHITE)
-    language_option_button.add_theme_color_override("font_color", Color.WHITE)
-    font_option_button.add_theme_color_override("font_color", Color.WHITE)
-    edge_scroll_speed_value_label.add_theme_color_override("font_color", Color.WHITE)
-    tooltip_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
-    extended_tooltip_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
-    building_detail_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
-    resource_display_interval_value_label.add_theme_color_override("font_color", Color.WHITE)
-    hud_message_duration_value_label.add_theme_color_override("font_color", Color.WHITE)
-
     _apply_tab_titles()
     load_settings()
     _setup_language_option()
