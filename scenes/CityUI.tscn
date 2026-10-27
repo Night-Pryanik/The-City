@@ -394,7 +394,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="TechnologiesPanel" type="Panel" parent="ContentPanel" unique_id=1065922502]
+[node name="TechnologiesPanel" type="Control" parent="ContentPanel" unique_id=1065922502]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -408,6 +408,7 @@ offset_left = 4.0
 offset_top = 6.0
 offset_right = 500.0
 offset_bottom = 62.0
+theme_type_variation = &"SurfaceInset"
 
 [node name="VBoxContainer" type="VBoxContainer" parent="ContentPanel/TechnologiesPanel/CurrentResearch" unique_id=2140575714]
 layout_mode = 0

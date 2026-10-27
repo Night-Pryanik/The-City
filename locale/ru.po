@@ -2217,6 +2217,9 @@ msgstr "Городка больше нет на карте"
 msgid "The widest coastal strip, in hexes."
 msgstr "Самая широкая полоса берега, в гексах."
 
+msgid "Theme: Blueprint"
+msgstr "Тема: чертёж"
+
 msgid "Theme: Bronze"
 msgstr "Тема: бронза"
 
@@ -2226,8 +2229,17 @@ msgstr "Тема: классическая"
 msgid "Theme: Earth and Olive"
 msgstr "Тема: земля и оливы"
 
+msgid "Theme: Graphite and Brass"
+msgstr "Тема: графит и латунь"
+
 msgid "Theme: Mediterranean"
 msgstr "Тема: средиземноморская"
+
+msgid "Theme: Parchment"
+msgstr "Тема: пергамент"
+
+msgid "Theme: Soft Modern"
+msgstr "Тема: мягкий модерн"
 
 msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."
 msgstr "Различия в написании нет, но для игры это РАЗНЫЕ идентификаторы: всё, что ссылается на «%s», не попадёт в «%s» и наоборот. При этом ссылка на «%s» ссылки НЕ ломает — он объявлен и выглядит правильно, поэтому обычные проверки битых ссылок эту опечатку и не видели. Оставьте один идентификатор и переименуйте второй во всех файлах."

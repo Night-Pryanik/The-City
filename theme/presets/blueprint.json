@@ -1,0 +1,46 @@
+{
+    "id": "blueprint",
+    "name_key": "Theme: Blueprint",
+    "chrome": {
+        "panel_bg": "#0B1E33F5",
+        "panel_border": "#2E6A9E",
+        "control_bg": "#12304D",
+        "control_hover": "#1B4368",
+        "control_pressed": "#081828",
+        "control_disabled": "#0E2438",
+        "control_border": "#4E93C8",
+        "control_border_disabled": "#2A5578",
+        "text": "#EAF3FB",
+        "text_secondary": "#B9D2E6",
+        "text_muted": "#86A9C6",
+        "info": "#62D0FF",
+        "accent": "#9BDCF5",
+        "accent_hover": "#B8E6FA",
+        "accent_text": "#0B1E33",
+        "field_bg": "#0E2740",
+        "field_border": "#1B4368",
+        "focus_border": "#62D0FF",
+        "track": "#081828",
+        "fill": "#1F6BA0",
+        "tab_active_bg": "#12304D",
+        "tab_active_text": "#EAF3FB",
+        "tooltip_bg": "#0E2740",
+        "tooltip_border": "#4E93C8",
+        "scrollbar": "#1B4368",
+        "scrollbar_hover": "#2E6A9E",
+        "hairline": "#3F7FB5",
+        "row_hover": "#16395C",
+        "row_selected": "#1E4A73"
+    },
+    "data": {
+        "price": "#FFB454",
+        "quality": "#5CE0D2",
+        "income": "#7BE07B",
+        "expense": "#FF6B6B",
+        "warning": "#FFD966"
+    },
+    "metrics": {
+        "panel_radius": 4,
+        "control_radius": 3
+    }
+}

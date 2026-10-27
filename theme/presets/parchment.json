@@ -1,0 +1,46 @@
+{
+    "id": "parchment",
+    "name_key": "Theme: Parchment",
+    "chrome": {
+        "panel_bg": "#E8DCC0F5",
+        "panel_border": "#9C8455",
+        "control_bg": "#F0E6CE",
+        "control_hover": "#E2D4B4",
+        "control_pressed": "#D6C49E",
+        "control_disabled": "#E4DAC0",
+        "control_border": "#8A6F44",
+        "control_border_disabled": "#C3AE86",
+        "text": "#2E2416",
+        "text_secondary": "#55452C",
+        "text_muted": "#7E6A48",
+        "info": "#2C6E8F",
+        "accent": "#8C5A22",
+        "accent_hover": "#7A4C1B",
+        "accent_text": "#F7EFDC",
+        "field_bg": "#F5EEDC",
+        "field_border": "#C4AC80",
+        "focus_border": "#8C5A22",
+        "track": "#DCCDA8",
+        "fill": "#A98246",
+        "tab_active_bg": "#F5EEDC",
+        "tab_active_text": "#2E2416",
+        "tooltip_bg": "#F2E8D0",
+        "tooltip_border": "#8A6F44",
+        "scrollbar": "#C4AC80",
+        "scrollbar_hover": "#A68A58",
+        "hairline": "#B39B6E",
+        "row_hover": "#E2D4B4",
+        "row_selected": "#D6C49E"
+    },
+    "data": {
+        "price": "#A85A16",
+        "quality": "#146B62",
+        "income": "#4A7321",
+        "expense": "#9E2B25",
+        "warning": "#8A6A05"
+    },
+    "metrics": {
+        "panel_radius": 4,
+        "control_radius": 3
+    }
+}

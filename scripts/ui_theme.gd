@@ -79,6 +79,15 @@ static func panel_raised() -> StyleBoxFlat:
 static func panel_inset() -> StyleBoxFlat:
     return _surface(color("track"), color("panel_border"), 1)
 
+# A plate over the map rather than over a window: the bars of the world screen let the
+# terrain read through them, so the surface is the panel colour at a reduced alpha. The
+# palette still decides the hue — a light theme gets a light veil, and the text on it stays
+# the text colour of that palette.
+static func panel_veil() -> StyleBoxFlat:
+    var tint := color("panel_bg")
+    tint.a = 0.72
+    return _surface(tint, color("panel_border"), 1)
+
 # The plate of a standalone window, with the heavier frame that marks it as a window
 # rather than a panel of the screen behind it.
 static func window_plate() -> StyleBoxFlat:

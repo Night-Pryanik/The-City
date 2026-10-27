@@ -2217,6 +2217,9 @@ msgstr ""
 msgid "The widest coastal strip, in hexes."
 msgstr ""
 
+msgid "Theme: Blueprint"
+msgstr ""
+
 msgid "Theme: Bronze"
 msgstr ""
 
@@ -2226,7 +2229,16 @@ msgstr ""
 msgid "Theme: Earth and Olive"
 msgstr ""
 
+msgid "Theme: Graphite and Brass"
+msgstr ""
+
 msgid "Theme: Mediterranean"
+msgstr ""
+
+msgid "Theme: Parchment"
+msgstr ""
+
+msgid "Theme: Soft Modern"
 msgstr ""
 
 msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."

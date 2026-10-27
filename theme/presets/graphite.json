@@ -1,0 +1,46 @@
+{
+    "id": "graphite",
+    "name_key": "Theme: Graphite and Brass",
+    "chrome": {
+        "panel_bg": "#1A1C1EF5",
+        "panel_border": "#6B7076",
+        "control_bg": "#2E3238",
+        "control_hover": "#42474E",
+        "control_pressed": "#1E2126",
+        "control_disabled": "#26292E",
+        "control_border": "#97A0AA",
+        "control_border_disabled": "#555A61",
+        "text": "#F2F4F6",
+        "text_secondary": "#C9CED4",
+        "text_muted": "#98A0A8",
+        "info": "#6FC3E8",
+        "accent": "#C9A227",
+        "accent_hover": "#E0BE4A",
+        "accent_text": "#1A1C1E",
+        "field_bg": "#23262B",
+        "field_border": "#42474E",
+        "focus_border": "#D4B04A",
+        "track": "#1E2126",
+        "fill": "#8C6D1F",
+        "tab_active_bg": "#32353B",
+        "tab_active_text": "#F2F4F6",
+        "tooltip_bg": "#23262B",
+        "tooltip_border": "#C9A227",
+        "scrollbar": "#42474E",
+        "scrollbar_hover": "#5C626A",
+        "hairline": "#7C848C",
+        "row_hover": "#363A40",
+        "row_selected": "#454A52"
+    },
+    "data": {
+        "price": "#E89A3C",
+        "quality": "#4FD8C8",
+        "income": "#7FC94F",
+        "expense": "#E05A52",
+        "warning": "#F2D97A"
+    },
+    "metrics": {
+        "panel_radius": 4,
+        "control_radius": 3
+    }
+}

@@ -371,6 +371,7 @@ func _style_surfaces(theme: Theme) -> void:
     _add_surface(theme, "SurfacePanel", UI_THEME.panel())
     _add_surface(theme, "SurfaceRaised", UI_THEME.panel_raised())
     _add_surface(theme, "SurfaceInset", UI_THEME.panel_inset())
+    _add_surface(theme, "SurfaceVeil", UI_THEME.panel_veil())
     _add_surface(theme, "SurfaceWindow", UI_THEME.window_plate())
     _add_surface(theme, "SurfaceProblem", UI_THEME.problem())
     _add_surface(theme, "SurfaceTooltip", UI_THEME.tooltip())

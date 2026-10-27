@@ -1,0 +1,46 @@
+{
+    "id": "modern",
+    "name_key": "Theme: Soft Modern",
+    "chrome": {
+        "panel_bg": "#EDE6D8F5",
+        "panel_border": "#A8987E",
+        "control_bg": "#F5F0E6",
+        "control_hover": "#E4DAC7",
+        "control_pressed": "#D6CAB2",
+        "control_disabled": "#E8E2D6",
+        "control_border": "#8A7A5E",
+        "control_border_disabled": "#C4B9A4",
+        "text": "#2A2620",
+        "text_secondary": "#4E463B",
+        "text_muted": "#7A6F5E",
+        "info": "#2E6E8C",
+        "accent": "#4A6B52",
+        "accent_hover": "#3E5B45",
+        "accent_text": "#F7F3EA",
+        "field_bg": "#FBF8F1",
+        "field_border": "#C9BCA3",
+        "focus_border": "#4A6B52",
+        "track": "#DCD3C2",
+        "fill": "#6E9AA6",
+        "tab_active_bg": "#FBF8F1",
+        "tab_active_text": "#2A2620",
+        "tooltip_bg": "#F7F1E3",
+        "tooltip_border": "#A8987E",
+        "scrollbar": "#C4B9A4",
+        "scrollbar_hover": "#A8987E",
+        "hairline": "#B5A88E",
+        "row_hover": "#E4DAC7",
+        "row_selected": "#D8CBB2"
+    },
+    "data": {
+        "price": "#B4661E",
+        "quality": "#14746F",
+        "income": "#3C7A2E",
+        "expense": "#B03A2E",
+        "warning": "#8A6A05"
+    },
+    "metrics": {
+        "panel_radius": 4,
+        "control_radius": 3
+    }
+}
