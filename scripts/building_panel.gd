@@ -241,6 +241,11 @@ func _refresh():
     # stayed hanging (the mouse_exited of a button being removed will not fire),
     # so we hide it explicitly.
     _hide_upgrade_tooltip()
+    # The popup of the additional ingredients dies with the row it was opened from: its
+    # checkboxes point at the buttons of that row.
+    for p in popups_list:
+        if is_instance_valid(p) and p.visible and p.has_meta("extras_popup"):
+            p.hide()
 
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -435,6 +440,20 @@ func _refresh():
                 craft_bar.mouse_exited.connect(_on_craft_bar_mouse_exited)
                 row.add_child(craft_bar)
                 _slot_progress_bars["%d:%d" % [b_index, i]] = craft_bar
+
+            # The "Additional ingredients" button. It appears for a recipe that accepts them
+            # (extra_kinds) and only while at least one of the goods is open: the checkboxes
+            # choose concrete goods, and the result is a good generated on the fly
+            # (see GameData, "Additional ingredients of a recipe").
+            var extras_btn = null
+            if not _extra_options_for(str(current)).is_empty():
+                extras_btn = Button.new()
+                extras_btn.custom_minimum_size = Vector2(28, 28)
+                extras_btn.text = _extras_button_text(str(current))
+                extras_btn.tooltip_text = tr("Additional ingredients")
+                extras_btn.pressed.connect(_on_extras_pressed.bind(b_index, i, select_btn, extras_btn))
+                row.add_child(extras_btn)
+
             # The button content is filled when the row is already in the tree:
             # the project theme (project.godot: theme/custom) applies its font
             # to controls only in the tree, and an out-of-tree measurement
@@ -445,6 +464,8 @@ func _refresh():
             slot_row_width += select_btn.get_combined_minimum_size().x
             if craft_time > CityData.SIMULATION_TICK:
                 slot_row_width += 8.0 + 70.0
+            if extras_btn != null:
+                slot_row_width += 8.0 + 28.0
             max_slot_row_width = maxf(max_slot_row_width, slot_row_width)
 
     # The base width of the panel: the actual width of the slot rows (they grow
@@ -597,18 +618,13 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
     popup.add_child(popup_vbox)
 
     for craft_id in available:
-        var craft_name = craft_id
-        var craft_resources = {}
-        var craft_result = {}
-        for c in crafts_data:
-            if c["id"] == craft_id:
-                craft_name = c.get("name", craft_id)
-                craft_resources = c.get("resources", {})
-                # display_result — a UI hint for the "non-material" outputs
-                # (science and the future pseudo-resources): it is not read by
-                # the mechanics.
-                craft_result = c.get("display_result", c.get("result", {}))
-                break
+        var recipe := GameData.get_craft(craft_id)
+        var craft_name: String = str(recipe.get("name", craft_id))
+        var craft_resources = recipe.get("resources", {})
+        # display_result — a UI hint for the "non-material" outputs
+        # (science and the future pseudo-resources): it is not read by
+        # the mechanics.
+        var craft_result: Dictionary = recipe.get("display_result", recipe.get("result", {}))
         # An item of the list — a Button with the content and a built-in highlight on hover
         var item_btn = Button.new()
         item_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -1273,28 +1289,29 @@ func _make_craft_content(craft_name: String, craft_resources, craft_result: Dict
     return content
 
 # The human-readable name of a recipe by its id (for the tooltips; an unknown id is
-# left as is).
+# left as is). A recipe with additional ingredients gets the generated name, which carries
+# them: "Gold Jewelry (+Lazurite, Pearl)".
 func _get_craft_name(craft_id: String) -> String:
-    for c in crafts_data:
-        if c.get("id", "") == craft_id:
-            return str(c.get("name", craft_id))
-    return craft_id
+    var recipe := GameData.get_craft(craft_id)
+    if recipe.is_empty():
+        return craft_id
+    return str(recipe.get("name", craft_id))
 
 # Updates the content of the recipe selection button: the icons are drawn next to
-# the products, and not at the left edge
+# the products, and not at the left edge.
+#
+# A recipe with additional ingredients shows the RESULT alone: the generated name already
+# carries the additions, while the full ingredient row would widen the panel with every
+# checked box. The ingredients of such a recipe are visible in the list of the recipes.
 func _update_slot_button(button, craft_id: String):
-    var craft_name = craft_id
-    var craft_resources = {}
-    var craft_result = {}
-    for c in crafts_data:
-        if c["id"] == craft_id:
-            craft_name = c.get("name", craft_id)
-            craft_resources = c.get("resources", {})
-            # display_result — a UI hint for the "non-material" outputs
-            # (science and the future pseudo-resources): it is not read by the
-            # mechanics.
-            craft_result = c.get("display_result", c.get("result", {}))
-            break
+    var recipe := GameData.get_craft(craft_id)
+    var craft_name: String = str(recipe.get("name", craft_id))
+    var craft_resources = recipe.get("resources", {})
+    # display_result — a UI hint for the "non-material" outputs
+    # (science and the future pseudo-resources): it is not read by the mechanics.
+    var craft_result: Dictionary = recipe.get("display_result", recipe.get("result", {}))
+    if not (recipe.get("extras", []) as Array).is_empty():
+        craft_resources = {}
     # We remove the old content of the button
     for child in button.get_children():
         child.queue_free()
@@ -1339,6 +1356,139 @@ func _on_close_pressed():
         ui_helpers.hide_group_tooltip()
     _hide_upgrade_tooltip()
     hide()
+
+# --- THE ADDITIONAL INGREDIENTS OF A RECIPE ---
+#
+# The checkboxes of one slot. A tick adds a concrete good to the recipe id of the slot
+# ("gold_jewelry" -> "gold_jewelry+lazurite_ore+pearl"), and the slot starts the cycle from
+# scratch — the same rule as a change of the recipe itself. The goods of a kind the technology
+# has not opened yet are not offered at all.
+func _extra_options_for(recipe_id: String) -> Array:
+    var out: Array = []
+    for group in GameData.get_recipe_extra_options(recipe_id):
+        var items: Array = []
+        for item in group.get("items", []):
+            var tech := str(item.get("unlock_tech", ""))
+            if tech != "" and not CityData.is_tech_unlocked(tech):
+                continue
+            items.append(item)
+        if not items.is_empty():
+            out.append({"kind": group["kind"], "name": group["name"], "items": items})
+    return out
+
+# "+" — nothing chosen, "+2" — two additions.
+func _extras_button_text(recipe_id: String) -> String:
+    var chosen: Array = GameData.parse_generated_id(recipe_id).get("extras", [])
+    if chosen.is_empty():
+        return "+"
+    return "+%d" % chosen.size()
+
+func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_button):
+    if b_index < 0 or b_index >= CityData.city_built_buildings.size():
+        return
+    var slots: Array = CityData.city_built_buildings[b_index].get("slots", [])
+    if slot_idx < 0 or slot_idx >= slots.size():
+        return
+    var recipe_id := str(slots[slot_idx])
+    var groups := _extra_options_for(recipe_id)
+    if groups.is_empty():
+        return
+    var chosen: Array = GameData.parse_generated_id(recipe_id).get("extras", [])
+
+    for p in popups_list:
+        if is_instance_valid(p) and p.visible:
+            p.hide()
+
+    var popup := PopupPanel.new()
+    popup.add_theme_stylebox_override("panel", UI_THEME.panel_inset())
+    popup.set_meta("extras_popup", true)
+    add_child(popup)
+    var vbox := VBoxContainer.new()
+    vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+    vbox.offset_left = 8
+    vbox.offset_top = 6
+    vbox.offset_right = -8
+    vbox.offset_bottom = -6
+    vbox.add_theme_constant_override("separation", 2)
+    popup.add_child(vbox)
+
+    for group in groups:
+        var header := Label.new()
+        header.text = str(group["name"])
+        header.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
+        vbox.add_child(header)
+        var grid := GridContainer.new()
+        grid.columns = 2
+        grid.add_theme_constant_override("h_separation", 10)
+        vbox.add_child(grid)
+        for item in group["items"]:
+            var box := CheckBox.new()
+            box.text = str(item["name"])
+            box.focus_mode = Control.FOCUS_NONE
+            var tex := _get_icon_texture(str(item.get("icon", "")))
+            if tex:
+                box.icon = tex
+                box.add_theme_constant_override("icon_max_width", 20)
+            var product_id := str(item["product"])
+            var in_stock := int(item.get("in_stock", 0))
+            var is_chosen := product_id in chosen
+            # The state is set BEFORE the connection: assigning button_pressed emits toggled,
+            # and a listener would rewrite the slot right while the popup is being built.
+            box.button_pressed = is_chosen
+            # A good that is not in the warehouse cannot be chosen (GameData decides: an addition
+            # that is already in the slot stays clickable, or it could not be unticked).
+            box.disabled = not bool(item.get("selectable", true))
+            box.tooltip_text = tr("In storage: %d") % in_stock if in_stock > 0 \
+                    else tr("Not in storage")
+            box.toggled.connect(_on_extra_toggled.bind(b_index, slot_idx,
+                    product_id, recipe_button, extras_button))
+            grid.add_child(box)
+
+    popups_list.append(popup)
+    popup.popup_hide.connect(_on_extras_popup_hidden.bind(popup))
+    popup.reset_size()
+    popup.position = extras_button.global_position + Vector2(0, extras_button.size.y)
+    popup.popup()
+    open_popup = popup
+
+# A closed popup is freed: the panel of the building rebuilds its rows on every change of the
+# state, and a hidden window left behind would be a leak of one per opening.
+func _on_extras_popup_hidden(popup):
+    if open_popup == popup:
+        open_popup = null
+    if is_instance_valid(popup):
+        popup.queue_free()
+
+func _on_extra_toggled(pressed: bool, b_index: int, slot_idx: int, extra_id: String,
+        recipe_button, extras_button):
+    if b_index < 0 or b_index >= CityData.city_built_buildings.size():
+        return
+    var bld: Dictionary = CityData.city_built_buildings[b_index]
+    var slots: Array = bld.get("slots", [])
+    if slot_idx < 0 or slot_idx >= slots.size():
+        return
+    var parsed := GameData.parse_generated_id(str(slots[slot_idx]))
+    var base_id := str(parsed.get("base", slots[slot_idx]))
+    var chosen: Array = parsed.get("extras", [])
+    if pressed and not (extra_id in chosen):
+        chosen.append(extra_id)
+    elif not pressed:
+        chosen.erase(extra_id)
+    var new_id := GameData.make_generated_id(base_id, chosen)
+    if new_id == str(slots[slot_idx]):
+        return
+    slots[slot_idx] = new_id
+    bld["slots"] = slots
+    # The new ingredients change the recipe — the accumulated progress of the slot is dropped,
+    # exactly as on a change of the recipe itself.
+    CityData.reset_slot_progress(b_index, slot_idx)
+    # The row may already have been rebuilt (the panel refreshes on every change of the state):
+    # the slot itself is updated anyway, only the look of the row is lost with the button.
+    if is_instance_valid(recipe_button):
+        _update_slot_button(recipe_button, new_id)
+    if is_instance_valid(extras_button):
+        extras_button.text = _extras_button_text(new_id)
+    CityData.emit_signal("city_updated")
 
 # Returns the merged dictionary of all the resources (the raw materials + the goods)
 func _get_all_resources() -> Dictionary:

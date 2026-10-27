@@ -634,9 +634,10 @@ func _apply_buy_row_quality(quality_label: Label, resource_id: String) -> void:
 
 # Writes the quantity of the goods on the city warehouse into the label of a
 # purchase row. Only goods that are actually on the warehouse are shown — the
-# label stays hidden (never "0 units") for goods the city does not hold.
+# label stays hidden (never "0 units") for goods the city does not hold. The decorated
+# variants of a good count: they are what the town will accept in its place.
 func _apply_buy_row_quantity(quantity_label: Label, resource_id: String) -> void:
-    var amount := int(GameData.get_storage_amount(resource_id, CityData.city_storage))
+    var amount := GameData.get_good_stock(resource_id, CityData.city_storage)
     if amount > 0:
         quantity_label.text = _format_stock(amount)
         quantity_label.visible = true
@@ -902,10 +903,10 @@ func _row_tradable(side: String, resource_id: String) -> bool:
 
 # Whether the warehouse of the city holds at least one unit of the goods. A GROUP is satisfied
 # by any ONE of its members, and the sum over the members is exactly what tells "at least one"
-# (GameData.get_storage_amount reads both forms) — the member that is actually shipped is picked
-# at the settlement (town_trade_manager._take_from_city).
+# (GameData.get_good_stock reads both forms, and counts the decorated variants of a good) — the
+# member that is actually shipped is picked at the settlement (town_trade_manager._take_from_city).
 func _has_city_stock(resource_id: String) -> bool:
-    return GameData.get_storage_amount(resource_id, CityData.city_storage) > 0.0
+    return GameData.get_good_stock(resource_id, CityData.city_storage) > 0
 
 # Writes the tradability of a row into it: the dimming the player sees and the mark the handlers
 # and the tests read back. An inactive row is still built and still readable — the player must see

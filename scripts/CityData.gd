@@ -1168,6 +1168,11 @@ func get_storage_amount(pid: String) -> int:
 func add_to_storage(pid: String, amount: int, quality: String = "common"):
     if amount <= 0:
         return
+    # A good generated from a recipe with additional ingredients has no record in the data: it
+    # is created on the first arrival, so that the storage rows, the market price and the goods
+    # groups know it at once.
+    if not GameData.products.has(pid) and pid.find(GameData.GENERATED_SEPARATOR) >= 0:
+        GameData.materialise_generated(pid)
     city_storage[pid] = city_storage.get(pid, 0) + amount
     if not city_quality_detail.has(pid):
         city_quality_detail[pid] = {}
@@ -1329,11 +1334,20 @@ func get_craft_time(recipe: Dictionary) -> float:
     return t
 
 # Returns the data of the recipe by id (or an empty dictionary, if the recipe is not found).
+# An id with the additional ingredients ("gold_jewelry+lazurite_ore") is a recipe that exists
+# only at runtime — see GameData, "Additional ingredients of a recipe".
 func get_craft_by_id(recipe_id: String) -> Dictionary:
-    for c in GameData.crafts:
-        if c.get("id", "") == recipe_id:
-            return c
-    return {}
+    return GameData.get_craft(recipe_id)
+
+# Re-creates the records of the generated goods that the storage holds. The records live in
+# GameData.products and are lost with every re-read of the data, while the ids stay in the save:
+# without this the rows of the storage would show a raw id and the goods groups would not see
+# the goods at all. It is called after a save is applied and after a language change.
+func rebuild_generated_products() -> void:
+    for pid in city_storage:
+        var key := str(pid)
+        if key.find(GameData.GENERATED_SEPARATOR) >= 0:
+            GameData.materialise_generated(key)
 
 # --- THE SLOT CONTAINERS (continuous crafting) ---
 # One CraftContainer per slot of a building. The array is created lazily and
@@ -2688,12 +2702,10 @@ func are_all_slots_empty(b_index: int) -> bool:
 # Checks whether the recipe can be executed in the specified building.
 # produced_in supports an array of values; "*" means "in any building" (the empty recipe).
 func can_craft_in(craft_id: String, building_id: String) -> bool:
-    var recipe = null
-    for c in GameData.crafts:
-        if c["id"] == craft_id:
-            recipe = c
-            break
-    if not recipe:
+    # get_craft_by_id resolves an id with the additional ingredients to the base recipe, so that
+    # an upgraded building keeps a decorated recipe whose base it still accepts.
+    var recipe := get_craft_by_id(craft_id)
+    if recipe.is_empty():
         return false
 
     var produced_in = recipe.get("produced_in", [])

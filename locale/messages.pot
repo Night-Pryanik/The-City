@@ -468,6 +468,12 @@ msgstr ""
 msgid "Added 100000 coins"
 msgstr ""
 
+msgid "Additional ingredient spends a nonexistent product"
+msgstr ""
+
+msgid "Additional ingredients"
+msgstr ""
+
 msgid "Advance requirement met. Click to advance to the next era."
 msgstr ""
 
@@ -1239,6 +1245,9 @@ msgstr ""
 msgid "Improvement: %d work"
 msgstr ""
 
+msgid "In storage: %d"
+msgstr ""
+
 msgid "Income to the treasury over %s sec: %s coins/sec"
 msgstr ""
 
@@ -1491,6 +1500,9 @@ msgstr ""
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
 msgstr ""
 
+msgid "Not in storage"
+msgstr ""
+
 msgid "Nothing to upgrade"
 msgstr ""
 
@@ -1699,6 +1711,9 @@ msgid "Recipe references a nonexistent resource"
 msgstr ""
 
 msgid "Recipe yields a nonexistent resource"
+msgstr ""
+
+msgid "Reference to a nonexistent additional ingredient kind"
 msgstr ""
 
 msgid "Reference to a nonexistent category"
@@ -3039,6 +3054,22 @@ msgstr ""
 
 msgctxt "covers.name"
 msgid "Tropical Rainforest"
+msgstr ""
+
+msgctxt "craft_extra_kinds.name"
+msgid "Dyes"
+msgstr ""
+
+msgctxt "craft_extra_kinds.name"
+msgid "Gemstones"
+msgstr ""
+
+msgctxt "craft_extras.name"
+msgid "Lazurite"
+msgstr ""
+
+msgctxt "craft_extras.name"
+msgid "Malachite"
 msgstr ""
 
 msgctxt "crafts.description"
@@ -6037,6 +6068,14 @@ msgctxt "validator_entity_ref_cover"
 msgid "this terrain cover"
 msgstr ""
 
+msgctxt "validator_entity_ref_craft_extra"
+msgid "this additional ingredient"
+msgstr ""
+
+msgctxt "validator_entity_ref_craft_extra_kind"
+msgid "this additional ingredient kind"
+msgstr ""
+
 msgctxt "validator_entity_ref_era"
 msgid "this era"
 msgstr ""
@@ -6113,6 +6152,14 @@ msgctxt "validator_entity_source_cover"
 msgid "terrain cover"
 msgstr ""
 
+msgctxt "validator_entity_source_craft_extra"
+msgid "additional ingredient"
+msgstr ""
+
+msgctxt "validator_entity_source_craft_extra_kind"
+msgid "additional ingredient kind"
+msgstr ""
+
 msgctxt "validator_entity_source_era"
 msgid "era"
 msgstr ""
@@ -6187,6 +6234,14 @@ msgstr ""
 
 msgctxt "validator_entity_title_cover"
 msgid "Terrain cover"
+msgstr ""
+
+msgctxt "validator_entity_title_craft_extra"
+msgid "Additional ingredient"
+msgstr ""
+
+msgctxt "validator_entity_title_craft_extra_kind"
+msgid "Additional ingredient kind"
 msgstr ""
 
 msgctxt "validator_entity_title_era"

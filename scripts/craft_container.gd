@@ -55,6 +55,10 @@ var result_products: Dictionary = {}
 # record it as consumption/production. This agrees the UI label "[+N≈]"
 # with the fact in the storage: 10/10 sec = +1 every tick (and not +10 times in 10 sec).
 var release_fractional: Dictionary = {}
+# How much of the result this cycle has already reached the storage: pid -> int. The cycle owes
+# exactly full_amount, while a tick can pay out only whole units — the debt is settled on
+# completion (see the end of tick()).
+var released: Dictionary = {}
 
 # Constructs the container by the recipe. If slot_data is passed — it is used
 # as the restored state (from the save). Otherwise — an empty container.
@@ -84,18 +88,22 @@ func _init(recipe: Dictionary = {}, slot_data: Dictionary = {}):
         # release_fractional is restored from the saved dict.
         var saved_release = slot_data.get("release_fractional", {})
         release_fractional = saved_release if saved_release is Dictionary else {}
+        var saved_released = slot_data.get("released", {})
+        released = saved_released if saved_released is Dictionary else {}
 
 # Initializes the result cache and the sub-unit accumulator.
 func _init_release_state(recipe: Dictionary):
     var prod: Dictionary = recipe.get("result", {})
     result_products = {}
     release_fractional = {}
+    released = {}
     for pid in prod:
         var amt = int(prod[pid])
         if amt <= 0:
             continue
         result_products[pid] = amt
         release_fractional[pid] = 0.0
+        released[pid] = 0
 
 # --- SIMULATION TICK ---
 # Advances the container by delta seconds. is_active = false — the container
@@ -125,7 +133,6 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
         return result
 
     elapsed += delta
-    var all_full := true
     for slot in ingredient_slots:
         var required_total = int(slot.get("required", 0))
         var filled_now = int(slot.get("filled", 0))
@@ -138,15 +145,19 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
             per_sec = float(required_total) / craft_time
 
         # The sub-unit accumulator: the fractional remainder accumulates, so that the average
-        # rate is accurate (for example, 21/5 = 4.2 → we alternate 4 and 5).
+        # rate is accurate (for example, 21/5 = 4.2 → we alternate 4 and 5). The epsilon absorbs
+        # the binary drift of the sum: ten additions of 0.1 give 0.9999999999999999, and without
+        # it an ingredient of 2 units per 20 s would be taken a tick late, stretching the cycle.
         var fractional = float(slot.get("fractional", 0.0))
         var to_take_total = per_sec * delta + fractional
-        var to_take_int = int(floor(to_take_total))
-        fractional = to_take_total - float(to_take_int)
+        var to_take_int = int(floor(to_take_total + 1e-9))
+        fractional = maxf(0.0, to_take_total - float(to_take_int))
         slot["fractional"] = fractional
 
         if to_take_int <= 0:
-            all_full = false
+            # Nothing is due this tick: a slow ingredient (2 stones per 20 s) reaches a whole unit
+            # only every tenth tick. That is NOT a shortage — the rate is simply lower than
+            # one unit per tick, and the release keeps following the clock.
             continue
 
         # We try to take to_take_int from the storage.
@@ -165,7 +176,6 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
         slot["consumed_pids"] = consumed_pids
 
         if taken <= 0:
-            all_full = false
             result["missing"].append(_slot_display_key(slot))
             continue
 
@@ -189,7 +199,6 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
                 agg[qid] = int(agg.get(qid, 0)) + int(breakdown[qid])
 
         if taken < to_take_int:
-            all_full = false
             var key = _slot_display_key(slot)
             if not result["missing"].has(key):
                 result["missing"].append(key)
@@ -200,16 +209,23 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
     # release_fractional[pid] >= 1.0, we output the integer part to the storage (with a quality
     # calculated from the consumed accumulated at the current moment).
     #
-    # The quality of the output is recalculated every tick — it depends on how much
-    # raw material has already been taken. If the recipe works at full volume (all the ingredients
-    # are available), the quality converges to the final weighted average by the end of
-    # the cycle. If on some tick the container has "frozen" due to a shortage,
-    # the consumption also stops, and the output is temporarily suspended
-    # (per_release accumulates, but release_fractional does not grow, because we
-    # output only when elapsed grows — and it always grows when is_active).
+    # The release follows the CLOCK, not the fill: an ingredient is taken at
+    # required / craft_time per second, so the fill of a working container and the clock grow at
+    # the same pace. A tick where a slow ingredient (2 units per 20 s) happens to owe nothing is
+    # still a working tick — the rate of the result must not depend on how the ingredients are
+    # quantised into whole units, otherwise the output arrives in bursts at the end of the cycle.
     #
-    # On completed we finish off the fractional remainder, so as to output exactly full_amount.
-    if craft_time > 0.0 and is_active and all_full:
+    # The gate is the supply: a container with an ingredient that has nothing left to take pays
+    # nothing out. The check is on the STORAGE, not on this tick's due amount: an ingredient of
+    # 10 units per 20 s asks for a whole unit only every second tick, and on the ticks in between
+    # the container looks idle while it is in fact starving. The cycle is not lost by a stall —
+    # the time and the fill keep their own accounts, and the debt is settled on completion
+    # (see below).
+    #
+    # The quality of the output is recalculated every tick — it depends on how much
+    # raw material has already been taken, so it converges to the weighted average by the end of
+    # the cycle.
+    if craft_time > 0.0 and is_active and not _is_starving():
         for pid in result_products:
             var full_amount: int = int(result_products[pid])
             if full_amount <= 0:
@@ -220,6 +236,7 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
             frac = frac - float(floor_amount)
             release_fractional[pid] = frac
             if floor_amount > 0:
+                released[pid] = int(released.get(pid, 0)) + floor_amount
                 var release_quality := _compute_quality_from_consumed()
                 result["releases"].append({
                     "pid": pid,
@@ -227,21 +244,65 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
                     "quality": release_quality
                 })
 
-    # On completed we finish off the fractional remainder (if less than 1.0 is left by the end of the cycle).
-    var became_complete := all_full and elapsed >= craft_time
+    # The cycle is complete when every ingredient is gathered AND the time has passed. The
+    # profession bonus may have released more than full_amount over the cycle — that surplus is
+    # the point of the bonus, so only the debt is settled here: a recipe whose result cannot be
+    # paid out in whole units (or that was stalled by a shortage) still owes exactly full_amount.
+    var became_complete := _fill_progress() >= 1.0 and elapsed >= craft_time
     if became_complete:
         for pid in result_products:
-            var leftover: float = float(release_fractional.get(pid, 0.0))
-            if leftover > 0.0:
+            var full_amount: int = int(result_products[pid])
+            if full_amount <= 0:
+                continue
+            var owed := full_amount - int(released.get(pid, 0))
+            if owed > 0:
                 var release_quality := _compute_quality_from_consumed()
                 result["releases"].append({
                     "pid": pid,
-                    "amount": int(leftover),
+                    "amount": owed,
                     "quality": release_quality
                 })
-                release_fractional[pid] = 0.0
+            released[pid] = 0
+            release_fractional[pid] = 0.0
         result["completed"] = true
     return result
+
+# The progress of the cycle by the ingredients: min over the slots of filled/required (1.0 — every
+# ingredient is gathered). It is used by the completion check: the time may have passed while the
+# raw materials were missing, so the fill has the last word.
+func _fill_progress() -> float:
+    var min_fill := 1.0
+    for slot in ingredient_slots:
+        var required := float(slot.get("required", 0))
+        if required <= 0.0:
+            continue
+        min_fill = minf(min_fill, float(int(slot.get("filled", 0))) / required)
+    return clampf(min_fill, 0.0, 1.0)
+
+# true when some ingredient still needs units but there is nothing left to take for it.
+# It is checked AFTER the take loop of the tick, i.e. against the storage as it is now: a slot
+# that has just taken its share and left an empty shelf counts as starving, which is the honest
+# answer — the next unit is not there.
+func _is_starving() -> bool:
+    for slot in ingredient_slots:
+        if int(slot.get("filled", 0)) >= int(slot.get("required", 0)):
+            continue
+        if not _slot_has_supply(slot):
+            return true
+    return false
+
+# Whether the storage holds at least one unit the slot can take: the single pid itself,
+# any member of the @-group, or any variant of the OR-group.
+func _slot_has_supply(slot: Dictionary) -> bool:
+    var kind := str(slot.get("kind", "single"))
+    if kind == "alternatives":
+        for variant in slot.get("variants", []):
+            if _available_of_key(str(variant.get("key", ""))) > 0:
+                return true
+        return false
+    if kind == "group":
+        return _available_of_key("@" + str(slot.get("group_key", ""))) > 0
+    return _available_of_key(str(slot.get("pid", ""))) > 0
 
 # --- RESETTING THE CONTAINER ---
 # Called after a successful craft or on a recipe change in the slot.
@@ -256,6 +317,8 @@ func reset():
         # average special_yield of the mix of raw materials), see CityData.do_tick.
     for pid in release_fractional:
         release_fractional[pid] = 0.0
+    for pid in released:
+        released[pid] = 0
 
 # An internal helper: the quality of the result = the weighted average over all the
 # "inputs" of the container (at the moment of the call). It is used to determine
@@ -339,7 +402,8 @@ func status_text() -> String:
 #     "craft_time": float,
 #     "elapsed": float,
 #     "slots": [ { ... per-slot state ... } ],
-#     "release_fractional": { pid: float }
+#     "release_fractional": { pid: float },
+#     "released": { pid: int }
 #   }
 func serialize() -> Dictionary:
     return {
@@ -347,7 +411,8 @@ func serialize() -> Dictionary:
         "craft_time": craft_time,
         "elapsed": elapsed,
         "slots": ingredient_slots.duplicate(true),
-        "release_fractional": release_fractional.duplicate(true)
+        "release_fractional": release_fractional.duplicate(true),
+        "released": released.duplicate(true)
     }
 
 # Restoration of the state from the previously serialized data. On a mismatch
@@ -378,14 +443,11 @@ func _restore_from_slot_data(recipe: Dictionary, slot_data: Dictionary):
         # Otherwise a fresh empty slot remains (the recipe has changed).
         # release_fractional is restored, if it is saved in the current form.
     var saved_release = slot_data.get("release_fractional", null)
-    if saved_release is Dictionary:
+    var saved_released = slot_data.get("released", null)
+    for pid in result_products:
         # We merge by pid — we keep only the known result_products.
-        for pid in result_products:
-            release_fractional[pid] = float(saved_release.get(pid, 0.0))
-    else:
-        # The fractional remainders are absent — we initialise them with zeros.
-        for pid in result_products:
-            release_fractional[pid] = 0.0
+        release_fractional[pid] = float(saved_release.get(pid, 0.0)) if saved_release is Dictionary else 0.0
+        released[pid] = int(saved_released.get(pid, 0)) if saved_released is Dictionary else 0
 
 # --- BUILDING THE SLOTS FROM THE RECIPE ---
 # The resources are normalized through GameData.craft_alternatives(): an array of OR-groups

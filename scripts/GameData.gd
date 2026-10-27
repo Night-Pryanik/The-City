@@ -4,6 +4,10 @@ extends Node
 const HUD_MESSAGE_NORMAL := 0
 const HUD_MESSAGE_IMPORTANT := 1
 
+# Separates the base recipe (or the base good) from the additional ingredients in a generated
+# id: "gold_jewelry+lazurite_ore". See "Additional ingredients of a recipe" below.
+const GENERATED_SEPARATOR := "+"
+
 var terrains: Dictionary = {}
 var covers: Dictionary = {}
 var climate_zones: Dictionary = {} # id -> the climate zone (data/climate.json)
@@ -11,6 +15,17 @@ var raw_resources: Dictionary = {}
 var products: Dictionary = {}
 var improvements: Dictionary = {}
 var crafts: Array = []
+# The additional ingredients of recipes (data/craft_extras.json), by the product they spend:
+# id -> { kind, amount, price_bonus, name, unlock_tech }. The id IS the product id — a good
+# either is an additional ingredient or it is not, there is no second registry of names.
+var craft_extras: Dictionary = {}
+# The kinds of the additional ingredients in the order of the file: [ { id, name } ]. The order
+# is what the checkboxes of the building panel follow.
+var craft_extra_kinds: Array = []
+# The recipes built on the fly by get_craft(), by id (see "Additional ingredients of a recipe").
+# The data is read once per load, so a generated recipe is as stable as a plain one; the cache
+# is dropped together with the data.
+var _craft_cache: Dictionary = {}
 var buildings: Array = []
 var categories: Array = []
 var technologies: Array = []
@@ -86,6 +101,9 @@ func _assign_from(loader) -> void:
     products = loader.products
     improvements = loader.improvements
     crafts = loader.crafts
+    craft_extras = loader.craft_extras
+    craft_extra_kinds = loader.craft_extra_kinds
+    _craft_cache.clear()
     buildings = loader.buildings
     categories = loader.categories
     technologies = loader.technologies
@@ -508,6 +526,296 @@ func _ingredient_variant(key: String, amount: int) -> Dictionary:
 # A convenience wrapper over parse_craft_resources for the consumers of the logic.
 func craft_alternatives(recipe: Dictionary) -> Array:
     return parse_craft_resources(recipe.get("resources", null))
+
+# --- ADDITIONAL INGREDIENTS OF A RECIPE (the generated result) ---
+#
+# A recipe may accept additional ingredients: the player ticks concrete goods of the declared
+# kinds in the building panel, and the result is a good that exists nowhere in the data. The
+# kinds are declared by the recipe ("extra_kinds": ["gemstone"]), the goods of those kinds — by
+# data/craft_extras.json.
+#
+# The chosen goods are a part of the recipe id: "gold_jewelry+lazurite_ore+pearl" is the base
+# recipe plus the additions, sorted (one canonical id per combination). get_craft() builds such
+# a recipe on the fly — the additions become ordinary AND-terms of "resources", the result
+# becomes a generated product id — so every consumer of a recipe (the container, the planned
+# demand and supply, the panel) needs no knowledge of the mechanic.
+#
+# The generated good is materialised into `products` on first use: it inherits the category, the
+# icon and the unlock technology of its base and joins every goods group the base is in — without
+# that the population would never consume it (data/consumption/*.json addresses goods by group)
+# and it would pile up in the storage forever.
+#
+# The name is the base name plus the additions in the nominative case and without prepositions:
+# "Gold Jewelry (+Lazurite, Pearl)". The format is deliberately NOT translated: it is a plus sign
+# and punctuation only, which is what keeps it short in every language. The goods inside it are
+# the data names and are already localized.
+#
+# The price pays for the material in full and adds the premium of the additions on top:
+#   (base price + the price of the additions per unit) * (1 + the sum of their price bonuses)
+# The additions are declared per craft cycle, so their price is divided by the output of the base
+# recipe. The bonuses are summed, not multiplied — the same rule as production_bonus in
+# data/consumption/*.json.
+
+# The recipe by id, or an empty dictionary. An id with GENERATED_SEPARATOR is a base recipe plus
+# the additional ingredients; any other id is looked up as always.
+func get_craft(recipe_id: String) -> Dictionary:
+    if _craft_cache.has(recipe_id):
+        return _craft_cache[recipe_id]
+    var recipe := find_craft(recipe_id)
+    if recipe.is_empty() and recipe_id.find(GENERATED_SEPARATOR) >= 0:
+        var parsed := parse_generated_id(recipe_id)
+        if not parsed.is_empty():
+            var base := find_craft(str(parsed["base"]))
+            if not base.is_empty():
+                recipe = build_recipe_with_extras(base, parsed["extras"], recipe_id)
+    _craft_cache[recipe_id] = recipe
+    return recipe
+
+# The recipe exactly as it is written in the data (no generated form).
+func find_craft(recipe_id: String) -> Dictionary:
+    for c in crafts:
+        if str(c.get("id", "")) == recipe_id:
+            return c
+    return {}
+
+# Splits a generated id into the base and the additions. An empty dictionary — the id is not
+# generated (it has no separator) or names an addition that does not exist. The additions are
+# returned sorted, so that the order of the checkboxes never makes a second id for one good.
+func parse_generated_id(pid: String) -> Dictionary:
+    var at := pid.find(GENERATED_SEPARATOR)
+    if at <= 0 or at >= pid.length() - 1:
+        return {}
+    var extras: Array = []
+    for part in pid.substr(at + 1).split(GENERATED_SEPARATOR, false):
+        var key := str(part)
+        if not craft_extras.has(key) or key in extras:
+            return {}
+        extras.append(key)
+    extras.sort()
+    return {"base": pid.substr(0, at), "extras": extras}
+
+# The id of a good with the given additions. No additions — the base id itself.
+func make_generated_id(base: String, extras: Array) -> String:
+    var clean: Array = []
+    for extra in extras:
+        var key := str(extra)
+        if craft_extras.has(key) and not (key in clean):
+            clean.append(key)
+    if clean.is_empty():
+        return base
+    clean.sort()
+    return base + GENERATED_SEPARATOR + GENERATED_SEPARATOR.join(clean)
+
+# The base recipe with the additions merged into it: they are AND-terms of "resources" (the
+# alternatives of the base are kept as they are) and the result is the generated good.
+func build_recipe_with_extras(base: Dictionary, extras: Array, recipe_id: String) -> Dictionary:
+    var base_result: Dictionary = base.get("result", {})
+    if base_result.is_empty() or extras.is_empty():
+        return base
+    var terms: Array = []
+    var raw = base.get("resources", null)
+    if raw is Dictionary:
+        for key in raw:
+            terms.append({str(key): int(raw[key])})
+    elif raw is Array:
+        terms = raw.duplicate(true)
+    for extra in extras:
+        terms.append({str(extra): int(craft_extras[str(extra)].get("amount", 1))})
+
+    var result: Dictionary = {}
+    for pid in base_result:
+        var generated := make_generated_id(str(pid), extras)
+        materialise_generated(generated)
+        result[generated] = int(base_result[pid])
+
+    var out := base.duplicate(true)
+    out["id"] = recipe_id
+    out["resources"] = terms
+    out["result"] = result
+    # The pseudo-output of the "science" recipe is not a good and takes no additions.
+    out.erase("display_result")
+    out["extras"] = extras.duplicate()
+    out["name"] = get_generated_name(str(base_result.keys()[0]), extras)
+    return out
+
+# Creates the record of a generated good, if it is not there yet. Returns false for an id that
+# is not a generated good of a known base.
+func materialise_generated(pid: String) -> bool:
+    if products.has(pid):
+        return true
+    var parsed := parse_generated_id(pid)
+    if parsed.is_empty():
+        return false
+    var base_pid := str(parsed["base"])
+    if not products.has(base_pid):
+        return false
+    var extras: Array = parsed["extras"]
+    var base: Dictionary = products[base_pid]
+    products[pid] = {
+        "id": pid,
+        "name": get_generated_name(base_pid, extras),
+        "type": "product",
+        "category": base.get("category", "other"),
+        "icon": base.get("icon", ""),
+        "unlock_tech": base.get("unlock_tech", ""),
+        "price": get_generated_price(base_pid, extras),
+        "base": base_pid,
+        "extras": extras,
+    }
+    _register_generated_in_groups(pid, base_pid)
+    return true
+
+# The name of a generated good: the base name plus the additions in brackets.
+func get_generated_name(base_pid: String, extras: Array) -> String:
+    var names: Array = []
+    for extra in extras:
+        names.append(get_extra_name(str(extra)))
+    return "%s (+%s)" % [get_product_name(base_pid), ", ".join(names)]
+
+# The name of an additional ingredient as it is written inside the brackets: the override of the
+# registry if there is one (the stone is "Lazurite", not "Lazurite Ore"), otherwise the name of
+# the good itself.
+func get_extra_name(product_id: String) -> String:
+    var own := str(craft_extras.get(product_id, {}).get("name", ""))
+    if not own.is_empty():
+        return own
+    return get_product_name(product_id)
+
+func get_product_name(pid: String) -> String:
+    if products.has(pid):
+        return str(products[pid].get("name", pid))
+    if raw_resources.has(pid):
+        return str(raw_resources[pid].get("name", pid))
+    return pid
+
+# The icon file of a good or of a raw resource ("" — not set).
+func get_product_icon(pid: String) -> String:
+    if products.has(pid):
+        return str(products[pid].get("icon", ""))
+    if raw_resources.has(pid):
+        return str(raw_resources[pid].get("icon", ""))
+    return ""
+
+# See the header of the block for the formula. The additions are spent per craft cycle, while
+# the price is per unit — hence the division by the output of the base recipe.
+func get_generated_price(base_pid: String, extras: Array) -> int:
+    var batch := _generated_batch(base_pid)
+    var total := get_base_price(base_pid)
+    var bonus := 0.0
+    for extra in extras:
+        var record: Dictionary = craft_extras.get(str(extra), {})
+        total += get_base_price(str(extra)) * float(record.get("amount", 1)) / float(batch)
+        bonus += float(record.get("price_bonus", 0.0))
+    return int(round(total * (1.0 + bonus)))
+
+# How many units of the good one craft cycle of its own recipe yields. The recipe is looked up by
+# the product id (the recipe and its product share the name for the crafted goods); a good with
+# no recipe of its own is priced as if it were produced one unit at a time.
+func _generated_batch(base_pid: String) -> int:
+    var produced := int(find_craft(base_pid).get("result", {}).get(base_pid, 0))
+    return maxi(1, produced)
+
+# How much more expensive a decorated good is than its plain base: 26 / 20 = 1.30. This is the
+# ACTUAL ratio of the two prices and not the sum of the declared bonuses — the material of the
+# additions is paid for on top of the premium, so the +20% of a dye turns into x1.30 once the dye
+# itself is paid for, and a rounding to whole coins adds its own share. The player compares the
+# decorated good with the plain one, and the ratio is the answer to that comparison.
+func get_decoration_price_multiplier(pid: String) -> float:
+    var parsed := parse_generated_id(pid)
+    if parsed.is_empty():
+        return 1.0
+    var base_price := get_price(str(parsed["base"]))
+    if base_price <= 0.0:
+        return 1.0
+    return get_price(pid) / base_price
+
+# The row that explains the price of a decorated good in the tooltips of the "Resources" and
+# "Trade" tabs, in the same shape as the row of the quality ladder ("★★ = x1.30 = 5"):
+#   { "glyph": "+", "tail": " = x1.30 = 26", "text": "+ = x1.30 = 26" }
+# The glyph is the plus sign that opens the additions in the name ("Wool Clothes (+Woad)"), so the
+# row reads as the price of that bracket. An empty dictionary for a plain good: there is nothing
+# to explain about it.
+func format_decoration_price_row(pid: String) -> Dictionary:
+    if parse_generated_id(pid).is_empty():
+        return {}
+    var price := get_price(pid)
+    if price <= 0.0:
+        return {}
+    var tail := " = x%.2f = %d" % [get_decoration_price_multiplier(pid), int(round(price))]
+    return {"glyph": GENERATED_SEPARATOR, "tail": tail, "text": GENERATED_SEPARATOR + tail}
+
+# The generated good joins every goods group of its base: a group is how the rest of the game
+# addresses "any jewelry", and a decorated jewelry is jewelry.
+func _register_generated_in_groups(pid: String, base_pid: String) -> void:
+    for group_key in product_groups:
+        var members: Array = product_groups[group_key]
+        if base_pid in members and not (pid in members):
+            members.append(pid)
+
+# The decorated variants of a good: the generated goods whose base it is, sorted. A generated
+# good IS its base with additions, so a rule that names the plain good ("the city sells gold
+# jewelry to a town") applies to the decorated one too.
+func get_decorated_variants(base_pid: String) -> Array:
+    var out: Array = []
+    for pid in products:
+        if str(products[pid].get("base", "")) == base_pid:
+            out.append(str(pid))
+    out.sort()
+    return out
+
+# The units of a key the storage holds: a group — the sum over its members, a concrete good —
+# itself plus its decorated variants. This is the amount a town deal may draw on: a contract on
+# the plain good must not tear while the shelves are full of the decorated one.
+func get_good_stock(key: String, storage: Dictionary) -> int:
+    if is_group_key(key):
+        return int(get_storage_amount(key, storage))
+    var total := int(storage.get(key, 0))
+    for pid in get_decorated_variants(key):
+        total += int(storage.get(pid, 0))
+    return total
+
+# The additions a recipe offers, grouped by kind in the order of data/craft_extras.json:
+#   [ { "kind": "gemstone", "name": "Gemstones",
+#       "items": [ { "product", "name", "icon", "amount", "in_stock", "selectable" } ] } ]
+# The technology gate is the caller's business: GameData does not know what is researched.
+#
+# in_stock / selectable are the state of the checkbox. A good that is not in the warehouse cannot
+# be chosen — the cycle would only stall waiting for it. It stays in the list, so that the player
+# sees what the recipe accepts and what is missing. An addition that is ALREADY chosen stays
+# selectable even with an empty shelf: otherwise a good that has run out could not be unticked,
+# and the slot would be stuck with it.
+func get_recipe_extra_options(recipe_id: String) -> Array:
+    var kinds: Array = get_craft(recipe_id).get("extra_kinds", [])
+    var out: Array = []
+    if kinds.is_empty():
+        return out
+    var chosen: Array = parse_generated_id(recipe_id).get("extras", [])
+    for kind_entry in craft_extra_kinds:
+        var kind_id := str(kind_entry.get("id", ""))
+        if not (kind_id in kinds):
+            continue
+        var items: Array = []
+        for product_id in craft_extras:
+            var record: Dictionary = craft_extras[product_id]
+            if str(record.get("kind", "")) != kind_id:
+                continue
+            var in_stock := int(CityData.city_storage.get(str(product_id), 0))
+            items.append({
+                "product": str(product_id),
+                "name": get_extra_name(str(product_id)),
+                "icon": get_product_icon(str(product_id)),
+                "amount": int(record.get("amount", 1)),
+                "unlock_tech": str(record.get("unlock_tech", "")),
+                "in_stock": in_stock,
+                "selectable": in_stock > 0 or str(product_id) in chosen,
+            })
+        if not items.is_empty():
+            out.append({
+                "kind": kind_id,
+                "name": str(kind_entry.get("name", kind_id)),
+                "items": items,
+            })
+    return out
 
 # Is the ingredient key available in the pool set (Dictionary of the id → true)?
 # The mirror of TownEconomy.is_available — in GameData, so that the normalization of the

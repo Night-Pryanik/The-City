@@ -587,6 +587,9 @@ func _run() -> void:
         city_ui.trade_tab.refresh()
         _check_group_card(city_ui, gdata, all_key, all_members, state)
 
+        # ---- 8c. The price of a decorated good explains itself ----
+        _check_decoration_price_tooltip(city_ui.trade_tab, gdata, state)
+
     # ---- 9. The unavailable resources are hidden under a collapsible list ----
     # The city can obtain a resource only if it is extracted/produced or already
     # lies in storage. The remaining cards must not clutter the working column:
@@ -1290,6 +1293,41 @@ func _find_label(node: Node, text: String) -> Label:
         if found != null:
             return found
     return null
+
+# The tooltip of the price of a decorated good: the row of the additions (" + = x1.30 = 26")
+# after the ladder of the quality, and no such row for a plain good. The goods are taken from the
+# data, so a re-balanced registry does not break the check.
+func _check_decoration_price_tooltip(tab, gdata, state: Dictionary) -> void:
+    var decorated := ""
+    var base_pid := ""
+    for recipe in gdata.crafts:
+        var kinds: Array = recipe.get("extra_kinds", [])
+        var result: Dictionary = recipe.get("result", {})
+        if kinds.is_empty() or result.is_empty():
+            continue
+        base_pid = str(result.keys()[0])
+        for extra_id in gdata.craft_extras:
+            if str(gdata.craft_extras[extra_id].get("kind", "")) in kinds:
+                decorated = gdata.make_generated_id(base_pid, [str(extra_id)])
+                break
+        if not decorated.is_empty():
+            break
+    check(not decorated.is_empty(),
+        "the data offers a recipe with additional ingredients", state)
+    if decorated.is_empty():
+        return
+    # The record of a generated good is created when its recipe is built.
+    gdata.get_craft(decorated)
+    var plain_text: String = tab._price_tooltip_text({"members": [base_pid], "is_group": false})
+    check(plain_text.find("+ = x") < 0,
+        "a plain good has no row of the additions in the price tooltip", state)
+    var row: Dictionary = gdata.format_decoration_price_row(decorated)
+    check(not row.is_empty(), "a decorated good has the row of the additions", state)
+    var decorated_text: String = tab._price_tooltip_text(
+        {"members": [decorated], "is_group": false})
+    check(decorated_text.find(str(row.get("text", ""))) >= 0,
+        "the price tooltip of a decorated good carries \"%s\"" % str(row.get("text", "")), state)
+
 
 # The name of a group card is a reference, not a plain label: it carries the standard dashed
 # underline of a group and unfolds the composition on hover — the same mark and the same panel the

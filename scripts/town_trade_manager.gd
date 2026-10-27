@@ -897,21 +897,31 @@ func _tick_sale_contract(index: int, town: Dictionary, contract: Dictionary) -> 
     return true
 
 
-# The units of a key the city can give up: a concrete good, or the sum over the members
-# of a group (GameData.get_storage_amount reads both).
+# The units of a key the city can give up: a concrete good (its decorated variants included —
+# a decorated jewelry is still jewelry, so a contract on the plain good does not tear while the
+# shelves are full of the decorated one), or the sum over the members of a group.
 func _city_stock(key: String) -> int:
-    return int(GameData.get_storage_amount(key, CityData.city_storage))
+    return GameData.get_good_stock(key, CityData.city_storage)
 
 
-# Writes `amount` units of the key off the city storage. A group is taken from a RANDOM
-# member that still has stock, unit by unit — the rule of the population consumption,
-# which is what makes a group row a real "any fruit" deal rather than an alias of the
-# first member of the group.
+# Writes `amount` units of the key off the city storage. A good is taken plain first and from
+# its decorated variants after that — the decoration is worth more, and the deal pays for the
+# plain good. A group is taken from a RANDOM member that still has stock, unit by unit — the
+# rule of the population consumption, which is what makes a group row a real "any fruit" deal
+# rather than an alias of the first member of the group.
 func _take_from_city(key: String, amount: int) -> void:
     if amount <= 0:
         return
     if not GameData.is_group_key(key):
-        CityData.remove_from_storage(key, amount, SALE_QUALITY_PRIORITY)
+        var left := amount
+        for pid in ([key] + GameData.get_decorated_variants(key)):
+            if left <= 0:
+                break
+            var take := mini(left, int(CityData.city_storage.get(pid, 0)))
+            if take <= 0:
+                continue
+            CityData.remove_from_storage(pid, take, SALE_QUALITY_PRIORITY)
+            left -= take
         return
     var available: Array = []
     for member in GameData.product_groups.get(key.trim_prefix("@"), []):

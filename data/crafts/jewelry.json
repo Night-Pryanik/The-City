@@ -6,6 +6,7 @@
       "produced_in": [ "jeweler_house" ],
       "resources": { "copper": 10, "charcoal": 10 },
       "result": { "copper_jewelry": 10 },
+      "extra_kinds": ["gemstone"],
       "time": 15,
       "unlock_tech": "jewelry",
       "description": "Makes jewelry out of copper."
@@ -16,6 +17,7 @@
       "produced_in": [ "jeweler_house" ],
       "resources": { "gold": 10, "charcoal": 10 },
       "result": { "gold_jewelry": 10 },
+      "extra_kinds": ["gemstone"],
       "time": 20,
       "unlock_tech": "jewelry",
       "description": "Makes jewelry out of gold."
@@ -26,6 +28,7 @@
       "produced_in": [ "jeweler_house" ],
       "resources": { "silver": 10, "charcoal": 10 },
       "result": { "silver_jewelry": 10 },
+      "extra_kinds": ["gemstone"],
       "time": 20,
       "unlock_tech": "jewelry",
       "description": "Makes jewelry out of silver."
@@ -36,6 +39,7 @@
       "produced_in": [ "jeweler_house" ],
       "resources": { "bronze": 10, "charcoal": 10 },
       "result": { "bronze_jewelry": 10 },
+      "extra_kinds": ["gemstone"],
       "time": 15,
       "unlock_tech": "bronze",
       "description": "Makes jewelry out of bronze."
@@ -46,6 +50,7 @@
       "produced_in": [ "jeweler_house" ],
       "resources": [ [ { "iron": 20 }, { "meteorite_iron": 20 } ], { "charcoal": 20 } ],
       "result": { "iron_jewelry": 10 },
+      "extra_kinds": ["gemstone"],
       "time": 15,
       "unlock_tech": "iron_processing",
       "description": "Makes jewelry out of iron."

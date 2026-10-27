@@ -468,6 +468,12 @@ msgstr "Добавлено 100 еды"
 msgid "Added 100000 coins"
 msgstr "Добавлено 100000 монет"
 
+msgid "Additional ingredient spends a nonexistent product"
+msgstr "Дополнительный ингредиент расходует несуществующий товар"
+
+msgid "Additional ingredients"
+msgstr "Дополнительные ингредиенты"
+
 msgid "Advance requirement met. Click to advance to the next era."
 msgstr "Условие перехода выполнено. Нажмите, чтобы перейти в следующую эпоху."
 
@@ -1239,6 +1245,9 @@ msgstr "Улучшение: "
 msgid "Improvement: %d work"
 msgstr "Улучшение: %d труда"
 
+msgid "In storage: %d"
+msgstr "На складе: %d"
+
 msgid "Income to the treasury over %s sec: %s coins/sec"
 msgstr "Доход в казну за %s сек: %s монет/сек"
 
@@ -1491,6 +1500,9 @@ msgstr "Недостаточно монет для контракта: %d в с�
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
 msgstr "Недостаточно монет в казне! Нужно %d, в казне %d"
 
+msgid "Not in storage"
+msgstr "Нет на складе"
+
 msgid "Nothing to upgrade"
 msgstr "Улучшать нечего"
 
@@ -1700,6 +1712,9 @@ msgstr "Рецепт ссылается на несуществующий рес
 
 msgid "Recipe yields a nonexistent resource"
 msgstr "Рецепт даёт несуществующий ресурс"
+
+msgid "Reference to a nonexistent additional ingredient kind"
+msgstr "Ссылка на несуществующий вид дополнительного ингредиента"
 
 msgid "Reference to a nonexistent category"
 msgstr "Ссылка на несуществующую категорию"
@@ -3040,6 +3055,22 @@ msgstr "Тропический лес"
 msgctxt "covers.name"
 msgid "Tropical Rainforest"
 msgstr "Влажный тропический лес"
+
+msgctxt "craft_extra_kinds.name"
+msgid "Dyes"
+msgstr "Красители"
+
+msgctxt "craft_extra_kinds.name"
+msgid "Gemstones"
+msgstr "Самоцветы"
+
+msgctxt "craft_extras.name"
+msgid "Lazurite"
+msgstr "Лазурит"
+
+msgctxt "craft_extras.name"
+msgid "Malachite"
+msgstr "Малахит"
 
 msgctxt "crafts.description"
 msgid "Blows bottles from molten glass."
@@ -6037,6 +6068,14 @@ msgctxt "validator_entity_ref_cover"
 msgid "this terrain cover"
 msgstr "этот покров"
 
+msgctxt "validator_entity_ref_craft_extra"
+msgid "this additional ingredient"
+msgstr "этот дополнительный ингредиент"
+
+msgctxt "validator_entity_ref_craft_extra_kind"
+msgid "this additional ingredient kind"
+msgstr "этот вид дополнительного ингредиента"
+
 msgctxt "validator_entity_ref_era"
 msgid "this era"
 msgstr "эту эпоху"
@@ -6113,6 +6152,14 @@ msgctxt "validator_entity_source_cover"
 msgid "terrain cover"
 msgstr "покрове"
 
+msgctxt "validator_entity_source_craft_extra"
+msgid "additional ingredient"
+msgstr "дополнительном ингредиенте"
+
+msgctxt "validator_entity_source_craft_extra_kind"
+msgid "additional ingredient kind"
+msgstr "виде дополнительного ингредиента"
+
 msgctxt "validator_entity_source_era"
 msgid "era"
 msgstr "эпохе"
@@ -6188,6 +6235,14 @@ msgstr "Правила потребления"
 msgctxt "validator_entity_title_cover"
 msgid "Terrain cover"
 msgstr "Покрова"
+
+msgctxt "validator_entity_title_craft_extra"
+msgid "Additional ingredient"
+msgstr "Дополнительного ингредиента"
+
+msgctxt "validator_entity_title_craft_extra_kind"
+msgid "Additional ingredient kind"
+msgstr "Вида дополнительного ингредиента"
 
 msgctxt "validator_entity_title_era"
 msgid "Era"

@@ -146,8 +146,8 @@ func _run() -> void:
     # limited by fullness, not by time (completion_ratio = min(fullness,
     # time/craft_time)). Therefore after resources are delivered the container
     # does not "catch up" the accumulated seconds in a volley: exactly one
-    # portion of result is emitted per tick (10/5 = 2 bricks), after which the
-    # cycle resets.
+    # portion of result is emitted per tick (10/5 = 2 bricks), and the cycle
+    # still needs its five working ticks to be complete.
     city.city_built_buildings = [{"id": "pottery_workshop", "slots": ["bricks"], "quality_priority": "best"}]
     for _i in range(8): # 8 sec without resources — noticeably longer than the cycle time (5 s)
         city.do_tick()
@@ -171,6 +171,16 @@ func _run() -> void:
     check(city.get_storage_amount("bricks") == bricks_before + 2,
         "output per tick = 2 bricks, there was no volley of 10 (was %d, became %d)"
             % [bricks_before, city.get_storage_amount("bricks")], state)
+    # The clock ran during the freeze, but that does not finish the cycle: the fill has the last
+    # word, and one supplied tick covers 6 of the 30 clay. The completion needs the whole recipe.
+    check(is_equal_approx(city.get_slot_progress_ratio(0, 0), 0.2),
+        "one supplied tick is 1/5 of the cycle (ratio = 0.2), not a completion (actual %.2f)"
+            % city.get_slot_progress_ratio(0, 0), state)
+    for _i in range(4): # the remaining four ticks of the cycle
+        city.do_tick()
+    check(city.get_storage_amount("bricks") - bricks_before == 10,
+        "the whole cycle yields 10 bricks (%d of 10)" % (city.get_storage_amount("bricks") - bricks_before), state)
+    check(city.get_storage_amount("clay") == 0, "the whole cycle spends 30 clay", state)
     check(is_zero_approx(city.get_slot_progress_ratio(0, 0)),
         "after the cycle completes the container is reset (ratio = 0)", state)
 

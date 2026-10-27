@@ -80,6 +80,7 @@
       "produced_in": [ "weaver_house" ],
       "resources": { "@textile_crops": 20 },
       "result": { "fabric_clothes": 10 },
+      "extra_kinds": ["dye"],
       "time": 4.0,
       "unlock_tech": "weaving",
       "description": "Weaves clothes out of cloth."
@@ -90,6 +91,7 @@
       "produced_in": [ "weaver_house" ],
       "resources": { "wool": 20 },
       "result": { "wool_clothes": 10 },
+      "extra_kinds": ["dye"],
       "time": 4.0,
       "unlock_tech": "weaving",
       "description": "Weaves clothes out of wool."
@@ -100,6 +102,7 @@
       "produced_in": [ "weaver_house" ],
       "resources": { "silk": 20 },
       "result": { "silk_clothes": 10 },
+      "extra_kinds": ["dye"],
       "time": 4.0,
       "unlock_tech": "sericulture",
       "description": "Weaves clothes out of silk."

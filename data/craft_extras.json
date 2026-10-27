@@ -1,0 +1,52 @@
+{
+// The additional ingredients of the recipes.
+//
+// A recipe may accept goods on top of its own ("extra_kinds" in data/crafts/*.json): the player
+// ticks concrete goods in the building panel, and the result is a good generated on the fly —
+// "Gold Jewelry (+Lazurite, Pearl)" — that exists in no data file (see GameData, "Additional
+// ingredients of a recipe").
+//
+// A record is addressed by the PRODUCT it spends: the id is the product id, and the same good is
+// never described twice. Fields:
+//   id          — the product written off per craft cycle (data/products, data/resources);
+//   name        — the name inside the brackets, if it differs from the name of the good itself
+//                 ("Lazurite", not "Lazurite Ore"). Localized like every other display field;
+//   kind        — the group of the checkbox list, one of "craft_extra_kinds" below. A recipe
+//                 accepts the kinds it declares, and nothing else;
+//   amount      — how many units are spent per ONE craft cycle of the recipe (not per unit of
+//                 the result: the batch of jewelry is 10 units, and it takes 2 stones);
+//   price_bonus — the premium of the addition as a fraction of the value of the good: 0.5 = the
+//                 good costs half again as much (x1.5). The material itself is paid for on top of
+//                 it at its own price, so a cheap stone never makes a decorated good cheaper than
+//                 a plain one. The bonuses of several additions add up;
+//   unlock_tech — the technology that opens the checkbox (optional).
+//
+// The price bonus follows the price of the good itself: a cheap dye tints clothes modestly, a
+// murex purple is what makes them a status symbol.
+  "craft_extra_kinds": [
+    { "id": "gemstone", "name": "Gemstones" },
+    { "id": "dye", "name": "Dyes" }
+  ],
+  "craft_extras": [
+    { "id": "lazurite_ore", "name": "Lazurite", "kind": "gemstone", "amount": 2, "price_bonus": 0.35, "unlock_tech": "jewelry" },
+    { "id": "malachite_ore", "name": "Malachite", "kind": "gemstone", "amount": 2, "price_bonus": 0.30, "unlock_tech": "jewelry" },
+    { "id": "nephrite", "kind": "gemstone", "amount": 2, "price_bonus": 0.25, "unlock_tech": "jewelry" },
+    { "id": "porphyry", "kind": "gemstone", "amount": 2, "price_bonus": 0.30, "unlock_tech": "jewelry" },
+    { "id": "pearl", "kind": "gemstone", "amount": 2, "price_bonus": 0.40, "unlock_tech": "jewelry" },
+    { "id": "coral", "kind": "gemstone", "amount": 2, "price_bonus": 0.40, "unlock_tech": "jewelry" },
+
+    { "id": "ochre", "kind": "dye", "amount": 2, "price_bonus": 0.15, "unlock_tech": "dyeing" },
+    { "id": "woad", "kind": "dye", "amount": 2, "price_bonus": 0.20, "unlock_tech": "dyeing" },
+    { "id": "rose_madder", "kind": "dye", "amount": 2, "price_bonus": 0.25, "unlock_tech": "dyeing" },
+    { "id": "henna", "kind": "dye", "amount": 2, "price_bonus": 0.30, "unlock_tech": "dyeing" },
+    { "id": "carthamin", "kind": "dye", "amount": 2, "price_bonus": 0.35, "unlock_tech": "dyeing" },
+    { "id": "malachite", "kind": "dye", "amount": 2, "price_bonus": 0.35, "unlock_tech": "dyeing" },
+    { "id": "campeche", "kind": "dye", "amount": 2, "price_bonus": 0.40, "unlock_tech": "dyeing" },
+    { "id": "sepia", "kind": "dye", "amount": 2, "price_bonus": 0.45, "unlock_tech": "dyeing" },
+    { "id": "indigo", "kind": "dye", "amount": 2, "price_bonus": 0.50, "unlock_tech": "dyeing" },
+    { "id": "cinnabar", "kind": "dye", "amount": 2, "price_bonus": 0.55, "unlock_tech": "dyeing" },
+    { "id": "carmine", "kind": "dye", "amount": 2, "price_bonus": 0.65, "unlock_tech": "dyeing" },
+    { "id": "ultramarine", "kind": "dye", "amount": 2, "price_bonus": 0.75, "unlock_tech": "dyeing" },
+    { "id": "purple", "kind": "dye", "amount": 2, "price_bonus": 1.00, "unlock_tech": "dyeing" }
+  ]
+}

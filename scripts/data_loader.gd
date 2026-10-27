@@ -11,6 +11,8 @@ var raw_resources: Dictionary = {}
 var products: Dictionary = {}
 var improvements: Dictionary = {}
 var crafts: Array = []
+var craft_extras: Dictionary = {} # product id -> the additional ingredient of a recipe
+var craft_extra_kinds: Array = [] # [ { id, name } ] in the order of the file
 var buildings: Array = []
 var categories: Array = []
 var technologies: Array = []
@@ -100,6 +102,8 @@ const BLACKLIST_COLLECTIONS := [
 const SOURCE_COLLECTIONS := [
     "resources",
     "crafts",
+    "craft_extras",
+    "craft_extra_kinds",
     "buildings",
     "improvements",
     "technologies",
@@ -171,6 +175,21 @@ func load_all_data(mod_dirs: Array = []):
         improvements[i["id"]] = i
 
     crafts = merged_data.get("crafts", [])
+
+    # The additional ingredients of recipes (data/craft_extras.json): the goods a recipe may
+    # take on top of its own, and the kinds they belong to (see GameData, "Additional
+    # ingredients of a recipe"). The record is addressed by the product it spends.
+    craft_extras = {}
+    for extra in merged_data.get("craft_extras", []):
+        if extra is Dictionary:
+            var extra_id = extra.get("id", "")
+            if not extra_id.is_empty():
+                craft_extras[extra_id] = extra
+    craft_extra_kinds = []
+    for kind_entry in merged_data.get("craft_extra_kinds", []):
+        if kind_entry is Dictionary and not str(kind_entry.get("id", "")).is_empty():
+            craft_extra_kinds.append(kind_entry)
+
     buildings = merged_data.get("buildings", [])
     categories = merged_data.get("categories", [])
     technologies = merged_data.get("technologies", [])

@@ -551,6 +551,41 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
     await process_frame
     check(_count_scale_lines(ui) == 0,
         "with an empty breakdown there must be no quality rows in the tooltip")
+    # A plain good has nothing to explain about its price: no decoration row either.
+    check(_count_decoration_rows(ui) == 0,
+        "a plain good must have no decoration row in the tooltip")
+
+    # A decorated good ("Wool Clothes (+Woad)") explains WHY it costs more than the plain one:
+    # after the ladder comes the row of the additions in the same shape (" + = x1.30 = 26").
+    var decorated := _pick_decorated_good(gd)
+    if decorated.is_empty():
+        check(false, "the data has no recipe with additional ingredients to check the row against")
+    else:
+        # The record of a generated good is created when its recipe is built (or when the good
+        # first reaches the storage) — a good that does not exist has no price and no row.
+        gd.get_craft(decorated)
+        var decoration: Dictionary = gd.format_decoration_price_row(decorated)
+        check(not decoration.is_empty(),
+            "a decorated good must have a decoration row: %s" % decorated)
+        ui.show_flow_tooltip(Vector2(50, 50), "Goods", {}, decorated, {}, {}, {"common": 5})
+        await process_frame
+        var decoration_cells := _decoration_cells(ui)
+        check(decoration_cells.size() == 1,
+            "the tooltip of a decorated good must carry exactly one decoration row, shown %d"
+            % decoration_cells.size())
+        if decoration_cells.size() == 1:
+            check(str(decoration_cells[0]["glyph"]) == "  " + str(decoration["glyph"]),
+                "the glyph of the row must be the plus of the additions, got \"%s\""
+                % str(decoration_cells[0]["glyph"]))
+            check(str(decoration_cells[0]["tail"]) == str(decoration["tail"]),
+                "the tail of the row must be the computed one: \"%s\" instead of \"%s\""
+                % [str(decoration_cells[0]["tail"]), str(decoration["tail"])])
+            check(str(decoration_cells[0]["tail"]).begins_with(" = x"),
+                "the row must show the coefficient of the price: \"%s\""
+                % str(decoration_cells[0]["tail"]))
+            check(float(decoration_cells[0]["width"]) > 20.0,
+                "the decoration row collapsed in width (%s px)"
+                % str(decoration_cells[0]["width"]))
 
     # Goods without a price (science): there are no rows even with a non-empty breakdown.
     ui.show_flow_tooltip(Vector2(50, 50), "Science", {}, "science", {}, {},
@@ -558,6 +593,8 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
     await process_frame
     check(_count_scale_lines(ui) == 0,
         "for goods without a price there must be no quality rows")
+    check(_count_decoration_rows(ui) == 0,
+        "for goods without a price there must be no decoration row")
 
     holder.queue_free()
 
@@ -575,6 +612,44 @@ func _count_scale_lines(ui) -> int:
         if stars_label != null and str(stars_label.text).begins_with("  ★"):
             result += 1
     return result
+
+# The rows of the price of a decorated good in the row tooltip: an HBox of two Labels, the first
+# of them "  +" — the plus of the additions in the name (GameData.format_decoration_price_row).
+# The shape is deliberately the one of the quality ladder: the player reads both as one table.
+func _decoration_cells(ui) -> Array:
+    var cells: Array = []
+    for child in ui.flow_tooltip_vbox.get_children():
+        if not (child is HBoxContainer) or child.get_child_count() != 2:
+            continue
+        var glyph_label := child.get_child(0) as Label
+        var tail_label := child.get_child(1) as Label
+        if glyph_label == null or tail_label == null:
+            continue
+        if not str(glyph_label.text).begins_with("  +"):
+            continue
+        cells.append({
+            "glyph": str(glyph_label.text),
+            "tail": str(tail_label.text),
+            "width": tail_label.size.x,
+        })
+    return cells
+
+func _count_decoration_rows(ui) -> int:
+    return _decoration_cells(ui).size()
+
+# The first good of the data that is generated from a base recipe and an additional ingredient —
+# taken from the data, so that a re-balanced registry does not break the test.
+func _pick_decorated_good(gd) -> String:
+    for recipe in gd.crafts:
+        var kinds: Array = recipe.get("extra_kinds", [])
+        var result: Dictionary = recipe.get("result", {})
+        if kinds.is_empty() or result.is_empty():
+            continue
+        var base_pid := str(result.keys()[0])
+        for extra_id in gd.craft_extras:
+            if str(gd.craft_extras[extra_id].get("kind", "")) in kinds:
+                return gd.make_generated_id(base_pid, [str(extra_id)])
+    return ""
 
 func check(cond: bool, msg: String):
     if cond:

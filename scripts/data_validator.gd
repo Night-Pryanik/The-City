@@ -352,6 +352,23 @@ const CRAFT_FIELDS := {
     "display_result": ID_MAP,
     "time": LEAF,
     "unlock_tech": LEAF,
+    # The kinds of the additional ingredients the recipe accepts (data/craft_extras.json). The
+    # concrete goods are chosen by the player, the result is generated — see GameData.
+    "extra_kinds": LEAF,
+}
+
+const CRAFT_EXTRA_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "kind": LEAF,
+    "amount": LEAF,
+    "price_bonus": LEAF,
+    "unlock_tech": LEAF,
+}
+
+const CRAFT_EXTRA_KIND_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
 }
 
 const TECHNOLOGY_FIELDS := {
@@ -686,6 +703,8 @@ const BLACKLIST_KINDS := {
 const SCHEMA := {
     "resources": {"array": RESOURCE_FIELDS},
     "crafts": {"array": CRAFT_FIELDS},
+    "craft_extras": {"array": CRAFT_EXTRA_FIELDS},
+    "craft_extra_kinds": {"array": CRAFT_EXTRA_KIND_FIELDS},
     "buildings": {"array": BUILDING_FIELDS},
     "improvements": {"array": IMPROVEMENT_FIELDS},
     "technologies": {"array": TECHNOLOGY_FIELDS},
@@ -724,6 +743,7 @@ const ENTITIES := [
     "building", "product", "improvement", "technology", "profession",
     "category", "group", "recipe", "road", "terrain", "terrain_family", "cover", "climate_zone", "era",
     "quality_level", "priority_option", "special_action", "consumption_rule",
+    "craft_extra", "craft_extra_kind",
 ]
 
 
@@ -815,6 +835,14 @@ static func entity_forms(kind: String, fallback: String = "product") -> Dictiona
             return {"title": TranslationServer.translate("Consumption rule", "validator_entity_title_consumption_rule"),
                 "ref": TranslationServer.translate("this consumption rule", "validator_entity_ref_consumption_rule"),
                 "source": TranslationServer.translate("consumption rule", "validator_entity_source_consumption_rule")}
+        "craft_extra":
+            return {"title": TranslationServer.translate("Additional ingredient", "validator_entity_title_craft_extra"),
+                "ref": TranslationServer.translate("this additional ingredient", "validator_entity_ref_craft_extra"),
+                "source": TranslationServer.translate("additional ingredient", "validator_entity_source_craft_extra")}
+        "craft_extra_kind":
+            return {"title": TranslationServer.translate("Additional ingredient kind", "validator_entity_title_craft_extra_kind"),
+                "ref": TranslationServer.translate("this additional ingredient kind", "validator_entity_ref_craft_extra_kind"),
+                "source": TranslationServer.translate("additional ingredient kind", "validator_entity_source_craft_extra_kind")}
         "priority_option":
             return {"title": TranslationServer.translate("Quality priority option", "validator_entity_title_priority_option"),
                 "ref": TranslationServer.translate("this quality priority option", "validator_entity_ref_priority_option"),
@@ -870,6 +898,10 @@ static func check_title(kind: String) -> String:
             return TranslationServer.translate("Consumption rule references a nonexistent product")
         "consumption_group":
             return TranslationServer.translate("Consumption rule references a nonexistent goods group")
+        "craft_extra":
+            return TranslationServer.translate("Additional ingredient spends a nonexistent product")
+        "craft_extra_kind":
+            return TranslationServer.translate("Reference to a nonexistent additional ingredient kind")
         "prerequisite":
             return TranslationServer.translate("Technology requires a nonexistent technology")
         "road_level":
@@ -923,6 +955,8 @@ const SOURCE_COLLECTIONS := {
     # _remember_consumption_sources), therefore its "resource" serves as the identifier of the record in the index
     # of the origin.
     "consumption_rule": "consumption",
+    "craft_extra": "craft_extras",
+    "craft_extra_kind": "craft_extra_kinds",
     # The kinds that are needed only by the checks of the identifiers: they are declared in
     # their collections, but no other check refers to them.
     "terrain": "terrains",
@@ -953,6 +987,8 @@ const CHECK_ORDER := [
     "resource",
     "consumption_resource",
     "consumption_group",
+    "craft_extra",
+    "craft_extra_kind",
     "prerequisite",
     "road_level",
     "road_max_speed",
@@ -994,6 +1030,7 @@ func validate(gd: Object) -> Array:
     _validate_identifiers(gd, problems)
     _validate_blacklist(gd, problems)
     _validate_crafts(gd.crafts, buildings, technologies, all_resources, product_groups, problems)
+    _validate_craft_extras(gd, all_resources, technologies, problems)
     _validate_buildings(gd.buildings, technologies, professions, problems)
     _validate_improvements(improvements, technologies, professions, problems)
     _validate_resources(products, raw_resources, categories, technologies, improvements, problems)
@@ -1680,6 +1717,56 @@ func _validate_buildings(buildings, technologies: Dictionary, professions: Dicti
                 "building", building_name, building_id, "unlock_tech")
         _check_profession_ref(building.get("profession", ""), professions, problems,
                 "building", building_name, building_id, "profession")
+
+
+# --- THE ADDITIONAL INGREDIENTS OF THE RECIPES ----------------------------------
+#
+# A record of data/craft_extras.json is addressed by the product it spends, and its kind has to be
+# one of the declared kinds. A recipe declares the kinds it accepts: a kind with a typo leaves the
+# recipe silently without checkboxes, so a reference is checked both ways.
+func _validate_craft_extras(gd: Object, all_resources: Dictionary, technologies: Dictionary,
+        problems: Array) -> void:
+    var kinds: Dictionary = {}
+    for kind_entry in _as_object_list(gd.get("craft_extra_kinds")):
+        var kind_id := str(kind_entry.get("id", ""))
+        if not kind_id.is_empty():
+            kinds[kind_id] = true
+
+    var extras = gd.get("craft_extras")
+    if extras is Dictionary:
+        for product_id in extras:
+            var extra = extras[product_id]
+            if not (extra is Dictionary):
+                continue
+            var extra_id := str(product_id)
+            var extra_name := _entity_name(extra, extra_id)
+            if not all_resources.has(extra_id):
+                _add(problems, "craft_extra", "product", extra_id,
+                        "craft_extra", extra_name, extra_id, "id")
+            var kind := str(extra.get("kind", ""))
+            if not kinds.has(kind):
+                _add(problems, "craft_extra_kind", "craft_extra_kind", kind,
+                        "craft_extra", extra_name, extra_id, "kind")
+            _check_tech_ref(extra.get("unlock_tech", ""), technologies, problems,
+                    "craft_extra", extra_name, extra_id, "unlock_tech")
+
+    for craft in _as_object_list(gd.get("crafts")):
+        var craft_id := str(craft.get("id", ""))
+        for kind in _as_string_list(craft.get("extra_kinds", [])):
+            if not kinds.has(kind):
+                _add(problems, "craft_extra_kind", "craft_extra_kind", kind,
+                        "recipe", _entity_name(craft, craft_id), craft_id, "extra_kinds")
+
+
+# The records of a collection that are objects, skipping everything else (the synthetic data of
+# the tests may miss the collection entirely).
+func _as_object_list(value) -> Array:
+    var out: Array = []
+    if value is Array:
+        for item in value:
+            if item is Dictionary:
+                out.append(item)
+    return out
 
 
         # result (and its displayable variant) → a resource.

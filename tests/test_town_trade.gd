@@ -56,6 +56,9 @@ const WOOD := "wood"
 # A second good of the same town: the "one contract per good" rule is per good, so a case
 # needs two goods to tell "the same good" from "another good".
 const PLANKS := "planks"
+# A good with an additional ingredient ("gold jewelry with lazurite"): a decorated variant is
+# its base for every rule that names the base, so a deal on the plain good must accept it.
+const DECORATED_BASE := "gold_jewelry"
 
 # A stub of the map: the logistics read the route from it.
 class FakeMap:
@@ -126,6 +129,8 @@ func _run() -> void:
 		_test_sell_contract(state)
 	if WATCHDOG.wants_case("sell_save_load"):
 		_test_sell_save_load(state)
+	if WATCHDOG.wants_case("sell_decorated"):
+		_test_sell_decorated(state)
 
 	_free_rig()
 	WATCHDOG.report_skipped()
@@ -1169,6 +1174,58 @@ func _test_sell_save_load(state: Dictionary) -> void:
 	check(int(_cdata.city_storage.get(WOOD, 0)) == before - 5,
 			"a restored sale contract must keep charging", state)
 	restored.free()
+
+
+# -------------------------------------------------------
+# 20. A decorated good is its base for a deal
+# -------------------------------------------------------
+
+# A generated good ("gold jewelry with lazurite") is its base with additions, so a deal that
+# names the plain good must accept it: otherwise the player's decorated jewelry would be
+# unsellable and a contract would tear while the shelf is full. The plain good goes first —
+# the decoration is worth more and the deal pays the price of the plain one.
+func _test_sell_decorated(state: Dictionary) -> void:
+	var town := _rig(0.0, 0)
+	town["buy_pool"] = [DECORATED_BASE]
+	town["treasury"] = 100000
+	var decorated: String = _gdata.make_generated_id(DECORATED_BASE, ["lazurite_ore"])
+	check(decorated != DECORATED_BASE, "the decorated id must differ from the base", state)
+	_cdata.add_to_storage(decorated, 10, "common")
+	check(int(_cdata.city_storage.get(DECORATED_BASE, 0)) == 0,
+			"the case starts with no plain good on the shelf", state)
+
+	# A one-time sale of the plain good, paid for out of the decorated stock.
+	var price := int(round(_gdata.get_price(DECORATED_BASE)))
+	var result = _trade.submit_order(_sell_order(DECORATED_BASE, 10, false, price))
+	check(bool(result.get("ok", false)),
+			"a sale of the plain good must accept the decorated variant: %s"
+					% str(result.get("message", "")), state)
+	check(int(_cdata.city_storage.get(decorated, 0)) == 0,
+			"the decorated good must be shipped (left %d)"
+					% int(_cdata.city_storage.get(decorated, 0)), state)
+
+	# A standing contract on the plain good must not tear while only decorated ones are there.
+	_cdata.add_to_storage(decorated, 20, "common")
+	result = _trade.submit_order(_sell_order(DECORATED_BASE, 5, true, price))
+	check(bool(result.get("ok", false)),
+			"a standing contract on the plain good must be signed against the decorated stock: %s"
+					% str(result.get("message", "")), state)
+	_trade.tick_contracts()
+	check(_trade._contracts.size() == 1,
+			"the contract must survive a tick served from the decorated stock", state)
+	check(int(_cdata.city_storage.get(decorated, 0)) == 15,
+			"one tick must ship 5 decorated units (left %d)"
+					% int(_cdata.city_storage.get(decorated, 0)), state)
+
+	# Both on the shelf: the plain good goes first.
+	_cdata.add_to_storage(DECORATED_BASE, 5, "common")
+	_trade.tick_contracts()
+	check(int(_cdata.city_storage.get(DECORATED_BASE, 0)) == 0,
+			"the plain good must be shipped before the decorated one (left %d)"
+					% int(_cdata.city_storage.get(DECORATED_BASE, 0)), state)
+	check(int(_cdata.city_storage.get(decorated, 0)) == 15,
+			"the decorated stock must stay untouched while the plain good lasts (left %d)"
+					% int(_cdata.city_storage.get(decorated, 0)), state)
 
 
 func _rig(speed: float, length: int) -> Dictionary:

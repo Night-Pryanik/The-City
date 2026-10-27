@@ -1054,28 +1054,27 @@ func _make_bullet_row(symbol: String, text: String, text_color: Color) -> HBoxCo
     row.add_child(label)
     return row
 
-# Creates a row of the price ladder by quality for the row tooltip: the stars in
-# the colour of THEIR level (data/qualities.json, get_quality_color), the price
-# calculation itself — in the price colour of the palette (price_text_color()). Two
-# Labels in an HBox, and not
-# one Label with BBCode: that way the row acquires no dependency at all on a
-# RichTextLabel (its fit_content with the wrapping collapses the label to 1 px —
-# see resources_tab._add_quality_label), and the colours are taken from the theme
-# just like in the other rows of the tooltips.
-#   stars       — "★★" (the indent of 2 spaces is set here)
-#   tail        — " = x1.30 = 5", the tail of the row without the stars
-#   level_color — the colour of the level from the data
-func _make_quality_price_row(stars: String, tail: String, level_color: Color) -> HBoxContainer:
+# Creates a row of the price ladder for the row tooltip: a marker and the calculation behind it.
+# The marker is the stars of a quality level (data/qualities.json, get_quality_color) or the plus
+# of the additions of a decorated good — the row reads the same in both cases, and the marker
+# says which of the two it is. Two Labels in an HBox, and not one Label with BBCode: that way the
+# row acquires no dependency at all on a RichTextLabel (its fit_content with the wrapping collapses
+# the label to 1 px — see resources_tab._add_quality_label), and the colours are taken from the
+# theme just like in the other rows of the tooltips.
+#   marker       — "★★" or "+" (the indent of 2 spaces is set here)
+#   tail         — " = x1.30 = 5", the tail of the row without the marker
+#   marker_color — the colour of the marker: the level colour from the data, or the price colour
+func _make_price_row(marker: String, tail: String, marker_color: Color) -> HBoxContainer:
     var row = HBoxContainer.new()
     row.add_theme_constant_override("separation", 4)
     row.mouse_filter = Control.MOUSE_FILTER_IGNORE
     # The indent of 2 spaces separates the rows of the ladder from the base
     # "Price: N" above them.
-    var stars_label = Label.new()
-    stars_label.text = "  " + stars
-    stars_label.add_theme_color_override("font_color", level_color)
-    stars_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    row.add_child(stars_label)
+    var marker_label = Label.new()
+    marker_label.text = "  " + marker
+    marker_label.add_theme_color_override("font_color", marker_color)
+    marker_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(marker_label)
     var tail_label = Label.new()
     tail_label.text = tail
     tail_label.add_theme_color_override("font_color", price_text_color())
@@ -1148,6 +1147,10 @@ func _format_planned_rate(amount: float, interval: float) -> String:
 # ({quality_id: count}, see CityData.get_quality_breakdown). It is what decides
 # which levels are shown: the price of a level that is not in the storage is not
 # needed by the player and only misleads.
+# A decorated good ("Wool Clothes (+Woad)") gets one more row after the ladder — the price
+# against its plain base (" + = x1.30 = 26", see GameData.format_decoration_price_row). It
+# answers the question the header raises: why this unit costs more than the good without the
+# additions.
 # The tooltip is shown even when the production/consumption is empty, as long as
 # the price of the resource is > 0.
 # planned_consumption — the planned consumption:
@@ -1203,9 +1206,15 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         # the text, and the price calculation itself ("= x1.75 = 7") — in gold,
         # just like the row "Price: N" above the ladder.
         for quality_row in GameData.format_quality_price_scale_rows(resource_id, quality_breakdown):
-            flow_tooltip_vbox.add_child(_make_quality_price_row(
+            flow_tooltip_vbox.add_child(_make_price_row(
                 str(quality_row["stars"]), str(quality_row["tail"]),
                 GameData.get_quality_color(str(quality_row["qid"]))))
+        # The price of a decorated good against its plain base: " + = x1.30 = 26". The header
+        # already says what the good carries ("(+Woad)"); this row says what that bracket costs.
+        var decoration_row := GameData.format_decoration_price_row(resource_id)
+        if not decoration_row.is_empty():
+            flow_tooltip_vbox.add_child(_make_price_row(
+                str(decoration_row["glyph"]), str(decoration_row["tail"]), price_text_color()))
     for yield_id in special_yield:
         var yield_label = Label.new()
         yield_label.text = "%s: %d" % [

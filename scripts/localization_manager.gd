@@ -188,6 +188,10 @@ func _apply_locale(code: String) -> void:
     # on a change from within a game — as well (CityData.setup calls GameData.load_all_data).
     if GameData.data_loaded:
         GameData.load_all_data()
+        # The names of the generated goods are built from the data names when the good is
+        # created, so a re-read of the data in another language has to rebuild them.
+        if is_instance_valid(CityData):
+            CityData.rebuild_generated_products()
     locale_changed.emit(code)
 
 
