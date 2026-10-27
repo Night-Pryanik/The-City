@@ -394,11 +394,16 @@ func _apply_family(family: String) -> bool:
     if theme == null:
         push_warning("FontManager: the project theme is not set (gui/theme/custom in project.godot).")
         return false
+    # Every write into the resource emits `changed`, and one emission walks the whole tree:
+    # the writes are made silent and followed by ONE emission (see ThemeManager._apply_theme).
+    theme.set_block_signals(true)
     theme.default_font = body
     for type in EMPHASIS_TYPES:
         theme.set_font("font", type, emphasis)
     for type in BOLD_TYPES:
         theme.set_font("font", type, bold)
+    theme.set_block_signals(false)
+    theme.emit_changed()
     # The map draws the names of the cities and of the towns itself, with draw_string and
     # the engine fallback font, which knows nothing about the project theme
     # (map_renderer.gd). Without this line the map would stay in the built-in font while

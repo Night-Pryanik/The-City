@@ -15,8 +15,9 @@
 #   6. The factories of UiTheme: the built styleboxes take the palette values, and the
 #      fallback palette of the module repeats the default preset token by token — a
 #      divergence would make a headless run draw a different interface than the game.
-#   7. The project theme: every standard control reads the palette from it, and a second
-#      apply edits the same resource instead of replacing it.
+#   7. The project theme: every standard control reads the palette from it, a second apply
+#      edits the same resource instead of replacing it, and a switch notifies the tree once
+#      rather than once per written item.
 #   8. The live switch: a palette applied at run time reaches both the project theme and
 #      the per-node overrides of a window that re-styles itself on the signal.
 #   9. The choice: the settings menu lists every preset, shows the applied one, and picking
@@ -338,6 +339,17 @@ func _run() -> void:
         "the styles do not touch the button font", state)
     manager.apply_preset(DEFAULT_PRESET)
     check(ThemeDB.get_project_theme() == theme, "the theme resource is edited, not replaced", state)
+
+    # A switch writes about a hundred items into the resource, and every write would notify
+    # every Control and Window in the tree: on the loaded map that is the difference between
+    # a second of freeze and no stall. The writes are silent, the tree is told once.
+    var emissions := {"count": 0}
+    var on_changed := func(): emissions["count"] += 1
+    theme.changed.connect(on_changed)
+    manager.apply_preset(DEFAULT_PRESET)
+    theme.changed.disconnect(on_changed)
+    check(emissions["count"] == 1,
+        "a switch notifies the tree once (got %d)" % emissions["count"], state)
 
     # --- 8. A palette applied at run time ---
     # A window that styles its own nodes keeps per-node overrides, and an override wins over the

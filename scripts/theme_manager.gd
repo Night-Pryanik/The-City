@@ -256,6 +256,11 @@ func _apply_theme() -> void:
     if theme == null:
         push_warning("ThemeManager: the project theme is not set (gui/theme/custom in project.godot).")
         return
+    # Every write into the resource emits `changed`, and one emission walks the whole tree
+    # to tell every Control and Window that its theme items are gone: with the map and the
+    # screens loaded, the hundred writes of a switch cost about a second of freeze. They are
+    # made silent and followed by ONE emission, so the tree is told exactly once.
+    theme.set_block_signals(true)
     _style_buttons(theme)
     _style_text_inputs(theme)
     _style_progress(theme)
@@ -265,6 +270,8 @@ func _apply_theme() -> void:
     _style_popups(theme)
     _style_text(theme)
     _style_surfaces(theme)
+    theme.set_block_signals(false)
+    theme.emit_changed()
 
 func _style_buttons(theme: Theme) -> void:
     for type in ["Button", "OptionButton"]:
@@ -455,11 +462,13 @@ func _separator() -> StyleBoxLine:
     style.thickness = 1
     return style
 
-# Makes the new surface visible at once. A Control does not always re-read the theme
-# after the resource is edited (the same measurement as in FontManager): the notification
-# is sent by hand, and every node that draws itself is asked to redraw — a Control included,
-# because the badges, the dots and the frames of the tree are drawn in `_draw()` of a
-# Control and read the palette there.
+# Makes the new surface visible at once. The single emission of the theme resource (see
+# _apply_theme) already notifies the Controls through the engine chain, but that chain stops
+# at a node that is neither Control nor Window, and a Control that owns overrides may not
+# re-read its items at all. The notification is therefore repeated over the whole tree, and
+# every node that draws itself is asked to redraw — a Control included, because the badges,
+# the dots and the frames of the tree are drawn in `_draw()` of a Control and read the
+# palette there.
 func _repaint() -> void:
     if not is_inside_tree():
         return
