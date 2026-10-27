@@ -38,6 +38,8 @@ func _run() -> void:
         _test_min_size(state)
     if WATCHDOG.wants_case("polar_edges"):
         _test_polar_edges(state)
+    if WATCHDOG.wants_case("pole_under_sea"):
+        _test_pole_under_sea(state)
     if WATCHDOG.wants_case("tundra_has_no_woods"):
         _test_tundra_has_no_woods(state)
     if WATCHDOG.wants_case("deserts_hot_dry"):
@@ -71,12 +73,24 @@ func _generate() -> void:
     if _generated:
         return
     _generated = true
+    _tiles = _build_map([])
+
+# A map of the same seed, optionally with the sea on the given map edges. The sea is a world
+# setting, so the second map has to be asked for through CityData like a new game does.
+func _build_map(sides: Array) -> Array:
+    var city_data = get_root().get_node("CityData")
+    var saved_sea: Dictionary = city_data.world_sea
+    if not sides.is_empty():
+        city_data.world_sea = city_data.DEFAULT_SEA.duplicate(true)
+        city_data.world_sea["sides"] = sides
     var generator = load("res://scripts/map_generator.gd").new()
     seed(SEED)
     var counts = generator.make_terrain_counts(ROWS, COLS)
-    _tiles = generator.generate_map(ROWS, COLS, int(ROWS / 2.0), int(COLS / 2.0),
+    var tiles: Array = generator.generate_map(ROWS, COLS, int(ROWS / 2.0), int(COLS / 2.0),
             _gdata.raw_resources, counts)
     generator.free()
+    city_data.world_sea = saved_sea
+    return tiles
 
 func _zone_id(row: int, col: int) -> String:
     return str(_tiles[row][col].get("climate", ""))
@@ -95,6 +109,13 @@ func _temperature_index(row: int, col: int) -> int:
 
 func _has_zone(row: int, col: int) -> bool:
     return _zone_id(row, col) != "" and _gdata.climate_zones.has(_zone_id(row, col))
+
+# Whether a patch of hexes reaches the pole row of the map.
+func _touches_pole(cells: Array) -> bool:
+    for cell in cells:
+        if cell.x == 0 or cell.x == ROWS - 1:
+            return true
+    return false
 
 # --- the checks --------------------------------------------------------------
 
@@ -153,7 +174,9 @@ func _test_neighbouring_belts(state: Dictionary) -> void:
                         neighbour.col, _zone_id(r, c), _zone_id(neighbour.row, neighbour.col)], state)
 
 # The zone patches are large regions: a patch of land smaller than min_zone_size is dissolved into
-# the zone around it. An island with no land neighbours has nothing to merge with and stays.
+# the zone around it. An island with no land neighbours has nothing to merge with and stays, and
+# neither is a patch that reaches the pole row: the belt of those hexes is pinned by the latitude,
+# and the sea cuts the polar band into specks often enough to leave one behind.
 func _test_min_size(state: Dictionary) -> void:
     _generate()
     var min_size := int(_gdata.map_config.get("climate", {}).get("min_zone_size", 3))
@@ -183,6 +206,8 @@ func _test_min_size(state: Dictionary) -> void:
                     stack.append(key)
             if not touches_land:
                 continue
+            if _touches_pole(cells):
+                continue
             check(cells.size() >= min_size,
                     "the zone %s has a patch of %d hexes at (%d,%d)" % [zone_id, cells.size(), r, c],
                     state)
@@ -204,6 +229,28 @@ func _test_polar_edges(state: Dictionary) -> void:
             elif edge < 3:
                 check(here <= cold,
                         "the edge is too warm at (%d,%d): %s" % [r, c, _zone_id(r, c)], state)
+
+# The same two rules on a map whose sea eats both poles: a strip along the north and along the
+# south leaves a corner of the pole behind the water, one or two hexes large. Those hexes are
+# still the pole, so they stay tundra and are not merged into the taiga by the cleanup of the
+# small patches — which is exactly what the strip along both edges used to do.
+func _test_pole_under_sea(state: Dictionary) -> void:
+    _generate()
+    var main_tiles: Array = _tiles
+    _tiles = _build_map(["north", "south"])
+
+    var pole_land := 0
+    for r in range(ROWS):
+        if mini(r, ROWS - 1 - r) != 0:
+            continue
+        for c in range(COLS):
+            if _has_zone(r, c):
+                pole_land += 1
+    check(pole_land > 0, "the sea left no land on the pole rows to check", state)
+
+    _test_polar_edges(state)
+    _test_min_size(state)
+    _tiles = main_tiles
 
 # The tundra lies beyond the taiga: the pool of the polar zone has no woods, so no forest grows on
 # the relief of the tundra. The bog of the tundra keeps its own pool, which has no woods either.

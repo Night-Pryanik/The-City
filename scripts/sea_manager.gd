@@ -63,7 +63,7 @@ static func build_sea_mask(rows: int, cols: int, city_row: int, city_col: int,
     if mode == "none":
         return sea_mask
 
-    var sides: Array = _choose_sides(cfg)
+    var sides: Array = resolve_sides(cfg)
     if sides.is_empty():
         return sea_mask
 
@@ -125,13 +125,6 @@ static func grow_sea_islands(sea_mask: Array, rows: int, cols: int,
     _apply_sea_islands(sea_mask, rows, cols, cfg, city_row, city_col, announce)
 
 
-# The map edges that get a sea: `sides` is either a range [min, max] of the number of cardinal
-# directions or an already-resolved list of actual cardinal directions. An empty result means the
-# world gets no sea at all.
-#
-# The parsing and validation of the format ("a number" or "[min, max] of numbers", swap on
-# swapped bounds) is delegated to RangeUtils.parse_range. With invalid data the sea is not
-# generated (safe behaviour).
 static func _normalize_sides(value: Variant) -> Array:
     if not value is Array:
         return []
@@ -142,15 +135,35 @@ static func _normalize_sides(value: Variant) -> Array:
             normalized.append(side)
     return normalized
 
+# A random 0..bound. A null `rng` draws from the global generator, which is what makes the sea
+# follow a seed() the caller has set (see build_sea_mask).
+static func _draw(bound: int, rng: RandomNumberGenerator) -> int:
+    if rng == null:
+        return randi_range(0, bound)
+    return rng.randi_range(0, bound)
+
 static func _shuffle_sides(rng: RandomNumberGenerator, all_sides: Array) -> Array:
     var shuffled: Array = all_sides.duplicate()
     for i in range(shuffled.size() - 1, 0, -1):
-        var j: int = rng.randi_range(0, i)
+        var j := _draw(i, rng)
         var tmp = shuffled[i]
         shuffled[i] = shuffled[j]
         shuffled[j] = tmp
     return shuffled
 
+# The map edges that get a sea: `sides` is either a range [min, max] of the number of cardinal
+# directions or an already-resolved list of actual cardinal directions. An empty result means the
+# world gets no sea at all.
+#
+# The edges are drawn at random, so the draw has to come from somewhere the caller controls:
+# `seed_value` pins it (the preview of a new game passes its own seed, so the same settings keep
+# the same coast), and 0 draws from the global generator, which the caller seeds when it needs a
+# stable map. A private, self-randomized generator here would make every map differ even under
+# seed(), and the coast would change under the player on every change of an unrelated setting.
+#
+# The parsing and validation of the format ("a number" or "[min, max] of numbers", swap on
+# swapped bounds) is delegated to RangeUtils.parse_range. With invalid data the sea is not
+# generated (safe behaviour).
 static func resolve_sides(cfg: Dictionary, seed_value: int = 0) -> Array:
     var resolved := _normalize_sides(cfg.get("sides", []))
     if not resolved.is_empty():
@@ -165,43 +178,15 @@ static func resolve_sides(cfg: Dictionary, seed_value: int = 0) -> Array:
     if max_sides <= 0:
         return []
 
-    var rng := RandomNumberGenerator.new()
+    var rng: RandomNumberGenerator = null
     if seed_value != 0:
+        rng = RandomNumberGenerator.new()
         rng.seed = seed_value
-    else:
-        rng.randomize()
 
-    var all_sides: Array = ["east", "west", "north", "south"]
-    var count: int = rng.randi_range(min_sides, max_sides)
+    var count: int = _draw(max_sides - min_sides, rng) + min_sides
     if count <= 0:
         return []
-    var shuffled: Array = _shuffle_sides(rng, all_sides)
-    var sides: Array = []
-    for i in range(count):
-        sides.append(shuffled[i])
-    return sides
-
-static func _choose_sides(cfg: Dictionary) -> Array:
-    var resolved := _normalize_sides(cfg.get("sides", []))
-    if not resolved.is_empty():
-        return resolved
-
-    var parsed: Dictionary = RangeUtils.parse_range(cfg.get("sides", []))
-    if not parsed.ok:
-        print("map_generator: warning — the sea.sides field is set incorrectly, the sea is not generated. A number or [min, max] (0..4) is expected.")
-        return []
-    var min_sides: int = clampi(parsed["min"], 0, 4)
-    var max_sides: int = clampi(parsed["max"], 0, 4)
-    if max_sides <= 0:
-        return []
-
-    var rng := RandomNumberGenerator.new()
-    rng.randomize()
-    var all_sides: Array = ["east", "west", "north", "south"]
-    var count: int = rng.randi_range(min_sides, max_sides)
-    if count <= 0:
-        return []
-    var shuffled: Array = _shuffle_sides(rng, all_sides)
+    var shuffled: Array = _shuffle_sides(rng, ["east", "west", "north", "south"])
     var sides: Array = []
     for i in range(count):
         sides.append(shuffled[i])

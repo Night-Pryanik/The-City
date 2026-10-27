@@ -1051,6 +1051,10 @@ func _limit_deserts(tile_data: Array, rows: int, cols: int) -> void:
 # taken in CLUSTERS: two touching specks of different zones are merged into the zone around them
 # together, otherwise they would only exchange zones and stay specks. An island with no land
 # neighbours keeps a single zone of its own: there is nothing to merge it with.
+#
+# A speck that reaches the pole row keeps its zone: the belt of those hexes is pinned by the
+# latitude (see _apply_climate), and the sea cuts the polar band into specks often enough — a
+# corner of the map behind a sea strip is one hex. Merging it would take the tundra off the pole.
 func _remove_small_zone_islands(tile_data: Array, rows: int, cols: int, min_size: int) -> void:
     if min_size <= 1:
         return
@@ -1088,6 +1092,8 @@ func _remove_small_zone_islands(tile_data: Array, rows: int, cols: int, min_size
 
             if cells.size() >= min_size:
                 continue
+            if _touches_pole(cells, rows):
+                continue
             for cell in cells:
                 small[cell] = true
 
@@ -1120,6 +1126,13 @@ func _remove_small_zone_islands(tile_data: Array, rows: int, cols: int, min_size
             if target != "":
                 for cell in cluster:
                     tile_data[cell.x][cell.y]["climate"] = target
+
+# Whether a patch reaches the pole row of the map, whose belt is pinned by the latitude.
+func _touches_pole(cells: Array, rows: int) -> bool:
+    for cell in cells:
+        if cell.x == 0 or cell.x == rows - 1:
+            return true
+    return false
 
 # The zone that surrounds a cluster of specks: the most frequent one among the land neighbours of
 # its hexes that are not a part of the cluster. Ties are broken by the id, so that the result does
