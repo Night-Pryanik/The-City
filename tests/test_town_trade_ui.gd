@@ -105,6 +105,7 @@ const TOWN_UI_SCENE := "res://scenes/TownUI.tscn"
 # global class name: with --script the class cache may not be there yet (the same note
 # as in watchdog.gd).
 const WRAPPED_TOOLTIP = preload("res://scripts/wrapped_tooltip.gd")
+const UI_THEME = preload("res://scripts/ui_theme.gd")
 
 # Real product ids (see test_town_economy): the rows are built from the common
 # resource reference, so the ids must exist.
@@ -641,7 +642,7 @@ func _test_no_trade(town: Dictionary) -> void:
         return
 
     var row: Control = rows[0]
-    _check(row.modulate == _ui.ROW_DISABLED_MODULATE,
+    _check(row.modulate == UI_THEME.color("row_dim"),
         "a row of a town without a road must be dimmed (got %s)" % str(row.modulate))
 
     # Not wired at all: the hover does not highlight the row.
@@ -1390,7 +1391,7 @@ func _test_stock_gate(town: Dictionary) -> void:
         var what := str(row.get_meta("town_row_name", ""))
         _check(not bool(row.get_meta("town_row_active", true)),
             "the row of \"%s\" must not be tradable while the city holds none" % what)
-        _check(row.modulate == _ui.ROW_DISABLED_MODULATE,
+        _check(row.modulate == UI_THEME.color("row_dim"),
             "the row of \"%s\" must be dimmed (got %s)" % [what, str(row.modulate)])
         # No tooltip of its own: it would cover the standard group tooltip a group row shows on
         # hover, and the dimming already says that the row is not an offer.

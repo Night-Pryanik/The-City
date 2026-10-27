@@ -17,6 +17,7 @@
 extends Node
 
 const UI_THEME = preload("res://scripts/ui_theme.gd")
+const UI_ICONS = preload("res://scripts/ui_icons.gd")
 
 const PRESET_DIR := "res://theme/presets"
 const SETTINGS_PATH := "user://settings.cfg"
@@ -44,6 +45,11 @@ const CHROME_TOKENS: Array[String] = [
     "tooltip_bg", "tooltip_border",
     "scrollbar", "scrollbar_hover",
     "hairline", "row_hover", "row_selected",
+    # "scrim" darkens the world behind a modal window, "row_dim" is a modulate MULTIPLIER
+    # for a whole row that is unavailable — the two colours the interface applies to what
+    # it does not draw. Their values are tuned per palette because a multiplier over a dark
+    # surface crushes it to black, while over a light one only greys it.
+    "scrim", "row_dim",
 ]
 const DATA_TOKENS: Array[String] = ["price", "quality", "income", "expense", "warning"]
 const METRIC_TOKENS: Array[String] = ["panel_radius", "control_radius"]
@@ -280,6 +286,12 @@ func _style_buttons(theme: Theme) -> void:
         theme.set_color("font_pressed_color", type, color("text"))
         theme.set_color("font_focus_color", type, color("text"))
         theme.set_color("font_disabled_color", type, color("text_muted"))
+    # The glyphs are textures, so the theme cannot derive them from a colour: they are
+    # rasterised from the palette here and replaced whenever a palette is applied.
+    theme.set_icon("unchecked", "CheckBox", UI_ICONS.checkbox(false))
+    theme.set_icon("checked", "CheckBox", UI_ICONS.checkbox(true))
+    theme.set_icon("unchecked", "CheckButton", UI_ICONS.switch_button(false))
+    theme.set_icon("checked", "CheckButton", UI_ICONS.switch_button(true))
 
 func _style_text_inputs(theme: Theme) -> void:
     theme.set_stylebox("normal", "LineEdit", _field_frame(false))
@@ -315,6 +327,9 @@ func _style_sliders(theme: Theme) -> void:
         theme.set_stylebox("slider", type, track)
         theme.set_stylebox("grabber_area", type, fill)
         theme.set_stylebox("grabber_area_highlight", type, fill_highlight)
+        theme.set_icon("grabber", type, UI_ICONS.knob(color("control_border")))
+        theme.set_icon("grabber_highlight", type, UI_ICONS.knob(color("control_border").lightened(0.18)))
+        theme.set_icon("grabber_pressed", type, UI_ICONS.knob(color("accent")))
 
 func _style_tabs(theme: Theme) -> void:
     var selected := _tab_frame(color("tab_active_bg"))

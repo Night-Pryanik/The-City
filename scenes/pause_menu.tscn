@@ -5,7 +5,8 @@
 [node name="PauseMenu" type="CanvasLayer" unique_id=2130720226]
 script = ExtResource("1_n87rw")
 
-[node name="ColorRect" type="ColorRect" parent="." unique_id=847241384]
+[node name="MenuPanel" type="Panel" parent="." unique_id=847241384]
+theme_type_variation = &"SurfaceWindow"
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -17,9 +18,8 @@ offset_right = 150.0
 offset_bottom = 130.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 0.669)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="ColorRect" unique_id=1070101972]
+[node name="VBoxContainer" type="VBoxContainer" parent="MenuPanel" unique_id=1070101972]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -34,26 +34,26 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 10
 
-[node name="ResumeButton" type="Button" parent="ColorRect/VBoxContainer" unique_id=2000000001]
+[node name="ResumeButton" type="Button" parent="MenuPanel/VBoxContainer" unique_id=2000000001]
 layout_mode = 2
 text = "Return to game"
 
-[node name="SaveButton" type="Button" parent="ColorRect/VBoxContainer" unique_id=1938353937]
+[node name="SaveButton" type="Button" parent="MenuPanel/VBoxContainer" unique_id=1938353937]
 layout_mode = 2
 text = "Save game"
 
-[node name="LoadButton" type="Button" parent="ColorRect/VBoxContainer" unique_id=432020763]
+[node name="LoadButton" type="Button" parent="MenuPanel/VBoxContainer" unique_id=432020763]
 layout_mode = 2
 text = "Load game"
 
-[node name="SettingsButton" type="Button" parent="ColorRect/VBoxContainer" unique_id=1267707041]
+[node name="SettingsButton" type="Button" parent="MenuPanel/VBoxContainer" unique_id=1267707041]
 layout_mode = 2
 text = "Settings"
 
-[node name="NewGameButton" type="Button" parent="ColorRect/VBoxContainer" unique_id=273708776]
+[node name="NewGameButton" type="Button" parent="MenuPanel/VBoxContainer" unique_id=273708776]
 layout_mode = 2
 text = "New game"
 
-[node name="ExitButton" type="Button" parent="ColorRect/VBoxContainer" unique_id=1685411023]
+[node name="ExitButton" type="Button" parent="MenuPanel/VBoxContainer" unique_id=1685411023]
 layout_mode = 2
 text = "Exit game"

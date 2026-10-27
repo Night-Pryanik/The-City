@@ -232,7 +232,7 @@ offset_left = 397.0
 offset_top = 6.0
 offset_right = 399.0
 offset_bottom = 170.0
-color = Color(0.35, 0.35, 0.35, 1)
+color = Color(0.54902, 0.54902, 0.54902, 1)
 
 [node name="SepPreviewActions" type="ColorRect" parent="ControlPanel" unique_id=1909537324]
 layout_mode = 0
@@ -240,7 +240,7 @@ offset_left = 956.0
 offset_top = 6.0
 offset_right = 958.0
 offset_bottom = 170.0
-color = Color(0.35, 0.35, 0.35, 1)
+color = Color(0.54902, 0.54902, 0.54902, 1)
 
 [node name="PreviewContainer" type="VBoxContainer" parent="ControlPanel" unique_id=2061907310]
 layout_mode = 1

@@ -87,9 +87,7 @@ func _ready():
     # We create the overlay panel on top of the CityUI.
     # IMPORTANT: the CityUI is a child node of a Node2D scene, therefore it has
     # no rect of its own. The sizes of the root Control are set by hand in open().
-    var dim = ColorRect.new()
-    dim.color = Color(0, 0, 0, 0.5)
-    dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+    var dim := Scrim.new()
     dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(dim)
 

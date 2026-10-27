@@ -144,12 +144,6 @@ static func row_selected_color() -> Color:
     tint.a = 0.35
     return tint
 
-# The dimming of a row of a town whose trade is not available (there is no road to it):
-# the pool is still shown — the player reads what the town has and what it lacks — but
-# the row is inert, and the dimming is what says so before the click (see
-# _build_resource_row).
-const ROW_DISABLED_MODULATE := Color(0.62, 0.62, 0.62, 1.0)
-
 # The width of the price column of a row. Fixed, so that the prices of the rows line up
 # in one column instead of every row placing its number by the length of its own name.
 const PRICE_COLUMN_WIDTH := 44
@@ -927,7 +921,10 @@ func _set_row_active(row: Control, active: bool) -> void:
     if row == null or not is_instance_valid(row):
         return
     row.set_meta(META_ROW_ACTIVE, active)
-    row.modulate = Color.WHITE if active else ROW_DISABLED_MODULATE
+    # A row of a town that cannot be traded with (no road) is still shown — the player
+    # reads what the town has and what it lacks — but it is inert, and the dimming is
+    # what says so before the click.
+    row.modulate = Color.WHITE if active else UI_THEME.color("row_dim")
 
 func _is_row_active(row: Control) -> bool:
     return bool(row.get_meta(META_ROW_ACTIVE, true))

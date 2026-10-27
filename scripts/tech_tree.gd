@@ -1104,7 +1104,9 @@ func _style_button(btn: Button, is_unlocked: bool, is_current: bool, is_availabl
     var hover := UI_THEME.color("control_hover").darkened(0.15)
     var pressed := UI_THEME.color("control_bg").darkened(0.08)
     var font_col := UI_THEME.color("text_muted")
-    var modulate_col := Color(0.75, 0.75, 0.75, 0.9)
+    # A locked technology fades by the same dim the inert rows of the trade screens use.
+    var modulate_col := UI_THEME.color("row_dim")
+    modulate_col.a = 0.9
 
     if is_unlocked:
         bg = UI_THEME.color("income").darkened(0.45)

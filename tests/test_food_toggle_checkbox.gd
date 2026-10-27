@@ -66,8 +66,12 @@ func _run() -> void:
         % (box.get_class() if box != null else "null"), state)
     check(box != null and box.button_pressed,
         "the box must be checked while the product is in the food pool", state)
-    # The "off" state has to be visible on the dark panel: the theme answers the empty box with
-    # its own light icon, since the built-in one is a dark square on a dark background.
+    # The "off" state has to be visible on the dark panel: the theme answers the empty box
+    # with a glyph of its own, since the built-in one is near-white and vanishes on a light
+    # palette. The glyph is rasterised when the palette is applied, which is one of the
+    # first things an autoload does — the frames are waited for, not assumed.
+    for _i in range(3):
+        await process_frame
     var theme := ThemeDB.get_project_theme()
     check(theme != null and theme.has_icon("unchecked", "CheckBox"),
         "the theme must define CheckBox/icons/unchecked", state)

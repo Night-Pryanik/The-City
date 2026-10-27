@@ -29,10 +29,7 @@ signal go_to_technologies()
 func _ready():
     process_mode = Node.PROCESS_MODE_ALWAYS
 
-    # Dimming of the background
-    var dim = ColorRect.new()
-    dim.color = Color(0, 0, 0, 0.5)
-    dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+    var dim := Scrim.new()
     dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(dim)
 

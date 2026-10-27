@@ -3,9 +3,9 @@
 # never breaks it, so a long hint runs off the edge of the window.
 #
 # There is nothing to configure in the theme: the width of a built-in tooltip is the
-# width of the label the engine builds for it, and the project theme
-# (theme/tooltips_theme.tres) styles only the panel of the popup. The text has to come
-# from our own node, which means overriding Control._make_custom_tooltip.
+# width of the label the engine builds for it, and the panel of the popup is styled by
+# ThemeManager. The text has to come from our own node, which means overriding
+# Control._make_custom_tooltip.
 #
 # The engine calls _make_custom_tooltip on the control that OWNS the tooltip text and
 # puts the returned node INSIDE its popup, next to the panel background: the popup is a

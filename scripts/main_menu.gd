@@ -956,9 +956,9 @@ func _show_loading_overlay() -> CanvasLayer:
     overlay.name = "LoadingOverlay"
     overlay.layer = 128
 
-    var bg = ColorRect.new()
-    bg.color = Color(0, 0, 0, 0.7)
-    bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+    var bg := Scrim.new()
+    # The overlay swallows the input of the whole screen while the world is generated.
+    bg.mouse_filter = Control.MOUSE_FILTER_STOP
     overlay.add_child(bg)
 
     var vbox = VBoxContainer.new()

@@ -41,6 +41,8 @@ const FALLBACK := {
     "hairline": "#8C8C8C",
     "row_hover": "#3F3F3F",
     "row_selected": "#4D4D4D",
+    "scrim": "#00000099",
+    "row_dim": "#9E9E9E",
     "price": "#FF8100",
     "quality": "#4DFFEA",
     "income": "#4DD94D",

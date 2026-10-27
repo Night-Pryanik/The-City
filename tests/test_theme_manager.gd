@@ -231,6 +231,16 @@ func _run() -> void:
     check(slider_fill != null and slider_fill.bg_color.is_equal_approx(manager.color("fill")),
         "the slider fill follows the palette", state)
 
+    # The engine draws these three glyphs as textures, so the palette cannot reach them
+    # through a colour: UiIcons rasterises them. Their sizes are the engine defaults,
+    # otherwise a checkbox or a slider would change the height of the row it sits in.
+    _check_glyph(theme, manager, "unchecked", "CheckBox", Vector2i(16, 16), "control_border", state)
+    _check_glyph(theme, manager, "checked", "CheckBox", Vector2i(16, 16), "control_border", state)
+    _check_glyph(theme, manager, "unchecked", "CheckButton", Vector2i(32, 16), "track", state)
+    _check_glyph(theme, manager, "checked", "CheckButton", Vector2i(32, 16), "fill", state)
+    _check_glyph(theme, manager, "grabber", "HSlider", Vector2i(16, 16), "control_border", state)
+    _check_glyph(theme, manager, "grabber", "VSlider", Vector2i(16, 16), "control_border", state)
+
     # A ScrollBar takes its width from its styleboxes: a track with no margins collapses the
     # bar to zero and the scroll areas of the whole game stop showing a handle.
     var scroll_track := theme.get_stylebox("scroll", "VScrollBar")
@@ -380,6 +390,36 @@ func _run() -> void:
 # default one passes, so a theme cannot quietly become unreadable. The data colours are
 # held to the lower bar of large marks: they sit on a panel as text, but a player reads
 # them together with a word ("price", "+/-"), not as the only carrier of the meaning.
+# A glyph the engine would otherwise draw as its own texture: it must exist, keep the
+# size the engine used (a taller checkbox would push the row it sits in) and be drawn in
+# a colour of the palette rather than in the near-white of the built-in art.
+func _check_glyph(theme: Theme, manager, icon_name: String, type: String,
+        size: Vector2i, token: String, state: Dictionary) -> void:
+    var label := "%s/%s" % [type, icon_name]
+    var icon: Texture2D = theme.get_icon(icon_name, type)
+    check(icon != null, "%s has a glyph of its own" % label, state)
+    if icon == null:
+        return
+    check(icon.get_size() == Vector2(size),
+        "%s keeps the engine size %s (got %s)" % [label, str(size), str(icon.get_size())], state)
+    var source: Image = icon.get_image()
+    if source == null:
+        return
+    var image := Image.new()
+    image.copy_from(source)
+    image.convert(Image.FORMAT_RGBA8)
+    var wanted: Color = manager.color(token)
+    var found := false
+    for y in range(image.get_height()):
+        for x in range(image.get_width()):
+            var pixel := image.get_pixel(x, y)
+            if pixel.a > 0.99 and _close(pixel, wanted):
+                found = true
+    check(found, "%s is drawn in the %s of the palette" % [label, token], state)
+
+func _close(a: Color, b: Color) -> bool:
+    return maxf(maxf(absf(a.r - b.r), absf(a.g - b.g)), absf(a.b - b.b)) < 0.02
+
 func _check_contrast(manager, id: String, state: Dictionary) -> void:
     var pairs := [
         ["text", "panel_bg", 4.5],

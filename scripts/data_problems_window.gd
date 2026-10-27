@@ -82,11 +82,8 @@ func _ready():
     # project theme; the rows of the report are rebuilt from the palette on every rebuild.
     ThemeManager.theme_applied.connect(_apply_theme_colors)
 
-    # Dimming of the background — the window is read as a separate screen, and not as
-    # a popup hint over the menu.
-    var dim = ColorRect.new()
-    dim.color = Color(0, 0, 0, 0.5)
-    dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    # The window is read as a separate screen, not as a popup hint over the menu.
+    var dim := Scrim.new()
     dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(dim)
 

@@ -97,10 +97,6 @@ var unavailable_open: bool = false
 # Godot 4 has no is_hovered() method, and the hover is most honestly tracked
 # by the signals mouse_entered/mouse_exited.
 
-# The dimming of a card the market cannot trade (a forbidden resource): the whole card
-# is multiplied by this grey, so that the texts and the icons fade together.
-const DISABLED_MODULATE := Color(0.62, 0.62, 0.62, 1)
-
 func setup(list: Node, helpers: Node) -> void:
     internal_list = list
     ui_helpers = helpers
@@ -550,7 +546,9 @@ func _update_card(ctx: Dictionary, row: Dictionary) -> void:
     # of the cards are reused (otherwise the tooltips under the cursor would flicker).
     var card: PanelContainer = ctx["card"]
     var disabled_text := UI_THEME.color("text_muted")
-    card.modulate = Color.WHITE if enabled else DISABLED_MODULATE
+    # A card the market cannot trade (a forbidden resource) is multiplied by the dim of
+    # the palette, so that its texts and its icons fade together.
+    card.modulate = Color.WHITE if enabled else UI_THEME.color("row_dim")
     name_label.add_theme_color_override("font_color",
             UI_THEME.color("text") if enabled else disabled_text)
     # The price and the income are the two halves of one sum — "the price × the expense =

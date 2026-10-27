@@ -30,7 +30,9 @@
         "scrollbar_hover": "#7A7A7A",
         "hairline": "#8C8C8C",
         "row_hover": "#3F3F3F",
-        "row_selected": "#4D4D4D"
+        "row_selected": "#4D4D4D",
+        "scrim": "#00000099",
+        "row_dim": "#9E9E9E"
     },
     "data": {
         "price": "#FF8100",

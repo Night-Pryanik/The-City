@@ -47,8 +47,18 @@ func _ready():
     # rebuild that nothing has changed, and the panel would keep the colours of the old
     # palette.
     ThemeManager.theme_applied.connect(_on_theme_applied)
+    _paint_separators()
+
+# The two column rules are ColorRects: a ColorRect has no stylebox for the project theme
+# to fill, so the hairline of the palette is written into the node itself.
+func _paint_separators() -> void:
+    for path in ["SepInfoPreview", "SepPreviewActions"]:
+        var rule := get_node_or_null(NodePath(path)) as ColorRect
+        if rule != null:
+            rule.color = UI_THEME.color("hairline")
 
 func _on_theme_applied() -> void:
+    _paint_separators()
     _last_actions_snapshot = {}
     _last_preview_snapshot = {}
     refresh()
