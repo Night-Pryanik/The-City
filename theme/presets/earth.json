@@ -1,0 +1,46 @@
+{
+    "id": "earth",
+    "name_key": "Theme: Earth and Olive",
+    "chrome": {
+        "panel_bg": "#241F17F5",
+        "panel_border": "#6B5B3E",
+        "control_bg": "#3A3226",
+        "control_hover": "#4E4433",
+        "control_pressed": "#1E1A13",
+        "control_disabled": "#2C271D",
+        "control_border": "#A8926B",
+        "control_border_disabled": "#6B5B3E",
+        "text": "#F2E9D8",
+        "text_secondary": "#D3C6AC",
+        "text_muted": "#A2947C",
+        "info": "#7FB069",
+        "accent": "#C8A16A",
+        "accent_hover": "#DCBB8C",
+        "accent_text": "#241F17",
+        "field_bg": "#2E2820",
+        "field_border": "#4E4433",
+        "focus_border": "#A8926B",
+        "track": "#1E1A13",
+        "fill": "#8A7A4E",
+        "tab_active_bg": "#332C21",
+        "tab_active_text": "#F2E9D8",
+        "tooltip_bg": "#2E2820",
+        "tooltip_border": "#A8926B",
+        "scrollbar": "#4E4433",
+        "scrollbar_hover": "#6B5B3E",
+        "hairline": "#8A7A5E",
+        "row_hover": "#3F372A",
+        "row_selected": "#4E4433"
+    },
+    "data": {
+        "price": "#D9822B",
+        "quality": "#4FD1C5",
+        "income": "#7CB342",
+        "expense": "#C0392B",
+        "warning": "#E6C229"
+    },
+    "metrics": {
+        "panel_radius": 4,
+        "control_radius": 3
+    }
+}

@@ -1260,6 +1260,9 @@ msgstr "В кольце влияния чужого городка"
 msgid "Interface"
 msgstr "Интерфейс"
 
+msgid "Interface theme"
+msgstr "Тема оформления"
+
 msgid "Irrigation Canal"
 msgstr "Ирригационный канал"
 
@@ -2097,6 +2100,9 @@ msgstr "На складе города нет этих товаров: пост�
 msgid "The city needs access to fresh water"
 msgstr "Нужен доступ города к пресной воде"
 
+msgid "The colours of every window, panel and control. The choice applies at once and is remembered; a theme file put into the presets folder appears here without restarting the game."
+msgstr "Цвета всех окон, панелей и элементов управления. Выбор применяется сразу и запоминается; файл темы, положенный в папку presets, появится в этом списке без перезапуска игры."
+
 msgid "The contract is already closed."
 msgstr "Контракт уже закрыт."
 
@@ -2210,6 +2216,18 @@ msgstr "Городка больше нет на карте"
 
 msgid "The widest coastal strip, in hexes."
 msgstr "Самая широкая полоса берега, в гексах."
+
+msgid "Theme: Bronze"
+msgstr "Тема: бронза"
+
+msgid "Theme: Classic"
+msgstr "Тема: классическая"
+
+msgid "Theme: Earth and Olive"
+msgstr "Тема: земля и оливы"
+
+msgid "Theme: Mediterranean"
+msgstr "Тема: средиземноморская"
 
 msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."
 msgstr "Различия в написании нет, но для игры это РАЗНЫЕ идентификаторы: всё, что ссылается на «%s», не попадёт в «%s» и наоборот. При этом ссылка на «%s» ссылки НЕ ломает — он объявлен и выглядит правильно, поэтому обычные проверки битых ссылок эту опечатку и не видели. Оставьте один идентификатор и переименуйте второй во всех файлах."

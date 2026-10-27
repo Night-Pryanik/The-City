@@ -10,8 +10,8 @@
 #   3. The choice: an unknown stored id falls back to the default WITHOUT rewriting the
 #      player's setting; a chosen preset is written back.
 #   4. The signal: theme_applied fires on every apply.
-#   5. The contrast: the tokens a preset must keep readable are checked on the default
-#      preset (the same ratios are what a new preset is reviewed against).
+#   5. The contrast: the pairs a preset must keep readable are checked on every preset on
+#      disk, so a new palette cannot land in the folder unreadable.
 #   6. The factories of UiTheme: the built styleboxes take the palette values, and the
 #      fallback palette of the module repeats the default preset token by token — a
 #      divergence would make a headless run draw a different interface than the game.
@@ -19,6 +19,8 @@
 #      apply edits the same resource instead of replacing it.
 #   8. The live switch: a palette applied at run time reaches both the project theme and
 #      the per-node overrides of a window that re-styles itself on the signal.
+#   9. The choice: the settings menu lists every preset, shows the applied one, and picking
+#      another applies and saves it.
 #
 # The settings belong to the player: the theme key is put back at the end, as in
 # test_font_manager.
@@ -64,6 +66,20 @@ func _run() -> void:
         FileAccess.get_file_as_string(PRESET_DIR.path_join(DEFAULT_PRESET + ".json")))
     check(not preset.is_empty(), "the default preset parses as JSON", state)
     check(THEME_SCRIPT.validate_preset(preset).is_empty(), "the default preset is complete", state)
+
+    # Every preset on disk is held to the same rules as the default one: the loader refuses
+    # a broken preset as a whole, so a mistake in a file would silently leave the player on
+    # another theme.
+    for entry in available:
+        var id := str(entry["id"])
+        var loaded: Dictionary = JSON.parse_string(
+            FileAccess.get_file_as_string(PRESET_DIR.path_join(id + ".json")))
+        check(not loaded.is_empty(), "\"%s\" parses as JSON" % id, state)
+        var problems: Array = THEME_SCRIPT.validate_preset(loaded)
+        check(problems.is_empty(), "\"%s\" is complete (%s)" % [id, ", ".join(problems)], state)
+        check(str(loaded.get("id", "")) == id, "\"%s\" names itself in the file" % id, state)
+        check(not str(loaded.get("name_key", "")).is_empty(),
+            "\"%s\" carries a name for the choice" % id, state)
 
     var broken := preset.duplicate(true)
     broken["chrome"].erase("accent")
@@ -126,16 +142,12 @@ func _run() -> void:
     manager.apply_preset(DEFAULT_PRESET)
     check(fired["count"] == 1, "theme_applied fires on an apply", state)
 
-    # --- 5. The contrast of the default preset ---
-    var ratio := THEME_SCRIPT.contrast_ratio(
-        manager.color("text"), manager.color("panel_bg"))
-    check(ratio >= 4.5, "body text on a panel is readable (%.1f:1)" % ratio, state)
-    ratio = THEME_SCRIPT.contrast_ratio(manager.color("text_muted"), manager.color("panel_bg"))
-    check(ratio >= 3.0, "muted text on a panel is readable (%.1f:1)" % ratio, state)
-    ratio = THEME_SCRIPT.contrast_ratio(manager.color("text"), manager.color("tooltip_bg"))
-    check(ratio >= 4.5, "tooltip text is readable (%.1f:1)" % ratio, state)
-    ratio = THEME_SCRIPT.contrast_ratio(manager.color("accent_text"), manager.color("accent"))
-    check(ratio >= 4.5, "the label of an accent control is readable (%.1f:1)" % ratio, state)
+    # --- 5. The contrast of every preset ---
+    for entry in available:
+        var id := str(entry["id"])
+        manager.apply_preset(id)
+        _check_contrast(manager, id, state)
+    manager.apply_preset(DEFAULT_PRESET)
 
     # --- 6. The factories and the fallback palette ---
     var panel := UI_THEME.panel()
@@ -335,10 +347,64 @@ func _run() -> void:
         "the default preset restores the window", state)
     tech_window.free()
 
+    # --- 9. The choice in the settings ---
+    var menu: Control = load("res://scenes/settings_menu.tscn").instantiate()
+    get_root().add_child(menu)
+    # The menu fills its dropdowns in _ready, which runs on the next step of the tree.
+    await process_frame
+    var choice: OptionButton = menu.find_child("ThemeOptionButton", true, false)
+    check(choice != null, "the settings menu carries the theme choice", state)
+    if choice != null:
+        check(choice.item_count == available.size(),
+            "the choice lists every preset (%d of %d)" % [choice.item_count, available.size()],
+            state)
+        check(str(choice.get_item_metadata(choice.selected)) == manager.get_preset_id(),
+            "the choice shows the preset that is applied", state)
+        var other := ""
+        for i in choice.item_count:
+            if str(choice.get_item_metadata(i)) != DEFAULT_PRESET:
+                other = str(choice.get_item_metadata(i))
+                choice.item_selected.emit(i)
+                break
+        check(manager.get_preset_id() == other, "picking a preset applies it", state)
+        check(manager.get_stored_preset_id() == other, "picking a preset saves the choice", state)
+        manager.apply_preset(DEFAULT_PRESET)
+    menu.queue_free()
+
     # The player's own setting is put back.
     _restore_setting(saved_setting, had_setting)
     manager.apply_stored_preset()
     _finish(state)
+
+# The ratios a palette has to hold. A new preset is reviewed against the same numbers the
+# default one passes, so a theme cannot quietly become unreadable. The data colours are
+# held to the lower bar of large marks: they sit on a panel as text, but a player reads
+# them together with a word ("price", "+/-"), not as the only carrier of the meaning.
+func _check_contrast(manager, id: String, state: Dictionary) -> void:
+    var pairs := [
+        ["text", "panel_bg", 4.5],
+        ["text_secondary", "panel_bg", 4.5],
+        ["text_muted", "panel_bg", 3.0],
+        ["text", "tooltip_bg", 4.5],
+        ["text", "control_bg", 4.5],
+        ["text", "field_bg", 4.5],
+        ["text", "row_selected", 4.5],
+        ["text", "track", 4.5],
+        ["tab_active_text", "tab_active_bg", 4.5],
+        ["accent_text", "accent", 4.5],
+        ["price", "panel_bg", 3.0],
+        ["quality", "panel_bg", 3.0],
+        ["income", "panel_bg", 3.0],
+        ["expense", "panel_bg", 3.0],
+        ["warning", "panel_bg", 3.0],
+        ["info", "panel_bg", 3.0],
+    ]
+    for pair in pairs:
+        var ratio := THEME_SCRIPT.contrast_ratio(
+            manager.color(str(pair[0])), manager.color(str(pair[1])))
+        check(ratio >= float(pair[2]),
+            "%s: %s on %s is readable (%.1f:1, min %.1f)"
+                % [id, pair[0], pair[1], ratio, pair[2]], state)
 
 func _count_presets() -> int:
     var dir := DirAccess.open(PRESET_DIR)

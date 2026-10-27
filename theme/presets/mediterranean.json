@@ -1,0 +1,46 @@
+{
+    "id": "mediterranean",
+    "name_key": "Theme: Mediterranean",
+    "chrome": {
+        "panel_bg": "#10262BF5",
+        "panel_border": "#3E6A70",
+        "control_bg": "#1B3A40",
+        "control_hover": "#2A5058",
+        "control_pressed": "#0E2226",
+        "control_disabled": "#16302F",
+        "control_border": "#6FA3A8",
+        "control_border_disabled": "#3E6A70",
+        "text": "#F3EFE2",
+        "text_secondary": "#D6CFBB",
+        "text_muted": "#A8B3AE",
+        "info": "#6FD3E8",
+        "accent": "#D9B45C",
+        "accent_hover": "#E8CB84",
+        "accent_text": "#10262B",
+        "field_bg": "#143036",
+        "field_border": "#2A5058",
+        "focus_border": "#6FA3A8",
+        "track": "#0E2226",
+        "fill": "#3E8FA6",
+        "tab_active_bg": "#1B3A40",
+        "tab_active_text": "#F3EFE2",
+        "tooltip_bg": "#14303A",
+        "tooltip_border": "#6FA3A8",
+        "scrollbar": "#2A5058",
+        "scrollbar_hover": "#4C7C84",
+        "hairline": "#5E8C90",
+        "row_hover": "#23474E",
+        "row_selected": "#2E5A62"
+    },
+    "data": {
+        "price": "#E08A3C",
+        "quality": "#52E6D2",
+        "income": "#7BC96F",
+        "expense": "#D9534F",
+        "warning": "#E8C34A"
+    },
+    "metrics": {
+        "panel_radius": 4,
+        "control_radius": 3
+    }
+}

@@ -1260,6 +1260,9 @@ msgstr ""
 msgid "Interface"
 msgstr ""
 
+msgid "Interface theme"
+msgstr ""
+
 msgid "Irrigation Canal"
 msgstr ""
 
@@ -2097,6 +2100,9 @@ msgstr ""
 msgid "The city needs access to fresh water"
 msgstr ""
 
+msgid "The colours of every window, panel and control. The choice applies at once and is remembered; a theme file put into the presets folder appears here without restarting the game."
+msgstr ""
+
 msgid "The contract is already closed."
 msgstr ""
 
@@ -2209,6 +2215,18 @@ msgid "The town is not on the map anymore"
 msgstr ""
 
 msgid "The widest coastal strip, in hexes."
+msgstr ""
+
+msgid "Theme: Bronze"
+msgstr ""
+
+msgid "Theme: Classic"
+msgstr ""
+
+msgid "Theme: Earth and Olive"
+msgstr ""
+
+msgid "Theme: Mediterranean"
 msgstr ""
 
 msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."

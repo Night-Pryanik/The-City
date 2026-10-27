@@ -1,0 +1,46 @@
+{
+    "id": "bronze",
+    "name_key": "Theme: Bronze",
+    "chrome": {
+        "panel_bg": "#21150FF5",
+        "panel_border": "#8A5A2B",
+        "control_bg": "#382414",
+        "control_hover": "#4E3320",
+        "control_pressed": "#1A0F08",
+        "control_disabled": "#2A1B10",
+        "control_border": "#C08A4E",
+        "control_border_disabled": "#8A5A2B",
+        "text": "#F5E8D5",
+        "text_secondary": "#D8C3A5",
+        "text_muted": "#A8917A",
+        "info": "#E0A458",
+        "accent": "#B87333",
+        "accent_hover": "#D08B45",
+        "accent_text": "#21150F",
+        "field_bg": "#2B1B10",
+        "field_border": "#4E3320",
+        "focus_border": "#C08A4E",
+        "track": "#1A0F08",
+        "fill": "#8C5A2B",
+        "tab_active_bg": "#2E1D10",
+        "tab_active_text": "#F5E8D5",
+        "tooltip_bg": "#2B1B10",
+        "tooltip_border": "#C08A4E",
+        "scrollbar": "#4E3320",
+        "scrollbar_hover": "#6E4A2A",
+        "hairline": "#A0764A",
+        "row_hover": "#422C1A",
+        "row_selected": "#56381F"
+    },
+    "data": {
+        "price": "#FF9A3C",
+        "quality": "#5FD3C4",
+        "income": "#8FBF4D",
+        "expense": "#E05B4A",
+        "warning": "#F2C94C"
+    },
+    "metrics": {
+        "panel_radius": 4,
+        "control_radius": 3
+    }
+}

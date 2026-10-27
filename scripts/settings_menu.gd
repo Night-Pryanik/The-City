@@ -9,6 +9,7 @@ extends Control
 @onready var back_button: Button = find_child("BackButton", true, false)
 @onready var language_option_button: OptionButton = find_child("LanguageOptionButton", true, false)
 @onready var font_option_button: OptionButton = find_child("FontOptionButton", true, false)
+@onready var theme_option_button: OptionButton = find_child("ThemeOptionButton", true, false)
 @onready var tab_container: TabContainer = find_child("TabContainer", true, false)
 @onready var tooltip_delay_slider: HSlider = find_child("TooltipDelaySlider", true, false)
 @onready var tooltip_delay_value_label: Label = find_child("TooltipDelayValueLabel", true, false)
@@ -51,7 +52,8 @@ func _ready():
             or not clock_checkbox \
             or not fps_checkbox \
             or not language_option_button \
-            or not font_option_button
+            or not font_option_button \
+            or not theme_option_button
     if missing_controls:
         print("Error: not all elements found in the settings scene!")
         return
@@ -60,6 +62,7 @@ func _ready():
     load_settings()
     _setup_language_option()
     _setup_font_option()
+    _setup_theme_option()
     back_button.pressed.connect(_on_back_pressed)
     hex_borders_checkbox.toggled.connect(_on_hex_borders_toggled)
     edge_scrolling_checkbox.toggled.connect(_on_edge_scrolling_toggled)
@@ -73,6 +76,7 @@ func _ready():
     fps_checkbox.toggled.connect(_on_fps_toggled)
     language_option_button.item_selected.connect(_on_language_selected)
     font_option_button.item_selected.connect(_on_font_selected)
+    theme_option_button.item_selected.connect(_on_theme_selected)
 
 # The tab titles are set manually: Godot takes them from the node NAMES, and node
 # names are not translated. The titles are translated here by tr() calls with
@@ -120,6 +124,9 @@ func _on_language_selected(index: int):
         # current font give way (FontManager checks the letters of the language),
         # and the shown choice has to be the applied one.
         _setup_font_option()
+        # The names of the themes are catalog strings too, so the list is rebuilt
+        # for the new language.
+        _setup_theme_option()
 
 # Fills in the font dropdown and sets the applied font in it. The value of an item is
 # the family name — the name the font itself declares, therefore it is not translated.
@@ -148,6 +155,36 @@ func _on_font_selected(index: int):
     if not FontManager.set_font(family):
         # The file disappeared between the scan and the click: the list is stale.
         _setup_font_option()
+
+# Fills in the theme dropdown and sets the applied preset in it. The value of an item is
+# the preset id; the label is the name_key of the preset, translated by the catalog.
+# The list is rebuilt from the folder every time, as with the fonts: a preset copied into
+# the folder while the game is running appears here without a restart.
+func _setup_theme_option():
+    ThemeManager.rescan()
+    var presets: Array = ThemeManager.available_presets()
+    var current := ThemeManager.get_preset_id()
+    theme_option_button.clear()
+    var selected_index := 0
+    for i in presets.size():
+        var id := str(presets[i]["id"])
+        if id == current:
+            selected_index = i
+        # The key goes to tr() in a variable of its own: the catalog builder reads the
+        # literal arguments of a tr() call as source strings, and an index inside the call
+        # would land in the catalog as a message of its own.
+        var name_key := str(presets[i]["name_key"])
+        theme_option_button.add_item(tr(name_key), i)
+        theme_option_button.set_item_metadata(i, id)
+    theme_option_button.select(selected_index)
+    # select() does not send item_selected: opening the window shows the applied theme
+    # instead of choosing it again.
+
+func _on_theme_selected(index: int):
+    var id := str(theme_option_button.get_item_metadata(index))
+    if not ThemeManager.set_preset(id):
+        # The file disappeared between the scan and the click: the list is stale.
+        _setup_theme_option()
 
 func load_settings():
     var err = config.load("user://settings.cfg")

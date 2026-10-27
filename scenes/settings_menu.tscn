@@ -121,6 +121,22 @@ custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 size_flags_horizontal = 0
 
+[node name="ThemeLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+layout_mode = 2
+theme_type_variation = &"SectionHeading"
+text = "Interface theme"
+
+[node name="ThemeHint" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "The colours of every window, panel and control. The choice applies at once and is remembered; a theme file put into the presets folder appears here without restarting the game."
+autowrap_mode = 3
+
+[node name="ThemeOptionButton" type="OptionButton" parent="TabContainer/Интерфейс/VBoxContainer"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+
 [node name="Label" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639215]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
