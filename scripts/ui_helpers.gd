@@ -196,17 +196,37 @@ const META_CATEGORY_NAME := "category_name"
 static func highlight_toggle_button(button: Button, active: bool) -> void:
     if button == null or not is_instance_valid(button):
         return
-    var style := StyleBoxFlat.new()
+    # The accent family paints every state of the button and overrides the project theme:
+    # the theme answers a hover with a plain control plate, so an active button would lose
+    # its mark exactly while the cursor is over it.
     if active:
-        style.bg_color = UI_THEME.color("accent")
+        var lifted := UI_THEME.color("accent_hover")
+        # A held button keeps the hover colour — the accent has no fourth state of its own.
+        _set_toggle_states(button, UI_THEME.color("accent"), lifted, lifted)
     else:
-        # A hint of the accent, dimmed: the inactive buttons of a group still read as
-        # one control with the active one.
-        style.bg_color = UI_THEME.color("accent").darkened(0.4)
-        style.bg_color.a = 0.3
-    button.add_theme_stylebox_override("normal", style)
-    button.add_theme_color_override("font_color",
-            UI_THEME.color("accent_text") if active else UI_THEME.color("text"))
+        # A hint of the accent, dimmed: the inactive buttons of one group still read as a
+        # family with the active one, and a hover deepens that hint instead of jumping to
+        # the generic control colours.
+        var hint := UI_THEME.color("accent").darkened(0.4)
+        _set_toggle_states(button, _faded(hint, 0.3), _faded(hint, 0.45), _faded(hint, 0.6))
+    var caption := UI_THEME.color("accent_text") if active else UI_THEME.color("text")
+    for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+        button.add_theme_color_override(state, caption)
+
+static func _set_toggle_states(button: Button, normal: Color, hover: Color, pressed: Color) -> void:
+    button.add_theme_stylebox_override("normal", _toggle_style(normal))
+    button.add_theme_stylebox_override("hover", _toggle_style(hover))
+    button.add_theme_stylebox_override("pressed", _toggle_style(pressed))
+
+static func _toggle_style(bg: Color) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = bg
+    return style
+
+static func _faded(color: Color, alpha: float) -> Color:
+    var tint := color
+    tint.a = alpha
+    return tint
 
 # The header of a category group in a resource list: a solid line, the name centred,
 # a line again. The lines are stretched nodes that reach both edges of the column at

@@ -293,6 +293,35 @@ func _run() -> void:
     check(theme.get_color("font_color", "Label").is_equal_approx(manager.color("text")),
         "a plain label takes the text colour", state)
 
+    # The accent family owns every state of a toggle button: the project theme would answer a
+    # hover with a plain control plate and the active button would lose its mark under the
+    # cursor, so the hover colour is a token of the palette rather than a derived tint.
+    # Both modules are taken by path: with --script they are compiled before the autoloads
+    # they refer to exist.
+    var ui_helpers = load("res://scripts/ui_helpers.gd")
+    var town_ui_script = load("res://scripts/town_ui.gd")
+    var toggle := Button.new()
+    ui_helpers.highlight_toggle_button(toggle, true)
+    var toggle_hover := toggle.get_theme_stylebox("hover") as StyleBoxFlat
+    check(toggle_hover != null
+        and toggle_hover.bg_color.is_equal_approx(manager.color("accent_hover")),
+        "a hovered active toggle takes the accent hover colour", state)
+    check(toggle.get_theme_color("font_hover_color").is_equal_approx(
+        manager.color("accent_text")), "its caption stays the accent text on hover", state)
+    ui_helpers.highlight_toggle_button(toggle, false)
+    var inactive_hover := toggle.get_theme_stylebox("hover") as StyleBoxFlat
+    check(inactive_hover != null
+        and not inactive_hover.bg_color.is_equal_approx(manager.color("control_hover")),
+        "an inactive toggle stays in the accent family on hover", state)
+    toggle.free()
+
+    # The two painted states of a trade row are the row tokens, not tints mixed from other
+    # parts of the palette: a row fill is authored against the plate of the window.
+    check(town_ui_script.row_selected_color().is_equal_approx(manager.color("row_selected")),
+        "a selected row takes the selected-row token", state)
+    check(town_ui_script.row_hover_color().is_equal_approx(manager.color("row_hover")),
+        "a hovered row takes the hover-row token", state)
+
     # The controls keep the size the engine gave them: a theme changes the surface, not the
     # layout of every screen that was laid out against the default metrics.
     var default_theme := ThemeDB.get_default_theme()
@@ -429,9 +458,11 @@ func _check_contrast(manager, id: String, state: Dictionary) -> void:
         ["text", "control_bg", 4.5],
         ["text", "field_bg", 4.5],
         ["text", "row_selected", 4.5],
+        ["text", "row_hover", 4.5],
         ["text", "track", 4.5],
         ["tab_active_text", "tab_active_bg", 4.5],
         ["accent_text", "accent", 4.5],
+        ["accent_text", "accent_hover", 4.5],
         ["price", "panel_bg", 3.0],
         ["quality", "panel_bg", 3.0],
         ["income", "panel_bg", 3.0],

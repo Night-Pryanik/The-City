@@ -130,19 +130,16 @@ const MAX_AMOUNT_LENGTH := 7
 
 # The background of a row in its three states. The normal one is fully transparent:
 # a column of dozens of rows must not look like a wall of boxes, the background
-# appears only on hover and on the selected row.
+# appears only on hover and on the selected row. The two painted states are the row
+# tokens of the palette, because a row fill is judged against the plate the list stands on.
 static func row_normal_color() -> Color:
     return Color.TRANSPARENT
 
 static func row_hover_color() -> Color:
-    var tint := UI_THEME.color("text")
-    tint.a = 0.10
-    return tint
+    return UI_THEME.color("row_hover")
 
 static func row_selected_color() -> Color:
-    var tint := UI_THEME.color("fill")
-    tint.a = 0.35
-    return tint
+    return UI_THEME.color("row_selected")
 
 # The width of the price column of a row. Fixed, so that the prices of the rows line up
 # in one column instead of every row placing its number by the length of its own name.
