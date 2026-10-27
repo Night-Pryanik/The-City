@@ -88,7 +88,7 @@ func _setup_science_tooltip():
     # The default Label mouse_filter IGNORE — the hover over it is not caught.
     # PASS allows accepting mouse_entered/mouse_exited.
     science_tooltip_panel.z_index = 1100
-    science_tooltip_panel.add_theme_stylebox_override("panel", UI_THEME.tooltip())
+    science_tooltip_panel.theme_type_variation = &"SurfaceTooltip"
     add_child(science_tooltip_panel)
 
     science_tooltip_vbox = VBoxContainer.new()

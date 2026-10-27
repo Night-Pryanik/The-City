@@ -316,6 +316,17 @@ func _ready():
         # recomputed when the stretch of the canvas changes (see UiHelpers.hairline_thickness).
         if not viewport.size_changed.is_connected(_layout_pool_separator):
             viewport.size_changed.connect(_layout_pool_separator)
+    # The rows, the trade panel and the rule between the pools carry their colours as
+    # per-node overrides, and an override wins over the project theme: a new palette has to
+    # be pushed through the window by hand.
+    ThemeManager.theme_applied.connect(_on_theme_applied)
+
+# Repaints the window from the palette that is current now. The rows are rebuilt rather than
+# touched in place, which is also what a change of the town does.
+func _on_theme_applied() -> void:
+    if _pool_separator != null and is_instance_valid(_pool_separator):
+        _pool_separator.color = UiHelpers.category_header_line_color()
+    _refresh()
 
 # The vertical rule between the two pools. It is built here and not declared in the scene:
 # its width is a hairline of the screen and follows the stretch of the canvas, which only the

@@ -52,6 +52,7 @@ static func file_color() -> Color:
     return UI_THEME.color("info").lightened(0.15)
 
 # The window title and the summary — they are rebuilt for the current list of problems.
+var window_panel: Panel
 var summary_label: Label
 var problems_box: VBoxContainer
 
@@ -77,6 +78,9 @@ func _ready():
     # in the old one. The data itself is not
     # touched: the check is not restarted, only the wordings are rebuilt.
     LocalizationManager.locale_changed.connect(_on_locale_changed)
+    # The plate and the two heading labels carry per-node overrides, which win over the
+    # project theme; the rows of the report are rebuilt from the palette on every rebuild.
+    ThemeManager.theme_applied.connect(_apply_theme_colors)
 
     # Dimming of the background — the window is read as a separate screen, and not as
     # a popup hint over the menu.
@@ -92,7 +96,7 @@ func _ready():
 
     var panel = Panel.new()
     panel.custom_minimum_size = PANEL_MIN_SIZE
-    panel.add_theme_stylebox_override("panel", UI_THEME.window_plate())
+    window_panel = panel
     center.add_child(panel)
 
     var vbox = VBoxContainer.new()
@@ -107,12 +111,10 @@ func _ready():
     title_label = Label.new()
     title_label.text = tr("Errors in the game data")
     title_label.add_theme_font_size_override("font_size", 22)
-    title_label.add_theme_color_override("font_color", title_color())
     vbox.add_child(title_label)
 
     summary_label = Label.new()
     summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    summary_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     vbox.add_child(summary_label)
 
     # There may be many problems (a single typo in an id gives dozens of lines),
@@ -148,7 +150,19 @@ func _ready():
 
     # _ready() is called on add_child(), and the list of problems arrives as
     # a separate call — the window is invisible in the time between them.
+    _apply_theme_colors()
     hide()
+
+
+# The surface and the heading colours of the window, one place for the build and for every
+# later palette. The report itself is rebuilt, because its rows read the palette as they are
+# made.
+func _apply_theme_colors() -> void:
+    window_panel.add_theme_stylebox_override("panel", UI_THEME.window_plate())
+    title_label.add_theme_color_override("font_color", title_color())
+    summary_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
+    if is_visible_in_tree():
+        _build_content(all_problems)
 
 
 # Shows the list of problems. problems is an array of entries from

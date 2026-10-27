@@ -46,7 +46,6 @@ func _ready():
     # 560×420, so that the window by default is a bit taller and fits a typical
     # long flavor text without scrolling.
     panel.custom_minimum_size = Vector2(560, 520)
-    panel.add_theme_stylebox_override("panel", UI_THEME.window_plate())
     center.add_child(panel)
 
     var vbox = VBoxContainer.new()
@@ -60,7 +59,6 @@ func _ready():
 
     title_label = Label.new()
     title_label.add_theme_font_size_override("font_size", 22)
-    title_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
     vbox.add_child(title_label)
 
     # We wrap the long text (description + flavor + resources) in a
@@ -81,7 +79,6 @@ func _ready():
 
     var desc_title_local = Label.new()
     desc_title = desc_title_local
-    desc_title.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     scroll_body.add_child(desc_title)
 
     description_label = Label.new()
@@ -91,12 +88,10 @@ func _ready():
 
     var flavor_title_local = Label.new()
     flavor_title = flavor_title_local
-    flavor_title.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     scroll_body.add_child(flavor_title)
 
     flavor_label = Label.new()
     flavor_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    flavor_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
     flavor_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll_body.add_child(flavor_label)
 
@@ -117,7 +112,20 @@ func _ready():
     techs_btn.pressed.connect(_on_techs_pressed)
     buttons.add_child(techs_btn)
 
+    _apply_theme_colors()
     _apply_static_text()
+    # The colours of the window are per-node overrides, which win over the project theme:
+    # a new palette has to be written into the same nodes by hand.
+    ThemeManager.theme_applied.connect(_apply_theme_colors)
+
+# The surface and the text colours of the window, one place for the build and for every
+# later palette.
+func _apply_theme_colors() -> void:
+    panel.add_theme_stylebox_override("panel", UI_THEME.window_plate())
+    title_label.add_theme_color_override("font_color", UI_THEME.color("income").lightened(0.35))
+    desc_title.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
+    flavor_title.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
+    flavor_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
 
 # The window labels that do not depend on the technology. They are set once on creation and
 # once more on a language change: the nodes built in code are not translated by Godot itself.

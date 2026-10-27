@@ -59,6 +59,9 @@ func _ready() -> void:
     up_button.pressed.connect(_on_move_pressed.bind(-1))
     down_button.pressed.connect(_on_move_pressed.bind(1))
     _refresh_order_buttons()
+    # The rows of both lists carry their colours as per-node overrides, which win over the
+    # project theme, so the whole list is rebuilt from the palette that is current now.
+    ThemeManager.theme_applied.connect(_rebuild)
 
 # --- Opening ---------------------------------------------------------------------
 

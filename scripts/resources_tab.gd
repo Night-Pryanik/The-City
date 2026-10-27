@@ -280,6 +280,10 @@ func refresh():
     _fill_tamed_section()
     _fill_storage_section()
     _fill_diversity_section()
+    # The highlight of the buttons of the sections is a per-node override, so a rebuild of the
+    # column re-asserts it together with the rows; on a change of the palette it is the only
+    # thing that has to change there.
+    _update_section_buttons()
 
 # Empties the list of a section. The rows are recreated from scratch on every full
 # refresh — the sections are cheap, and a rebuilt list always matches the data of the city.

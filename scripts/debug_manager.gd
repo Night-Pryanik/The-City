@@ -63,18 +63,12 @@ func _build_ui():
     _panel.mouse_filter = Control.MOUSE_FILTER_STOP
     add_child(_panel)
 
-    _panel.add_theme_stylebox_override("panel", UI_THEME.window_plate())
-
     # The title (dragging)
     _title_bar = Panel.new()
     _title_bar.position = Vector2(0, 0)
     _title_bar.size = Vector2(WINDOW_SIZE.x, TITLE_HEIGHT)
     _title_bar.mouse_filter = Control.MOUSE_FILTER_STOP
     _panel.add_child(_title_bar)
-
-    var title_style = StyleBoxFlat.new()
-    title_style.bg_color = UI_THEME.color("control_bg")
-    _title_bar.add_theme_stylebox_override("panel", title_style)
 
     _title_label = Label.new()
     _title_label.text = tr("Debug menu")
@@ -101,11 +95,30 @@ func _build_ui():
     # The status row (hints)
     _status_label = Label.new()
     _status_label.text = ""
-    _status_label.add_theme_color_override("font_color", UI_THEME.color("warning"))
     _status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _content_vbox.add_child(_status_label)
 
+    _apply_theme_colors()
+    # The plate, the title bar and the status line carry per-node overrides, which win over
+    # the project theme: a new palette has to be written into them by hand.
+    ThemeManager.theme_applied.connect(_apply_theme_colors)
+
     _show_main_menu()
+
+# The surfaces and the text colour of the window, one place for the build and for every
+# later palette. An open menu also rebuilds its list, so the buttons of the current view
+# take the new theme too.
+func _apply_theme_colors() -> void:
+    _panel.add_theme_stylebox_override("panel", UI_THEME.window_plate())
+    var title_style := StyleBoxFlat.new()
+    title_style.bg_color = UI_THEME.color("control_bg")
+    _title_bar.add_theme_stylebox_override("panel", title_style)
+    _status_label.add_theme_color_override("font_color", UI_THEME.color("warning"))
+    if is_open:
+        if _in_main_menu:
+            _show_main_menu()
+        else:
+            _show_resource_list()
 
 func _show_main_menu():
     _clear_content()

@@ -215,8 +215,14 @@ func apply_preset(id: String) -> bool:
     if not has_preset(id):
         return false
     var preset: Dictionary = _presets[id]
-    _palette = _flatten(preset["chrome"], preset["data"])
-    _metrics = preset["metrics"].duplicate()
+    return apply_palette(_flatten(preset["chrome"], preset["data"]), preset["metrics"], id)
+
+# Puts a palette into the interface. A preset file is the usual source, but the palette may
+# also come from a caller — the id only names the choice, and nothing here remembers it:
+# only set_preset writes the player's setting.
+func apply_palette(palette: Dictionary, metrics: Dictionary, id: String) -> bool:
+    _palette = palette
+    _metrics = metrics.duplicate()
     current_id = id
     _apply_theme()
     theme_applied.emit()
@@ -435,7 +441,9 @@ func _separator() -> StyleBoxLine:
 
 # Makes the new surface visible at once. A Control does not always re-read the theme
 # after the resource is edited (the same measurement as in FontManager): the notification
-# is sent by hand, and a node that draws itself is asked to redraw.
+# is sent by hand, and every node that draws itself is asked to redraw — a Control included,
+# because the badges, the dots and the frames of the tree are drawn in `_draw()` of a
+# Control and read the palette there.
 func _repaint() -> void:
     if not is_inside_tree():
         return
@@ -443,7 +451,7 @@ func _repaint() -> void:
     _redraw_hand_drawn(get_tree().root)
 
 func _redraw_hand_drawn(node: Node) -> void:
-    if node is CanvasItem and not node is Control:
+    if node is CanvasItem:
         (node as CanvasItem).queue_redraw()
     for child in node.get_children():
         _redraw_hand_drawn(child)

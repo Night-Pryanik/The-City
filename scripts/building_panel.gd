@@ -163,6 +163,18 @@ func _ready():
     upgrade_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
     upgrade_tooltip_panel.add_child(upgrade_tooltip_content)
 
+    # The plate of the window, its popups and the tooltip are per-node overrides, which win
+    # over the project theme, so a new palette has to be written into them by hand.
+    ThemeManager.theme_applied.connect(_on_theme_applied)
+
+func _on_theme_applied() -> void:
+    panel.add_theme_stylebox_override("panel", UI_THEME.window_plate())
+    upgrade_tooltip_panel.add_theme_stylebox_override("panel", UI_THEME.tooltip())
+    for popup in popups_list:
+        if is_instance_valid(popup):
+            popup.add_theme_stylebox_override("panel", UI_THEME.panel_inset())
+    _refresh()
+
 func open(building_id_arg: String, data: Dictionary):
     # We clear the old popups on opening (the content may have become stale, for
     # example after a new technology has been researched). On a periodic

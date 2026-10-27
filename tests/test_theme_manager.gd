@@ -15,6 +15,10 @@
 #   6. The factories of UiTheme: the built styleboxes take the palette values, and the
 #      fallback palette of the module repeats the default preset token by token — a
 #      divergence would make a headless run draw a different interface than the game.
+#   7. The project theme: every standard control reads the palette from it, and a second
+#      apply edits the same resource instead of replacing it.
+#   8. The live switch: a palette applied at run time reaches both the project theme and
+#      the per-node overrides of a window that re-styles itself on the signal.
 #
 # The settings belong to the player: the theme key is put back at the end, as in
 # test_font_manager.
@@ -283,6 +287,53 @@ func _run() -> void:
         "the styles do not touch the button font", state)
     manager.apply_preset(DEFAULT_PRESET)
     check(ThemeDB.get_project_theme() == theme, "the theme resource is edited, not replaced", state)
+
+    # --- 8. A palette applied at run time ---
+    # A window that styles its own nodes keeps per-node overrides, and an override wins over the
+    # project theme, so a new palette reaches such a window only through the window's own
+    # re-apply on the signal.
+    var alt: Dictionary = preset.duplicate(true)
+    alt["chrome"]["panel_bg"] = "#001020FF"
+    alt["chrome"]["control_bg"] = "#203040"
+    alt["data"]["income"] = "#00FF80"
+    check(THEME_SCRIPT.validate_preset(alt).is_empty(), "the alternate palette is complete", state)
+
+    var tech_window: Control = load("res://scripts/tech_popup.gd").new()
+    get_root().add_child(tech_window)
+    # _ready() runs on the next step of the tree, and the window builds its nodes there.
+    await process_frame
+
+    var title_before: Color = tech_window.title_label.get_theme_color("font_color")
+    check(title_before.is_equal_approx(manager.color("income").lightened(0.35)),
+        "a window builds its overrides from the palette that is current", state)
+
+    var applied := {"count": 0}
+    manager.theme_applied.connect(func(): applied["count"] += 1)
+    check(manager.apply_palette(manager._flatten(alt["chrome"], alt["data"]),
+            alt["metrics"].duplicate(), "test_alt"), "a palette from memory applies", state)
+    check(applied["count"] == 1, "an apply from memory emits the signal", state)
+    check(manager.get_preset_id() == "test_alt", "the id only names the choice", state)
+    check(manager.get_stored_preset_id() != "test_alt",
+        "a palette from memory does not touch the player's setting", state)
+
+    check(tech_window.title_label.get_theme_color("font_color")
+            .is_equal_approx(manager.color("income").lightened(0.35)),
+        "the window re-styles its overrides on the signal", state)
+    check(not tech_window.title_label.get_theme_color("font_color").is_equal_approx(title_before),
+        "the re-styled label really changed colour", state)
+    var plate_after := tech_window.panel.get_theme_stylebox("panel") as StyleBoxFlat
+    check(plate_after != null and plate_after.bg_color.is_equal_approx(manager.color("panel_bg")),
+        "the window plate follows the new surface colour", state)
+
+    var alt_button_normal := theme.get_stylebox("normal", "Button") as StyleBoxFlat
+    check(alt_button_normal != null
+            and alt_button_normal.bg_color.is_equal_approx(manager.color("control_bg")),
+        "the project theme follows the new palette", state)
+
+    manager.apply_preset(DEFAULT_PRESET)
+    check(tech_window.title_label.get_theme_color("font_color").is_equal_approx(title_before),
+        "the default preset restores the window", state)
+    tech_window.free()
 
     # The player's own setting is put back.
     _restore_setting(saved_setting, had_setting)

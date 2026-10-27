@@ -42,6 +42,16 @@ var build_manager: Node
 
 func _ready():
     _setup_collapse_button()
+    # The preview and the action rows carry per-node overrides, which win over the project
+    # theme. The snapshots are dropped together with them: they would otherwise tell the
+    # rebuild that nothing has changed, and the panel would keep the colours of the old
+    # palette.
+    ThemeManager.theme_applied.connect(_on_theme_applied)
+
+func _on_theme_applied() -> void:
+    _last_actions_snapshot = {}
+    _last_preview_snapshot = {}
+    refresh()
 
 # --- The collapsing/expanding of the panel ---
 func _gui_input(event: InputEvent):

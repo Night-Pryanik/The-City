@@ -247,6 +247,28 @@ func _ready():
     if bm and not bm.build_building_completed.is_connected(_on_building_build_completed):
         bm.build_building_completed.connect(_on_building_build_completed)
 
+    # The rows, the buttons of the sections and the tab buttons carry their colours as per-node
+    # overrides, and an override wins over the project theme: a new palette has to be pushed
+    # through the whole window by hand. A hidden window is left alone — the next opening of the
+    # city runs the same full pass over it.
+    ThemeManager.theme_applied.connect(_on_theme_applied)
+
+# Repaints the city from the palette that is current now: the same pass as the one that runs on a
+# structural change of the city, plus the highlight of the active tab button.
+func _on_theme_applied() -> void:
+    if not visible:
+        return
+    _highlight_active_tab_button()
+    _refresh_all()
+    # An open tooltip stands on its own, outside the lists: the panel follows the theme by its
+    # type variation, but the coloured lines inside are overrides, so each is brought to the new
+    # palette separately.
+    buildings_tab.refresh_building_detail_tooltip()
+    if ui_helpers and is_instance_valid(ui_helpers) \
+            and ui_helpers.treasury_tooltip_panel \
+            and ui_helpers.treasury_tooltip_panel.visible:
+        _show_treasury_tooltip(get_viewport().get_mouse_position(), true)
+
 func _get_build_manager():
     if _cached_build_manager == null or not is_instance_valid(_cached_build_manager):
         var main_map_node = get_tree().root.find_child("MainMap", true, false)
