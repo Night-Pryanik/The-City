@@ -2034,6 +2034,9 @@ msgstr ""
 msgid "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
 msgstr ""
 
+msgid "Synergy: "
+msgstr ""
+
 msgid "Take this construction out of the queue. Nothing has been spent yet"
 msgstr ""
 

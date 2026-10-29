@@ -705,9 +705,12 @@ func _price_tooltip_text(row: Dictionary) -> String:
             lines.append(tr("%s: goods without a price") % member_name)
             continue
         var stock_detail: Dictionary = CityData.get_quality_breakdown(member)
+        # The stock is summed by the level of the good: a decorated row carries two levels and
+        # shows up on the ladder row of the level the good itself has.
+        var stock_by_level: Dictionary = GameData.quality_level_totals(stock_detail)
         var stock_total := 0
-        for qid in stock_detail:
-            stock_total += int(stock_detail[qid])
+        for qid in stock_by_level:
+            stock_total += int(stock_by_level[qid])
         # The full ladder — only for the goods which LIE in the storage: it is
         # the only one that is really sold. The other members of the group are one
         # row. Without this the tooltip of a group of 13 goods stretched over
@@ -723,7 +726,7 @@ func _price_tooltip_text(row: Dictionary) -> String:
             if tail == "":
                 continue
             var stars := GameData.get_quality_stars(str(qid))
-            var in_stock := int(stock_detail.get(str(qid), 0))
+            var in_stock := int(stock_by_level.get(str(qid), 0))
             # The quantity in the storage is appended only when the level really
             # lies: otherwise every row of the ladder would carry a "0" and the tooltip
             # would turn into a table of zeros.
@@ -737,8 +740,10 @@ func _price_tooltip_text(row: Dictionary) -> String:
     return "\n".join(lines)
 
 # The price of a decorated good against its plain base — the same row as on the "Resources" tab
-# (GameData.format_decoration_price_row): " + = x1.70 (20 → 34)". It explains why the unit costs more
+# (GameData.format_decoration_price_row): " + = x4.31 (20 → 86)". It explains why the unit costs more
 # than the plain good of the same kind, which the header of the member ("(base 26)") does not say.
+# The row quotes the ORDINARY level of both parts: the coefficient of a decorated good moves with
+# the levels of its units, so a row tied to one level would contradict the next.
 func _append_decoration_price(lines: Array, member: String) -> void:
     var decoration_row := GameData.format_decoration_price_row(member)
     if decoration_row.is_empty():

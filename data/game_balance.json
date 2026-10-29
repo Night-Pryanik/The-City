@@ -7,6 +7,7 @@
   //
   // The object is grouped into blocks by the system that owns the constants:
   //   city       — the treasury of the player's city and its internal market;
+  //   craft      — the price of a good with additional ingredients;
   //   expansion  — the costs of extending the city's territory on the map;
   //   towns      — the economy of the towns (their treasury, warehouse and trade).
   //
@@ -53,6 +54,23 @@
       //                        Balance constant reset to this default in CityData.setup()
       //                        on a new game; a loaded save overrides it.
       "food_for_new_settler": 1000
+    },
+
+    // --- CRAFT: the price of a good with additional ingredients ---
+    //
+    // A decorated good ("Wool Clothes (+Purple)") is priced as the sum of its parts, each at
+    // the quality of its own units: the base good at the level of the base and every addition
+    // at the level of the additions (GameData.get_decorated_price). The material of the
+    // additions is paid for in full — there is no premium on top of it, so a cheap dye never
+    // makes a garment worth more than the dye itself is worth.
+    "craft": {
+      // craft_extra_synergy — the coefficient that makes a decorated good worth MORE than its
+      //                        parts sold separately: 0.15 = x1.15 of the sum of the parts. It
+      //                        pays for the craft itself and for the fact that the additions
+      //                        cannot be sold twice. Without it a decorated good is exactly
+      //                        worth the base plus the additions, and the player has no reason
+      //                        to decorate anything but for the population's demand.
+      "craft_extra_synergy": 0.15
     },
 
     // --- EXPANSION: the cost of extending the city's territory over the map ---

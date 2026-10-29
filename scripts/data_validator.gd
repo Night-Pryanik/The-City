@@ -362,7 +362,6 @@ const CRAFT_EXTRA_FIELDS := {
     "name": LEAF,
     "kind": LEAF,
     "amount": LEAF,
-    "price_bonus": LEAF,
     "unlock_tech": LEAF,
 }
 
@@ -575,6 +574,9 @@ const GAME_BALANCE_BLOCKS := {
         "food_for_new_settler": LEAF,
         "initial_treasury": LEAF,
         "internal_market_price_multiplier": LEAF,
+    },
+    "craft": {
+        "craft_extra_synergy": LEAF,
     },
     "expansion": {
         "expansion_cost_per_hex": LEAF,

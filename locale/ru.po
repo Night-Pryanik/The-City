@@ -2034,6 +2034,9 @@ msgstr "Предложить другое название"
 msgid "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
 msgstr "Запасы, динамика и тултипы с ресурсами обновляются с этим интервалом (от 1 до 5 секунд). Расчёты симуляции идут как обычно, раз в секунду."
 
+msgid "Synergy: "
+msgstr "Синергия: "
+
 msgid "Take this construction out of the queue. Nothing has been spent yet"
 msgstr "Убрать это строительство из очереди. Затрат ещё не было"
 

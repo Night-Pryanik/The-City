@@ -569,11 +569,13 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
                     row.add_child(price_label)
 
                 # The best quality on the warehouse: levels are ordered worst → best,
-                # the first level with count > 0 wins.
+                # the first level with count > 0 wins. The stock is summed by the level of the
+                # good, so a decorated row shows up on the ladder of the level it has.
                 var breakdown: Dictionary = city_quality_detail.get(prod_id, {})
+                var totals: Dictionary = GameData.quality_level_totals(breakdown)
                 var quality_id := ""
                 for qid in GameData.get_quality_levels():
-                    if int(breakdown.get(str(qid), 0)) > 0:
+                    if int(totals.get(str(qid), 0)) > 0:
                         quality_id = str(qid)
                         break
                 if not quality_id.is_empty():
@@ -913,9 +915,12 @@ func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdo
     quality_tooltip_vbox.add_child(header)
 
     var levels = GameData.get_quality_levels()
+    # The stock is summed by the level of the good itself: a decorated row carries two levels,
+    # and the player reads the storage by the level of the good (GameData.quality_level_totals).
+    var totals: Dictionary = GameData.quality_level_totals(quality_breakdown)
     # We output the levels from the worst to the best (as in data/qualities.json).
     for qid in levels:
-        var count = int(quality_breakdown.get(qid, 0))
+        var count = int(totals.get(qid, 0))
         if count <= 0:
             continue
         var row = HBoxContainer.new()
@@ -937,7 +942,7 @@ func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdo
         var name_label = Label.new()
         name_label.text = "%s: %d (%d%%)" % [
             GameData.get_quality_name(qid), count,
-            GameData.get_quality_share_percent(count, quality_breakdown)
+            GameData.get_quality_share_percent(count, totals)
         ]
         name_label.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
         name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1114,6 +1119,8 @@ func _price_stage_label(kind: String) -> String:
             return tr("Quality: ")
         "additions":
             return tr("Additions: ")
+        "synergy":
+            return tr("Synergy: ")
         "total":
             return tr("Total: ")
     return ""
@@ -1184,9 +1191,11 @@ func _format_planned_rate(amount: float, interval: float) -> String:
 # which levels are shown: the price of a level that is not in the storage is not
 # needed by the player and only misleads.
 # A decorated good ("Wool Clothes (+Woad)") gets the price explained in STAGES instead of the
-# ladder (GameData.format_price_build_up_rows): "★★ Quality: x1.30 = 26" / "+ Additions:
-# x1.50 = 34" / "★★ Total: x1.95 = 44". The base price of such a good is the price of its
-# PLAIN base — the additions are a stage of their own, and the price of the decorated good
+# ladder (GameData.format_price_build_up_rows): "× Synergy: x1.15" once, then a block of
+# "★★ Quality: x1.30 = 26" / "★ Additions: x2.75 = 55" / "★★ Total: x4.65 = 93" per quality key
+# that lies in the storage: a fine garment with a common dye and the same garment with a fine dye
+# are two different units at two different prices. The base price of such a good is the price of
+# its PLAIN base — the additions are a stage of their own, and the price of the decorated good
 # already includes them.
 # The tooltip is shown even when the production/consumption is empty, as long as
 # the price of the resource is > 0.

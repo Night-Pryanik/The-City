@@ -637,13 +637,14 @@ func _format_treasury_rate(value: float) -> String:
 # in data/game_balance.json, with the rounding
 # to the nearest whole number. It returns 0 for the goods without a price.
 #
-# quality_id is the level of the quality of the unit being WRITTEN OFF (""/"common" — the ordinary one):
-# the price is multiplied by the multiplier of the quality (data/qualities.json,
-# price_multiplier) and is rounded to a whole number again, therefore the coins are always
-# whole, and the internal market buys a good goods more expensively.
+# quality_id is the quality KEY of the unit being WRITTEN OFF (""/"common" — the ordinary one):
+# a plain good is multiplied by the multiplier of its level (data/qualities.json,
+# price_multiplier); a decorated good has no single multiplier — its price is a sum of parts at
+# two levels — so the share of the quality is the ratio of its price to the ordinary one. Either
+# way the coins stay whole.
 # The income of the treasury for the actually written off units of the goods taking the QUALITY of each
-# unit into account. consumed is the breakdown {quality: count} which
-# remove_from_storage() returned: the price is counted by each level separately, therefore
+# unit into account. consumed is the breakdown {quality key: count} which
+# remove_from_storage() returned: the price is counted by each key separately, therefore
 # a mixed storage brings more than count × the price of the ordinary quality.
 # An empty breakdown (there was nothing to write off) — the income is 0.
 func get_internal_market_price(pid: String, quality_id: String = "") -> int:
@@ -653,6 +654,14 @@ func get_internal_market_price(pid: String, quality_id: String = "") -> int:
         return 0
     var mult = float(GameData.game_balance.get("internal_market_price_multiplier", 1.0))
     var market_base := int(round(base_price * mult))
+    if not GameData.parse_generated_id(pid).is_empty():
+        # The ratio of the two prices, so that the dynamic market multipliers of the parts cancel
+        # out and only the share of the quality remains.
+        var ordinary := GameData.get_price(pid)
+        if ordinary <= 0.0:
+            return market_base
+        return int(round(float(market_base)
+                * GameData.get_price_for_quality(pid, quality_id) / ordinary))
     return int(round(float(market_base) * GameData.get_quality_price_multiplier(quality_id)))
 
 # The average multiplier of the price by the quality, weighted by the breakdown of the storage
@@ -664,12 +673,17 @@ func get_stock_quality_price_multiplier(pid: String) -> float:
     var detail: Dictionary = city_quality_detail.get(pid, {})
     var total := 0
     var weighted := 0.0
-    for qid in detail:
-        var count := int(detail[qid])
+    var ordinary := GameData.get_price(pid)
+    var decorated := not GameData.parse_generated_id(pid).is_empty()
+    for key in detail:
+        var count := int(detail[key])
         if count <= 0:
             continue
         total += count
-        weighted += float(count) * GameData.get_quality_price_multiplier(str(qid))
+        if decorated and ordinary > 0.0:
+            weighted += float(count) * GameData.get_price_for_quality(pid, str(key)) / ordinary
+        else:
+            weighted += float(count) * GameData.get_quality_price_multiplier(str(key))
     if total <= 0:
         return 1.0
     return weighted / float(total)
@@ -1207,15 +1221,24 @@ func _consume_quality_detail(pid: String, amount: int, priority: String) -> Dict
     var consumed = {}
     var remaining = amount
 
-    # We determine the order of the write-off of the levels of the quality.
-    var order = []
-    if priority == "worst":
-        order = levels.duplicate() # from the worst to the best
-    elif priority == "random":
-        order = levels.duplicate()
+    # The keys of the breakdown that hold units. The order of the write-off is set by the LEVEL
+    # of the good, not by the key itself: a decorated row carries two levels (its base and its
+    # additions), and the player picks the quality of the good, not of its parts.
+    var order: Array = []
+    for key in detail:
+        if int(detail[key]) <= 0:
+            continue
+        order.append(str(key))
+    order.sort_custom(func(a, b):
+        var a_level: int = maxi(0, levels.find(GameData.quality_key_level(a)))
+        var b_level: int = maxi(0, levels.find(GameData.quality_key_level(b)))
+        if a_level != b_level:
+            return a_level < b_level
+        return a < b)
+    if priority == "random":
         order.shuffle()
-    else: # "best" and by default — from the best to the worst
-        order = levels.duplicate()
+    elif priority != "worst":
+        # "best" and by default — from the best to the worst.
         order.reverse()
 
     for qid in order:
@@ -1268,7 +1291,8 @@ func quality_from_breakdown(consumed: Dictionary) -> String:
         if count <= 0:
             continue
         total += count
-        weighted += float(count) * float(GameData.get_quality_value(qid))
+        weighted += float(count) * float(GameData.get_quality_value(
+                GameData.quality_key_level(str(qid))))
     if total <= 0:
         return "common"
     var avg = weighted / float(total)

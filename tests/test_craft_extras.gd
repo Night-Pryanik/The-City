@@ -163,18 +163,16 @@ func _test_product_materialised(gd, state: Dictionary) -> void:
     check(str(good.get("unlock_tech", "")) == str(base.get("unlock_tech", "")),
         "the generated good inherits the unlock technology of the base", state)
 
-    # The price: the material at its own price plus the premium of the additions, the additions
-    # being spent per craft cycle.
+    # The price: the base and the additions at their own price, the additions being spent per
+    # craft cycle, and the synergy coefficient over the sum.
     var batch := float(int(gd.find_craft("gold_jewelry")["result"]["gold_jewelry"]))
     var expected := float(base["price"])
-    var bonus := 0.0
     for extra_id in ["lazurite_ore", "pearl"]:
         var record: Dictionary = gd.craft_extras[extra_id]
         expected += gd.get_base_price(extra_id) * float(record["amount"]) / batch
-        bonus += float(record["price_bonus"])
-    expected = round(expected * (1.0 + bonus))
+    expected = round(expected * (1.0 + float(gd.game_balance.get("craft_extra_synergy", 0.0))))
     check(int(good.get("price", 0)) == int(expected),
-        "the price pays for the material and adds the premium (expected %d, got %d)"
+        "the price is the sum of the parts and the synergy (expected %d, got %d)"
                 % [int(expected), int(good.get("price", 0))], state)
     check(int(good.get("price", 0)) > int(base.get("price", 0)),
         "a decorated good is worth more than a plain one", state)
@@ -239,6 +237,8 @@ func _test_cycle(gd, city, state: Dictionary) -> void:
 # The additions are a minority of the mass (10 units of dye against 100 of wool), so a plain
 # weighted average over everything would never move the level. The best addition raises the base
 # by ONE level at most, and never lowers it.
+# The units keep BOTH levels apart — the base and the additions — because the price is the sum of
+# the two parts, each at its own level; the level of the good itself is a reading of that pair.
 func _test_quality_rule(gd, city, state: Dictionary) -> void:
     var main_map := Node.new()
     main_map.name = "MainMap"
@@ -262,9 +262,14 @@ func _test_quality_rule(gd, city, state: Dictionary) -> void:
     ]
     for entry in cases:
         var got := _run_wool_cycle(city, pid, str(entry[0]), str(entry[1]))
-        check(got == {str(entry[2]): 10},
+        var levels: Dictionary = gd.quality_level_totals(got)
+        check(levels == {str(entry[2]): 10},
             "wool %s + dye %s must give %s (got %s)"
-                % [entry[0], entry[1], entry[2], str(got)], state)
+                % [entry[0], entry[1], entry[2], str(levels)], state)
+        var key: String = gd.make_quality_key(str(entry[0]), str(entry[1]))
+        check(got.has(key),
+            "the units must keep the levels of both parts (key \"%s\", got %s)" % [key, str(got)],
+            state)
 
     main_map.queue_free()
 
@@ -313,7 +318,7 @@ func _test_decoration_price(gd, state: Dictionary) -> void:
     check(not row.is_empty(), "a decorated good explains its price", state)
     check(str(row.get("glyph", "")) == "+", "the row carries the plus of the name", state)
 
-    var price: float = gd.get_price(pid)
+    var price: float = gd.get_price_for_quality(pid, "")
     var ratio: float = price / gd.get_price(base_pid)
     check(ratio > 1.0,
         "a decorated good must be dearer than the plain one (x%.2f)" % ratio, state)

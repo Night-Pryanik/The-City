@@ -8,6 +8,10 @@ const HUD_MESSAGE_IMPORTANT := 1
 # id: "gold_jewelry+lazurite_ore". See "Additional ingredients of a recipe" below.
 const GENERATED_SEPARATOR := "+"
 
+# The marker of the synergy row of the price build-up: the coefficient is not a part of the good
+# but a multiplier over their sum, and the times sign says exactly that.
+const SYNERGY_MARKER := "×"
+
 var terrains: Dictionary = {}
 var covers: Dictionary = {}
 var climate_zones: Dictionary = {} # id -> the climate zone (data/climate.json)
@@ -16,7 +20,7 @@ var products: Dictionary = {}
 var improvements: Dictionary = {}
 var crafts: Array = []
 # The additional ingredients of recipes (data/craft_extras.json), by the product they spend:
-# id -> { kind, amount, price_bonus, name, unlock_tech }. The id IS the product id — a good
+# id -> { kind, amount, name, unlock_tech }. The id IS the product id — a good
 # either is an additional ingredient or it is not, there is no second registry of names.
 var craft_extras: Dictionary = {}
 # The kinds of the additional ingredients in the order of the file: [ { id, name } ]. The order
@@ -550,11 +554,15 @@ func craft_alternatives(recipe: Dictionary) -> Array:
 # and punctuation only, which is what keeps it short in every language. The goods inside it are
 # the data names and are already localized.
 #
-# The price pays for the material in full and adds the premium of the additions on top:
-#   (base price + the price of the additions per unit) * (1 + the sum of their price bonuses)
+# The price pays for every part of the good in full, at the quality of the units that went into
+# it: the base at the level of the base and each addition at the level of the additions, and the
+# sum is multiplied by the synergy coefficient of data/game_balance.json. There is no per-good
+# premium — a cheap dye cannot make a garment dearer than the dye is worth, and the value of an
+# addition follows its own price in the data.
+#   (base price × its level multiplier + the additions per unit × their level multiplier)
+#   × (1 + craft_extra_synergy)
 # The additions are declared per craft cycle, so their price is divided by the output of the base
-# recipe. The bonuses are summed, not multiplied — the same rule as production_bonus in
-# data/consumption/*.json.
+# recipe. See "THE QUALITY KEY OF A STORAGE ROW" below for how the two levels are kept apart.
 
 # The recipe by id, or an empty dictionary. An id with GENERATED_SEPARATOR is a base recipe plus
 # the additional ingredients; any other id is looked up as always.
@@ -696,17 +704,36 @@ func get_product_icon(pid: String) -> String:
         return str(raw_resources[pid].get("icon", ""))
     return ""
 
-# See the header of the block for the formula. The additions are spent per craft cycle, while
-# the price is per unit — hence the division by the output of the base recipe.
+# The price of one unit at the ORDINARY quality of both parts. It is what a decorated good
+# costs before any quality is taken into account, and it is the reference the tooltips count the
+# coefficients of the stages from.
 func get_generated_price(base_pid: String, extras: Array) -> int:
-    var batch := _generated_batch(base_pid)
-    var total := get_base_price(base_pid)
-    var bonus := 0.0
+    return int(round(get_decorated_price(base_pid, extras, "", "")))
+
+# The price of one unit of a decorated good whose base and additions carry their own quality
+# levels. The two levels are independent: a fine garment with a common dye is worth more than
+# the common one but less than the same garment with a fine dye.
+func get_decorated_price(base_pid: String, extras: Array, base_qid: String, extra_qid: String) -> float:
+    var total := get_price(base_pid) * get_quality_price_multiplier(base_qid)
+    total += get_decorated_extras_value(base_pid, extras, extra_qid)
+    return total * get_craft_extra_synergy_multiplier()
+
+# What the additions cost per ONE unit of the result at their own quality level. The additions
+# are declared per craft cycle, while the price is per unit — hence the division by the output of
+# the base recipe.
+func get_decorated_extras_value(base_pid: String, extras: Array, extra_qid: String) -> float:
+    var batch := float(_generated_batch(base_pid))
+    var mult := get_quality_price_multiplier(extra_qid)
+    var total := 0.0
     for extra in extras:
         var record: Dictionary = craft_extras.get(str(extra), {})
-        total += get_base_price(str(extra)) * float(record.get("amount", 1)) / float(batch)
-        bonus += float(record.get("price_bonus", 0.0))
-    return int(round(total * (1.0 + bonus)))
+        total += get_price(str(extra)) * float(record.get("amount", 1)) / batch * mult
+    return total
+
+# The coefficient that makes a decorated good worth more than its parts sold apart
+# (data/game_balance.json, craft_extra_synergy).
+func get_craft_extra_synergy_multiplier() -> float:
+    return 1.0 + float(game_balance.get("craft_extra_synergy", 0.0))
 
 # How many units of the good one craft cycle of its own recipe yields. The recipe is looked up by
 # the product id (the recipe and its product share the name for the crafted goods); a good with
@@ -715,11 +742,10 @@ func _generated_batch(base_pid: String) -> int:
     var produced := int(find_craft(base_pid).get("result", {}).get(base_pid, 0))
     return maxi(1, produced)
 
-# How much more expensive a decorated good is than its plain base: 26 / 20 = 1.30. This is the
-# ACTUAL ratio of the two prices and not the sum of the declared bonuses — the material of the
-# additions is paid for on top of the premium, so the +20% of a dye turns into x1.30 once the dye
-# itself is paid for, and a rounding to whole coins adds its own share. The player compares the
-# decorated good with the plain one, and the ratio is the answer to that comparison.
+# How much more expensive a decorated good is than its plain base at the ordinary quality of
+# both: 86.25 / 20 = 4.31. It is the actual ratio of the two prices — the base, the additions and the
+# synergy — and not a number declared anywhere. The player compares the decorated good with the
+# plain one, and the ratio is the answer to that comparison.
 func get_decoration_price_multiplier(pid: String) -> float:
     var parsed := parse_generated_id(pid)
     if parsed.is_empty():
@@ -727,21 +753,23 @@ func get_decoration_price_multiplier(pid: String) -> float:
     var base_price := get_price(str(parsed["base"]))
     if base_price <= 0.0:
         return 1.0
-    return get_price(pid) / base_price
+    return get_price_for_quality(pid, "") / base_price
 
 # The row that explains the price of a decorated good in the tooltips of the "Resources" and
 # "Trade" tabs:
-#   { "glyph": "+", "tail": " = x1.70 (20 → 34)", "text": "+ = x1.70 (20 → 34)" }
+#   { "glyph": "+", "tail": " = x4.31 (20 → 86)", "text": "+ = x4.31 (20 → 86)" }
 # The glyph is the plus sign that opens the additions in the name ("Wool Clothes (+Woad)"), so the
-# row reads as the price of that bracket. The two prices are the BASE prices of the plain and the
-# decorated good: the coefficient is a property of the recipe, not of the quality (every level is
-# multiplied by the same factor), so a row that quoted the price of one level would contradict the
-# quality ladder right above it. An empty dictionary for a plain good: nothing to explain.
+# row reads as the price of that bracket. The two prices are the ORDINARY prices of the plain and
+# the decorated good — the compact form of the "Trade" tab, which lists many members at once; the
+# full chain of levels is in the row tooltip (format_price_build_up_rows). An empty dictionary for
+# a plain good: nothing to explain.
 func format_decoration_price_row(pid: String) -> Dictionary:
     var parsed := parse_generated_id(pid)
     if parsed.is_empty():
         return {}
-    var price := get_price(pid)
+    # The same unrounded price the build-up rows count their coefficients from, so that the two
+    # tabs cannot quote two different coefficients for one good.
+    var price := get_price_for_quality(pid, "")
     var base_price := get_price(str(parsed["base"]))
     if price <= 0.0 or base_price <= 0.0:
         return {}
@@ -912,11 +940,70 @@ func get_quality_price_multiplier(quality_id: String) -> float:
         return 1.0
     return m
 
-# The current price of one unit of the product taking the quality into account: the price (base × the dynamic
-# market multipliers) × the quality multiplier. The fractional result — the rounding
-# is done by the caller (WHOLE coins are needed, see get_price_breakdown_for_quality).
-func get_price_for_quality(res_id: String, quality_id: String) -> float:
-    return get_price(res_id) * get_quality_price_multiplier(quality_id)
+# --- THE QUALITY KEY OF A STORAGE ROW ---
+# The storage keeps a breakdown {quality key: count}. For a plain good the key IS the level of its
+# units ("fine"). A decorated good carries TWO levels — the base part and the additions — because
+# its price is the sum of the parts, each at its own level, and "fine base + common dye" and
+# "fine base + fine dye" are different units at different prices. Its key is "base|extra"
+# ("fine|common").
+#
+# The level of the good ITSELF — what the craft rule gives the result and what the rest of the
+# game reads (consumption, the breakdown tooltips) — is derived from the pair by the very rule the
+# container applies to the consumed ingredients: the base level, raised by the best addition by
+# one level at most and never lowered by it. So the pair is the whole truth about a unit, and the
+# level is a reading of it.
+#
+# A key of a decorated good whose two levels are equal is shortened to the plain level: such a
+# unit costs exactly what the plain good of that level costs.
+const QUALITY_KEY_SEPARATOR := "|"
+
+# The key of the units of a good by the levels of its parts. An empty extra level — a plain good.
+func make_quality_key(base_qid: String, extra_qid: String = "") -> String:
+    if extra_qid.is_empty() or extra_qid == base_qid:
+        return base_qid
+    return base_qid + QUALITY_KEY_SEPARATOR + extra_qid
+
+# The two levels of a key: [base, extra]. The extra is "" for a plain good.
+func split_quality_key(quality_key: String) -> Array:
+    var at := quality_key.find(QUALITY_KEY_SEPARATOR)
+    if at <= 0 or at >= quality_key.length() - 1:
+        return [quality_key, ""]
+    return [quality_key.substr(0, at), quality_key.substr(at + 1)]
+
+# The level of the good itself (see the header of the block): the base level of a decorated good,
+# raised by the level of its additions by one at most.
+func quality_key_level(quality_key: String) -> String:
+    var parts := split_quality_key(quality_key)
+    var base_qid := str(parts[0])
+    var extra_qid := str(parts[1])
+    if extra_qid.is_empty():
+        return base_qid
+    var levels := get_quality_levels()
+    if levels.is_empty():
+        return base_qid
+    var base_index := _level_index(base_qid, levels)
+    var extra_index := _level_index(extra_qid, levels)
+    return str(levels[maxi(base_index, mini(extra_index, base_index + 1))])
+
+# The index of a level in the ordered list (worst first). An unknown id falls back to the worst.
+func _level_index(quality_id: String, levels: Array) -> int:
+    return maxi(0, levels.find(quality_id))
+
+# The current price of one unit of the product taking the quality into account. A plain good is
+# the price (base × the dynamic market multipliers) × the quality multiplier. A decorated good is
+# the sum of its parts at the two levels of the key (see get_decorated_price) — its quality is
+# already inside that sum and is NOT applied a second time. The fractional result: the rounding is
+# done by the caller (WHOLE coins are needed, see get_price_breakdown_for_quality).
+func get_price_for_quality(res_id: String, quality_key: String) -> float:
+    var parts := split_quality_key(quality_key)
+    var parsed := parse_generated_id(res_id)
+    if parsed.is_empty():
+        return get_price(res_id) * get_quality_price_multiplier(str(parts[0]))
+    var base_qid := str(parts[0])
+    var extra_qid := str(parts[1])
+    if extra_qid.is_empty():
+        extra_qid = base_qid
+    return get_decorated_price(str(parsed["base"]), parsed["extras"], base_qid, extra_qid)
 
 # The breakdown of the price of one unit of the product by quality for the tooltip:
 #   { "base": int, "multiplier": float, "total": int }
@@ -924,13 +1011,18 @@ func get_price_for_quality(res_id: String, quality_id: String) -> float:
 # whole number ONCE, the total is round(base × the quality multiplier). All the numbers in
 # the tooltip are whole, except for the multiplier itself — it is shown as a separate
 # addend: "Price: 4 * 1.30 (★★) = 5".
+# A decorated good has no single quality multiplier — its price is a sum of parts — so the
+# multiplier reported for it is the ratio of the two prices, which is what the row reads as.
 # For a product without a price (for example, the pseudo-resource science) — zeros.
-func get_price_breakdown_for_quality(res_id: String, quality_id: String) -> Dictionary:
-    var mult := get_quality_price_multiplier(quality_id)
+func get_price_breakdown_for_quality(res_id: String, quality_key: String) -> Dictionary:
     var base := int(round(get_price(res_id)))
     if base <= 0:
-        return {"base": 0, "multiplier": mult, "total": 0}
-    return {"base": base, "multiplier": mult, "total": int(round(float(base) * mult))}
+        return {"base": 0, "multiplier": 1.0, "total": 0}
+    if parse_generated_id(res_id).is_empty():
+        var mult := get_quality_price_multiplier(str(split_quality_key(quality_key)[0]))
+        return {"base": base, "multiplier": mult, "total": int(round(float(base) * mult))}
+    var price := get_price_for_quality(res_id, quality_key)
+    return {"base": base, "multiplier": price / float(base), "total": int(round(price))}
 
 # The tail of the row of the price of the quality level for the row tooltip of the "Resources" tab —
 #   " = x1.30 = 5", that is, everything EXCEPT the stars.
@@ -992,9 +1084,10 @@ func format_quality_price_scale_rows(res_id: String, quality_breakdown: Dictiona
     var rows: Array = []
     if res_id.is_empty() or get_base_price(res_id) <= 0.0:
         return rows
+    var totals := quality_level_totals(quality_breakdown)
     for qid in get_quality_levels():
         # The level is not in the storage — the price is not shown (including count == 0).
-        if int(quality_breakdown.get(qid, 0)) <= 0:
+        if int(totals.get(qid, 0)) <= 0:
             continue
         var tail := format_quality_price_tail(res_id, str(qid))
         if tail == "":
@@ -1003,86 +1096,116 @@ func format_quality_price_scale_rows(res_id: String, quality_breakdown: Dictiona
         rows.append({"qid": str(qid), "stars": stars, "tail": tail, "text": stars + tail})
     return rows
 
-# The stages of the price of a good at one quality level. The price is built by two independent
-# surcharges on the base price of the PLAIN good, and the row tooltip has to show each of them
-# apart from the total (see format_price_build_up_rows):
-#   base      — the price of the plain good at the ordinary level, in coins;
-#   quality   — the plain good at `qid` (the surcharge of the quality);
-#   additions — the decorated good at the ordinary level (the surcharge of the additions);
-#   total     — the decorated good at `qid` (both surcharges).
-# Each stage is { "price": coins, "mult": the coefficient against the base }, and the coefficient
-# is the one the DATA declares (the quality multiplier from data/qualities.json, the decoration
-# coefficient from the price of the good with the additions), not the ratio of the two rounded
-# prices: only then do the stages compose exactly (1.30 × 1.50 = 1.95) and only then does the
-# quality row of a decorated good show the same coefficient as the ladder row of a plain one.
-# For a plain good the "quality" price IS the total, and "additions" is 0 with the coefficient 1.
-func get_price_stages(pid: String, qid: String) -> Dictionary:
+# The stages of the price of one unit of a decorated good at one quality key. The price is a SUM
+# of parts, and the row tooltip has to show each part apart from the total (see
+# format_price_build_up_rows):
+#   base      — the price of the PLAIN good at the ordinary level, in coins;
+#   quality   — the base part at the level of the base of the key;
+#   additions — the additions at the level of the additions of the key;
+#   synergy   — the sum of the two after the synergy coefficient;
+#   total     — what the unit really costs.
+# Each stage is { "price": coins, "mult": the coefficient against the base }, and the coefficients
+# of the two parts ADD UP to the coefficient of their sum: the price of a decorated good is a sum
+# of parts, not a chain of surcharges, so there is nothing to multiply.
+# An empty dictionary for a plain good: it has a single stage, and its ladder row IS the price.
+func get_price_stages(pid: String, quality_key: String) -> Dictionary:
     var parsed := parse_generated_id(pid)
-    var base_pid: String = pid if parsed.is_empty() else str(parsed["base"])
+    if parsed.is_empty():
+        return {}
+    var base_pid := str(parsed["base"])
     var base_price := get_price(base_pid)
     if base_price <= 0.0:
         return {}
-    var plain := get_price_breakdown_for_quality(base_pid, qid)
-    var quality_mult := float(plain["multiplier"])
-    var quality_price := float(plain["total"])
-    var stages := {
-        "decorated": not parsed.is_empty(),
+    var parts := split_quality_key(quality_key)
+    var base_qid := str(parts[0])
+    var extra_qid := str(parts[1])
+    if extra_qid.is_empty():
+        extra_qid = base_qid
+    var quality_price := get_price(base_pid) * get_quality_price_multiplier(base_qid)
+    var extras_price := get_decorated_extras_value(base_pid, parsed["extras"], extra_qid)
+    var synergy := get_craft_extra_synergy_multiplier()
+    var total := (quality_price + extras_price) * synergy
+    return {
         "base": base_price,
-        "quality": {"price": quality_price, "mult": quality_mult},
-        "additions": {"price": 0.0, "mult": 1.0},
-        "total": {"price": quality_price, "mult": quality_mult},
+        "quality": {"price": quality_price, "mult": quality_price / base_price},
+        "additions": {"price": extras_price, "mult": extras_price / base_price},
+        "synergy": {"price": total, "mult": synergy},
+        "total": {"price": total, "mult": total / base_price},
     }
-    if not parsed.is_empty():
-        var decorated_price := get_price(pid)
-        var decorated_mult := decorated_price / base_price
-        stages["additions"] = {"price": decorated_price, "mult": decorated_mult}
-        stages["total"] = {
-            "price": float(get_price_breakdown_for_quality(pid, qid)["total"]),
-            "mult": quality_mult * decorated_mult,
-        }
-    return stages
 
-# The rows of the price build-up of a decorated good for the row tooltip of the "Resources" tab,
-# in the order the price is built: the quality surcharge of the plain good, the surcharge of the
-# additions, then the total for every level that is in the storage.
-#   [ { "kind": "quality",   "qid": "fine", "marker": "★★", "tail": "x1.30 = 26" },
-#     { "kind": "additions", "qid": "",     "marker": "+",  "tail": "x1.50 = 34" },
-#     { "kind": "total",     "qid": "fine", "marker": "★★", "tail": "x1.95 = 44" } ]
+# The rows of the price build-up of a decorated good for the row tooltip of the "Resources" tab:
+# the synergy coefficient ONCE (it belongs to the recipe, not to a key), then a block of three rows
+# per quality key that lies in the storage — the base part, the additions and the total:
+#   [ { "kind": "synergy",   "qid": "",       "marker": "×",  "tail": "x1.15" },
+#     { "kind": "quality",   "qid": "fine",   "marker": "★★", "tail": "x1.30 = 26" },
+#     { "kind": "additions", "qid": "common", "marker": "★",  "tail": "x2.75 = 55" },
+#     { "kind": "total",     "qid": "fine",   "marker": "★★", "tail": "x4.65 = 93" } ]
+# The synergy row carries no price: it multiplies every sum below it, and a price there would have
+# to be the price of one key while the row is about all of them.
+# The keys, not the levels, drive the rows: a fine garment with a common dye and the same garment
+# with a fine dye are two different units at two different prices, and each gets its own block.
 # The tail carries no leading " = ": the UI glues the row after its label ("Quality: "). An empty
 # array for a plain good — its ladder row already IS the price at that level.
 func format_price_build_up_rows(pid: String, quality_breakdown: Dictionary) -> Array:
     var out: Array = []
     if parse_generated_id(pid).is_empty():
         return out
-    var levels: Array = []
-    var stages_by_level := {}
-    for qid in get_quality_levels():
-        var level := str(qid)
-        if int(quality_breakdown.get(level, 0)) <= 0:
-            continue
-        var stages := get_price_stages(pid, level)
+    var keys := _quality_keys_in_order(quality_breakdown)
+    if keys.is_empty():
+        return out
+    out.append({
+        "kind": "synergy",
+        "qid": "",
+        "marker": SYNERGY_MARKER,
+        "tail": "x%.2f" % get_craft_extra_synergy_multiplier(),
+    })
+    for key in keys:
+        var stages := get_price_stages(pid, key)
         if stages.is_empty():
             continue
-        levels.append(level)
-        stages_by_level[level] = stages
-    if levels.is_empty():
-        return out
-    for level in levels:
-        out.append(_price_stage_row("quality", level, stages_by_level[level]["quality"]))
-    # The surcharge of the additions does not depend on the quality: one row for all the levels.
-    out.append(_price_stage_row("additions", "", stages_by_level[levels[0]]["additions"]))
-    for level in levels:
-        out.append(_price_stage_row("total", level, stages_by_level[level]["total"]))
+        var parts := split_quality_key(key)
+        var base_qid := str(parts[0])
+        var extra_qid := str(parts[1])
+        if extra_qid.is_empty():
+            extra_qid = base_qid
+        out.append(_price_stage_row("quality", base_qid, stages["quality"]))
+        out.append(_price_stage_row("additions", extra_qid, stages["additions"]))
+        out.append(_price_stage_row("total", quality_key_level(key), stages["total"]))
     return out
 
-# One row of the build-up: the marker of the stage (the stars of the level, or the plus of the
-# additions) and the calculation "x1.30 = 26" — the coefficient of the stage against the base
-# price of the plain good, and the price it gives.
+# The quality keys of a breakdown that hold units, from the worst to the best: by the level of the
+# good itself first, so that the blocks of the tooltip follow the ladder. Within one level the
+# order is by the level of the base and then by the level of the additions — it is stable, so the
+# rows do not jump when the storage changes.
+func _quality_keys_in_order(quality_breakdown: Dictionary) -> Array:
+    var levels := get_quality_levels()
+    var keys: Array = []
+    for key in quality_breakdown:
+        if int(quality_breakdown[key]) <= 0:
+            continue
+        keys.append(str(key))
+    keys.sort_custom(func(a, b):
+        var a_level := _level_index(quality_key_level(a), levels)
+        var b_level := _level_index(quality_key_level(b), levels)
+        if a_level != b_level:
+            return a_level < b_level
+        var a_parts := split_quality_key(a)
+        var b_parts := split_quality_key(b)
+        var a_base := _level_index(str(a_parts[0]), levels)
+        var b_base := _level_index(str(b_parts[0]), levels)
+        if a_base != b_base:
+            return a_base < b_base
+        return _level_index(str(a_parts[1]), levels) < _level_index(str(b_parts[1]), levels))
+    return keys
+
+# One row of the build-up: the marker of the stage (the stars of the level, the times sign of the
+# synergy) and the calculation "x1.30 = 26" — the coefficient of the stage against the base price
+# of the plain good, and the price it gives.
 func _price_stage_row(kind: String, level: String, stage: Dictionary) -> Dictionary:
     return {
         "kind": kind,
         "qid": level,
-        "marker": GENERATED_SEPARATOR if kind == "additions" else get_quality_stars(level),
+        "marker": SYNERGY_MARKER if kind == "synergy" else get_quality_stars(level),
         "tail": "x%.2f = %d" % [float(stage["mult"]), int(round(float(stage["price"])))],
     }
 
@@ -1111,17 +1234,32 @@ func get_quality_share_percent(count: int, quality_breakdown: Dictionary) -> int
 # level. An empty string if the breakdown is empty or contains only zeros.
 func format_quality_share_text(quality_breakdown: Dictionary) -> String:
     var parts: Array = []
+    var totals := quality_level_totals(quality_breakdown)
     for qid in get_quality_levels():
-        var count := int(quality_breakdown.get(qid, 0))
+        var count := int(totals.get(qid, 0))
         if count <= 0:
             continue
         parts.append("[color=#%s]%d%%[/color]" % [
             get_quality_color(str(qid)).to_html(false),
-            get_quality_share_percent(count, quality_breakdown)
+            get_quality_share_percent(count, totals)
         ])
     if parts.is_empty():
         return ""
     return "(" + "/".join(parts) + ")"
+
+# The units of a breakdown summed by the level of the good itself: {"fine": 7, "common": 2}.
+# A decorated good carries two levels per row (see "THE QUALITY KEY OF A STORAGE ROW"), while the
+# player reads the storage by the level of the good — the shares, the ladder and the quality
+# tooltip are built from this sum, so that a decorated row shows up on the ladder of its level.
+func quality_level_totals(quality_breakdown: Dictionary) -> Dictionary:
+    var out := {}
+    for key in quality_breakdown:
+        var count := int(quality_breakdown[key])
+        if count <= 0:
+            continue
+        var level := quality_key_level(str(key))
+        out[level] = int(out.get(level, 0)) + count
+    return out
 
 # Randomly chooses the quality level by the spawn_weight weights.
 func roll_quality() -> String:

@@ -330,6 +330,11 @@ func reset():
 # The quality of the result at the moment of the call — it is applied to each portion of the
 # output. The base ingredients give the weighted average of their qualities; the best additional
 # ingredient raises that level by one at most, and never lowers it (see the header of the file).
+#
+# The result is a quality KEY, not a level: a decorated good keeps the level of its base and the
+# level of its additions apart, because its price is the sum of the two parts, each at its own
+# level (see GameData, "THE QUALITY KEY OF A STORAGE ROW"). The level of the good itself is read
+# from the key by the same rule — the base raised by the best addition by one at most.
 func _compute_quality_from_consumed() -> String:
     var levels: Array = []
     if is_instance_valid(GameData):
@@ -351,27 +356,28 @@ func _compute_quality_from_consumed() -> String:
             else:
                 base[qid] = int(base.get(qid, 0)) + qty
 
-    var base_index := _nearest_level_index(base, levels)
+    var base_level := str(levels[_nearest_level_index(base, levels)])
     if best_extra < 0:
-        return str(levels[base_index])
-    var raised := mini(best_extra, base_index + 1)
-    return str(levels[maxi(base_index, raised)])
+        return base_level
+    return GameData.make_quality_key(base_level, str(levels[best_extra]))
 
-# The index of the quality level in the ordered list of levels (worst first). An unknown id
-# falls back to the worst level.
-func _level_index(quality_id: String, levels: Array) -> int:
-    return maxi(0, levels.find(quality_id))
+# The index of the quality level in the ordered list of levels (worst first). The argument is a
+# quality key — a decorated ingredient keeps the levels of its parts, and it counts as the level of
+# the good itself. An unknown key falls back to the worst level.
+func _level_index(quality_key: String, levels: Array) -> int:
+    return maxi(0, levels.find(GameData.quality_key_level(quality_key)))
 
 # The level nearest to the weighted average of the consumed amounts.
 func _nearest_level_index(consumed: Dictionary, levels: Array) -> int:
     var total: int = 0
     var weighted: float = 0.0
-    for qid in consumed:
-        var count: int = int(consumed[qid])
+    for key in consumed:
+        var count: int = int(consumed[key])
         if count <= 0:
             continue
         total += count
-        weighted += float(count) * float(GameData.get_quality_value(qid))
+        weighted += float(count) * float(GameData.get_quality_value(
+                GameData.quality_key_level(str(key))))
     if total <= 0:
         return 0
     var avg: float = weighted / float(total)
@@ -648,11 +654,15 @@ func _order_group_members_by_priority(members: Array, priority: String) -> Array
         return out
     # The best quality is the last one in the order of levels (GameData returns from
     # the worst to the best, see the comment in _consume_quality_detail in CityData).
+    # The stock is summed by the level of the good: a decorated good holds a key of two levels,
+    # and its units count as the level the good itself has.
     var best_qid: String = str(quality_levels[quality_levels.size() - 1])
     var sort_sign: int = -1 if priority == "best" else 1
     out.sort_custom(func(a, b):
-        var a_best: int = int(CityData.city_quality_detail.get(a, {}).get(best_qid, 0))
-        var b_best: int = int(CityData.city_quality_detail.get(b, {}).get(best_qid, 0))
+        var a_best: int = int(GameData.quality_level_totals(
+                CityData.city_quality_detail.get(a, {})).get(best_qid, 0))
+        var b_best: int = int(GameData.quality_level_totals(
+                CityData.city_quality_detail.get(b, {})).get(best_qid, 0))
         if a_best != b_best:
             return sort_sign * a_best < sort_sign * b_best
         # On a tie of the "best" stocks — we sort by the total amount.
