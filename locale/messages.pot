@@ -474,6 +474,9 @@ msgstr ""
 msgid "Additional ingredients"
 msgstr ""
 
+msgid "Additions: "
+msgstr ""
+
 msgid "Advance requirement met. Click to advance to the next era."
 msgstr ""
 
@@ -535,6 +538,9 @@ msgid "Available work: %.0f/sec (%d citizens)"
 msgstr ""
 
 msgid "Back"
+msgstr ""
+
+msgid "Base price: "
 msgstr ""
 
 msgid "Base: %.1f/sec"
@@ -1677,6 +1683,9 @@ msgstr ""
 msgid "Quality priority: use best/worst"
 msgstr ""
 
+msgid "Quality: "
+msgstr ""
+
 msgid "Quality: %s"
 msgstr ""
 
@@ -2302,6 +2311,9 @@ msgid "Toggle using this product as food"
 msgstr ""
 
 msgid "Tooltip delay (building details, treasury breakdown)"
+msgstr ""
+
+msgid "Total: "
 msgstr ""
 
 msgid "Total: %.1f/sec"

@@ -12,7 +12,8 @@
 #   5) a re-read of the data drops the generated records, and the rebuild brings them back;
 #   6) the price of a decorated good against its base — the row of the tooltips;
 #   7) the checkboxes follow the warehouse: a good that is not there cannot be ticked, while a
-#      chosen one stays clickable so that it can be unticked.
+#      chosen one stays clickable so that it can be unticked;
+#   8) the quality of the addition raises the quality of the result by one level at most.
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
@@ -54,6 +55,8 @@ func _run() -> void:
         _test_decoration_price(gd, state)
     if WATCHDOG.wants_case("extra_options_stock"):
         _test_extra_options_stock(gd, city, state)
+    if WATCHDOG.wants_case("quality_rule"):
+        _test_quality_rule(gd, city, state)
 
     WATCHDOG.report_skipped()
     if state["failed"]:
@@ -199,13 +202,13 @@ func _test_cycle(gd, city, state: Dictionary) -> void:
     city.idle_population = 0
     tm.assigned_buildings = {"0": true}
 
-    # gold_jewelry: 10 gold + 10 charcoal + 2 stones per 20 sec.
+    # gold_jewelry: 10 gold + 10 charcoal + 10 stones per 20 sec.
     city.city_storage.clear()
     city.add_to_storage("gold", 10, "common")
     city.add_to_storage("charcoal", 10, "common")
-    city.add_to_storage("lazurite_ore", 2, "common")
+    city.add_to_storage("lazurite_ore", 10, "common")
     # A few ticks of margin: the fractional accumulators of the ingredients do not divide the
-    # 20 seconds evenly (2 stones per cycle = 0.1 per tick).
+    # 20 seconds evenly (10 stones per cycle = 0.5 per tick).
     for _i in range(24):
         city.do_tick()
 
@@ -226,13 +229,59 @@ func _test_cycle(gd, city, state: Dictionary) -> void:
     var planned := 0
     for source in by_source:
         planned += int(by_source[source].get("amount", 0))
-    check(planned == 2,
+    check(planned == 10,
         "the additional ingredient is part of the planned demand (got %d)" % planned, state)
 
     main_map.queue_free()
 
 
-# --- 5. The rebuild after a re-read of the data ---
+# --- 5. The quality of the result against the quality of the additions ---
+# The additions are a minority of the mass (10 units of dye against 100 of wool), so a plain
+# weighted average over everything would never move the level. The best addition raises the base
+# by ONE level at most, and never lowers it.
+func _test_quality_rule(gd, city, state: Dictionary) -> void:
+    var main_map := Node.new()
+    main_map.name = "MainMap"
+    get_root().add_child(main_map)
+    var tm = load("res://scripts/townsfolk_manager.gd").new()
+    tm.name = "TownsfolkManager"
+    main_map.add_child(tm)
+
+    var pid: String = gd.make_generated_id("wool_clothes", ["woad"])
+    city.city_built_buildings = [ {"id": "weaver_house", "slots": [pid], "quality_priority": "best"}]
+    city.total_population = 1
+    city.idle_population = 0
+    tm.assigned_buildings = {"0": true}
+
+    var cases := [
+        ["common", "exceptional", "fine"],
+        ["common", "common", "common"],
+        ["exceptional", "common", "exceptional"],
+        ["fine", "exceptional", "exceptional"],
+        ["perfect", "perfect", "perfect"],
+    ]
+    for entry in cases:
+        var got := _run_wool_cycle(city, pid, str(entry[0]), str(entry[1]))
+        check(got == {str(entry[2]): 10},
+            "wool %s + dye %s must give %s (got %s)"
+                % [entry[0], entry[1], entry[2], str(got)], state)
+
+    main_map.queue_free()
+
+
+# One full cycle of wool clothes with the given qualities of the base and the addition. The
+# result is the breakdown by quality of what has reached the storage.
+func _run_wool_cycle(city, pid: String, base_q: String, extra_q: String) -> Dictionary:
+    city.city_storage.clear()
+    city.city_quality_detail.clear()
+    city.add_to_storage("wool", 20, base_q)
+    city.add_to_storage("woad", 10, extra_q)
+    for _i in range(6):
+        city.do_tick()
+    return city.city_quality_detail.get(pid, {}).duplicate()
+
+
+# --- 6. The rebuild after a re-read of the data ---
 func _test_rebuild(gd, city, state: Dictionary) -> void:
     var pid := "gold_jewelry+pearl"
     city.city_storage.clear()
@@ -268,8 +317,12 @@ func _test_decoration_price(gd, state: Dictionary) -> void:
     var ratio: float = price / gd.get_price(base_pid)
     check(ratio > 1.0,
         "a decorated good must be dearer than the plain one (x%.2f)" % ratio, state)
-    check(str(row.get("tail", "")) == " = x%.2f = %d" % [ratio, int(round(price))],
-        "the row shows the coefficient and the price, got \"%s\""
+    # The row quotes the two BASE prices, not the price of a level: the coefficient is the same at
+    # every level, so a single price here would contradict the quality ladder above the row.
+    var base_price: float = gd.get_price(base_pid)
+    check(str(row.get("tail", "")) == " = x%.2f (%d → %d)" % [
+            ratio, int(round(base_price)), int(round(price))],
+        "the row shows the coefficient and both prices, got \"%s\""
             % str(row.get("tail", "")), state)
     check(str(row.get("text", "")) == "+" + str(row.get("tail", "")),
         "the row is glued from the glyph and the tail", state)

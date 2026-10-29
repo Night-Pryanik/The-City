@@ -730,18 +730,23 @@ func get_decoration_price_multiplier(pid: String) -> float:
     return get_price(pid) / base_price
 
 # The row that explains the price of a decorated good in the tooltips of the "Resources" and
-# "Trade" tabs, in the same shape as the row of the quality ladder ("★★ = x1.30 = 5"):
-#   { "glyph": "+", "tail": " = x1.30 = 26", "text": "+ = x1.30 = 26" }
+# "Trade" tabs:
+#   { "glyph": "+", "tail": " = x1.70 (20 → 34)", "text": "+ = x1.70 (20 → 34)" }
 # The glyph is the plus sign that opens the additions in the name ("Wool Clothes (+Woad)"), so the
-# row reads as the price of that bracket. An empty dictionary for a plain good: there is nothing
-# to explain about it.
+# row reads as the price of that bracket. The two prices are the BASE prices of the plain and the
+# decorated good: the coefficient is a property of the recipe, not of the quality (every level is
+# multiplied by the same factor), so a row that quoted the price of one level would contradict the
+# quality ladder right above it. An empty dictionary for a plain good: nothing to explain.
 func format_decoration_price_row(pid: String) -> Dictionary:
-    if parse_generated_id(pid).is_empty():
+    var parsed := parse_generated_id(pid)
+    if parsed.is_empty():
         return {}
     var price := get_price(pid)
-    if price <= 0.0:
+    var base_price := get_price(str(parsed["base"]))
+    if price <= 0.0 or base_price <= 0.0:
         return {}
-    var tail := " = x%.2f = %d" % [get_decoration_price_multiplier(pid), int(round(price))]
+    var tail := " = x%.2f (%d → %d)" % [
+        price / base_price, int(round(base_price)), int(round(price))]
     return {"glyph": GENERATED_SEPARATOR, "tail": tail, "text": GENERATED_SEPARATOR + tail}
 
 # The generated good joins every goods group of its base: a group is how the rest of the game
@@ -997,6 +1002,89 @@ func format_quality_price_scale_rows(res_id: String, quality_breakdown: Dictiona
         var stars := get_quality_stars(str(qid))
         rows.append({"qid": str(qid), "stars": stars, "tail": tail, "text": stars + tail})
     return rows
+
+# The stages of the price of a good at one quality level. The price is built by two independent
+# surcharges on the base price of the PLAIN good, and the row tooltip has to show each of them
+# apart from the total (see format_price_build_up_rows):
+#   base      — the price of the plain good at the ordinary level, in coins;
+#   quality   — the plain good at `qid` (the surcharge of the quality);
+#   additions — the decorated good at the ordinary level (the surcharge of the additions);
+#   total     — the decorated good at `qid` (both surcharges).
+# Each stage is { "price": coins, "mult": the coefficient against the base }, and the coefficient
+# is the one the DATA declares (the quality multiplier from data/qualities.json, the decoration
+# coefficient from the price of the good with the additions), not the ratio of the two rounded
+# prices: only then do the stages compose exactly (1.30 × 1.50 = 1.95) and only then does the
+# quality row of a decorated good show the same coefficient as the ladder row of a plain one.
+# For a plain good the "quality" price IS the total, and "additions" is 0 with the coefficient 1.
+func get_price_stages(pid: String, qid: String) -> Dictionary:
+    var parsed := parse_generated_id(pid)
+    var base_pid: String = pid if parsed.is_empty() else str(parsed["base"])
+    var base_price := get_price(base_pid)
+    if base_price <= 0.0:
+        return {}
+    var plain := get_price_breakdown_for_quality(base_pid, qid)
+    var quality_mult := float(plain["multiplier"])
+    var quality_price := float(plain["total"])
+    var stages := {
+        "decorated": not parsed.is_empty(),
+        "base": base_price,
+        "quality": {"price": quality_price, "mult": quality_mult},
+        "additions": {"price": 0.0, "mult": 1.0},
+        "total": {"price": quality_price, "mult": quality_mult},
+    }
+    if not parsed.is_empty():
+        var decorated_price := get_price(pid)
+        var decorated_mult := decorated_price / base_price
+        stages["additions"] = {"price": decorated_price, "mult": decorated_mult}
+        stages["total"] = {
+            "price": float(get_price_breakdown_for_quality(pid, qid)["total"]),
+            "mult": quality_mult * decorated_mult,
+        }
+    return stages
+
+# The rows of the price build-up of a decorated good for the row tooltip of the "Resources" tab,
+# in the order the price is built: the quality surcharge of the plain good, the surcharge of the
+# additions, then the total for every level that is in the storage.
+#   [ { "kind": "quality",   "qid": "fine", "marker": "★★", "tail": "x1.30 = 26" },
+#     { "kind": "additions", "qid": "",     "marker": "+",  "tail": "x1.50 = 34" },
+#     { "kind": "total",     "qid": "fine", "marker": "★★", "tail": "x1.95 = 44" } ]
+# The tail carries no leading " = ": the UI glues the row after its label ("Quality: "). An empty
+# array for a plain good — its ladder row already IS the price at that level.
+func format_price_build_up_rows(pid: String, quality_breakdown: Dictionary) -> Array:
+    var out: Array = []
+    if parse_generated_id(pid).is_empty():
+        return out
+    var levels: Array = []
+    var stages_by_level := {}
+    for qid in get_quality_levels():
+        var level := str(qid)
+        if int(quality_breakdown.get(level, 0)) <= 0:
+            continue
+        var stages := get_price_stages(pid, level)
+        if stages.is_empty():
+            continue
+        levels.append(level)
+        stages_by_level[level] = stages
+    if levels.is_empty():
+        return out
+    for level in levels:
+        out.append(_price_stage_row("quality", level, stages_by_level[level]["quality"]))
+    # The surcharge of the additions does not depend on the quality: one row for all the levels.
+    out.append(_price_stage_row("additions", "", stages_by_level[levels[0]]["additions"]))
+    for level in levels:
+        out.append(_price_stage_row("total", level, stages_by_level[level]["total"]))
+    return out
+
+# One row of the build-up: the marker of the stage (the stars of the level, or the plus of the
+# additions) and the calculation "x1.30 = 26" — the coefficient of the stage against the base
+# price of the plain good, and the price it gives.
+func _price_stage_row(kind: String, level: String, stage: Dictionary) -> Dictionary:
+    return {
+        "kind": kind,
+        "qid": level,
+        "marker": GENERATED_SEPARATOR if kind == "additions" else get_quality_stars(level),
+        "tail": "x%.2f = %d" % [float(stage["mult"]), int(round(float(stage["price"])))],
+    }
 
 # --- THE SHARE OF THE LEVEL IN THE STORAGE (the percentages in the row of the list and in the breakdown tooltip) ---
 # The percent of count from the sum of the whole breakdown: the shares are computed from the TOTAL amount

@@ -36,7 +36,7 @@
 #     the count and share, the stars in the level colour. There are no prices in it at all:
 #     the full price list lives in the row tooltip.
 #  8. ROW tooltip on the "Resources" tab (show_flow_tooltip): under the base
-#     line "Price: N" (gold) comes the ladder "★★ = x1.30 = 5" over ALL
+#     line "Base price: N" (gold) comes the ladder "★★ = x1.30 = 5" over ALL
 #     levels that ACTUALLY sit in storage (the
 #     city_quality_detail breakdown), from worst to best. The ladder line is TWO-COLOURED:
 #     the stars — in their level colour (data/qualities.json), the price calculation —
@@ -391,7 +391,7 @@ func _check_quality_tooltip_render(gd) -> void:
     holder.queue_free()
 
 # Checks the quality price ladder in the ROW tooltip of the "Resources" tab
-# (ui_helpers.show_flow_tooltip): under the base "Price: N" comes a line for every
+# (ui_helpers.show_flow_tooltip): under the base "Base price: N" comes a line for every
 # level that ACTUALLY sits in storage (the city_quality_detail breakdown), in
 # the format "★★ = x1.30 = 5" and in its own level colour. For levels that are not
 # in storage there must be no lines — there is no point showing the price of goods
@@ -485,7 +485,7 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
     for child in ui.flow_tooltip_vbox.get_children():
         if child is Label:
             var label := child as Label
-            if label.text.begins_with("Price: "):
+            if label.text.begins_with("Base price: "):
                 base_line = label.text
         elif child is HBoxContainer and child.get_child_count() == 2:
             # A ladder row is an HBox of two Labels: the stars in the level colour and
@@ -506,7 +506,7 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
                 "color": tail_label.get_theme_color("font_color"),
                 "width": tail_label.size.x,
             })
-    check(base_line == "Price: %d" % int(round(gd.get_price(sample_id))),
+    check(base_line == "Base price: %d" % int(round(gd.get_price(sample_id))),
         "the row tooltip must contain the base price, got \"%s\"" % base_line)
     check(scale_stars.size() == 3,
         "the row tooltip must have 3 rows (only levels from storage), shown %d: %s"
@@ -551,41 +551,81 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
     await process_frame
     check(_count_scale_lines(ui) == 0,
         "with an empty breakdown there must be no quality rows in the tooltip")
-    # A plain good has nothing to explain about its price: no decoration row either.
-    check(_count_decoration_rows(ui) == 0,
-        "a plain good must have no decoration row in the tooltip")
+    # A plain good has a single surcharge: its ladder row is the price, there is nothing to
+    # decompose.
+    check(_count_build_up_rows(ui) == 0,
+        "a plain good must have no build-up rows in the tooltip")
 
-    # A decorated good ("Wool Clothes (+Woad)") explains WHY it costs more than the plain one:
-    # after the ladder comes the row of the additions in the same shape (" + = x1.30 = 26").
+    # A decorated good ("Wool Clothes (+Woad)") explains the price in STAGES: the quality surcharge
+    # on the plain good, the surcharge of the additions, and the total. One row per stage, each
+    # named, so that no row has to mean two things at once.
     var decorated := _pick_decorated_good(gd)
     if decorated.is_empty():
-        check(false, "the data has no recipe with additional ingredients to check the row against")
+        check(false, "the data has no recipe with additional ingredients to check the rows against")
     else:
         # The record of a generated good is created when its recipe is built (or when the good
         # first reaches the storage) — a good that does not exist has no price and no row.
         gd.get_craft(decorated)
-        var decoration: Dictionary = gd.format_decoration_price_row(decorated)
-        check(not decoration.is_empty(),
-            "a decorated good must have a decoration row: %s" % decorated)
-        ui.show_flow_tooltip(Vector2(50, 50), "Goods", {}, decorated, {}, {}, {"common": 5})
+        # The stages compose: the quality coefficient of the DATA times the decoration
+        # coefficient gives the coefficient of the total, and the quality coefficient is the very
+        # one the ladder row of the plain good shows (1.30, not the ratio of the rounded prices).
+        var levels: Array = gd.get_quality_levels()
+        var stage_level := "fine" if levels.has("fine") else str(levels[0])
+        var stages: Dictionary = gd.get_price_stages(decorated, stage_level)
+        check(not stages.is_empty(), "a decorated good must have price stages")
+        if not stages.is_empty():
+            check(is_equal_approx(
+                    float(stages["quality"]["mult"]) * float(stages["additions"]["mult"]),
+                    float(stages["total"]["mult"])),
+                "the coefficients of the stages must compose: %s × %s ≠ %s" % [
+                    str(stages["quality"]["mult"]), str(stages["additions"]["mult"]),
+                    str(stages["total"]["mult"])])
+            check(is_equal_approx(float(stages["quality"]["mult"]),
+                    gd.get_quality_price_multiplier(stage_level)),
+                "the quality stage must carry the declared multiplier (%s), got %s"
+                % [str(gd.get_quality_price_multiplier(stage_level)),
+                    str(stages["quality"]["mult"])])
+        var decorated_breakdown := {"common": 5}
+        var expected: Array = gd.format_price_build_up_rows(decorated, decorated_breakdown)
+        check(expected.size() == 3,
+            "the build-up of a decorated good has three rows (quality, additions, total), got %d"
+            % expected.size())
+        ui.show_flow_tooltip(Vector2(50, 50), "Goods", {}, decorated, {}, {}, decorated_breakdown)
         await process_frame
-        var decoration_cells := _decoration_cells(ui)
-        check(decoration_cells.size() == 1,
-            "the tooltip of a decorated good must carry exactly one decoration row, shown %d"
-            % decoration_cells.size())
-        if decoration_cells.size() == 1:
-            check(str(decoration_cells[0]["glyph"]) == "  " + str(decoration["glyph"]),
-                "the glyph of the row must be the plus of the additions, got \"%s\""
-                % str(decoration_cells[0]["glyph"]))
-            check(str(decoration_cells[0]["tail"]) == str(decoration["tail"]),
-                "the tail of the row must be the computed one: \"%s\" instead of \"%s\""
-                % [str(decoration_cells[0]["tail"]), str(decoration["tail"])])
-            check(str(decoration_cells[0]["tail"]).begins_with(" = x"),
-                "the row must show the coefficient of the price: \"%s\""
-                % str(decoration_cells[0]["tail"]))
-            check(float(decoration_cells[0]["width"]) > 20.0,
-                "the decoration row collapsed in width (%s px)"
-                % str(decoration_cells[0]["width"]))
+        var cells := _build_up_cells(ui)
+        check(cells.size() == expected.size(),
+            "the tooltip must carry %d build-up rows, shown %d" % [expected.size(), cells.size()])
+        for i in range(mini(cells.size(), expected.size())):
+            var row: Dictionary = expected[i]
+            check(str(cells[i]["marker"]) == "  " + str(row["marker"]),
+                "the marker of row #%d must be \"%s\", got \"%s\""
+                % [i, "  " + str(row["marker"]), str(cells[i]["marker"])])
+            check(str(cells[i]["label"]) == _stage_label(str(row["kind"])),
+                "the name of the stage of row #%d must be \"%s\", got \"%s\""
+                % [i, _stage_label(str(row["kind"])), str(cells[i]["label"])])
+            check(str(cells[i]["tail"]) == str(row["tail"]),
+                "the calculation of row #%d must be \"%s\", got \"%s\""
+                % [i, str(row["tail"]), str(cells[i]["tail"])])
+            check(float(cells[i]["width"]) > 20.0,
+                "row #%d collapsed in width (%s px)" % [i, str(cells[i]["width"])])
+        # The chain starts at the price of the PLAIN base: the additions are a stage of their own.
+        var parsed: Dictionary = gd.parse_generated_id(decorated)
+        var plain_price := int(round(gd.get_price(str(parsed["base"]))))
+        var decorated_base_line := ""
+        for child in ui.flow_tooltip_vbox.get_children():
+            if child is Label and str(child.text).begins_with("Base price: "):
+                decorated_base_line = str(child.text)
+        check(decorated_base_line == "Base price: %d" % plain_price,
+            "the base line of a decorated good must be the plain base (%d), got \"%s\""
+            % [plain_price, decorated_base_line])
+        # The last row is the total, and it carries the price the game really uses for the level.
+        if not expected.is_empty():
+            var last: Dictionary = expected[expected.size() - 1]
+            check(str(last["kind"]) == "total", "the last row of the build-up is the total")
+            var level_price := int(gd.get_price_breakdown_for_quality(decorated, "common")["total"])
+            check(str(last["tail"]).ends_with(" = %d" % level_price),
+                "the total row must end with the price of the level (%d): \"%s\""
+                % [level_price, str(last["tail"])])
 
     # Goods without a price (science): there are no rows even with a non-empty breakdown.
     ui.show_flow_tooltip(Vector2(50, 50), "Science", {}, "science", {}, {},
@@ -593,19 +633,19 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
     await process_frame
     check(_count_scale_lines(ui) == 0,
         "for goods without a price there must be no quality rows")
-    check(_count_decoration_rows(ui) == 0,
-        "for goods without a price there must be no decoration row")
+    check(_count_build_up_rows(ui) == 0,
+        "for goods without a price there must be no build-up rows")
 
     holder.queue_free()
 
 # Counts the quality price ladder rows in the row tooltip. The 2-space indent
-# distinguishes them from the base "Price: N", which has no indent.
+# distinguishes them from the base "Base price: N", which has no indent.
 func _count_scale_lines(ui) -> int:
     var result := 0
     for child in ui.flow_tooltip_vbox.get_children():
         # A ladder row is an HBox of two Labels, the first of them "  ★…" (the second —
         # the gold calculation tail). The 2-space indent distinguishes the ladder from
-        # the base "Price: N", which has no indent.
+        # the base "Base price: N", which has no indent.
         if not (child is HBoxContainer) or child.get_child_count() != 2:
             continue
         var stars_label := child.get_child(0) as Label
@@ -613,29 +653,40 @@ func _count_scale_lines(ui) -> int:
             result += 1
     return result
 
-# The rows of the price of a decorated good in the row tooltip: an HBox of two Labels, the first
-# of them "  +" — the plus of the additions in the name (GameData.format_decoration_price_row).
-# The shape is deliberately the one of the quality ladder: the player reads both as one table.
-func _decoration_cells(ui) -> Array:
+# The rows of the price build-up in the row tooltip: an HBox of THREE Labels — the marker (the
+# stars of the level, or the plus of the additions), the name of the stage and the gold
+# calculation. Three children is what tells them apart from a plain ladder row, which has two.
+func _build_up_cells(ui) -> Array:
     var cells: Array = []
     for child in ui.flow_tooltip_vbox.get_children():
-        if not (child is HBoxContainer) or child.get_child_count() != 2:
+        if not (child is HBoxContainer) or child.get_child_count() != 3:
             continue
-        var glyph_label := child.get_child(0) as Label
-        var tail_label := child.get_child(1) as Label
-        if glyph_label == null or tail_label == null:
-            continue
-        if not str(glyph_label.text).begins_with("  +"):
+        var marker := child.get_child(0) as Label
+        var stage := child.get_child(1) as Label
+        var tail := child.get_child(2) as Label
+        if marker == null or stage == null or tail == null:
             continue
         cells.append({
-            "glyph": str(glyph_label.text),
-            "tail": str(tail_label.text),
-            "width": tail_label.size.x,
+            "marker": str(marker.text),
+            "label": str(stage.text),
+            "tail": str(tail.text),
+            "width": tail.size.x,
         })
     return cells
 
-func _count_decoration_rows(ui) -> int:
-    return _decoration_cells(ui).size()
+func _count_build_up_rows(ui) -> int:
+    return _build_up_cells(ui).size()
+
+# The name of a stage of the price build-up (the test pins the locale to "en").
+func _stage_label(kind: String) -> String:
+    match kind:
+        "quality":
+            return "Quality: "
+        "additions":
+            return "Additions: "
+        "total":
+            return "Total: "
+    return ""
 
 # The first good of the data that is generated from a base recipe and an additional ingredient —
 # taken from the data, so that a re-balanced registry does not break the test.

@@ -25,11 +25,18 @@
 #                                     # across all the cycles (it is NOT reset in
 #                                     # reset(); for science — the weighted average
 #                                     # special_yield of the mix, see CityData.do_tick)
+#     "extra": bool                   # the slot is an additional ingredient of the recipe
+#                                     # (see "The quality of the result" below)
 #   }
 #
-# The quality of the result is calculated at the moment of the craft completion as a
-# weighted average of the qualities of all the "inputs" (consumed) — this is a direct analogue
-# of the current behaviour of quality_from_breakdown().
+# THE QUALITY OF THE RESULT
+# The base ingredients give a weighted average of their qualities, rounded to the nearest level.
+# The additional ingredients are a minority of the mass — 10 units of dye against 20 of wool — so
+# a plain average over everything would let a cheap addition DILUTE a good base: exceptional wool
+# with a common dye averages 2.33 and drops to "fine". Instead the best additional ingredient
+# RAISES the level of the base by one at most, and never lowers it: a plain garment with an
+# exceptional dye becomes "fine", a perfect garment stays perfect even with a common dye. That is
+# why the slot knows whether it is an additional ingredient.
 #
 # The state is serialized via serialize()/deserialize() and saved
 # together with city_built_buildings (without a separate key in the save).
@@ -320,31 +327,43 @@ func reset():
     for pid in released:
         released[pid] = 0
 
-# An internal helper: the quality of the result = the weighted average over all the
-# "inputs" of the container (at the moment of the call). It is used to determine
-# the quality of each "portion" of the output.
+# The quality of the result at the moment of the call — it is applied to each portion of the
+# output. The base ingredients give the weighted average of their qualities; the best additional
+# ingredient raises that level by one at most, and never lowers it (see the header of the file).
 func _compute_quality_from_consumed() -> String:
-    var breakdown := {}
-    for slot in ingredient_slots:
-        for entry in slot.get("consumed", []):
-            var qty: int = int(entry.get("qty", 0))
-            var qid: String = str(entry.get("quality", "common"))
-            if qty <= 0:
-                continue
-            breakdown[qid] = int(breakdown.get(qid, 0)) + qty
-    if breakdown.is_empty():
-        return "common"
-    return _quality_from_breakdown(breakdown)
-
-# A local copy of CityData.quality_from_breakdown — without an access to the autoload
-# on every tick. The semantics are 1-to-1: the weighted average of the qualities
-# rounded to the nearest level.
-func _quality_from_breakdown(consumed: Dictionary) -> String:
     var levels: Array = []
     if is_instance_valid(GameData):
         levels = GameData.get_quality_levels()
     if levels.is_empty():
         return "common"
+
+    var base := {}
+    var best_extra := -1
+    for slot in ingredient_slots:
+        var is_extra := bool(slot.get("extra", false))
+        for entry in slot.get("consumed", []):
+            var qty: int = int(entry.get("qty", 0))
+            if qty <= 0:
+                continue
+            var qid: String = str(entry.get("quality", "common"))
+            if is_extra:
+                best_extra = maxi(best_extra, _level_index(qid, levels))
+            else:
+                base[qid] = int(base.get(qid, 0)) + qty
+
+    var base_index := _nearest_level_index(base, levels)
+    if best_extra < 0:
+        return str(levels[base_index])
+    var raised := mini(best_extra, base_index + 1)
+    return str(levels[maxi(base_index, raised)])
+
+# The index of the quality level in the ordered list of levels (worst first). An unknown id
+# falls back to the worst level.
+func _level_index(quality_id: String, levels: Array) -> int:
+    return maxi(0, levels.find(quality_id))
+
+# The level nearest to the weighted average of the consumed amounts.
+func _nearest_level_index(consumed: Dictionary, levels: Array) -> int:
     var total: int = 0
     var weighted: float = 0.0
     for qid in consumed:
@@ -354,16 +373,16 @@ func _quality_from_breakdown(consumed: Dictionary) -> String:
         total += count
         weighted += float(count) * float(GameData.get_quality_value(qid))
     if total <= 0:
-        return "common"
+        return 0
     var avg: float = weighted / float(total)
-    var best_qid: String = str(levels[0])
+    var best_index: int = 0
     var best_diff: float = 1e9
-    for qid in levels:
-        var diff: float = abs(float(GameData.get_quality_value(qid)) - avg)
+    for i in range(levels.size()):
+        var diff: float = absf(float(GameData.get_quality_value(str(levels[i]))) - avg)
         if diff < best_diff:
             best_diff = diff
-            best_qid = str(qid)
-    return best_qid
+            best_index = i
+    return best_index
 
 # --- PROGRESS FOR THE UI (0..1) ---
 # The readiness degree = min(the ingredients fill, time/craft_time).
@@ -456,6 +475,7 @@ func _restore_from_slot_data(recipe: Dictionary, slot_data: Dictionary):
 # (see the alternative ingredients in the header of GameData.gd).
 func _build_slots_from_recipe(recipe: Dictionary) -> Array:
     var out: Array = []
+    var extras: Array = recipe.get("extras", [])
     for or_group in GameData.craft_alternatives(recipe):
         if or_group.is_empty():
             continue
@@ -472,10 +492,12 @@ func _build_slots_from_recipe(recipe: Dictionary) -> Array:
             "filled": 0,
             "fractional": 0.0,
             "consumed": [],
-            "consumed_pids": {}
+            "consumed_pids": {},
+            "extra": false
         }
         if or_group.size() == 1:
             _apply_variant_to_slot(slot, or_group[0])
+            slot["extra"] = str(slot["pid"]) in extras
         else:
             slot["kind"] = "alternatives"
             slot["variants"] = or_group

@@ -474,6 +474,9 @@ msgstr "Дополнительный ингредиент расходует н�
 msgid "Additional ingredients"
 msgstr "Дополнительные ингредиенты"
 
+msgid "Additions: "
+msgstr "Добавки: "
+
 msgid "Advance requirement met. Click to advance to the next era."
 msgstr "Условие перехода выполнено. Нажмите, чтобы перейти в следующую эпоху."
 
@@ -536,6 +539,9 @@ msgstr "Доступный труд: %.0f/сек (%d жителей)"
 
 msgid "Back"
 msgstr "Назад"
+
+msgid "Base price: "
+msgstr "Базовая цена: "
 
 msgid "Base: %.1f/sec"
 msgstr "База: %.1f/сек"
@@ -1677,6 +1683,9 @@ msgstr "Приоритет качества: %s (нажмите чтобы пе�
 msgid "Quality priority: use best/worst"
 msgstr "Приоритет качества: используйте лучшее/худшее"
 
+msgid "Quality: "
+msgstr "Качество: "
+
 msgid "Quality: %s"
 msgstr "Качество: %s"
 
@@ -2303,6 +2312,9 @@ msgstr "Вкл/выкл использование этого продукта �
 
 msgid "Tooltip delay (building details, treasury breakdown)"
 msgstr "Задержка появления всплывающих подсказок (детали здания, разбивка казны)"
+
+msgid "Total: "
+msgstr "Итого: "
 
 msgid "Total: %.1f/sec"
 msgstr "Итого: %.1f/сек"

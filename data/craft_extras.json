@@ -14,7 +14,10 @@
 //   kind        — the group of the checkbox list, one of "craft_extra_kinds" below. A recipe
 //                 accepts the kinds it declares, and nothing else;
 //   amount      — how many units are spent per ONE craft cycle of the recipe (not per unit of
-//                 the result: the batch of jewelry is 10 units, and it takes 2 stones);
+//                 the result: the batch of jewelry is 10 units, and it takes 10 stones). In the
+//                 vanilla data every recipe amount is at least 10 — the unit the goods are
+//                 measured in. It is a convention of the data, not a rule of the code: a mod may
+//                 lower it, and nothing here assumes the floor;
 //   price_bonus — the premium of the addition as a fraction of the value of the good: 0.5 = the
 //                 good costs half again as much (x1.5). The material itself is paid for on top of
 //                 it at its own price, so a cheap stone never makes a decorated good cheaper than
@@ -28,25 +31,25 @@
     { "id": "dye", "name": "Dyes" }
   ],
   "craft_extras": [
-    { "id": "lazurite_ore", "name": "Lazurite", "kind": "gemstone", "amount": 2, "price_bonus": 0.35, "unlock_tech": "jewelry" },
-    { "id": "malachite_ore", "name": "Malachite", "kind": "gemstone", "amount": 2, "price_bonus": 0.30, "unlock_tech": "jewelry" },
-    { "id": "nephrite", "kind": "gemstone", "amount": 2, "price_bonus": 0.25, "unlock_tech": "jewelry" },
-    { "id": "porphyry", "kind": "gemstone", "amount": 2, "price_bonus": 0.30, "unlock_tech": "jewelry" },
-    { "id": "pearl", "kind": "gemstone", "amount": 2, "price_bonus": 0.40, "unlock_tech": "jewelry" },
-    { "id": "coral", "kind": "gemstone", "amount": 2, "price_bonus": 0.40, "unlock_tech": "jewelry" },
+    { "id": "lazurite_ore", "name": "Lazurite", "kind": "gemstone", "amount": 10, "price_bonus": 0.35, "unlock_tech": "jewelry" },
+    { "id": "malachite_ore", "name": "Malachite", "kind": "gemstone", "amount": 10, "price_bonus": 0.30, "unlock_tech": "jewelry" },
+    { "id": "nephrite", "kind": "gemstone", "amount": 10, "price_bonus": 0.25, "unlock_tech": "jewelry" },
+    { "id": "porphyry", "kind": "gemstone", "amount": 10, "price_bonus": 0.30, "unlock_tech": "jewelry" },
+    { "id": "pearl", "kind": "gemstone", "amount": 10, "price_bonus": 0.40, "unlock_tech": "jewelry" },
+    { "id": "coral", "kind": "gemstone", "amount": 10, "price_bonus": 0.40, "unlock_tech": "jewelry" },
 
-    { "id": "ochre", "kind": "dye", "amount": 2, "price_bonus": 0.15, "unlock_tech": "dyeing" },
-    { "id": "woad", "kind": "dye", "amount": 2, "price_bonus": 0.20, "unlock_tech": "dyeing" },
-    { "id": "rose_madder", "kind": "dye", "amount": 2, "price_bonus": 0.25, "unlock_tech": "dyeing" },
-    { "id": "henna", "kind": "dye", "amount": 2, "price_bonus": 0.30, "unlock_tech": "dyeing" },
-    { "id": "carthamin", "kind": "dye", "amount": 2, "price_bonus": 0.35, "unlock_tech": "dyeing" },
-    { "id": "malachite", "kind": "dye", "amount": 2, "price_bonus": 0.35, "unlock_tech": "dyeing" },
-    { "id": "campeche", "kind": "dye", "amount": 2, "price_bonus": 0.40, "unlock_tech": "dyeing" },
-    { "id": "sepia", "kind": "dye", "amount": 2, "price_bonus": 0.45, "unlock_tech": "dyeing" },
-    { "id": "indigo", "kind": "dye", "amount": 2, "price_bonus": 0.50, "unlock_tech": "dyeing" },
-    { "id": "cinnabar", "kind": "dye", "amount": 2, "price_bonus": 0.55, "unlock_tech": "dyeing" },
-    { "id": "carmine", "kind": "dye", "amount": 2, "price_bonus": 0.65, "unlock_tech": "dyeing" },
-    { "id": "ultramarine", "kind": "dye", "amount": 2, "price_bonus": 0.75, "unlock_tech": "dyeing" },
-    { "id": "purple", "kind": "dye", "amount": 2, "price_bonus": 1.00, "unlock_tech": "dyeing" }
+    { "id": "ochre", "kind": "dye", "amount": 10, "price_bonus": 0.15, "unlock_tech": "dyeing" },
+    { "id": "woad", "kind": "dye", "amount": 10, "price_bonus": 0.20, "unlock_tech": "dyeing" },
+    { "id": "rose_madder", "kind": "dye", "amount": 10, "price_bonus": 0.25, "unlock_tech": "dyeing" },
+    { "id": "henna", "kind": "dye", "amount": 10, "price_bonus": 0.30, "unlock_tech": "dyeing" },
+    { "id": "carthamin", "kind": "dye", "amount": 10, "price_bonus": 0.35, "unlock_tech": "dyeing" },
+    { "id": "malachite", "kind": "dye", "amount": 10, "price_bonus": 0.35, "unlock_tech": "dyeing" },
+    { "id": "campeche", "kind": "dye", "amount": 10, "price_bonus": 0.40, "unlock_tech": "dyeing" },
+    { "id": "sepia", "kind": "dye", "amount": 10, "price_bonus": 0.45, "unlock_tech": "dyeing" },
+    { "id": "indigo", "kind": "dye", "amount": 10, "price_bonus": 0.50, "unlock_tech": "dyeing" },
+    { "id": "cinnabar", "kind": "dye", "amount": 10, "price_bonus": 0.55, "unlock_tech": "dyeing" },
+    { "id": "carmine", "kind": "dye", "amount": 10, "price_bonus": 0.65, "unlock_tech": "dyeing" },
+    { "id": "ultramarine", "kind": "dye", "amount": 10, "price_bonus": 0.75, "unlock_tech": "dyeing" },
+    { "id": "purple", "kind": "dye", "amount": 10, "price_bonus": 1.00, "unlock_tech": "dyeing" }
   ]
 }

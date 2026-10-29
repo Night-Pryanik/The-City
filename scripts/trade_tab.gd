@@ -737,7 +737,7 @@ func _price_tooltip_text(row: Dictionary) -> String:
     return "\n".join(lines)
 
 # The price of a decorated good against its plain base — the same row as on the "Resources" tab
-# (GameData.format_decoration_price_row): " + = x1.30 = 26". It explains why the unit costs more
+# (GameData.format_decoration_price_row): " + = x1.70 (20 → 34)". It explains why the unit costs more
 # than the plain good of the same kind, which the header of the member ("(base 26)") does not say.
 func _append_decoration_price(lines: Array, member: String) -> void:
     var decoration_row := GameData.format_decoration_price_row(member)
