@@ -8,10 +8,6 @@ const HUD_MESSAGE_IMPORTANT := 1
 # id: "gold_jewelry+lazurite_ore". See "Additional ingredients of a recipe" below.
 const GENERATED_SEPARATOR := "+"
 
-# The marker of the synergy row of the price build-up: the coefficient is not a part of the good
-# but a multiplier over their sum, and the times sign says exactly that.
-const SYNERGY_MARKER := "×"
-
 var terrains: Dictionary = {}
 var covers: Dictionary = {}
 var climate_zones: Dictionary = {} # id -> the climate zone (data/climate.json)
@@ -394,6 +390,13 @@ func get_price_multiplier(res_id: String) -> float:
 func get_price(res_id: String) -> float:
     return get_base_price(res_id) * get_price_multiplier(res_id)
 
+# A price in the tooltips: whole coins without a fractional part, the fractional ones (after the
+# dynamic market multipliers) — with one digit.
+func format_coins(value: float) -> String:
+    if value == floor(value):
+        return str(int(value))
+    return "%.1f" % value
+
 # Enables the price multiplier (factor — the name of the factor, e.g. "famine" or
 # "market_glut"). The effect is applied to a particular resource by its id; in order to
 # spread it to a group, apply it to all the members of the group.
@@ -705,16 +708,19 @@ func get_price_with_extra(base_pid: String, extra: String, base_qid: String, ext
     total += get_extra_price_part(base_pid, extra, extra_qid)
     return total * get_craft_extra_synergy_multiplier()
 
-# What the addition costs per ONE unit of the result at its own quality level. The addition is
-# declared per craft cycle, while the price is per unit — hence the division by the output of
+# What the addition costs per ONE unit of the result at the ordinary level of quality. The addition
+# is declared per craft cycle, while the price is per unit — hence the division by the output of
 # the base recipe.
-func get_extra_price_part(base_pid: String, extra: String, extra_qid: String) -> float:
+func get_extra_base_price_part(base_pid: String, extra: String) -> float:
     if extra.is_empty():
         return 0.0
     var batch := float(_generated_batch(base_pid))
     var record: Dictionary = craft_extras.get(extra, {})
-    return get_price(extra) * float(record.get("amount", 1)) / batch \
-            * get_quality_price_multiplier(extra_qid)
+    return get_price(extra) * float(record.get("amount", 1)) / batch
+
+# What the addition costs per ONE unit of the result at its own quality level.
+func get_extra_price_part(base_pid: String, extra: String, extra_qid: String) -> float:
+    return get_extra_base_price_part(base_pid, extra) * get_quality_price_multiplier(extra_qid)
 
 # The coefficient that makes a good with an additional ingredient worth more than its parts sold
 # apart (data/game_balance.json, craft_extra_synergy).
@@ -1092,9 +1098,12 @@ func format_quality_price_scale_rows(res_id: String, quality_breakdown: Dictiona
 #   additions — the addition at the level of the additions of the key;
 #   synergy   — the sum of the two after the synergy coefficient;
 #   total     — what the unit really costs.
-# Each stage is { "price": coins, "mult": the coefficient against the base }, and the coefficients
-# of the two parts ADD UP to the coefficient of their sum: the price of such a good is a sum
-# of parts, not a chain of surcharges, so there is nothing to multiply.
+# Each stage is { "price": coins, "mult": the coefficient against the base }; the addition also
+# carries "base" (its price per unit of the result at the ordinary level) and "quality_mult" (its
+# own quality coefficient), because the price of the addition follows its own price in the data and
+# not the price of the base. The coefficients of the two parts ADD UP to the coefficient of their
+# sum: the price of such a good is a sum of parts, not a chain of surcharges, so there is nothing to
+# multiply.
 # An empty dictionary for a plain good: it has a single stage, and its ladder row IS the price.
 func get_price_stages(pid: String, quality_key: String) -> Dictionary:
     var parsed := parse_generated_id(pid)
@@ -1110,55 +1119,60 @@ func get_price_stages(pid: String, quality_key: String) -> Dictionary:
     if extra_qid.is_empty():
         extra_qid = base_qid
     var quality_price := get_price(base_pid) * get_quality_price_multiplier(base_qid)
-    var extras_price := get_extra_price_part(base_pid, str(parsed["extra"]), extra_qid)
+    var extras_base := get_extra_base_price_part(base_pid, str(parsed["extra"]))
+    var extras_quality_mult := get_quality_price_multiplier(extra_qid)
+    var extras_price := extras_base * extras_quality_mult
     var synergy := get_craft_extra_synergy_multiplier()
     var total := (quality_price + extras_price) * synergy
     return {
         "base": base_price,
         "quality": {"price": quality_price, "mult": quality_price / base_price},
-        "additions": {"price": extras_price, "mult": extras_price / base_price},
+        "additions": {
+            "price": extras_price, "mult": extras_price / base_price,
+            "base": extras_base, "quality_mult": extras_quality_mult,
+        },
         "synergy": {"price": total, "mult": synergy},
         "total": {"price": total, "mult": total / base_price},
     }
 
-# The rows of the price build-up of a generated good for the row tooltip of the "Resources" tab:
-# the synergy coefficient ONCE (it belongs to the recipe, not to a key), then a block of three rows
-# per quality key that lies in the storage — the base part, the addition and the total:
-#   [ { "kind": "synergy",   "qid": "",       "marker": "×",  "tail": "x1.15" },
-#     { "kind": "quality",   "qid": "fine",   "marker": "★★", "tail": "x1.30 = 26" },
-#     { "kind": "additions", "qid": "common", "marker": "★",  "tail": "x2.75 = 55" },
-#     { "kind": "total",     "qid": "fine",   "marker": "★★", "tail": "x4.65 = 93" } ]
-# The synergy row carries no price: it multiplies every sum below it, and a price there would have
-# to be the price of one key while the row is about all of them.
+# The rows of the price build-up of a generated good for the row tooltip of the "Resources" tab —
+# the ladder drawn under "Base prices: good: X, addition: Y", one block per quality key that lies
+# in the storage:
+#   [ { "kind": "quality",   "qid": "fine",    "marker": "★★",  "tail": "x1.30" },
+#     { "kind": "additions", "qid": "perfect", "marker": "★★★", "tail": "x2.30" },
+#     { "kind": "synergy",   "qid": "",        "marker": "",    "tail": "x1.15" },
+#     { "kind": "total",     "qid": "fine",    "marker": "★★",
+#       "tail": "(16 x 1.30 + 5 x 2.30) x 1.15 ≈ 37" } ]
+# The marker is the level of the units the coefficient belongs to; the craft coefficient has no
+# level of its own, so its row carries no marker.
 # The keys, not the levels, drive the rows: a fine garment with a common dye and the same garment
 # with a fine dye are two different units at two different prices, and each gets its own block.
-# The tail carries no leading " = ": the UI glues the row after its label ("Quality: "). An empty
-# array for a plain good — its ladder row already IS the price at that level.
+# Every row carries the coefficient that multiplies the price of its part: the level coefficient of
+# the base, the quality coefficient of the addition (the addition is a good of its own, so its price
+# grows with its own quality) and the coefficient of the recipe. The total row cannot express the
+# price as one coefficient, so it spells the formula out: the price of the base at its level plus
+# the price of the addition at its own level, times the craft coefficient. The coefficients are
+# rounded for display, so the result is approximate; the player can check it with a calculator.
+# The rows carry no " = " prefix: the UI glues the calculation after the name of the stage.
+# An empty array for a plain good — its ladder row already IS the price at that level.
 func format_price_build_up_rows(pid: String, quality_breakdown: Dictionary) -> Array:
     var out: Array = []
     if parse_generated_id(pid).is_empty():
         return out
-    var keys := _quality_keys_in_order(quality_breakdown)
-    if keys.is_empty():
-        return out
-    out.append({
-        "kind": "synergy",
-        "qid": "",
-        "marker": SYNERGY_MARKER,
-        "tail": "x%.2f" % get_craft_extra_synergy_multiplier(),
-    })
-    for key in keys:
-        var stages := get_price_stages(pid, key)
+    for key in _quality_keys_in_order(quality_breakdown):
+        var stages := get_price_stages(pid, str(key))
         if stages.is_empty():
             continue
-        var parts := split_quality_key(key)
+        var parts := split_quality_key(str(key))
         var base_qid := str(parts[0])
         var extra_qid := str(parts[1])
         if extra_qid.is_empty():
             extra_qid = base_qid
-        out.append(_price_stage_row("quality", base_qid, stages["quality"]))
-        out.append(_price_stage_row("additions", extra_qid, stages["additions"]))
-        out.append(_price_stage_row("total", quality_key_level(key), stages["total"]))
+        out.append(_price_stage_row("quality", base_qid, float(stages["quality"]["mult"])))
+        out.append(_price_stage_row("additions", extra_qid,
+                float(stages["additions"]["quality_mult"])))
+        out.append(_price_stage_row("synergy", "", float(stages["synergy"]["mult"])))
+        out.append(_price_total_row(quality_key_level(str(key)), stages))
     return out
 
 # The quality keys of a breakdown that hold units, from the worst to the best: by the level of the
@@ -1186,15 +1200,32 @@ func _quality_keys_in_order(quality_breakdown: Dictionary) -> Array:
         return _level_index(str(a_parts[1]), levels) < _level_index(str(b_parts[1]), levels))
     return keys
 
-# One row of the build-up: the marker of the stage (the stars of the level, the times sign of the
-# synergy) and the calculation "x1.30 = 26" — the coefficient of the stage against the base price
-# of the plain good, and the price it gives.
-func _price_stage_row(kind: String, level: String, stage: Dictionary) -> Dictionary:
+# One row of the ladder: the stars of the level the stage belongs to (empty for the craft
+# coefficient) and the coefficient of the stage.
+func _price_stage_row(kind: String, level: String, mult: float) -> Dictionary:
     return {
         "kind": kind,
         "qid": level,
-        "marker": SYNERGY_MARKER if kind == "synergy" else get_quality_stars(level),
-        "tail": "x%.2f = %d" % [float(stage["mult"]), int(round(float(stage["price"])))],
+        "marker": get_quality_stars(level) if kind != "synergy" else "",
+        "tail": "x%.2f" % mult,
+    }
+
+# The last row of the block: the level of the good itself and the formula that turns the rows above
+# into coins. Each addend is the price of its part at the quality of that part — the base of the good
+# and the addition are two independent goods with prices of their own — and the workmanship
+# multiplies their sum. The coefficients are rounded for display, so the result is approximate.
+func _price_total_row(level: String, stages: Dictionary) -> Dictionary:
+    return {
+        "kind": "total",
+        "qid": level,
+        "marker": get_quality_stars(level),
+        "tail": tr("(%s x %s + %s x %s) x %s ≈ %d") % [
+            format_coins(float(stages["base"])), "%.2f" % float(stages["quality"]["mult"]),
+            format_coins(float(stages["additions"]["base"])),
+            "%.2f" % float(stages["additions"]["quality_mult"]),
+            "%.2f" % float(stages["synergy"]["mult"]),
+            int(round(float(stages["total"]["price"]))),
+        ],
     }
 
 # --- THE SHARE OF THE LEVEL IN THE STORAGE (the percentages in the row of the list and in the breakdown tooltip) ---

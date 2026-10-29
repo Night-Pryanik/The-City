@@ -556,10 +556,11 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
     check(_count_build_up_rows(ui) == 0,
         "a plain good must have no build-up rows in the tooltip")
 
-    # A generated good ("Wool Clothes (+Woad)") explains the price in STAGES: the base part at the
-    # level of the base, the addition at the level of the addition, the synergy, and the total.
-    # One block per quality KEY that lies in the storage, each row named, so that no row has to
-    # mean two things at once.
+    # A generated good ("Wool Clothes (+Woad)") explains the price as a ladder of its formula:
+    # the quality coefficient of the base, the coefficient of the addition, the craft coefficient
+    # and the total, which spells the formula out with the numbers of its block. One block per
+    # quality KEY that lies in the storage, each row named, so that no row means two things at
+    # once; the ladder is a grid, so the three columns are aligned over every row.
     var generated := _pick_generated_good(gd)
     if generated.is_empty():
         check(false, "the data has no recipe with additional ingredients to check the rows against")
@@ -595,6 +596,19 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
                             str(gd.parse_generated_id(generated)["extra"]), low_level))
                         / float(stages["base"])),
                 "the additions stage must carry the value of the addition at its own level")
+            # The formula of the total row spells the addition's addend as "its price x its
+            # quality", so the two factors must give the price of the addition.
+            check(is_equal_approx(float(stages["additions"]["price"]),
+                    float(stages["additions"]["base"])
+                        * float(stages["additions"]["quality_mult"])),
+                "the addition's price must be its base price times its quality (%s x %s ≠ %s)"
+                % [str(stages["additions"]["base"]), str(stages["additions"]["quality_mult"]),
+                    str(stages["additions"]["price"])])
+            check(is_equal_approx(float(stages["additions"]["quality_mult"]),
+                    gd.get_quality_price_multiplier(low_level)),
+                "the addition's quality must be the declared multiplier of its level (%s), got %s"
+                % [str(gd.get_quality_price_multiplier(low_level)),
+                    str(stages["additions"]["quality_mult"])])
             check(is_equal_approx(float(stages["synergy"]["mult"]),
                     gd.get_craft_extra_synergy_multiplier()),
                 "the synergy stage must carry the declared coefficient (%s), got %s"
@@ -627,46 +641,122 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
             "the synergy must make the generated good dearer than its parts sold apart (%d vs %.1f)"
             % [fine_common, base_part + extra_part])
 
-        # Two keys in the storage: the synergy row once, then three rows per key, in the order of
-        # the levels.
+        # Two keys in the storage: one block of four rows per key — the quality, the additions,
+        # the craft coefficient and the total — in the order of the levels.
         var generated_breakdown := {stage_key: 3, low_level: 5}
         var expected: Array = gd.format_price_build_up_rows(generated, generated_breakdown)
-        check(expected.size() == 7,
-            "the build-up is the synergy row plus three rows (quality, additions, total) per "
-            + "quality key in the storage, got %d" % expected.size())
-        if not expected.is_empty():
-            check(str(expected[0]["kind"]) == "synergy",
-                "the first row of the build-up is the synergy coefficient")
-            check(str(expected[0]["tail"]) == "x%.2f" % gd.get_craft_extra_synergy_multiplier(),
-                "the synergy row carries the coefficient and no price, got \"%s\""
-                % str(expected[0]["tail"]))
+        check(expected.size() == 8,
+            "the build-up is four rows (quality, additions, craft, total) per quality key in the "
+            + "storage, got %d" % expected.size())
+        var kinds: Array = ["quality", "additions", "synergy", "total"]
+        for i in range(expected.size()):
+            check(str(expected[i]["kind"]) == kinds[i % 4],
+                "row #%d of the build-up must be \"%s\", got \"%s\""
+                % [i, kinds[i % 4], str(expected[i]["kind"])])
+        for i in range(0, expected.size() - 3, 4):
+            var key_stages: Dictionary = gd.get_price_stages(generated,
+                    gd.make_quality_key(str(expected[i]["qid"]),
+                            str(expected[i + 1]["qid"])))
+            var synergy_tail := "x%.2f" % gd.get_craft_extra_synergy_multiplier()
+            check(str(expected[i + 2]["tail"]) == synergy_tail,
+                "the craft row of block #%d must carry the coefficient %s, got \"%s\""
+                % [i / 4, synergy_tail, str(expected[i + 2]["tail"])])
+            # The addition row is the quality of the addition itself: the total row multiplies the
+            # price of the addition by this very coefficient.
+            var additions_tail := "x%.2f" % float(key_stages["additions"]["quality_mult"])
+            check(str(expected[i + 1]["tail"]) == additions_tail,
+                "the addition row of block #%d must carry the quality coefficient of the addition "
+                + "%s, got \"%s\""
+                % [i / 4, additions_tail, str(expected[i + 1]["tail"])])
+            var quality_tail := "x%.2f" % float(key_stages["quality"]["mult"])
+            check(str(expected[i]["tail"]) == quality_tail,
+                "the quality row of block #%d must carry the level coefficient %s, got \"%s\""
+                % [i / 4, quality_tail, str(expected[i]["tail"])])
+            # The craft coefficient belongs to no level of the units: its row carries no stars.
+            check(str(expected[i + 2]["marker"]).is_empty(),
+                "the craft row must carry no marker, got \"%s\""
+                % str(expected[i + 2]["marker"]))
+            # The formula of the total row adds up the price of each part at the quality of that
+            # part: (base x its quality + the addition's price x its quality) x craft. The addition
+            # has a price of its own, so its addend must not start from the base price.
+            var total_tail := str(expected[i + 3]["tail"])
+            var formula := "(%s x %.2f + %s x %.2f) x %.2f" % [
+                gd.format_coins(float(key_stages["base"])),
+                float(key_stages["quality"]["mult"]),
+                gd.format_coins(float(key_stages["additions"]["base"])),
+                float(key_stages["additions"]["quality_mult"]),
+                float(key_stages["synergy"]["mult"])]
+            check(total_tail.begins_with(formula),
+                "the total row of block #%d must spell the formula \"%s\", got \"%s\""
+                % [i / 4, formula, total_tail])
+            check(total_tail.ends_with("≈ %d" % int(round(float(key_stages["total"]["price"])))),
+                "the total row of block #%d must end with the price of the key: \"%s\""
+                % [i / 4, total_tail])
         ui.show_flow_tooltip(Vector2(50, 50), "Goods", {}, generated, {}, {}, generated_breakdown)
+        await process_frame
         await process_frame
         var cells := _build_up_cells(ui)
         check(cells.size() == expected.size(),
             "the tooltip must carry %d build-up rows, shown %d" % [expected.size(), cells.size()])
         for i in range(mini(cells.size(), expected.size())):
             var row: Dictionary = expected[i]
-            check(str(cells[i]["marker"]) == "  " + str(row["marker"]),
+            check(str(cells[i]["marker"]) == str(row["marker"]),
                 "the marker of row #%d must be \"%s\", got \"%s\""
-                % [i, "  " + str(row["marker"]), str(cells[i]["marker"])])
-            check(str(cells[i]["label"]) == _stage_label(str(row["kind"])),
+                % [i, str(row["marker"]), str(cells[i]["marker"])])
+            check(str(cells[i]["label"]) == "  " + _stage_label(str(row["kind"])),
                 "the name of the stage of row #%d must be \"%s\", got \"%s\""
-                % [i, _stage_label(str(row["kind"])), str(cells[i]["label"])])
+                % [i, "  " + _stage_label(str(row["kind"])), str(cells[i]["label"])])
+            check(str(cells[i]["colon"]) == ":",
+                "the colon of row #%d must stand in its own cell, got \"%s\""
+                % [i, str(cells[i]["colon"])])
             check(str(cells[i]["tail"]) == str(row["tail"]),
                 "the calculation of row #%d must be \"%s\", got \"%s\""
                 % [i, str(row["tail"]), str(cells[i]["tail"])])
             check(float(cells[i]["width"]) > 20.0,
                 "row #%d collapsed in width (%s px)" % [i, str(cells[i]["width"])])
-        # The chain starts at the price of the PLAIN base: the addition is a stage of its own.
+        # The ladder is a table: the names of the stages and their badges share one column, the
+        # colons and the calculations — a column each, whatever the width of the stars and the
+        # length of the words. The badges are right-aligned, so they end at one edge; the colon
+        # follows the longest name.
+        var widest_name_edge := 0.0
+        var widest_badge := 0.0
+        for i in range(cells.size()):
+            widest_name_edge = maxf(widest_name_edge, float(cells[i]["label_right"]))
+            widest_badge = maxf(widest_badge, float(cells[i]["marker_width"]))
+        for i in range(cells.size()):
+            check(is_equal_approx(float(cells[i]["label_x"]), float(cells[0]["label_x"])),
+                "the names of the stages must stand in one column, row #%d is shifted (%s vs %s)"
+                % [i, str(cells[i]["label_x"]), str(cells[0]["label_x"])])
+            check(is_equal_approx(float(cells[i]["marker_right"]), float(cells[0]["marker_right"])),
+                "the badges must end at one edge, row #%d is shifted (%s vs %s)"
+                % [i, str(cells[i]["marker_right"]), str(cells[0]["marker_right"])])
+            check(is_equal_approx(float(cells[i]["colon_x"]), float(cells[0]["colon_x"])),
+                "the colons must stand in one column, row #%d is shifted (%s vs %s)"
+                % [i, str(cells[i]["colon_x"]), str(cells[0]["colon_x"])])
+            check(is_equal_approx(float(cells[i]["tail_x"]), float(cells[0]["tail_x"])),
+                "the calculations must stand in one column, row #%d is shifted (%s vs %s)"
+                % [i, str(cells[i]["tail_x"]), str(cells[0]["tail_x"])])
+            # The badges share the cell with the name, so the colon follows the longest name
+            # instead of a column as wide as the widest badge.
+            var colon_gap := float(cells[i]["colon_x"]) - widest_name_edge
+            check(colon_gap < widest_badge,
+                "the colon of row #%d must follow the longest name (gap %s px, a badge is %s px)"
+                % [i, str(colon_gap), str(widest_badge)])
+        # The chain starts at the two base prices: the plain good and the addition, each with a
+        # price of its own. A name with two colons marks the pair, and the plain "Base price" line
+        # must not be used for a decorated good.
+        var parsed_generated: Dictionary = gd.parse_generated_id(generated)
         var plain_price := int(round(gd.get_price(base_pid)))
+        var addition_price: float = gd.get_extra_base_price_part(base_pid,
+                str(parsed_generated["extra"]))
         var generated_base_line := ""
         for child in ui.flow_tooltip_vbox.get_children():
-            if child is Label and str(child.text).begins_with("Base price: "):
+            if child is Label and str(child.text).begins_with("Base price"):
                 generated_base_line = str(child.text)
-        check(generated_base_line == "Base price: %d" % plain_price,
-            "the base line of a generated good must be the plain base (%d), got \"%s\""
-            % [plain_price, generated_base_line])
+        check(generated_base_line == "Base prices: good: %d, addition: %s"
+                % [plain_price, gd.format_coins(addition_price)],
+            "the base line of a decorated good must name both prices (%d and %s), got \"%s\""
+            % [plain_price, gd.format_coins(addition_price), generated_base_line])
         # The last row is the total of the last key, and it carries the price the game really uses
         # for those units.
         if not expected.is_empty():
@@ -676,7 +766,7 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
                 "the total row carries the level of the good itself (%s), got \"%s\""
                 % [gd.quality_key_level(stage_key), str(last["qid"])])
             var key_price := int(round(gd.get_price_for_quality(generated, stage_key)))
-            check(str(last["tail"]).ends_with(" = %d" % key_price),
+            check(str(last["tail"]).ends_with("≈ %d" % key_price),
                 "the total row must end with the price of the key (%d): \"%s\""
                 % [key_price, str(last["tail"])])
 
@@ -706,25 +796,40 @@ func _count_scale_lines(ui) -> int:
             result += 1
     return result
 
-# The rows of the price build-up in the row tooltip: an HBox of THREE Labels — the marker (the
-# stars of the level, or the plus of the additions), the name of the stage and the gold
-# calculation. Three children is what tells them apart from a plain ladder row, which has two.
+# The rows of the price build-up in the row tooltip: a GridContainer of THREE columns — the cell of
+# the stage (the name and, right-aligned in the same cell, the stars of the level), the colon and
+# the gold calculation. Every three children of the grid are one row; a plain ladder row is an HBox
+# of two and is not picked up here.
 func _build_up_cells(ui) -> Array:
     var cells: Array = []
     for child in ui.flow_tooltip_vbox.get_children():
-        if not (child is HBoxContainer) or child.get_child_count() != 3:
+        if not (child is GridContainer) or (child as GridContainer).columns != 3:
             continue
-        var marker := child.get_child(0) as Label
-        var stage := child.get_child(1) as Label
-        var tail := child.get_child(2) as Label
-        if marker == null or stage == null or tail == null:
-            continue
-        cells.append({
-            "marker": str(marker.text),
-            "label": str(stage.text),
-            "tail": str(tail.text),
-            "width": tail.size.x,
-        })
+        var children: Array = child.get_children()
+        for i in range(0, children.size() - 2, 3):
+            var stage_cell := children[i] as HBoxContainer
+            var colon := children[i + 1] as Label
+            var tail := children[i + 2] as Label
+            if stage_cell == null or stage_cell.get_child_count() != 2:
+                continue
+            var stage := stage_cell.get_child(0) as Label
+            var marker := stage_cell.get_child(1) as Label
+            if marker == null or stage == null or colon == null or tail == null:
+                continue
+            cells.append({
+                "marker": str(marker.text),
+                "label": str(stage.text),
+                "colon": str(colon.text),
+                "tail": str(tail.text),
+                "marker_x": stage_cell.position.x + marker.position.x,
+                "marker_right": stage_cell.position.x + marker.position.x + marker.size.x,
+                "marker_width": marker.size.x,
+                "label_x": stage_cell.position.x + stage.position.x,
+                "label_right": stage_cell.position.x + stage.position.x + stage.size.x,
+                "colon_x": colon.position.x,
+                "tail_x": tail.position.x,
+                "width": tail.size.x,
+            })
     return cells
 
 func _count_build_up_rows(ui) -> int:
@@ -734,13 +839,13 @@ func _count_build_up_rows(ui) -> int:
 func _stage_label(kind: String) -> String:
     match kind:
         "quality":
-            return "Quality: "
+            return "Quality"
         "additions":
-            return "Additions: "
+            return "Addition"
         "synergy":
-            return "Synergy: "
+            return "Workmanship"
         "total":
-            return "Total: "
+            return "Total"
     return ""
 
 # The first good of the data that is generated from a base recipe and an additional ingredient —

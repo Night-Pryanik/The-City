@@ -375,6 +375,9 @@ msgstr "%s: до %d ед./сек на участок"
 msgid "%s: up to %d units/sec per section, base %d work per section"
 msgstr "%s: до %d ед./сек на участок, база %d труда за участок"
 
+msgid "(%s x %s + %s x %s) x %s ≈ %d"
+msgstr "(%s x %s + %s x %s) x %s ≈ %d"
+
 msgid "+%d (Ctrl: +10, Shift: +100)"
 msgstr "+%d (Ctrl: +10, Shift: +100)"
 
@@ -468,14 +471,14 @@ msgstr "Добавлено 100 еды"
 msgid "Added 100000 coins"
 msgstr "Добавлено 100000 монет"
 
+msgid "Addition"
+msgstr "Добавка"
+
 msgid "Additional ingredient spends a nonexistent product"
 msgstr "Дополнительный ингредиент расходует несуществующий товар"
 
 msgid "Additional ingredients"
 msgstr "Дополнительные ингредиенты"
-
-msgid "Additions: "
-msgstr "Добавки: "
 
 msgid "Advance requirement met. Click to advance to the next era."
 msgstr "Условие перехода выполнено. Нажмите, чтобы перейти в следующую эпоху."
@@ -542,6 +545,9 @@ msgstr "Назад"
 
 msgid "Base price: "
 msgstr "Базовая цена: "
+
+msgid "Base prices: good: %s, addition: %s"
+msgstr "Базовые цены: товар: %s, добавка: %s"
 
 msgid "Base: %.1f/sec"
 msgstr "База: %.1f/сек"
@@ -1680,14 +1686,14 @@ msgstr "Куплено %d ед. %s в городке %s."
 msgid "Purchased %d units of %s from %s. The goods are on the way; the deal can be cancelled in \"Trade deals\"."
 msgstr "Куплено %d ед. %s в городке %s. Товар в пути; сделку можно отменить в разделе «Торговые сделки»."
 
+msgid "Quality"
+msgstr "Качество"
+
 msgid "Quality priority: %s (click to switch)"
 msgstr "Приоритет качества: %s (нажмите чтобы переключить)"
 
 msgid "Quality priority: use best/worst"
 msgstr "Приоритет качества: используйте лучшее/худшее"
-
-msgid "Quality: "
-msgstr "Качество: "
 
 msgid "Quality: %s"
 msgstr "Качество: %s"
@@ -2037,9 +2043,6 @@ msgstr "Предложить другое название"
 msgid "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
 msgstr "Запасы, динамика и тултипы с ресурсами обновляются с этим интервалом (от 1 до 5 секунд). Расчёты симуляции идут как обычно, раз в секунду."
 
-msgid "Synergy: "
-msgstr "Синергия: "
-
 msgid "Take this construction out of the queue. Nothing has been spent yet"
 msgstr "Убрать это строительство из очереди. Затрат ещё не было"
 
@@ -2319,8 +2322,8 @@ msgstr "Вкл/выкл использование этого продукта �
 msgid "Tooltip delay (building details, treasury breakdown)"
 msgstr "Задержка появления всплывающих подсказок (детали здания, разбивка казны)"
 
-msgid "Total: "
-msgstr "Итого: "
+msgid "Total"
+msgstr "Итого"
 
 msgid "Total: %.1f/sec"
 msgstr "Итого: %.1f/сек"
@@ -2450,6 +2453,9 @@ msgstr "Труд: %d"
 
 msgid "Work: %d (%.0f sec)"
 msgstr "Труд: %d (%.0f сек)"
+
+msgid "Workmanship"
+msgstr "Работа мастера"
 
 msgid "World"
 msgstr "Мир"

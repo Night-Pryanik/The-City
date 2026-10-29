@@ -1061,18 +1061,16 @@ func _make_bullet_row(symbol: String, text: String, text_color: Color) -> HBoxCo
     row.add_child(label)
     return row
 
-# Creates a row of the price ladder for the row tooltip: a marker and the calculation behind it.
-# The marker is the stars of a quality level (data/qualities.json, get_quality_color) or the plus
-# of the additional ingredient — the row reads the same in both cases, and the marker
-# says which of the two it is. Labels in an HBox, and not one Label with BBCode: that way the
-# row acquires no dependency at all on a RichTextLabel (its fit_content with the wrapping collapses
-# the label to 1 px — see resources_tab._add_quality_label), and the colours are taken from the
-# theme just like in the other rows of the tooltips.
-#   marker       — "★★" or "+" (the indent of 2 spaces is set here)
-#   label        — the name of the stage ("Quality: "), empty in the plain ladder
+# Creates a row of the price ladder for the row tooltip: the stars of a quality level
+# (data/qualities.json, get_quality_color) and the calculation behind them. Labels in an HBox,
+# and not one Label with BBCode: that way the row acquires no dependency at all on a
+# RichTextLabel (its fit_content with the wrapping collapses the label to 1 px — see
+# resources_tab._add_quality_label), and the colours are taken from the theme just like in the
+# other rows of the tooltips.
+#   marker       — "★★" (the indent of 2 spaces is set here)
 #   tail         — " = x1.30 = 5", the tail of the row without the marker
-#   marker_color — the colour of the marker: the level colour from the data, or the price colour
-func _make_price_row(marker: String, label: String, tail: String, marker_color: Color) -> HBoxContainer:
+#   marker_color — the colour of the marker: the level colour from the data
+func _make_price_row(marker: String, tail: String, marker_color: Color) -> HBoxContainer:
     var row = HBoxContainer.new()
     row.add_theme_constant_override("separation", 4)
     row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1083,15 +1081,6 @@ func _make_price_row(marker: String, label: String, tail: String, marker_color: 
     marker_label.add_theme_color_override("font_color", marker_color)
     marker_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     row.add_child(marker_label)
-    # The name of the stage ("Quality:", "Additions:", "Total:"). It is muted: the stage is named
-    # by the word, the level — by the colour of the stars, and the money must stay the brightest
-    # thing in the row.
-    if not label.is_empty():
-        var stage_label = Label.new()
-        stage_label.text = label
-        stage_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
-        stage_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        row.add_child(stage_label)
     var tail_label = Label.new()
     tail_label.text = tail
     tail_label.add_theme_color_override("font_color", price_text_color())
@@ -1099,40 +1088,65 @@ func _make_price_row(marker: String, label: String, tail: String, marker_color: 
     row.add_child(tail_label)
     return row
 
-# The markers of the rows of the price build-up ("★★", "+") have different widths, and the names
-# of the stages behind them would start in different columns. The width of the marker column is
-# equalised over the rows of one block — the build-up is read as a table, and a shifted column
-# reads as a mistake.
-func _align_price_markers(rows: Array) -> void:
-    if rows.size() < 2:
-        return
-    var width := 0.0
-    for row in rows:
-        var marker: Control = row.get_child(0)
-        width = maxf(width, marker.get_minimum_size().x)
-    for row in rows:
-        var marker: Control = row.get_child(0)
-        marker.custom_minimum_size.x = width
+# Adds one row of the price build-up to the grid: the name of the stage with the stars of its level,
+# the colon and the calculation. A grid, and not a row of boxes, because the build-up is read as a
+# table: the names differ in length and the badges differ in width ("★", "★★★"), so in separate
+# boxes the colons and the calculations would start in their own columns in every row.
+# The name and the stars share one cell: the name stands at its left, the stars are right-aligned
+# inside it, so every badge ends at the same edge and the colon stands right after the longest name
+# rather than after a column as wide as the widest badge. The name of the stage is muted: the stage
+# is named by the word, the level — by the colour of the stars, and the money must stay the
+# brightest thing in the row.
+func _add_price_grid_row(grid: GridContainer, label: String, marker: String, tail: String, marker_color: Color) -> void:
+    var stage_cell = HBoxContainer.new()
+    stage_cell.add_theme_constant_override("separation", 0)
+    stage_cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    stage_cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var stage_label = Label.new()
+    stage_label.text = "  " + label
+    stage_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
+    stage_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    stage_cell.add_child(stage_label)
+    var marker_label = Label.new()
+    marker_label.text = marker
+    marker_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+    marker_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    marker_label.add_theme_color_override("font_color", marker_color)
+    marker_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    stage_cell.add_child(marker_label)
+    grid.add_child(stage_cell)
+    var colon_label = Label.new()
+    colon_label.text = ":"
+    colon_label.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
+    colon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    grid.add_child(colon_label)
+    var tail_label = Label.new()
+    tail_label.text = tail
+    tail_label.add_theme_color_override("font_color", price_text_color())
+    tail_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    grid.add_child(tail_label)
+
+# Separates the blocks of the build-up (one per quality key): without the gap the next block reads
+# as a repetition of the previous one.
+func _add_price_grid_gap(grid: GridContainer) -> void:
+    for _i in range(grid.columns):
+        var gap := Control.new()
+        gap.custom_minimum_size.y = 6
+        gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        grid.add_child(gap)
 
 # The name of a stage of the price build-up (see GameData.format_price_build_up_rows).
 func _price_stage_label(kind: String) -> String:
     match kind:
         "quality":
-            return tr("Quality: ")
+            return tr("Quality")
         "additions":
-            return tr("Additions: ")
+            return tr("Addition")
         "synergy":
-            return tr("Synergy: ")
+            return tr("Workmanship")
         "total":
-            return tr("Total: ")
+            return tr("Total")
     return ""
-
-# Formats a price for a tooltip: the whole values without a fractional part, the
-# fractional ones (after the dynamic price multipliers) — with one digit.
-func _format_price(value: float) -> String:
-    if value == floor(value):
-        return str(int(value))
-    return "%.1f" % value
 
 # Formats a consumption interval for a tooltip: the whole seconds without a
 # fractional part ("10 sec"), the fractional ones — with one digit ("0.5 sec").
@@ -1181,7 +1195,8 @@ func _format_planned_rate(amount: float, interval: float) -> String:
 # Shows the tooltip "the sources of the planned income/expense" of a resource (the
 # "Resources" tab).
 # resource_id — the id of the resource/product: if it is given, its price at the ordinary
-# quality level (GameData.get_price) is output at the top as "Base price: N", and under it —
+# quality level (GameData.get_price) is output at the top as "Base price: N" (a good with an
+# addition — as "Base prices: good: X, addition: Y", see below), and under it —
 # the price of the levels of quality that are REALLY in the storage (quality_breakdown), in the
 # format "★★ = x1.30 = 5" (the rows with an indent of 2 spaces). The row of the
 # ladder has two colours: the stars in the colour of their level
@@ -1192,13 +1207,18 @@ func _format_planned_rate(amount: float, interval: float) -> String:
 # ({quality_id: count}, see CityData.get_quality_breakdown). It is what decides
 # which levels are shown: the price of a level that is not in the storage is not
 # needed by the player and only misleads.
-# A good with an additional ingredient ("Wool Clothes (+Woad)") gets the price explained in
-# STAGES instead of the ladder (GameData.format_price_build_up_rows): "× Synergy: x1.15" once,
-# then a block of "★★ Quality: x1.30 = 26" / "★ Additions: x2.75 = 55" /
-# "★★ Total: x4.65 = 93" per quality key that lies in the storage: a fine garment with a common
-# dye and the same garment with a fine dye are two different units at two different prices. The
-# base price of such a good is the price of its PLAIN base — the addition is a stage of its own,
-# and the price of the generated good already includes it.
+# A good with an additional ingredient ("Wool Clothes (+Woad)") gets the formula of its price
+# instead of the ladder (GameData.format_price_build_up_rows) and a base line of both prices — "Base
+# prices: good: 16, addition: 5" — one block of four aligned rows per quality key that lies in the
+# storage:
+#   Quality        ★★    : x1.30
+#   Addition       ★★★   : x2.30
+#   Workmanship          : x1.15
+#   Total          ★★★   : (16 x 1.30 + 5 x 2.30) x 1.15 ≈ 37
+# A fine garment with a common dye and the same garment with a fine dye are two different units at
+# two different prices, and each gets its own block. The addition is a factor of its own: the price
+# of the generated good already includes it, so the chain starts from the price of the plain base
+# and from the price of the addition, and the blocks show how they add up.
 # The tooltip is shown even when the production/consumption is empty, as long as
 # the price of the resource is > 0.
 # planned_consumption — the planned consumption:
@@ -1224,14 +1244,6 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
     var price := 0.0
     if not resource_id.is_empty():
         price = GameData.get_price(resource_id)
-    # For a good with an additional ingredient the chain starts at the price of its PLAIN base:
-    # the addition is a stage of its own below, and the base of the generated good already
-    # includes it.
-    var base_price := price
-    if not resource_id.is_empty():
-        var parsed := GameData.parse_generated_id(resource_id)
-        if not parsed.is_empty():
-            base_price = GameData.get_price(str(parsed["base"]))
     if special_yield.is_empty() and price <= 0.0 \
             and planned_consumption.is_empty() \
             and planned_production.is_empty():
@@ -1246,17 +1258,27 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
     # account). It is called the base price because it is what every stage below is counted from:
     # the units in the storage may all be of a better level and cost more (the rows below show how
     # much more), so a bare "Price" would be read as the price of what the player has.
+    # A good with an addition has TWO base prices: the price of the plain good and the price of the
+    # addition per unit of the result. The chain below starts from both, so the addition is not a
+    # number out of nowhere in its formula.
     if price > 0.0:
+        var parsed := GameData.parse_generated_id(resource_id)
         var price_label = Label.new()
-        price_label.text = tr("Base price: ") + _format_price(base_price)
+        if parsed.is_empty():
+            price_label.text = tr("Base price: ") + GameData.format_coins(price)
+        else:
+            price_label.text = tr("Base prices: good: %s, addition: %s") % [
+                GameData.format_coins(GameData.get_price(str(parsed["base"]))),
+                GameData.format_coins(GameData.get_extra_base_price_part(
+                        str(parsed["base"]), str(parsed["extra"]))),
+            ]
         price_label.add_theme_color_override("font_color", price_text_color())
         price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(price_label)
-        # The price is built in stages, and each of them gets its own row: the quality surcharge on
-        # the plain good, the surcharge of the addition, and the total. Without the separation one
-        # row had to mean two things at once ("★★ = x1.30 = 44" was both the multiplier and the
-        # price), and those stopped being the same number once the additions appeared.
-        # A plain good has a single surcharge: its ladder row IS the price at that level.
+        # A good with an addition is explained by the ladder of its formula (see
+        # GameData.format_price_build_up_rows): the coefficient of every factor of the price, and
+        # the total row with the formula itself. A plain good has a single factor, and its ladder
+        # row IS the price at that level.
         var build_up := GameData.format_price_build_up_rows(resource_id, quality_breakdown)
         if build_up.is_empty():
             # The prices by quality that are REALLY in the storage: the internal market
@@ -1273,20 +1295,23 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
             # just like the row "Base price: N" above the ladder.
             for quality_row in GameData.format_quality_price_scale_rows(resource_id, quality_breakdown):
                 flow_tooltip_vbox.add_child(_make_price_row(
-                    str(quality_row["stars"]), "", str(quality_row["tail"]),
+                    str(quality_row["stars"]), str(quality_row["tail"]),
                     GameData.get_quality_color(str(quality_row["qid"]))))
         else:
-            var stage_rows: Array = []
+            var ladder := GridContainer.new()
+            ladder.columns = 3
+            ladder.add_theme_constant_override("h_separation", 6)
+            ladder.add_theme_constant_override("v_separation", 0)
+            ladder.mouse_filter = Control.MOUSE_FILTER_IGNORE
             for stage in build_up:
+                if str(stage["kind"]) == "quality" and ladder.get_child_count() > 0:
+                    _add_price_grid_gap(ladder)
                 var stage_qid := str(stage["qid"])
                 var stage_color: Color = price_text_color() if stage_qid.is_empty() \
                         else GameData.get_quality_color(stage_qid)
-                var stage_row: HBoxContainer = _make_price_row(
-                    str(stage["marker"]), _price_stage_label(str(stage["kind"])),
-                    str(stage["tail"]), stage_color)
-                flow_tooltip_vbox.add_child(stage_row)
-                stage_rows.append(stage_row)
-            _align_price_markers(stage_rows)
+                _add_price_grid_row(ladder, _price_stage_label(str(stage["kind"])),
+                        str(stage["marker"]), str(stage["tail"]), stage_color)
+            flow_tooltip_vbox.add_child(ladder)
     for yield_id in special_yield:
         var yield_label = Label.new()
         yield_label.text = "%s: %d" % [

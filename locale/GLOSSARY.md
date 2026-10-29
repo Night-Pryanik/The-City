@@ -74,6 +74,7 @@ register it in `project.godot` under
 | стоимость | cost |
 | скидка, наценка | discount, markup |
 | качество | quality |
+| работа мастера | workmanship |
 | ресурс | resource |
 | сырьё | raw resource |
 | продукт, товар | goods |

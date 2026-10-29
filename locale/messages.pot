@@ -375,6 +375,9 @@ msgstr ""
 msgid "%s: up to %d units/sec per section, base %d work per section"
 msgstr ""
 
+msgid "(%s x %s + %s x %s) x %s ≈ %d"
+msgstr ""
+
 msgid "+%d (Ctrl: +10, Shift: +100)"
 msgstr ""
 
@@ -468,13 +471,13 @@ msgstr ""
 msgid "Added 100000 coins"
 msgstr ""
 
+msgid "Addition"
+msgstr ""
+
 msgid "Additional ingredient spends a nonexistent product"
 msgstr ""
 
 msgid "Additional ingredients"
-msgstr ""
-
-msgid "Additions: "
 msgstr ""
 
 msgid "Advance requirement met. Click to advance to the next era."
@@ -541,6 +544,9 @@ msgid "Back"
 msgstr ""
 
 msgid "Base price: "
+msgstr ""
+
+msgid "Base prices: good: %s, addition: %s"
 msgstr ""
 
 msgid "Base: %.1f/sec"
@@ -1680,13 +1686,13 @@ msgstr ""
 msgid "Purchased %d units of %s from %s. The goods are on the way; the deal can be cancelled in \"Trade deals\"."
 msgstr ""
 
+msgid "Quality"
+msgstr ""
+
 msgid "Quality priority: %s (click to switch)"
 msgstr ""
 
 msgid "Quality priority: use best/worst"
-msgstr ""
-
-msgid "Quality: "
 msgstr ""
 
 msgid "Quality: %s"
@@ -2037,9 +2043,6 @@ msgstr ""
 msgid "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
 msgstr ""
 
-msgid "Synergy: "
-msgstr ""
-
 msgid "Take this construction out of the queue. Nothing has been spent yet"
 msgstr ""
 
@@ -2319,7 +2322,7 @@ msgstr ""
 msgid "Tooltip delay (building details, treasury breakdown)"
 msgstr ""
 
-msgid "Total: "
+msgid "Total"
 msgstr ""
 
 msgid "Total: %.1f/sec"
@@ -2449,6 +2452,9 @@ msgid "Work: %d"
 msgstr ""
 
 msgid "Work: %d (%.0f sec)"
+msgstr ""
+
+msgid "Workmanship"
 msgstr ""
 
 msgid "World"
