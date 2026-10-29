@@ -51,7 +51,8 @@ const CHROME_TOKENS: Array[String] = [
     # surface crushes it to black, while over a light one only greys it.
     "scrim", "row_dim",
 ]
-const DATA_TOKENS: Array[String] = ["price", "quality", "income", "expense", "warning"]
+const DATA_TOKENS: Array[String] = [
+    "price", "price_amount", "quality", "income", "expense", "warning"]
 const METRIC_TOKENS: Array[String] = ["panel_radius", "control_radius"]
 
 # Emitted after the palette is replaced. The signals carries no data: the listeners ask

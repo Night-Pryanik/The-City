@@ -36,6 +36,7 @@
     },
     "data": {
         "price": "#E08A3C",
+        "price_amount": "#F3EFE2",
         "quality": "#52E6D2",
         "income": "#7BC96F",
         "expense": "#D9534F",

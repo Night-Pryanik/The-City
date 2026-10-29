@@ -67,6 +67,12 @@ const DETAIL_TOOLTIP_SCROLLBAR_WIDTH: float = 14.0
 static func price_text_color() -> Color:
     return UI_THEME.color("price")
 
+# The colour of the amount in a price row. The name of the row and its coefficients stay in the
+# accent price colour; the number itself has a palette token of its own, so every theme can tune
+# how far the amount stands out from the gold around it.
+static func price_amount_color() -> Color:
+    return UI_THEME.color("price_amount")
+
 # The icon that marks a sum of coins in a line of text. It follows the number —
 # "130 [icon]/sec" — because the number alone does not say what it counts, and the word
 # "coins" does not fit into a narrow column of a card. The icon is the same everywhere:
@@ -94,6 +100,13 @@ static func coin_icon(size: int = COIN_ICON_SIZE) -> String:
 # A sum of coins: "500 [icon]".
 static func money(amount_text: String, size: int = COIN_ICON_SIZE) -> String:
     return "%s%s" % [amount_text, coin_icon(size)]
+
+# The amount of a price row: the number itself in price_amount_color, followed by the coin
+# icon. Only a RichTextLabel renders the colour tag, so the rows that carry it are built by
+# make_money_label.
+static func price_amount(amount_text: String, size: int = COIN_ICON_SIZE) -> String:
+    return "[color=#%s]%s[/color]%s" % [
+        price_amount_color().to_html(false), amount_text, coin_icon(size)]
 
 # A rate of coins: "500 [icon]/sec". The unit stays glued to the icon, and the whole
 # string is translated at once, so that a language can put the unit elsewhere.
@@ -1061,6 +1074,13 @@ func _make_bullet_row(symbol: String, text: String, text_color: Color) -> HBoxCo
     row.add_child(label)
     return row
 
+# A row tail that ends with the price of the row (" = x1.30 = 5", "... x 1.15 ≈ 37"): the
+# calculation stays in the price colour, while the amount is cut off its end and painted by
+# price_amount, with the coin icon after it. GameData returns the amount apart from the tail, so
+# the boundary between the calculation and the number comes from the data, not from parsing.
+static func _price_tail_with_amount(tail: String, amount: String) -> String:
+    return tail.trim_suffix(amount) + price_amount(amount)
+
 # Creates a row of the price ladder for the row tooltip: the stars of a quality level
 # (data/qualities.json, get_quality_color) and the calculation behind them.
 #   marker       — "★★" (the indent of 2 spaces is set here)
@@ -1199,8 +1219,9 @@ func _format_planned_rate(amount: float, interval: float) -> String:
 # format "★★ = x1.30 = 5" (the rows with an indent of 2 spaces). The row of the
 # ladder has two colours: the stars in the colour of their level
 # (data/qualities.json), the price calculation — in the price colour of the palette
-# (price_text_color(), as the row "Base price: N"). The base price and the price at the end of
-# every ladder row carry the coin icon.
+# (price_text_color(), as the row "Base price: N"). The sum itself is painted in
+# price_amount_color and followed by the coin icon, both in the base price and at the end of
+# every ladder row.
 # An empty breakdown or a product without a price — there are no rows.
 # quality_breakdown — the breakdown of the storage by quality
 # ({quality_id: count}, see CityData.get_quality_breakdown). It is what decides
@@ -1214,7 +1235,8 @@ func _format_planned_rate(amount: float, interval: float) -> String:
 #   Addition       ★★★   : x2.30
 #   Workmanship          : x1.15
 #   Total          ★★★   : (16 x 1.30 + 5 x 2.30) x 1.15 ≈ 37
-# The prices of the base line and of the total row carry the coin icon; the coefficients do not.
+# The amounts of the base line and of the total row are painted in price_amount_color and carry
+# the coin icon; the coefficients and the formula stay in the price colour.
 # A fine garment with a common dye and the same garment with a fine dye are two different units at
 # two different prices, and each gets its own block. The addition is a factor of its own: the price
 # of the generated good already includes it, so the chain starts from the price of the plain base
@@ -1265,7 +1287,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         var parsed := GameData.parse_generated_id(resource_id)
         if parsed.is_empty():
             var price_label = make_money_label()
-            price_label.text = tr("Base price: ") + money(GameData.format_coins(price))
+            price_label.text = tr("Base price: ") + price_amount(GameData.format_coins(price))
             price_label.add_theme_color_override("default_color", price_text_color())
             flow_tooltip_vbox.add_child(price_label)
         else:
@@ -1273,8 +1295,8 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
             # without it the player has to guess which numbers are coins and which are coefficients.
             var price_label = make_money_label()
             price_label.text = tr("Base prices: good: %s, addition: %s") % [
-                money(GameData.format_coins(GameData.get_price(str(parsed["base"])))),
-                money(GameData.format_coins(GameData.get_extra_base_price_part(
+                price_amount(GameData.format_coins(GameData.get_price(str(parsed["base"])))),
+                price_amount(GameData.format_coins(GameData.get_extra_base_price_part(
                         str(parsed["base"]), str(parsed["extra"])))),
             ]
             price_label.add_theme_color_override("default_color", price_text_color())
@@ -1299,7 +1321,8 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
             # just like the row "Base price: N" above the ladder.
             for quality_row in GameData.format_quality_price_scale_rows(resource_id, quality_breakdown):
                 flow_tooltip_vbox.add_child(_make_price_row(
-                    str(quality_row["stars"]), money(str(quality_row["tail"])),
+                    str(quality_row["stars"]),
+                    _price_tail_with_amount(str(quality_row["tail"]), str(quality_row["amount"])),
                     GameData.get_quality_color(str(quality_row["qid"]))))
         else:
             var ladder := GridContainer.new()
@@ -1315,9 +1338,9 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
                         else GameData.get_quality_color(stage_qid)
                 var stage_tail := str(stage["tail"])
                 # The total is the price the unit really costs: it is the only row of the
-                # build-up that carries a sum of coins, so only it gets the coin icon.
-                if str(stage["kind"]) == "total":
-                    stage_tail = money(stage_tail)
+                # build-up that carries a sum, so only it has an amount to highlight.
+                if stage.has("amount"):
+                    stage_tail = _price_tail_with_amount(stage_tail, str(stage["amount"]))
                 _add_price_grid_row(ladder, _price_stage_label(str(stage["kind"])),
                         str(stage["marker"]), stage_tail, stage_color)
             flow_tooltip_vbox.add_child(ladder)

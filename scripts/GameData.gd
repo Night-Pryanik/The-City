@@ -1027,14 +1027,26 @@ func get_price_breakdown_for_quality(res_id: String, quality_key: String) -> Dic
 # An empty string if there is nothing to show: the product has no price or the level
 # is not in the scale (without the stars there is nothing to assemble the row from).
 func format_quality_price_tail(res_id: String, quality_id: String) -> String:
-    if quality_id.is_empty() or not get_quality_levels().has(quality_id):
+    var parts := get_quality_price_tail_parts(res_id, quality_id)
+    if parts.is_empty():
         return ""
+    return str(parts["prefix"]) + str(parts["amount"])
+
+# The two halves of the ladder tail: the coefficient part and the amount itself. They are
+# returned apart because the tooltip paints the amount in its own colour, and the boundary
+# must come from the code that formats the row rather than from parsing the glued tail.
+#   { "prefix": " = x1.30 = ", "amount": "5" }
+# An empty dictionary if there is nothing to show (no price, no such level).
+func get_quality_price_tail_parts(res_id: String, quality_id: String) -> Dictionary:
+    if quality_id.is_empty() or not get_quality_levels().has(quality_id):
+        return {}
     var d = get_price_breakdown_for_quality(res_id, quality_id)
     if int(d["total"]) <= 0:
-        return ""
-    return " = x%s = %d" % [
-        "%.2f" % float(d["multiplier"]), int(d["total"])
-    ]
+        return {}
+    return {
+        "prefix": " = x%s = " % "%.2f" % float(d["multiplier"]),
+        "amount": str(int(d["total"])),
+    }
 
 # The row of the price of the quality level for the row tooltip of the "Resources" tab:
 #   "★★ = x1.30 = 5"
@@ -1067,10 +1079,12 @@ func format_quality_price_line(res_id: String, quality_id: String) -> String:
 #   { "qid":   quality_id,
 #     "stars": "★★",        ← the stars of the level, painted in its colour
 #     "tail":  " = x1.30 = 5" ← the price calculation itself, painted in gold,
+#     "amount": "5",        ← the amount inside the tail, painted apart from the calculation
 #     "text":  "★★ = x1.30 = 5" }
 # The stars and the tail are returned SEPARATELY, because the row tooltip paints them in different
 # colours (the stars — the colour of the level from data/qualities.json, the calculation — gold), and
-# text remains a whole ready row for those whom one colour is enough.
+# text remains a whole ready row for those whom one colour is enough. The amount is returned apart
+# for the same reason: the row tooltip paints the number itself in its own colour.
 # The caller needs qid in order to paint the stars in the colour of the level
 # (get_quality_color) — in this way the text of the row and its colour cannot diverge.
 # An empty array: the product has no price (for example, science) or the id is not set.
@@ -1083,11 +1097,13 @@ func format_quality_price_scale_rows(res_id: String, quality_breakdown: Dictiona
         # The level is not in the storage — the price is not shown (including count == 0).
         if int(totals.get(qid, 0)) <= 0:
             continue
-        var tail := format_quality_price_tail(res_id, str(qid))
-        if tail == "":
+        var parts := get_quality_price_tail_parts(res_id, str(qid))
+        if parts.is_empty():
             continue
         var stars := get_quality_stars(str(qid))
-        rows.append({"qid": str(qid), "stars": stars, "tail": tail, "text": stars + tail})
+        var tail := str(parts["prefix"]) + str(parts["amount"])
+        rows.append({"qid": str(qid), "stars": stars, "tail": tail,
+                "amount": str(parts["amount"]), "text": stars + tail})
     return rows
 
 # The stages of the price of one unit of a generated good at one quality key. The price is a SUM
@@ -1214,7 +1230,9 @@ func _price_stage_row(kind: String, level: String, mult: float) -> Dictionary:
 # into coins. Each addend is the price of its part at the quality of that part — the base of the good
 # and the addition are two independent goods with prices of their own — and the workmanship
 # multiplies their sum. The coefficients are rounded for display, so the result is approximate.
+# The amount is returned apart from the tail, so the caller can paint the number in its own colour.
 func _price_total_row(level: String, stages: Dictionary) -> Dictionary:
+    var total := int(round(float(stages["total"]["price"])))
     return {
         "kind": "total",
         "qid": level,
@@ -1224,8 +1242,9 @@ func _price_total_row(level: String, stages: Dictionary) -> Dictionary:
             format_coins(float(stages["additions"]["base"])),
             "%.2f" % float(stages["additions"]["quality_mult"]),
             "%.2f" % float(stages["synergy"]["mult"]),
-            int(round(float(stages["total"]["price"]))),
+            total,
         ],
+        "amount": str(total),
     }
 
 # --- THE SHARE OF THE LEVEL IN THE STORAGE (the percentages in the row of the list and in the breakdown tooltip) ---

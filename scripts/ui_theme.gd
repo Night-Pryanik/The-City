@@ -44,6 +44,7 @@ const FALLBACK := {
     "scrim": "#00000099",
     "row_dim": "#9E9E9E",
     "price": "#FF8100",
+    "price_amount": "#FFFFFF",
     "quality": "#4DFFEA",
     "income": "#4DD94D",
     "expense": "#E64D4D",

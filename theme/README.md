@@ -64,7 +64,7 @@ the label variations only.
     "id": "my_palette",
     "name_key": "Theme: My Palette",
     "chrome": { "panel_bg": "#1C1C1C", "...": "all 31 tokens" },
-    "data":   { "price": "#FF8100", "...": "all 5 tokens" },
+    "data":   { "price": "#FF8100", "...": "all 6 tokens" },
     "metrics": { "panel_radius": 4, "control_radius": 3 }
 }
 ```
@@ -79,7 +79,7 @@ trailing commas, one object at the top level.
 | `id` | non-empty; `a-z`, `0-9`, `_`, `-` only — lower case, no spaces |
 | `name_key` | non-empty; a **translation key**, see §9 |
 | `chrome` | an object holding **all 31** tokens of §5 |
-| `data` | an object holding **all 5** tokens of §6 |
+| `data` | an object holding **all 6** tokens of §6 |
 | `metrics` | an object with both keys of §7, numbers ≥ 0 |
 | every colour | `#RRGGBB` or `#RRGGBBAA` — a `#`, hex digits (either case), no `rgb()`, no colour names, no 3-digit shorthand |
 
@@ -178,13 +178,14 @@ tokens and `info` (a construction bar, a scout bar), not from these two.
 
 ## 6. `data` — the meaning of a value
 
-These five are the colours of numbers and markers, not of chrome. They belong to the
+These six are the colours of numbers and markers, not of chrome. They belong to the
 palette because a data colour is tuned for the surface it lies on: an orange price that
 reads on dark grey can vanish on bone white.
 
 | Token | Meaning | Where |
 |-------|---------|-------|
 | `price` | A price of one unit, a tariff — the number that names a cost rather than a flow of money. Also the bar of an expansion proposal. | the Trade tab, the foreign trade column, the town window, the expansion overlay |
+| `price_amount` | The sum inside a price row: the base price line, the amount at the end of a quality ladder row, the total of a decorated good. `price` paints the label, the coefficients and the formula around it. | the row tooltip of the "Resources" tab |
 | `quality` | A quality level of goods. Also the scout-progress bar on the map. | the goods lists, the tooltips, the map |
 | `income` | A gain: a surplus, a positive delta, a route that brings goods, a modifier that helps. Also the group headings of the data-problems report. | resources, trade, the action panel, the problems window |
 | `expense` | A loss: a deficit, a cost, money the treasury pays out. Also the title line of the data-problems report, and the tint of a warning surface (`SurfaceProblem` = `panel_bg` pulled 18 % towards `expense`, framed in it). | the town window, the trade rows, a problem panel |
@@ -295,7 +296,7 @@ godot --path . --headless --script res://tests/test_theme_manager.gd
 - [ ] `name_key` — `"Theme: <Name>"`, and a matching record in `locale/ru.po`.
 - [ ] Plain JSON: no comments, no trailing commas, all three objects (`chrome`, `data`,
       `metrics`) present.
-- [ ] All 31 `chrome` tokens, all 5 `data` tokens, both metrics.
+- [ ] All 31 `chrome` tokens, all 6 `data` tokens, both metrics.
 - [ ] Every colour is `#RRGGBB` or `#RRGGBBAA`.
 - [ ] `row_dim` is a neutral grey (`R = G = B`) in the 0.45–0.85 range.
 - [ ] `scrim` keeps a real alpha (~0.5 and above) — a translucent plate does not read as

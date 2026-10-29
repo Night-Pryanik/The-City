@@ -481,6 +481,7 @@ func _check_contrast(manager, id: String, state: Dictionary) -> void:
         ["accent_text", "accent", 4.5],
         ["accent_text", "accent_hover", 4.5],
         ["price", "panel_bg", 3.0],
+        ["price_amount", "panel_bg", 3.0],
         ["quality", "panel_bg", 3.0],
         ["income", "panel_bg", 3.0],
         ["expense", "panel_bg", 3.0],

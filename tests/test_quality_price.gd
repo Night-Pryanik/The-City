@@ -52,16 +52,6 @@ const WATCHDOG = preload("res://tests/watchdog.gd")
 
 var _failed := false
 
-# The shared formatting of the money readouts: the expected texts are assembled by the
-# same helper the interface uses, icon included. The script is loaded at RUN time: a
-# preloaded copy is compiled before the autoloads are registered.
-var _money_fmt = null
-
-func _money(text: String) -> String:
-    if _money_fmt == null:
-        _money_fmt = load("res://scripts/ui_helpers.gd")
-    return _money_fmt.money(text)
-
 func _initialize():
     WATCHDOG.arm(self)
     _run()
@@ -517,7 +507,7 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
                         else tail_node.get_theme_color("font_color"),
                 "width": tail_node.size.x,
             })
-    check(base_line == "Base price: " + _money(str(int(round(gd.get_price(sample_id))))),
+    check(base_line == "Base price: " + ui.price_amount(str(int(round(gd.get_price(sample_id))))),
         "the row tooltip must contain the base price with the coin icon, got \"%s\"" % base_line)
     check(scale_stars.size() == 3,
         "the row tooltip must have 3 rows (only levels from storage), shown %d: %s"
@@ -533,9 +523,11 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
         check(str(stars_cell["text"]) == "  " + str(row["stars"]),
             "the stars of row #%d did not match the computed ones: \"%s\" instead of \"%s\""
             % [i, str(stars_cell["text"]), "  " + str(row["stars"])])
-        check(str(tail_cell["text"]) == _money(str(row["tail"])),
+        var expected_ladder_tail: String = str(row["tail"]).trim_suffix(str(row["amount"])) \
+                + str(ui.price_amount(str(row["amount"])))
+        check(str(tail_cell["text"]) == expected_ladder_tail,
             "the price calculation of row #%d did not match the computed one: \"%s\" instead of \"%s\""
-            % [i, str(tail_cell["text"]), _money(str(row["tail"]))])
+            % [i, str(tail_cell["text"]), expected_ladder_tail])
         check(stars_cell["color"] == gd.get_quality_color(qid),
             "the stars of row #%d (\"%s\") must be in the colour of level \"%s\": %s instead of %s"
             % [i, str(stars_cell["text"]), qid, str(stars_cell["color"]),
@@ -676,8 +668,8 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
             # price of the addition by this very coefficient.
             var additions_tail := "x%.2f" % float(key_stages["additions"]["quality_mult"])
             check(str(expected[i + 1]["tail"]) == additions_tail,
-                "the addition row of block #%d must carry the quality coefficient of the addition "
-                + "%s, got \"%s\""
+                ("the addition row of block #%d must carry the quality coefficient of the addition "
+                + "%s, got \"%s\"")
                 % [i / 4, additions_tail, str(expected[i + 1]["tail"])])
             var quality_tail := "x%.2f" % float(key_stages["quality"]["mult"])
             check(str(expected[i]["tail"]) == quality_tail,
@@ -720,11 +712,12 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
             check(str(cells[i]["colon"]) == ":",
                 "the colon of row #%d must stand in its own cell, got \"%s\""
                 % [i, str(cells[i]["colon"])])
-            # The total row is the price the unit costs, so it carries the coin icon after the
-            # number; the coefficient rows carry no icon.
+            # The total row is the price the unit costs, so its amount is painted apart and carries
+            # the coin icon; the coefficient rows carry no amount.
             var expected_tail := str(row["tail"])
-            if str(row["kind"]) == "total":
-                expected_tail = _money(expected_tail)
+            if row.has("amount"):
+                expected_tail = str(row["tail"]).trim_suffix(str(row["amount"])) \
+                        + str(ui.price_amount(str(row["amount"])))
             check(str(cells[i]["tail"]) == expected_tail,
                 "the calculation of row #%d must be \"%s\", got \"%s\""
                 % [i, expected_tail, str(cells[i]["tail"])])
@@ -771,9 +764,9 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
                     and str(child.text).begins_with("Base prices: "):
                 generated_base_line = str(child.text)
         check(generated_base_line == "Base prices: good: %s, addition: %s"
-                % [_money(str(plain_price)), _money(gd.format_coins(addition_price))],
+                % [ui.price_amount(str(plain_price)), ui.price_amount(gd.format_coins(addition_price))],
             "the base line of a decorated good must name both prices with the coin icon (%s and %s), got \"%s\""
-            % [_money(str(plain_price)), _money(gd.format_coins(addition_price)), generated_base_line])
+            % [ui.price_amount(str(plain_price)), ui.price_amount(gd.format_coins(addition_price)), generated_base_line])
         # The last row is the total of the last key, and it carries the price the game really uses
         # for those units.
         if not expected.is_empty():
