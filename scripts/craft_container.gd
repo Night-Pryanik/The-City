@@ -31,9 +31,9 @@
 #
 # THE QUALITY OF THE RESULT
 # The base ingredients give a weighted average of their qualities, rounded to the nearest level.
-# The additional ingredients are a minority of the mass — 10 units of dye against 20 of wool — so
+# The additional ingredient is a minority of the mass — 10 units of dye against 20 of wool — so
 # a plain average over everything would let a cheap addition DILUTE a good base: exceptional wool
-# with a common dye averages 2.33 and drops to "fine". Instead the best additional ingredient
+# with a common dye averages 2.33 and drops to "fine". Instead the additional ingredient
 # RAISES the level of the base by one at most, and never lowers it: a plain garment with an
 # exceptional dye becomes "fine", a perfect garment stays perfect even with a common dye. That is
 # why the slot knows whether it is an additional ingredient.
@@ -328,13 +328,13 @@ func reset():
         released[pid] = 0
 
 # The quality of the result at the moment of the call — it is applied to each portion of the
-# output. The base ingredients give the weighted average of their qualities; the best additional
+# output. The base ingredients give the weighted average of their qualities; the additional
 # ingredient raises that level by one at most, and never lowers it (see the header of the file).
 #
-# The result is a quality KEY, not a level: a decorated good keeps the level of its base and the
-# level of its additions apart, because its price is the sum of the two parts, each at its own
-# level (see GameData, "THE QUALITY KEY OF A STORAGE ROW"). The level of the good itself is read
-# from the key by the same rule — the base raised by the best addition by one at most.
+# The result is a quality KEY, not a level: a good with an additional ingredient keeps the level
+# of its base and the level of its addition apart, because its price is the sum of the two parts,
+# each at its own level (see GameData, "THE QUALITY KEY OF A STORAGE ROW"). The level of the good
+# itself is read from the key by the same rule — the base raised by the addition by one at most.
 func _compute_quality_from_consumed() -> String:
     var levels: Array = []
     if is_instance_valid(GameData):
@@ -343,7 +343,9 @@ func _compute_quality_from_consumed() -> String:
         return "common"
 
     var base := {}
-    var best_extra := -1
+    # The highest level among the units of the additional ingredient taken so far: its shelf may
+    # hold a mix, and the addition counts at its best.
+    var extra_level := -1
     for slot in ingredient_slots:
         var is_extra := bool(slot.get("extra", false))
         for entry in slot.get("consumed", []):
@@ -352,18 +354,18 @@ func _compute_quality_from_consumed() -> String:
                 continue
             var qid: String = str(entry.get("quality", "common"))
             if is_extra:
-                best_extra = maxi(best_extra, _level_index(qid, levels))
+                extra_level = maxi(extra_level, _level_index(qid, levels))
             else:
                 base[qid] = int(base.get(qid, 0)) + qty
 
     var base_level := str(levels[_nearest_level_index(base, levels)])
-    if best_extra < 0:
+    if extra_level < 0:
         return base_level
-    return GameData.make_quality_key(base_level, str(levels[best_extra]))
+    return GameData.make_quality_key(base_level, str(levels[extra_level]))
 
 # The index of the quality level in the ordered list of levels (worst first). The argument is a
-# quality key — a decorated ingredient keeps the levels of its parts, and it counts as the level of
-# the good itself. An unknown key falls back to the worst level.
+# quality key — an additional ingredient keeps the levels of its parts, and it counts as the level
+# of the good itself. An unknown key falls back to the worst level.
 func _level_index(quality_key: String, levels: Array) -> int:
     return maxi(0, levels.find(GameData.quality_key_level(quality_key)))
 
@@ -481,7 +483,7 @@ func _restore_from_slot_data(recipe: Dictionary, slot_data: Dictionary):
 # (see the alternative ingredients in the header of GameData.gd).
 func _build_slots_from_recipe(recipe: Dictionary) -> Array:
     var out: Array = []
-    var extras: Array = recipe.get("extras", [])
+    var extra_pid := str(recipe.get("extra", ""))
     for or_group in GameData.craft_alternatives(recipe):
         if or_group.is_empty():
             continue
@@ -503,7 +505,7 @@ func _build_slots_from_recipe(recipe: Dictionary) -> Array:
         }
         if or_group.size() == 1:
             _apply_variant_to_slot(slot, or_group[0])
-            slot["extra"] = str(slot["pid"]) in extras
+            slot["extra"] = not extra_pid.is_empty() and str(slot["pid"]) == extra_pid
         else:
             slot["kind"] = "alternatives"
             slot["variants"] = or_group
@@ -654,8 +656,8 @@ func _order_group_members_by_priority(members: Array, priority: String) -> Array
         return out
     # The best quality is the last one in the order of levels (GameData returns from
     # the worst to the best, see the comment in _consume_quality_detail in CityData).
-    # The stock is summed by the level of the good: a decorated good holds a key of two levels,
-    # and its units count as the level the good itself has.
+    # The stock is summed by the level of the good: a good with an additional ingredient holds a
+    # key of two levels, and its units count as the level the good itself has.
     var best_qid: String = str(quality_levels[quality_levels.size() - 1])
     var sort_sign: int = -1 if priority == "best" else 1
     out.sort_custom(func(a, b):

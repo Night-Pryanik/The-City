@@ -1422,6 +1422,9 @@ msgstr "Нет"
 msgid "No access to fresh water"
 msgstr "Нет доступа к пресной воде"
 
+msgid "No addition"
+msgstr "Без добавки"
+
 msgid "No building selected"
 msgstr "Не выбрано здание"
 

@@ -1422,6 +1422,9 @@ msgstr ""
 msgid "No access to fresh water"
 msgstr ""
 
+msgid "No addition"
+msgstr ""
+
 msgid "No building selected"
 msgstr ""
 

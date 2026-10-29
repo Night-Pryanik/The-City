@@ -556,29 +556,29 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
     check(_count_build_up_rows(ui) == 0,
         "a plain good must have no build-up rows in the tooltip")
 
-    # A decorated good ("Wool Clothes (+Woad)") explains the price in STAGES: the base part at the
-    # level of the base, the additions at the level of the additions, the synergy, and the total.
+    # A generated good ("Wool Clothes (+Woad)") explains the price in STAGES: the base part at the
+    # level of the base, the addition at the level of the addition, the synergy, and the total.
     # One block per quality KEY that lies in the storage, each row named, so that no row has to
     # mean two things at once.
-    var decorated := _pick_decorated_good(gd)
-    if decorated.is_empty():
+    var generated := _pick_generated_good(gd)
+    if generated.is_empty():
         check(false, "the data has no recipe with additional ingredients to check the rows against")
     else:
         # The record of a generated good is created when its recipe is built (or when the good
         # first reaches the storage) — a good that does not exist has no price and no row.
-        gd.get_craft(decorated)
+        gd.get_craft(generated)
         var levels: Array = gd.get_quality_levels()
         var low_level := str(levels[0])
         var stage_level := "fine" if levels.has("fine") else low_level
         # The key carries BOTH levels: a fine base with a common dye. The price is the sum of the
         # two parts, each at its own level — the whole point of the pair.
         var stage_key: String = gd.make_quality_key(stage_level, low_level)
-        var stages: Dictionary = gd.get_price_stages(decorated, stage_key)
-        check(not stages.is_empty(), "a decorated good must have price stages")
+        var stages: Dictionary = gd.get_price_stages(generated, stage_key)
+        check(not stages.is_empty(), "a generated good must have price stages")
         if not stages.is_empty():
-            # The price is a SUM of parts: the coefficients of the base part and of the additions
+            # The price is a SUM of parts: the coefficients of the base part and of the addition
             # add up to the coefficient of their sum. They do not multiply — there is no chain of
-            # surcharges, the material of the additions is paid for in full and nothing else.
+            # surcharges, the material of the addition is paid for in full and nothing else.
             var parts_mult: float = float(stages["quality"]["mult"]) + float(stages["additions"]["mult"])
             var parts_price: float = float(stages["quality"]["price"]) + float(stages["additions"]["price"])
             check(is_equal_approx(parts_mult, parts_price / float(stages["base"])),
@@ -591,10 +591,10 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
                 % [str(gd.get_quality_price_multiplier(stage_level)),
                     str(stages["quality"]["mult"])])
             check(is_equal_approx(float(stages["additions"]["mult"]),
-                    float(gd.get_decorated_extras_value(str(gd.parse_generated_id(decorated)["base"]),
-                            gd.parse_generated_id(decorated)["extras"], low_level))
+                    float(gd.get_extra_price_part(str(gd.parse_generated_id(generated)["base"]),
+                            str(gd.parse_generated_id(generated)["extra"]), low_level))
                         / float(stages["base"])),
-                "the additions stage must carry the value of the additions at their own level")
+                "the additions stage must carry the value of the addition at its own level")
             check(is_equal_approx(float(stages["synergy"]["mult"]),
                     gd.get_craft_extra_synergy_multiplier()),
                 "the synergy stage must carry the declared coefficient (%s), got %s"
@@ -606,31 +606,31 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
         # The two levels are independent, and both are dearer than the plain good:
         #   fine base + common dye  <  fine base + fine dye
         #   plain fine              <  fine base + common dye
-        #   (the plain good plus the dye, sold apart) < (the decorated good)
-        var parsed: Dictionary = gd.parse_generated_id(decorated)
+        #   (the plain good plus the dye, sold apart) < (the generated good)
+        var parsed: Dictionary = gd.parse_generated_id(generated)
         var base_pid := str(parsed["base"])
-        var fine_common := int(round(gd.get_price_for_quality(decorated, stage_key)))
-        var fine_fine := int(round(gd.get_price_for_quality(decorated,
+        var fine_common := int(round(gd.get_price_for_quality(generated, stage_key)))
+        var fine_fine := int(round(gd.get_price_for_quality(generated,
                 gd.make_quality_key(stage_level, stage_level))))
         var plain_fine := int(round(gd.get_price_for_quality(base_pid, stage_level)))
         check(fine_fine > fine_common and fine_common > plain_fine,
-            "the price must rise with the level of the additions and stay above the plain good "
+            "the price must rise with the level of the addition and stay above the plain good "
             + "(plain %d, +common %d, +fine %d)" % [plain_fine, fine_common, fine_fine])
         var base_part: float = gd.get_price(base_pid) * gd.get_quality_price_multiplier(stage_level)
-        var extra_part: float = gd.get_decorated_extras_value(base_pid, parsed["extras"], low_level)
+        var extra_part: float = gd.get_extra_price_part(base_pid, str(parsed["extra"]), low_level)
         check(fine_common == int(round((base_part + extra_part)
                         * gd.get_craft_extra_synergy_multiplier())),
             "the price is the sum of the parts times the synergy (expected %d, got %d)"
             % [int(round((base_part + extra_part) * gd.get_craft_extra_synergy_multiplier())),
                 fine_common])
         check(float(fine_common) > base_part + extra_part,
-            "the synergy must make the decorated good dearer than its parts sold apart (%d vs %.1f)"
+            "the synergy must make the generated good dearer than its parts sold apart (%d vs %.1f)"
             % [fine_common, base_part + extra_part])
 
         # Two keys in the storage: the synergy row once, then three rows per key, in the order of
         # the levels.
-        var decorated_breakdown := {stage_key: 3, low_level: 5}
-        var expected: Array = gd.format_price_build_up_rows(decorated, decorated_breakdown)
+        var generated_breakdown := {stage_key: 3, low_level: 5}
+        var expected: Array = gd.format_price_build_up_rows(generated, generated_breakdown)
         check(expected.size() == 7,
             "the build-up is the synergy row plus three rows (quality, additions, total) per "
             + "quality key in the storage, got %d" % expected.size())
@@ -640,7 +640,7 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
             check(str(expected[0]["tail"]) == "x%.2f" % gd.get_craft_extra_synergy_multiplier(),
                 "the synergy row carries the coefficient and no price, got \"%s\""
                 % str(expected[0]["tail"]))
-        ui.show_flow_tooltip(Vector2(50, 50), "Goods", {}, decorated, {}, {}, decorated_breakdown)
+        ui.show_flow_tooltip(Vector2(50, 50), "Goods", {}, generated, {}, {}, generated_breakdown)
         await process_frame
         var cells := _build_up_cells(ui)
         check(cells.size() == expected.size(),
@@ -658,15 +658,15 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
                 % [i, str(row["tail"]), str(cells[i]["tail"])])
             check(float(cells[i]["width"]) > 20.0,
                 "row #%d collapsed in width (%s px)" % [i, str(cells[i]["width"])])
-        # The chain starts at the price of the PLAIN base: the additions are a stage of their own.
+        # The chain starts at the price of the PLAIN base: the addition is a stage of its own.
         var plain_price := int(round(gd.get_price(base_pid)))
-        var decorated_base_line := ""
+        var generated_base_line := ""
         for child in ui.flow_tooltip_vbox.get_children():
             if child is Label and str(child.text).begins_with("Base price: "):
-                decorated_base_line = str(child.text)
-        check(decorated_base_line == "Base price: %d" % plain_price,
-            "the base line of a decorated good must be the plain base (%d), got \"%s\""
-            % [plain_price, decorated_base_line])
+                generated_base_line = str(child.text)
+        check(generated_base_line == "Base price: %d" % plain_price,
+            "the base line of a generated good must be the plain base (%d), got \"%s\""
+            % [plain_price, generated_base_line])
         # The last row is the total of the last key, and it carries the price the game really uses
         # for those units.
         if not expected.is_empty():
@@ -675,7 +675,7 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
             check(str(last["qid"]) == gd.quality_key_level(stage_key),
                 "the total row carries the level of the good itself (%s), got \"%s\""
                 % [gd.quality_key_level(stage_key), str(last["qid"])])
-            var key_price := int(round(gd.get_price_for_quality(decorated, stage_key)))
+            var key_price := int(round(gd.get_price_for_quality(generated, stage_key)))
             check(str(last["tail"]).ends_with(" = %d" % key_price),
                 "the total row must end with the price of the key (%d): \"%s\""
                 % [key_price, str(last["tail"])])
@@ -745,7 +745,7 @@ func _stage_label(kind: String) -> String:
 
 # The first good of the data that is generated from a base recipe and an additional ingredient —
 # taken from the data, so that a re-balanced registry does not break the test.
-func _pick_decorated_good(gd) -> String:
+func _pick_generated_good(gd) -> String:
     for recipe in gd.crafts:
         var kinds: Array = recipe.get("extra_kinds", [])
         var result: Dictionary = recipe.get("result", {})
@@ -754,7 +754,7 @@ func _pick_decorated_good(gd) -> String:
         var base_pid := str(result.keys()[0])
         for extra_id in gd.craft_extras:
             if str(gd.craft_extras[extra_id].get("kind", "")) in kinds:
-                return gd.make_generated_id(base_pid, [str(extra_id)])
+                return gd.make_generated_id(base_pid, str(extra_id))
     return ""
 
 func check(cond: bool, msg: String):

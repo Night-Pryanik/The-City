@@ -237,6 +237,11 @@ func _run() -> void:
     # otherwise a checkbox or a slider would change the height of the row it sits in.
     _check_glyph(theme, manager, "unchecked", "CheckBox", Vector2i(16, 16), "control_border", state)
     _check_glyph(theme, manager, "checked", "CheckBox", Vector2i(16, 16), "control_border", state)
+    # A CheckBox that belongs to a ButtonGroup is drawn as a radio button: the additional
+    # ingredient of a recipe is picked with those, so they must follow the palette too.
+    _check_glyph(theme, manager, "radio_unchecked", "CheckBox", Vector2i(16, 16),
+        "control_border", state)
+    _check_glyph(theme, manager, "radio_checked", "CheckBox", Vector2i(16, 16), "accent", state)
     _check_glyph(theme, manager, "unchecked", "CheckButton", Vector2i(32, 16), "track", state)
     _check_glyph(theme, manager, "checked", "CheckButton", Vector2i(32, 16), "fill", state)
     _check_glyph(theme, manager, "grabber", "HSlider", Vector2i(16, 16), "control_border", state)

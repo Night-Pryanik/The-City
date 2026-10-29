@@ -570,7 +570,8 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
 
                 # The best quality on the warehouse: levels are ordered worst → best,
                 # the first level with count > 0 wins. The stock is summed by the level of the
-                # good, so a decorated row shows up on the ladder of the level it has.
+                # good, so a row with an additional ingredient shows up on the ladder of the
+                # level it has.
                 var breakdown: Dictionary = city_quality_detail.get(prod_id, {})
                 var totals: Dictionary = GameData.quality_level_totals(breakdown)
                 var quality_id := ""
@@ -915,8 +916,9 @@ func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdo
     quality_tooltip_vbox.add_child(header)
 
     var levels = GameData.get_quality_levels()
-    # The stock is summed by the level of the good itself: a decorated row carries two levels,
-    # and the player reads the storage by the level of the good (GameData.quality_level_totals).
+    # The stock is summed by the level of the good itself: a row with an additional ingredient
+    # carries two levels, and the player reads the storage by the level of the good
+    # (GameData.quality_level_totals).
     var totals: Dictionary = GameData.quality_level_totals(quality_breakdown)
     # We output the levels from the worst to the best (as in data/qualities.json).
     for qid in levels:
@@ -1061,7 +1063,7 @@ func _make_bullet_row(symbol: String, text: String, text_color: Color) -> HBoxCo
 
 # Creates a row of the price ladder for the row tooltip: a marker and the calculation behind it.
 # The marker is the stars of a quality level (data/qualities.json, get_quality_color) or the plus
-# of the additions of a decorated good — the row reads the same in both cases, and the marker
+# of the additional ingredient — the row reads the same in both cases, and the marker
 # says which of the two it is. Labels in an HBox, and not one Label with BBCode: that way the
 # row acquires no dependency at all on a RichTextLabel (its fit_content with the wrapping collapses
 # the label to 1 px — see resources_tab._add_quality_label), and the colours are taken from the
@@ -1190,13 +1192,13 @@ func _format_planned_rate(amount: float, interval: float) -> String:
 # ({quality_id: count}, see CityData.get_quality_breakdown). It is what decides
 # which levels are shown: the price of a level that is not in the storage is not
 # needed by the player and only misleads.
-# A decorated good ("Wool Clothes (+Woad)") gets the price explained in STAGES instead of the
-# ladder (GameData.format_price_build_up_rows): "× Synergy: x1.15" once, then a block of
-# "★★ Quality: x1.30 = 26" / "★ Additions: x2.75 = 55" / "★★ Total: x4.65 = 93" per quality key
-# that lies in the storage: a fine garment with a common dye and the same garment with a fine dye
-# are two different units at two different prices. The base price of such a good is the price of
-# its PLAIN base — the additions are a stage of their own, and the price of the decorated good
-# already includes them.
+# A good with an additional ingredient ("Wool Clothes (+Woad)") gets the price explained in
+# STAGES instead of the ladder (GameData.format_price_build_up_rows): "× Synergy: x1.15" once,
+# then a block of "★★ Quality: x1.30 = 26" / "★ Additions: x2.75 = 55" /
+# "★★ Total: x4.65 = 93" per quality key that lies in the storage: a fine garment with a common
+# dye and the same garment with a fine dye are two different units at two different prices. The
+# base price of such a good is the price of its PLAIN base — the addition is a stage of its own,
+# and the price of the generated good already includes it.
 # The tooltip is shown even when the production/consumption is empty, as long as
 # the price of the resource is > 0.
 # planned_consumption — the planned consumption:
@@ -1222,8 +1224,9 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
     var price := 0.0
     if not resource_id.is_empty():
         price = GameData.get_price(resource_id)
-    # For a decorated good the chain starts at the price of its PLAIN base: the additions are a
-    # stage of their own below, and the base of the decorated good already includes them.
+    # For a good with an additional ingredient the chain starts at the price of its PLAIN base:
+    # the addition is a stage of its own below, and the base of the generated good already
+    # includes it.
     var base_price := price
     if not resource_id.is_empty():
         var parsed := GameData.parse_generated_id(resource_id)
@@ -1250,7 +1253,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(price_label)
         # The price is built in stages, and each of them gets its own row: the quality surcharge on
-        # the plain good, the surcharge of the additions, and the total. Without the separation one
+        # the plain good, the surcharge of the addition, and the total. Without the separation one
         # row had to mean two things at once ("★★ = x1.30 = 44" was both the multiplier and the
         # price), and those stopped being the same number once the additions appeared.
         # A plain good has a single surcharge: its ladder row IS the price at that level.

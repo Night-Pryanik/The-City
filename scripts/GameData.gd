@@ -24,7 +24,7 @@ var crafts: Array = []
 # either is an additional ingredient or it is not, there is no second registry of names.
 var craft_extras: Dictionary = {}
 # The kinds of the additional ingredients in the order of the file: [ { id, name } ]. The order
-# is what the checkboxes of the building panel follow.
+# is what the radio buttons of the building panel follow.
 var craft_extra_kinds: Array = []
 # The recipes built on the fly by get_craft(), by id (see "Additional ingredients of a recipe").
 # The data is read once per load, so a generated recipe is as stable as a plain one; the cache
@@ -533,14 +533,16 @@ func craft_alternatives(recipe: Dictionary) -> Array:
 
 # --- ADDITIONAL INGREDIENTS OF A RECIPE (the generated result) ---
 #
-# A recipe may accept additional ingredients: the player ticks concrete goods of the declared
+# A recipe may accept additional ingredients: the player picks ONE concrete good of the declared
 # kinds in the building panel, and the result is a good that exists nowhere in the data. The
 # kinds are declared by the recipe ("extra_kinds": ["gemstone"]), the goods of those kinds — by
 # data/craft_extras.json.
 #
-# The chosen goods are a part of the recipe id: "gold_jewelry+lazurite_ore+pearl" is the base
-# recipe plus the additions, sorted (one canonical id per combination). get_craft() builds such
-# a recipe on the fly — the additions become ordinary AND-terms of "resources", the result
+# A good carries at most ONE addition: "gold_jewelry+lazurite_ore" is the base recipe plus that
+# good, and a good with two of them does not exist. The mechanic is not tied to any category —
+# a recipe of any good may accept an addition, be it jewelry, clothing or furniture. The chosen
+# good is a part of the recipe id, so a combination has one canonical id. get_craft() builds such
+# a recipe on the fly — the addition becomes an ordinary AND-term of "resources", the result
 # becomes a generated product id — so every consumer of a recipe (the container, the planned
 # demand and supply, the panel) needs no knowledge of the mechanic.
 #
@@ -549,23 +551,23 @@ func craft_alternatives(recipe: Dictionary) -> Array:
 # that the population would never consume it (data/consumption/*.json addresses goods by group)
 # and it would pile up in the storage forever.
 #
-# The name is the base name plus the additions in the nominative case and without prepositions:
-# "Gold Jewelry (+Lazurite, Pearl)". The format is deliberately NOT translated: it is a plus sign
-# and punctuation only, which is what keeps it short in every language. The goods inside it are
-# the data names and are already localized.
+# The name is the base name plus the addition in the nominative case and without a preposition:
+# "Gold Jewelry (+Lazurite)". The format is deliberately NOT translated: it is a plus sign and
+# punctuation only, which is what keeps it short in every language. The good inside it is the
+# data name and is already localized.
 #
 # The price pays for every part of the good in full, at the quality of the units that went into
-# it: the base at the level of the base and each addition at the level of the additions, and the
+# it: the base at the level of the base and the addition at the level of the addition, and the
 # sum is multiplied by the synergy coefficient of data/game_balance.json. There is no per-good
 # premium — a cheap dye cannot make a garment dearer than the dye is worth, and the value of an
 # addition follows its own price in the data.
-#   (base price × its level multiplier + the additions per unit × their level multiplier)
+#   (base price × its level multiplier + the addition per unit × its level multiplier)
 #   × (1 + craft_extra_synergy)
-# The additions are declared per craft cycle, so their price is divided by the output of the base
+# The addition is declared per craft cycle, so its price is divided by the output of the base
 # recipe. See "THE QUALITY KEY OF A STORAGE ROW" below for how the two levels are kept apart.
 
 # The recipe by id, or an empty dictionary. An id with GENERATED_SEPARATOR is a base recipe plus
-# the additional ingredients; any other id is looked up as always.
+# the additional ingredient; any other id is looked up as always.
 func get_craft(recipe_id: String) -> Dictionary:
     if _craft_cache.has(recipe_id):
         return _craft_cache[recipe_id]
@@ -575,7 +577,7 @@ func get_craft(recipe_id: String) -> Dictionary:
         if not parsed.is_empty():
             var base := find_craft(str(parsed["base"]))
             if not base.is_empty():
-                recipe = build_recipe_with_extras(base, parsed["extras"], recipe_id)
+                recipe = build_recipe_with_extra(base, str(parsed["extra"]), recipe_id)
     _craft_cache[recipe_id] = recipe
     return recipe
 
@@ -586,39 +588,28 @@ func find_craft(recipe_id: String) -> Dictionary:
             return c
     return {}
 
-# Splits a generated id into the base and the additions. An empty dictionary — the id is not
-# generated (it has no separator) or names an addition that does not exist. The additions are
-# returned sorted, so that the order of the checkboxes never makes a second id for one good.
+# Splits a generated id into the base and the addition. An empty dictionary — the id is not
+# generated (no separator, or more than one addition) or names an addition that does not exist.
 func parse_generated_id(pid: String) -> Dictionary:
     var at := pid.find(GENERATED_SEPARATOR)
     if at <= 0 or at >= pid.length() - 1:
         return {}
-    var extras: Array = []
-    for part in pid.substr(at + 1).split(GENERATED_SEPARATOR, false):
-        var key := str(part)
-        if not craft_extras.has(key) or key in extras:
-            return {}
-        extras.append(key)
-    extras.sort()
-    return {"base": pid.substr(0, at), "extras": extras}
+    var extra := pid.substr(at + 1)
+    if extra.find(GENERATED_SEPARATOR) >= 0 or not craft_extras.has(extra):
+        return {}
+    return {"base": pid.substr(0, at), "extra": extra}
 
-# The id of a good with the given additions. No additions — the base id itself.
-func make_generated_id(base: String, extras: Array) -> String:
-    var clean: Array = []
-    for extra in extras:
-        var key := str(extra)
-        if craft_extras.has(key) and not (key in clean):
-            clean.append(key)
-    if clean.is_empty():
+# The id of a good with the given addition. An empty or unknown addition — the base id itself.
+func make_generated_id(base: String, extra: String) -> String:
+    if extra.is_empty() or not craft_extras.has(extra):
         return base
-    clean.sort()
-    return base + GENERATED_SEPARATOR + GENERATED_SEPARATOR.join(clean)
+    return base + GENERATED_SEPARATOR + extra
 
-# The base recipe with the additions merged into it: they are AND-terms of "resources" (the
+# The base recipe with the addition merged into it: it is an AND-term of "resources" (the
 # alternatives of the base are kept as they are) and the result is the generated good.
-func build_recipe_with_extras(base: Dictionary, extras: Array, recipe_id: String) -> Dictionary:
+func build_recipe_with_extra(base: Dictionary, extra: String, recipe_id: String) -> Dictionary:
     var base_result: Dictionary = base.get("result", {})
-    if base_result.is_empty() or extras.is_empty():
+    if base_result.is_empty() or extra.is_empty():
         return base
     var terms: Array = []
     var raw = base.get("resources", null)
@@ -627,12 +618,11 @@ func build_recipe_with_extras(base: Dictionary, extras: Array, recipe_id: String
             terms.append({str(key): int(raw[key])})
     elif raw is Array:
         terms = raw.duplicate(true)
-    for extra in extras:
-        terms.append({str(extra): int(craft_extras[str(extra)].get("amount", 1))})
+    terms.append({extra: int(craft_extras[extra].get("amount", 1))})
 
     var result: Dictionary = {}
     for pid in base_result:
-        var generated := make_generated_id(str(pid), extras)
+        var generated := make_generated_id(str(pid), extra)
         materialise_generated(generated)
         result[generated] = int(base_result[pid])
 
@@ -640,10 +630,10 @@ func build_recipe_with_extras(base: Dictionary, extras: Array, recipe_id: String
     out["id"] = recipe_id
     out["resources"] = terms
     out["result"] = result
-    # The pseudo-output of the "science" recipe is not a good and takes no additions.
+    # The pseudo-output of the "science" recipe is not a good and takes no addition.
     out.erase("display_result")
-    out["extras"] = extras.duplicate()
-    out["name"] = get_generated_name(str(base_result.keys()[0]), extras)
+    out["extra"] = extra
+    out["name"] = get_generated_name(str(base_result.keys()[0]), extra)
     return out
 
 # Creates the record of a generated good, if it is not there yet. Returns false for an id that
@@ -657,28 +647,25 @@ func materialise_generated(pid: String) -> bool:
     var base_pid := str(parsed["base"])
     if not products.has(base_pid):
         return false
-    var extras: Array = parsed["extras"]
+    var extra := str(parsed["extra"])
     var base: Dictionary = products[base_pid]
     products[pid] = {
         "id": pid,
-        "name": get_generated_name(base_pid, extras),
+        "name": get_generated_name(base_pid, extra),
         "type": "product",
         "category": base.get("category", "other"),
         "icon": base.get("icon", ""),
         "unlock_tech": base.get("unlock_tech", ""),
-        "price": get_generated_price(base_pid, extras),
+        "price": get_generated_price(base_pid, extra),
         "base": base_pid,
-        "extras": extras,
+        "extra": extra,
     }
     _register_generated_in_groups(pid, base_pid)
     return true
 
-# The name of a generated good: the base name plus the additions in brackets.
-func get_generated_name(base_pid: String, extras: Array) -> String:
-    var names: Array = []
-    for extra in extras:
-        names.append(get_extra_name(str(extra)))
-    return "%s (+%s)" % [get_product_name(base_pid), ", ".join(names)]
+# The name of a generated good: the base name plus the addition in brackets.
+func get_generated_name(base_pid: String, extra: String) -> String:
+    return "%s (+%s)" % [get_product_name(base_pid), get_extra_name(extra)]
 
 # The name of an additional ingredient as it is written inside the brackets: the override of the
 # registry if there is one (the stone is "Lazurite", not "Lazurite Ore"), otherwise the name of
@@ -704,34 +691,33 @@ func get_product_icon(pid: String) -> String:
         return str(raw_resources[pid].get("icon", ""))
     return ""
 
-# The price of one unit at the ORDINARY quality of both parts. It is what a decorated good
-# costs before any quality is taken into account, and it is the reference the tooltips count the
-# coefficients of the stages from.
-func get_generated_price(base_pid: String, extras: Array) -> int:
-    return int(round(get_decorated_price(base_pid, extras, "", "")))
+# The price of one unit at the ORDINARY quality of both parts. It is what a good with an
+# additional ingredient costs before any quality is taken into account, and it is the reference
+# the tooltips count the coefficients of the stages from.
+func get_generated_price(base_pid: String, extra: String) -> int:
+    return int(round(get_price_with_extra(base_pid, extra, "", "")))
 
-# The price of one unit of a decorated good whose base and additions carry their own quality
-# levels. The two levels are independent: a fine garment with a common dye is worth more than
-# the common one but less than the same garment with a fine dye.
-func get_decorated_price(base_pid: String, extras: Array, base_qid: String, extra_qid: String) -> float:
+# The price of one unit of a good whose base and addition carry their own quality levels. The two
+# levels are independent: a fine garment with a common dye is worth more than the common one but
+# less than the same garment with a fine dye.
+func get_price_with_extra(base_pid: String, extra: String, base_qid: String, extra_qid: String) -> float:
     var total := get_price(base_pid) * get_quality_price_multiplier(base_qid)
-    total += get_decorated_extras_value(base_pid, extras, extra_qid)
+    total += get_extra_price_part(base_pid, extra, extra_qid)
     return total * get_craft_extra_synergy_multiplier()
 
-# What the additions cost per ONE unit of the result at their own quality level. The additions
-# are declared per craft cycle, while the price is per unit — hence the division by the output of
+# What the addition costs per ONE unit of the result at its own quality level. The addition is
+# declared per craft cycle, while the price is per unit — hence the division by the output of
 # the base recipe.
-func get_decorated_extras_value(base_pid: String, extras: Array, extra_qid: String) -> float:
+func get_extra_price_part(base_pid: String, extra: String, extra_qid: String) -> float:
+    if extra.is_empty():
+        return 0.0
     var batch := float(_generated_batch(base_pid))
-    var mult := get_quality_price_multiplier(extra_qid)
-    var total := 0.0
-    for extra in extras:
-        var record: Dictionary = craft_extras.get(str(extra), {})
-        total += get_price(str(extra)) * float(record.get("amount", 1)) / batch * mult
-    return total
+    var record: Dictionary = craft_extras.get(extra, {})
+    return get_price(extra) * float(record.get("amount", 1)) / batch \
+            * get_quality_price_multiplier(extra_qid)
 
-# The coefficient that makes a decorated good worth more than its parts sold apart
-# (data/game_balance.json, craft_extra_synergy).
+# The coefficient that makes a good with an additional ingredient worth more than its parts sold
+# apart (data/game_balance.json, craft_extra_synergy).
 func get_craft_extra_synergy_multiplier() -> float:
     return 1.0 + float(game_balance.get("craft_extra_synergy", 0.0))
 
@@ -742,11 +728,11 @@ func _generated_batch(base_pid: String) -> int:
     var produced := int(find_craft(base_pid).get("result", {}).get(base_pid, 0))
     return maxi(1, produced)
 
-# How much more expensive a decorated good is than its plain base at the ordinary quality of
-# both: 86.25 / 20 = 4.31. It is the actual ratio of the two prices — the base, the additions and the
-# synergy — and not a number declared anywhere. The player compares the decorated good with the
-# plain one, and the ratio is the answer to that comparison.
-func get_decoration_price_multiplier(pid: String) -> float:
+# How much more expensive a generated good is than its plain base at the ordinary quality of
+# both: 86.25 / 20 = 4.31. It is the actual ratio of the two prices — the base, the addition and
+# the synergy — and not a number declared anywhere. The player compares the good with the
+# addition against the plain one, and the ratio is the answer to that comparison.
+func get_generated_price_multiplier(pid: String) -> float:
     var parsed := parse_generated_id(pid)
     if parsed.is_empty():
         return 1.0
@@ -755,15 +741,15 @@ func get_decoration_price_multiplier(pid: String) -> float:
         return 1.0
     return get_price_for_quality(pid, "") / base_price
 
-# The row that explains the price of a decorated good in the tooltips of the "Resources" and
-# "Trade" tabs:
+# The row that explains the price of a good with an additional ingredient in the tooltips of the
+# "Resources" and "Trade" tabs:
 #   { "glyph": "+", "tail": " = x4.31 (20 → 86)", "text": "+ = x4.31 (20 → 86)" }
-# The glyph is the plus sign that opens the additions in the name ("Wool Clothes (+Woad)"), so the
+# The glyph is the plus sign that opens the addition in the name ("Wool Clothes (+Woad)"), so the
 # row reads as the price of that bracket. The two prices are the ORDINARY prices of the plain and
-# the decorated good — the compact form of the "Trade" tab, which lists many members at once; the
+# the generated good — the compact form of the "Trade" tab, which lists many members at once; the
 # full chain of levels is in the row tooltip (format_price_build_up_rows). An empty dictionary for
 # a plain good: nothing to explain.
-func format_decoration_price_row(pid: String) -> Dictionary:
+func format_extra_price_row(pid: String) -> Dictionary:
     var parsed := parse_generated_id(pid)
     if parsed.is_empty():
         return {}
@@ -778,17 +764,17 @@ func format_decoration_price_row(pid: String) -> Dictionary:
     return {"glyph": GENERATED_SEPARATOR, "tail": tail, "text": GENERATED_SEPARATOR + tail}
 
 # The generated good joins every goods group of its base: a group is how the rest of the game
-# addresses "any jewelry", and a decorated jewelry is jewelry.
+# addresses "any jewelry", and a jewelry with an addition is jewelry.
 func _register_generated_in_groups(pid: String, base_pid: String) -> void:
     for group_key in product_groups:
         var members: Array = product_groups[group_key]
         if base_pid in members and not (pid in members):
             members.append(pid)
 
-# The decorated variants of a good: the generated goods whose base it is, sorted. A generated
-# good IS its base with additions, so a rule that names the plain good ("the city sells gold
-# jewelry to a town") applies to the decorated one too.
-func get_decorated_variants(base_pid: String) -> Array:
+# The generated variants of a good: the goods with an additional ingredient whose base it is,
+# sorted. A generated good IS its base with an addition, so a rule that names the plain good
+# ("the city sells gold jewelry to a town") applies to the generated one too.
+func get_generated_variants(base_pid: String) -> Array:
     var out: Array = []
     for pid in products:
         if str(products[pid].get("base", "")) == base_pid:
@@ -797,13 +783,13 @@ func get_decorated_variants(base_pid: String) -> Array:
     return out
 
 # The units of a key the storage holds: a group — the sum over its members, a concrete good —
-# itself plus its decorated variants. This is the amount a town deal may draw on: a contract on
-# the plain good must not tear while the shelves are full of the decorated one.
+# itself plus its generated variants. This is the amount a town deal may draw on: a contract on
+# the plain good must not tear while the shelves are full of the generated one.
 func get_good_stock(key: String, storage: Dictionary) -> int:
     if is_group_key(key):
         return int(get_storage_amount(key, storage))
     var total := int(storage.get(key, 0))
-    for pid in get_decorated_variants(key):
+    for pid in get_generated_variants(key):
         total += int(storage.get(pid, 0))
     return total
 
@@ -812,17 +798,17 @@ func get_good_stock(key: String, storage: Dictionary) -> int:
 #       "items": [ { "product", "name", "icon", "amount", "in_stock", "selectable" } ] } ]
 # The technology gate is the caller's business: GameData does not know what is researched.
 #
-# in_stock / selectable are the state of the checkbox. A good that is not in the warehouse cannot
-# be chosen — the cycle would only stall waiting for it. It stays in the list, so that the player
-# sees what the recipe accepts and what is missing. An addition that is ALREADY chosen stays
-# selectable even with an empty shelf: otherwise a good that has run out could not be unticked,
-# and the slot would be stuck with it.
+# in_stock / selectable are the state of the radio button. A good that is not in the warehouse
+# cannot be chosen — the cycle would only stall waiting for it. It stays in the list, so that the
+# player sees what the recipe accepts and what is missing. The addition that is ALREADY chosen
+# stays selectable even with an empty shelf: otherwise a good that has run out could not be
+# unchosen, and the slot would be stuck with it.
 func get_recipe_extra_options(recipe_id: String) -> Array:
     var kinds: Array = get_craft(recipe_id).get("extra_kinds", [])
     var out: Array = []
     if kinds.is_empty():
         return out
-    var chosen: Array = parse_generated_id(recipe_id).get("extras", [])
+    var chosen := str(parse_generated_id(recipe_id).get("extra", ""))
     for kind_entry in craft_extra_kinds:
         var kind_id := str(kind_entry.get("id", ""))
         if not (kind_id in kinds):
@@ -840,7 +826,7 @@ func get_recipe_extra_options(recipe_id: String) -> Array:
                 "amount": int(record.get("amount", 1)),
                 "unlock_tech": str(record.get("unlock_tech", "")),
                 "in_stock": in_stock,
-                "selectable": in_stock > 0 or str(product_id) in chosen,
+                "selectable": in_stock > 0 or str(product_id) == chosen,
             })
         if not items.is_empty():
             out.append({
@@ -942,18 +928,18 @@ func get_quality_price_multiplier(quality_id: String) -> float:
 
 # --- THE QUALITY KEY OF A STORAGE ROW ---
 # The storage keeps a breakdown {quality key: count}. For a plain good the key IS the level of its
-# units ("fine"). A decorated good carries TWO levels — the base part and the additions — because
-# its price is the sum of the parts, each at its own level, and "fine base + common dye" and
-# "fine base + fine dye" are different units at different prices. Its key is "base|extra"
-# ("fine|common").
+# units ("fine"). A good with an additional ingredient carries TWO levels — the base part and the
+# addition — because its price is the sum of the parts, each at its own level, and "fine base +
+# common dye" and "fine base + fine dye" are different units at different prices. Its key is
+# "base|extra" ("fine|common").
 #
 # The level of the good ITSELF — what the craft rule gives the result and what the rest of the
 # game reads (consumption, the breakdown tooltips) — is derived from the pair by the very rule the
-# container applies to the consumed ingredients: the base level, raised by the best addition by
+# container applies to the consumed ingredients: the base level, raised by the addition by
 # one level at most and never lowered by it. So the pair is the whole truth about a unit, and the
 # level is a reading of it.
 #
-# A key of a decorated good whose two levels are equal is shortened to the plain level: such a
+# A key of such a good whose two levels are equal is shortened to the plain level: such a
 # unit costs exactly what the plain good of that level costs.
 const QUALITY_KEY_SEPARATOR := "|"
 
@@ -970,8 +956,8 @@ func split_quality_key(quality_key: String) -> Array:
         return [quality_key, ""]
     return [quality_key.substr(0, at), quality_key.substr(at + 1)]
 
-# The level of the good itself (see the header of the block): the base level of a decorated good,
-# raised by the level of its additions by one at most.
+# The level of the good itself (see the header of the block): the base level of a good with an
+# additional ingredient, raised by the level of that addition by one at most.
 func quality_key_level(quality_key: String) -> String:
     var parts := split_quality_key(quality_key)
     var base_qid := str(parts[0])
@@ -990,10 +976,11 @@ func _level_index(quality_id: String, levels: Array) -> int:
     return maxi(0, levels.find(quality_id))
 
 # The current price of one unit of the product taking the quality into account. A plain good is
-# the price (base × the dynamic market multipliers) × the quality multiplier. A decorated good is
-# the sum of its parts at the two levels of the key (see get_decorated_price) — its quality is
-# already inside that sum and is NOT applied a second time. The fractional result: the rounding is
-# done by the caller (WHOLE coins are needed, see get_price_breakdown_for_quality).
+# the price (base × the dynamic market multipliers) × the quality multiplier. A good with an
+# additional ingredient is the sum of its parts at the two levels of the key (see
+# get_price_with_extra) — its quality is already inside that sum and is NOT applied a second
+# time. The fractional result: the rounding is done by the caller (WHOLE coins are needed, see
+# get_price_breakdown_for_quality).
 func get_price_for_quality(res_id: String, quality_key: String) -> float:
     var parts := split_quality_key(quality_key)
     var parsed := parse_generated_id(res_id)
@@ -1003,7 +990,7 @@ func get_price_for_quality(res_id: String, quality_key: String) -> float:
     var extra_qid := str(parts[1])
     if extra_qid.is_empty():
         extra_qid = base_qid
-    return get_decorated_price(str(parsed["base"]), parsed["extras"], base_qid, extra_qid)
+    return get_price_with_extra(str(parsed["base"]), str(parsed["extra"]), base_qid, extra_qid)
 
 # The breakdown of the price of one unit of the product by quality for the tooltip:
 #   { "base": int, "multiplier": float, "total": int }
@@ -1011,8 +998,9 @@ func get_price_for_quality(res_id: String, quality_key: String) -> float:
 # whole number ONCE, the total is round(base × the quality multiplier). All the numbers in
 # the tooltip are whole, except for the multiplier itself — it is shown as a separate
 # addend: "Price: 4 * 1.30 (★★) = 5".
-# A decorated good has no single quality multiplier — its price is a sum of parts — so the
-# multiplier reported for it is the ratio of the two prices, which is what the row reads as.
+# A good with an additional ingredient has no single quality multiplier — its price is a sum of
+# parts — so the multiplier reported for it is the ratio of the two prices, which is what the row
+# reads as.
 # For a product without a price (for example, the pseudo-resource science) — zeros.
 func get_price_breakdown_for_quality(res_id: String, quality_key: String) -> Dictionary:
     var base := int(round(get_price(res_id)))
@@ -1096,16 +1084,16 @@ func format_quality_price_scale_rows(res_id: String, quality_breakdown: Dictiona
         rows.append({"qid": str(qid), "stars": stars, "tail": tail, "text": stars + tail})
     return rows
 
-# The stages of the price of one unit of a decorated good at one quality key. The price is a SUM
+# The stages of the price of one unit of a generated good at one quality key. The price is a SUM
 # of parts, and the row tooltip has to show each part apart from the total (see
 # format_price_build_up_rows):
 #   base      — the price of the PLAIN good at the ordinary level, in coins;
 #   quality   — the base part at the level of the base of the key;
-#   additions — the additions at the level of the additions of the key;
+#   additions — the addition at the level of the additions of the key;
 #   synergy   — the sum of the two after the synergy coefficient;
 #   total     — what the unit really costs.
 # Each stage is { "price": coins, "mult": the coefficient against the base }, and the coefficients
-# of the two parts ADD UP to the coefficient of their sum: the price of a decorated good is a sum
+# of the two parts ADD UP to the coefficient of their sum: the price of such a good is a sum
 # of parts, not a chain of surcharges, so there is nothing to multiply.
 # An empty dictionary for a plain good: it has a single stage, and its ladder row IS the price.
 func get_price_stages(pid: String, quality_key: String) -> Dictionary:
@@ -1122,7 +1110,7 @@ func get_price_stages(pid: String, quality_key: String) -> Dictionary:
     if extra_qid.is_empty():
         extra_qid = base_qid
     var quality_price := get_price(base_pid) * get_quality_price_multiplier(base_qid)
-    var extras_price := get_decorated_extras_value(base_pid, parsed["extras"], extra_qid)
+    var extras_price := get_extra_price_part(base_pid, str(parsed["extra"]), extra_qid)
     var synergy := get_craft_extra_synergy_multiplier()
     var total := (quality_price + extras_price) * synergy
     return {
@@ -1133,9 +1121,9 @@ func get_price_stages(pid: String, quality_key: String) -> Dictionary:
         "total": {"price": total, "mult": total / base_price},
     }
 
-# The rows of the price build-up of a decorated good for the row tooltip of the "Resources" tab:
+# The rows of the price build-up of a generated good for the row tooltip of the "Resources" tab:
 # the synergy coefficient ONCE (it belongs to the recipe, not to a key), then a block of three rows
-# per quality key that lies in the storage — the base part, the additions and the total:
+# per quality key that lies in the storage — the base part, the addition and the total:
 #   [ { "kind": "synergy",   "qid": "",       "marker": "×",  "tail": "x1.15" },
 #     { "kind": "quality",   "qid": "fine",   "marker": "★★", "tail": "x1.30 = 26" },
 #     { "kind": "additions", "qid": "common", "marker": "★",  "tail": "x2.75 = 55" },
@@ -1248,9 +1236,10 @@ func format_quality_share_text(quality_breakdown: Dictionary) -> String:
     return "(" + "/".join(parts) + ")"
 
 # The units of a breakdown summed by the level of the good itself: {"fine": 7, "common": 2}.
-# A decorated good carries two levels per row (see "THE QUALITY KEY OF A STORAGE ROW"), while the
-# player reads the storage by the level of the good — the shares, the ladder and the quality
-# tooltip are built from this sum, so that a decorated row shows up on the ladder of its level.
+# A good with an additional ingredient carries two levels per row (see "THE QUALITY KEY OF A
+# STORAGE ROW"), while the player reads the storage by the level of the good — the shares, the
+# ladder and the quality tooltip are built from this sum, so that such a row shows up on the
+# ladder of its level.
 func quality_level_totals(quality_breakdown: Dictionary) -> Dictionary:
     var out := {}
     for key in quality_breakdown:

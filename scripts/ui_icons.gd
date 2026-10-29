@@ -32,6 +32,20 @@ static func checkbox(checked: bool) -> ImageTexture:
             "sd": _polyline([Vector2(4.2, 8.4), Vector2(7.0, 11.0), Vector2(12.0, 5.4)]), "w": 2.0})
     return _render(BOX_SIZE, layers)
 
+# The round mark of a radio button: the surface and the frame of the checkbox, and the accent
+# dot instead of the tick. A CheckBox inside a ButtonGroup draws exactly these glyphs, so the
+# two have to agree in size and framing.
+static func radio(checked: bool, muted: bool = false) -> ImageTexture:
+    var frame := UiTheme.color("text_muted") if muted else UiTheme.color("control_border")
+    var layers: Array = [
+        {"color": UiTheme.color("control_bg"), "sd": _disc(Vector2(8, 8), 6.5), "w": -1.0},
+        {"color": frame, "sd": _disc(Vector2(8, 8), 6.5), "w": 1.5},
+    ]
+    if checked:
+        var dot := UiTheme.color("text_muted") if muted else UiTheme.color("accent")
+        layers.append({"color": dot, "sd": _disc(Vector2(8, 8), 3.6), "w": -1.0})
+    return _render(BOX_SIZE, layers)
+
 # The switch of a check button: the knob moves across the track and both change role, so
 # the on state is legible without reading its colour against the surface behind it.
 static func switch_button(on: bool) -> ImageTexture:

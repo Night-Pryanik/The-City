@@ -3,16 +3,17 @@
 #   godot --headless --path . --script res://tests/test_craft_extras.gd
 #
 # Checks:
-#   1) the generated id round-trips: the additions are sorted, an unknown one is rejected;
-#   2) the recipe built on the fly keeps the ingredients of the base, adds the chosen goods as
-#      AND-terms and yields the generated good;
+#   1) the generated id round-trips: one addition is accepted, an unknown one and a second one
+#      are rejected;
+#   2) the recipe built on the fly keeps the ingredients of the base, adds the chosen good as
+#      an AND-term and yields the generated good;
 #   3) the generated good is materialised: category, icon and technology of the base, the price
 #      formula, membership in the goods groups of the base;
-#   4) a full cycle through do_tick spends the additions and produces the generated good;
+#   4) a full cycle through do_tick spends the addition and produces the generated good;
 #   5) a re-read of the data drops the generated records, and the rebuild brings them back;
-#   6) the price of a decorated good against its base — the row of the tooltips;
-#   7) the checkboxes follow the warehouse: a good that is not there cannot be ticked, while a
-#      chosen one stays clickable so that it can be unticked;
+#   6) the price of a generated good against its base — the row of the tooltips;
+#   7) the radio buttons follow the warehouse: a good that is not there cannot be picked, while
+#      the chosen one stays clickable so that the choice can be taken back;
 #   8) the quality of the addition raises the quality of the result by one level at most.
 extends SceneTree
 
@@ -51,8 +52,8 @@ func _run() -> void:
         _test_cycle(gd, city, state)
     if WATCHDOG.wants_case("rebuild"):
         _test_rebuild(gd, city, state)
-    if WATCHDOG.wants_case("decoration_price"):
-        _test_decoration_price(gd, state)
+    if WATCHDOG.wants_case("extra_price"):
+        _test_extra_price(gd, state)
     if WATCHDOG.wants_case("extra_options_stock"):
         _test_extra_options_stock(gd, city, state)
     if WATCHDOG.wants_case("quality_rule"):
@@ -79,24 +80,23 @@ func _test_id_roundtrip(gd, state: Dictionary) -> void:
     check(gd.parse_generated_id("gold_jewelry").is_empty(),
         "an id without the separator is not generated", state)
 
-    var parsed: Dictionary = gd.parse_generated_id("gold_jewelry+lazurite_ore+pearl")
+    var parsed: Dictionary = gd.parse_generated_id("gold_jewelry+lazurite_ore")
     check(str(parsed.get("base", "")) == "gold_jewelry", "the base is split off the id", state)
-    var extras: Array = parsed.get("extras", [])
-    check(extras == ["lazurite_ore", "pearl"], "the additions are returned sorted", state)
+    check(str(parsed.get("extra", "")) == "lazurite_ore",
+        "the addition is split off the id", state)
 
-    # The order of the checkboxes must not make a second id for one combination.
-    check(gd.make_generated_id("gold_jewelry", ["pearl", "lazurite_ore"])
-            == gd.make_generated_id("gold_jewelry", ["lazurite_ore", "pearl"]),
-        "the id does not depend on the order of the additions", state)
-    check(gd.make_generated_id("gold_jewelry", []) == "gold_jewelry",
-        "no additions — the base id itself", state)
-    check(gd.make_generated_id("gold_jewelry", ["onyx"]) == "gold_jewelry",
+    check(gd.make_generated_id("gold_jewelry", "pearl") == "gold_jewelry+pearl",
+        "the addition is the tail of the id", state)
+    check(gd.make_generated_id("gold_jewelry", "") == "gold_jewelry",
+        "no addition — the base id itself", state)
+    check(gd.make_generated_id("gold_jewelry", "onyx") == "gold_jewelry",
         "an addition that does not exist is dropped", state)
 
     check(gd.parse_generated_id("gold_jewelry+onyx").is_empty(),
         "an unknown addition makes the id not generated", state)
-    check(gd.parse_generated_id("gold_jewelry+pearl+pearl").is_empty(),
-        "a repeated addition makes the id not generated", state)
+    # A good carries ONE addition: "with lazurite and with pearl" does not exist.
+    check(gd.parse_generated_id("gold_jewelry+pearl+lazurite_ore").is_empty(),
+        "a second addition makes the id not generated", state)
     check(gd.parse_generated_id("+pearl").is_empty(), "an empty base is not generated", state)
 
 
@@ -110,7 +110,7 @@ func _test_recipe_built(gd, city, state: Dictionary) -> void:
     check(str(recipe.get("id", "")) == "gold_jewelry+lazurite_ore",
         "the generated recipe keeps the full id", state)
     check(is_equal_approx(float(recipe.get("time", 0.0)), float(base.get("time", 0.0))),
-        "the additions do not change the time of the cycle", state)
+        "the addition does not change the time of the cycle", state)
 
     # The ingredients: the two of the base plus the stone, as three AND-terms.
     var groups: Array = gd.craft_alternatives(recipe)
@@ -138,20 +138,17 @@ func _test_recipe_built(gd, city, state: Dictionary) -> void:
     check(str(recipe.get("name", "")) == "Gold Jewelry (+Lazurite)",
         "the name carries the addition in the nominative case: " + str(recipe.get("name", "")),
         state)
-    check(str(gd.get_craft("gold_jewelry+lazurite_ore+pearl").get("name", ""))
-            == "Gold Jewelry (+Lazurite, Pearl)",
-        "several additions are listed in one bracket", state)
 
     # The recipe of a building slot is resolved by the same call, and the building accepts it.
     check(city.can_craft_in("gold_jewelry+lazurite_ore", "jeweler_house"),
-        "a decorated recipe is still craftable in the jeweler's house", state)
+        "a recipe with an addition is still craftable in the jeweler's house", state)
     check(not city.can_craft_in("gold_jewelry+lazurite_ore", "bakery"),
-        "a decorated recipe is not craftable in an unrelated building", state)
+        "a recipe with an addition is not craftable in an unrelated building", state)
 
 
 # --- 3. The generated good ---
 func _test_product_materialised(gd, state: Dictionary) -> void:
-    var pid := "gold_jewelry+lazurite_ore+pearl"
+    var pid := "gold_jewelry+lazurite_ore"
     gd.materialise_generated(pid)
     check(gd.products.has(pid), "the generated good is materialised", state)
     var good: Dictionary = gd.products.get(pid, {})
@@ -163,19 +160,18 @@ func _test_product_materialised(gd, state: Dictionary) -> void:
     check(str(good.get("unlock_tech", "")) == str(base.get("unlock_tech", "")),
         "the generated good inherits the unlock technology of the base", state)
 
-    # The price: the base and the additions at their own price, the additions being spent per
+    # The price: the base and the addition at their own price, the addition being spent per
     # craft cycle, and the synergy coefficient over the sum.
     var batch := float(int(gd.find_craft("gold_jewelry")["result"]["gold_jewelry"]))
     var expected := float(base["price"])
-    for extra_id in ["lazurite_ore", "pearl"]:
-        var record: Dictionary = gd.craft_extras[extra_id]
-        expected += gd.get_base_price(extra_id) * float(record["amount"]) / batch
+    var record: Dictionary = gd.craft_extras["lazurite_ore"]
+    expected += gd.get_base_price("lazurite_ore") * float(record["amount"]) / batch
     expected = round(expected * (1.0 + float(gd.game_balance.get("craft_extra_synergy", 0.0))))
     check(int(good.get("price", 0)) == int(expected),
         "the price is the sum of the parts and the synergy (expected %d, got %d)"
                 % [int(expected), int(good.get("price", 0))], state)
     check(int(good.get("price", 0)) > int(base.get("price", 0)),
-        "a decorated good is worth more than a plain one", state)
+        "a good with an addition is worth more than the plain one", state)
 
     # The goods groups of the base are what the population and the trade address.
     var members: Array = gd.product_groups.get("jewelry", [])
@@ -220,7 +216,7 @@ func _test_cycle(gd, city, state: Dictionary) -> void:
     check(gd.products.has(pid),
         "the good that reached the storage has a record", state)
 
-    # The plan of the building counts the additions as its demand: the Resources tab and the
+    # The plan of the building counts the addition as its demand: the Resources tab and the
     # "Consumes" section read the same numbers.
     var demand: Dictionary = city.get_building_planned_consumption()
     var by_source: Dictionary = demand.get("lazurite_ore", {})
@@ -233,11 +229,11 @@ func _test_cycle(gd, city, state: Dictionary) -> void:
     main_map.queue_free()
 
 
-# --- 5. The quality of the result against the quality of the additions ---
-# The additions are a minority of the mass (10 units of dye against 100 of wool), so a plain
-# weighted average over everything would never move the level. The best addition raises the base
+# --- 5. The quality of the result against the quality of the addition ---
+# The addition is a minority of the mass (10 units of dye against 100 of wool), so a plain
+# weighted average over everything would never move the level. The addition raises the base
 # by ONE level at most, and never lowers it.
-# The units keep BOTH levels apart — the base and the additions — because the price is the sum of
+# The units keep BOTH levels apart — the base and the addition — because the price is the sum of
 # the two parts, each at its own level; the level of the good itself is a reading of that pair.
 func _test_quality_rule(gd, city, state: Dictionary) -> void:
     var main_map := Node.new()
@@ -247,7 +243,7 @@ func _test_quality_rule(gd, city, state: Dictionary) -> void:
     tm.name = "TownsfolkManager"
     main_map.add_child(tm)
 
-    var pid: String = gd.make_generated_id("wool_clothes", ["woad"])
+    var pid: String = gd.make_generated_id("wool_clothes", "woad")
     city.city_built_buildings = [ {"id": "weaver_house", "slots": [pid], "quality_priority": "best"}]
     city.total_population = 1
     city.idle_population = 0
@@ -303,25 +299,25 @@ func _test_rebuild(gd, city, state: Dictionary) -> void:
     check(pid in members, "the rebuilt good is back in the goods group", state)
 
 
-# --- 6. The price of a decorated good against its base (the tooltip row) ---
+# --- 6. The price of a generated good against its base (the tooltip row) ---
 # The row of the tooltips of the "Resources" and "Trade" tabs: " + = x1.30 = 26" — the same shape
-# as the row of the quality ladder, and the plus of the additions in the name.
-func _test_decoration_price(gd, state: Dictionary) -> void:
+# as the row of the quality ladder, and the plus of the addition in the name.
+func _test_extra_price(gd, state: Dictionary) -> void:
     var base_pid := "wool_clothes"
-    check(gd.format_decoration_price_row(base_pid).is_empty(),
+    check(gd.format_extra_price_row(base_pid).is_empty(),
         "a plain good has nothing to explain about its price", state)
 
-    var pid: String = gd.make_generated_id(base_pid, ["woad"])
+    var pid: String = gd.make_generated_id(base_pid, "woad")
     # The good has to exist before it has a price: the recipe is what materialises the record.
     gd.get_craft(pid)
-    var row: Dictionary = gd.format_decoration_price_row(pid)
-    check(not row.is_empty(), "a decorated good explains its price", state)
+    var row: Dictionary = gd.format_extra_price_row(pid)
+    check(not row.is_empty(), "a good with an addition explains its price", state)
     check(str(row.get("glyph", "")) == "+", "the row carries the plus of the name", state)
 
     var price: float = gd.get_price_for_quality(pid, "")
     var ratio: float = price / gd.get_price(base_pid)
     check(ratio > 1.0,
-        "a decorated good must be dearer than the plain one (x%.2f)" % ratio, state)
+        "a good with an addition must be dearer than the plain one (x%.2f)" % ratio, state)
     # The row quotes the two BASE prices, not the price of a level: the coefficient is the same at
     # every level, so a single price here would contradict the quality ladder above the row.
     var base_price: float = gd.get_price(base_pid)
@@ -332,15 +328,15 @@ func _test_decoration_price(gd, state: Dictionary) -> void:
     check(str(row.get("text", "")) == "+" + str(row.get("tail", "")),
         "the row is glued from the glyph and the tail", state)
 
-    # The coefficient grows with the additions — it is not a constant of the mechanic.
-    var two: String = gd.make_generated_id(base_pid, ["woad", "henna"])
-    gd.get_craft(two)
-    check(gd.get_decoration_price_multiplier(two) > gd.get_decoration_price_multiplier(pid),
-        "a second addition raises the coefficient", state)
+    # The coefficient follows the price of the addition — it is not a constant of the mechanic.
+    var dearer: String = gd.make_generated_id(base_pid, "purple")
+    gd.get_craft(dearer)
+    check(gd.get_generated_price_multiplier(dearer) > gd.get_generated_price_multiplier(pid),
+        "a dearer addition raises the coefficient", state)
 
 
-# --- 7. The checkboxes follow the warehouse ---
-# A good that is not in the warehouse cannot be ticked: the cycle would only stall waiting for
+# --- 7. The radio buttons follow the warehouse ---
+# A good that is not in the warehouse cannot be picked: the cycle would only stall waiting for
 # it. It stays in the list, so that the player sees what the recipe accepts and what is missing.
 func _test_extra_options_stock(gd, city, state: Dictionary) -> void:
     var recipe_id := "wool_clothes"
@@ -349,7 +345,7 @@ func _test_extra_options_stock(gd, city, state: Dictionary) -> void:
     var options := _options_by_product(gd, recipe_id)
     check(options.has("woad"), "the recipe offers the good of its kind", state)
     check(int(options.get("woad", {}).get("in_stock", 0)) == 5,
-        "the checkbox carries the amount in the warehouse", state)
+        "the radio button carries the amount in the warehouse", state)
     check(bool(options.get("woad", {}).get("selectable", false)),
         "a good in the warehouse can be chosen", state)
 
@@ -364,18 +360,19 @@ func _test_extra_options_stock(gd, city, state: Dictionary) -> void:
     check(not bool(options.get(other, {}).get("selectable", true)),
         "a good that is not in the warehouse cannot be chosen", state)
 
-    # A chosen addition stays clickable with an empty shelf: otherwise the player could not
-    # untick a good that has run out and the slot would be stuck with it.
+    # The chosen addition stays clickable with an empty shelf: otherwise the player could not
+    # take back a good that has run out and the slot would be stuck with it.
     city.city_storage.clear()
-    var chosen_recipe: String = gd.make_generated_id(recipe_id, [other])
+    var chosen_recipe: String = gd.make_generated_id(recipe_id, other)
     var chosen_options := _options_by_product(gd, chosen_recipe)
     check(int(chosen_options.get(other, {}).get("in_stock", -1)) == 0,
         "the chosen good has run out", state)
     check(bool(chosen_options.get(other, {}).get("selectable", false)),
-        "a chosen good stays clickable so that it can be unticked", state)
+        "the chosen good stays clickable so that the choice can be taken back", state)
 
 
-# The items of all the kinds of a recipe by the product id — the shape the checkboxes are built from.
+# The items of all the kinds of a recipe by the product id — the shape the radio buttons are
+# built from.
 func _options_by_product(gd, recipe_id: String) -> Dictionary:
     var out := {}
     for group in gd.get_recipe_extra_options(recipe_id):

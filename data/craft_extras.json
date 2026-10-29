@@ -2,27 +2,28 @@
 // The additional ingredients of the recipes.
 //
 // A recipe may accept goods on top of its own ("extra_kinds" in data/crafts/*.json): the player
-// ticks concrete goods in the building panel, and the result is a good generated on the fly —
-// "Gold Jewelry (+Lazurite, Pearl)" — that exists in no data file (see GameData, "Additional
-// ingredients of a recipe").
+// picks one of them in the building panel, and the result is a good generated on the fly —
+// "Gold Jewelry (+Lazurite)" — that exists in no data file (see GameData, "Additional
+// ingredients of a recipe"). A good carries at most ONE addition: the radio buttons of the panel
+// share one group, so "with lazurite and with pearl" cannot be made.
 //
 // A record is addressed by the PRODUCT it spends: the id is the product id, and the same good is
 // never described twice. Fields:
 //   id          — the product written off per craft cycle (data/products, data/resources);
 //   name        — the name inside the brackets, if it differs from the name of the good itself
 //                 ("Lazurite", not "Lazurite Ore"). Localized like every other display field;
-//   kind        — the group of the checkbox list, one of "craft_extra_kinds" below. A recipe
+//   kind        — the group of the radio list, one of "craft_extra_kinds" below. A recipe
 //                 accepts the kinds it declares, and nothing else;
 //   amount      — how many units are spent per ONE craft cycle of the recipe (not per unit of
 //                 the result: the batch of jewelry is 10 units, and it takes 10 stones). In the
 //                 vanilla data every recipe amount is at least 10 — the unit the goods are
 //                 measured in. It is a convention of the data, not a rule of the code: a mod may
 //                 lower it, and nothing here assumes the floor;
-//   unlock_tech — the technology that opens the checkbox (optional).
+//   unlock_tech — the technology that opens the radio button (optional).
 //
 // There is no price field: an addition is worth its own price, in full, at the quality of the
-// units that went into the good. A decorated good costs the sum of its parts — the base at the
-// quality of the base and the additions at the quality of the additions — times the synergy
+// units that went into the good. A good with an addition costs the sum of its parts — the base at
+// the quality of the base and the addition at the quality of the addition — times the synergy
 // coefficient (craft_extra_synergy in data/game_balance.json), which is what makes the finished
 // good worth more than the same goods sold apart. A cheap dye therefore tints clothes modestly
 // and a murex purple is what makes them a status symbol, without any number being tuned per good.

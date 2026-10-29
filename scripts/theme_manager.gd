@@ -297,6 +297,12 @@ func _style_buttons(theme: Theme) -> void:
     # rasterised from the palette here and replaced whenever a palette is applied.
     theme.set_icon("unchecked", "CheckBox", UI_ICONS.checkbox(false))
     theme.set_icon("checked", "CheckBox", UI_ICONS.checkbox(true))
+    # A CheckBox that belongs to a ButtonGroup is drawn as a radio button, and the engine takes
+    # its glyphs from the radio_* items (the additional ingredient of a recipe, building panel).
+    theme.set_icon("radio_unchecked", "CheckBox", UI_ICONS.radio(false))
+    theme.set_icon("radio_checked", "CheckBox", UI_ICONS.radio(true))
+    theme.set_icon("radio_unchecked_disabled", "CheckBox", UI_ICONS.radio(false, true))
+    theme.set_icon("radio_checked_disabled", "CheckBox", UI_ICONS.radio(true, true))
     theme.set_icon("unchecked", "CheckButton", UI_ICONS.switch_button(false))
     theme.set_icon("checked", "CheckButton", UI_ICONS.switch_button(true))
 

@@ -705,8 +705,8 @@ func _price_tooltip_text(row: Dictionary) -> String:
             lines.append(tr("%s: goods without a price") % member_name)
             continue
         var stock_detail: Dictionary = CityData.get_quality_breakdown(member)
-        # The stock is summed by the level of the good: a decorated row carries two levels and
-        # shows up on the ladder row of the level the good itself has.
+        # The stock is summed by the level of the good: a row with an additional ingredient
+        # carries two levels and shows up on the ladder row of the level the good itself has.
         var stock_by_level: Dictionary = GameData.quality_level_totals(stock_detail)
         var stock_total := 0
         for qid in stock_by_level:
@@ -718,7 +718,7 @@ func _price_tooltip_text(row: Dictionary) -> String:
         if stock_total <= 0:
             lines.append(tr("%s (base %d): %s") % [
                 member_name, int(round(base_price)), _price_ladder_inline(member)])
-            _append_decoration_price(lines, member)
+            _append_extra_price(lines, member)
             continue
         lines.append(tr("%s (base %d):") % [member_name, int(round(base_price))])
         for qid in GameData.get_quality_levels():
@@ -732,23 +732,23 @@ func _price_tooltip_text(row: Dictionary) -> String:
             # would turn into a table of zeros.
             var suffix := tr(" — in storage: %d") % in_stock if in_stock > 0 else ""
             lines.append("  %s%s%s" % [stars, tail, suffix])
-        _append_decoration_price(lines, member)
+        _append_extra_price(lines, member)
     lines.append("")
     if bool(row.get("is_group", false)):
         lines.append(tr("A range is shown because the goods in the group have different base prices."))
     lines.append(tr("Price per unit: having it in storage does not change it. Storage affects income (the \"Income\" row)."))
     return "\n".join(lines)
 
-# The price of a decorated good against its plain base — the same row as on the "Resources" tab
-# (GameData.format_decoration_price_row): " + = x4.31 (20 → 86)". It explains why the unit costs more
-# than the plain good of the same kind, which the header of the member ("(base 26)") does not say.
-# The row quotes the ORDINARY level of both parts: the coefficient of a decorated good moves with
-# the levels of its units, so a row tied to one level would contradict the next.
-func _append_decoration_price(lines: Array, member: String) -> void:
-    var decoration_row := GameData.format_decoration_price_row(member)
-    if decoration_row.is_empty():
+# The price of a good with an additional ingredient against its plain base — the same row as on
+# the "Resources" tab (GameData.format_extra_price_row): " + = x4.31 (20 → 86)". It explains why
+# the unit costs more than the plain good of the same kind, which the header of the member
+# ("(base 26)") does not say. The row quotes the ORDINARY level of both parts: the coefficient
+# moves with the levels of the units, so a row tied to one level would contradict the next.
+func _append_extra_price(lines: Array, member: String) -> void:
+    var extra_row := GameData.format_extra_price_row(member)
+    if extra_row.is_empty():
         return
-    lines.append("  " + str(decoration_row["text"]))
+    lines.append("  " + str(extra_row["text"]))
 
 # The buyers: who exactly buys the resource and in what quantity.
 # The format "Fisherman: 1", "All citizens: 21" — exactly what the player is looking for, moving the mouse over

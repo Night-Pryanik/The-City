@@ -639,9 +639,9 @@ func _format_treasury_rate(value: float) -> String:
 #
 # quality_id is the quality KEY of the unit being WRITTEN OFF (""/"common" — the ordinary one):
 # a plain good is multiplied by the multiplier of its level (data/qualities.json,
-# price_multiplier); a decorated good has no single multiplier — its price is a sum of parts at
-# two levels — so the share of the quality is the ratio of its price to the ordinary one. Either
-# way the coins stay whole.
+# price_multiplier); a good with an additional ingredient has no single multiplier — its price is
+# a sum of parts at two levels — so the share of the quality is the ratio of its price to the
+# ordinary one. Either way the coins stay whole.
 # The income of the treasury for the actually written off units of the goods taking the QUALITY of each
 # unit into account. consumed is the breakdown {quality key: count} which
 # remove_from_storage() returned: the price is counted by each key separately, therefore
@@ -674,13 +674,13 @@ func get_stock_quality_price_multiplier(pid: String) -> float:
     var total := 0
     var weighted := 0.0
     var ordinary := GameData.get_price(pid)
-    var decorated := not GameData.parse_generated_id(pid).is_empty()
+    var generated := not GameData.parse_generated_id(pid).is_empty()
     for key in detail:
         var count := int(detail[key])
         if count <= 0:
             continue
         total += count
-        if decorated and ordinary > 0.0:
+        if generated and ordinary > 0.0:
             weighted += float(count) * GameData.get_price_for_quality(pid, str(key)) / ordinary
         else:
             weighted += float(count) * GameData.get_quality_price_multiplier(str(key))
@@ -1222,8 +1222,8 @@ func _consume_quality_detail(pid: String, amount: int, priority: String) -> Dict
     var remaining = amount
 
     # The keys of the breakdown that hold units. The order of the write-off is set by the LEVEL
-    # of the good, not by the key itself: a decorated row carries two levels (its base and its
-    # additions), and the player picks the quality of the good, not of its parts.
+    # of the good, not by the key itself: a row with an additional ingredient carries two levels
+    # (its base and its addition), and the player picks the quality of the good, not of its parts.
     var order: Array = []
     for key in detail:
         if int(detail[key]) <= 0:
@@ -1358,7 +1358,7 @@ func get_craft_time(recipe: Dictionary) -> float:
     return t
 
 # Returns the data of the recipe by id (or an empty dictionary, if the recipe is not found).
-# An id with the additional ingredients ("gold_jewelry+lazurite_ore") is a recipe that exists
+# An id with an additional ingredient ("gold_jewelry+lazurite_ore") is a recipe that exists
 # only at runtime — see GameData, "Additional ingredients of a recipe".
 func get_craft_by_id(recipe_id: String) -> Dictionary:
     return GameData.get_craft(recipe_id)
@@ -2726,8 +2726,8 @@ func are_all_slots_empty(b_index: int) -> bool:
 # Checks whether the recipe can be executed in the specified building.
 # produced_in supports an array of values; "*" means "in any building" (the empty recipe).
 func can_craft_in(craft_id: String, building_id: String) -> bool:
-    # get_craft_by_id resolves an id with the additional ingredients to the base recipe, so that
-    # an upgraded building keeps a decorated recipe whose base it still accepts.
+    # get_craft_by_id resolves an id with the additional ingredient to the base recipe, so that
+    # an upgraded building keeps a recipe with an addition whose base it still accepts.
     var recipe := get_craft_by_id(craft_id)
     if recipe.is_empty():
         return false

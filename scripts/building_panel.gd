@@ -241,8 +241,8 @@ func _refresh():
     # stayed hanging (the mouse_exited of a button being removed will not fire),
     # so we hide it explicitly.
     _hide_upgrade_tooltip()
-    # The popup of the additional ingredients dies with the row it was opened from: its
-    # checkboxes point at the buttons of that row.
+    # The popup of the additional ingredient dies with the row it was opened from: its
+    # radio buttons point at the buttons of that row.
     for p in popups_list:
         if is_instance_valid(p) and p.visible and p.has_meta("extras_popup"):
             p.hide()
@@ -442,8 +442,8 @@ func _refresh():
                 _slot_progress_bars["%d:%d" % [b_index, i]] = craft_bar
 
             # The "Additional ingredients" button. It appears for a recipe that accepts them
-            # (extra_kinds) and only while at least one of the goods is open: the checkboxes
-            # choose concrete goods, and the result is a good generated on the fly
+            # (extra_kinds) and only while at least one of the goods is open: the radio buttons
+            # choose one concrete good, and the result is a good generated on the fly
             # (see GameData, "Additional ingredients of a recipe").
             var extras_btn = null
             if not _extra_options_for(str(current)).is_empty():
@@ -1300,9 +1300,9 @@ func _get_craft_name(craft_id: String) -> String:
 # Updates the content of the recipe selection button: the icons are drawn next to
 # the products, and not at the left edge.
 #
-# A recipe with additional ingredients shows the RESULT alone: the generated name already
-# carries the additions, while the full ingredient row would widen the panel with every
-# checked box. The ingredients of such a recipe are visible in the list of the recipes.
+# A recipe with an additional ingredient shows the RESULT alone: the generated name already
+# carries the addition, while the full ingredient row would widen the panel with every
+# attached good. The ingredients of such a recipe are visible in the list of the recipes.
 func _update_slot_button(button, craft_id: String):
     var recipe := GameData.get_craft(craft_id)
     var craft_name: String = str(recipe.get("name", craft_id))
@@ -1310,7 +1310,7 @@ func _update_slot_button(button, craft_id: String):
     # display_result — a UI hint for the "non-material" outputs
     # (science and the future pseudo-resources): it is not read by the mechanics.
     var craft_result: Dictionary = recipe.get("display_result", recipe.get("result", {}))
-    if not (recipe.get("extras", []) as Array).is_empty():
+    if not str(recipe.get("extra", "")).is_empty():
         craft_resources = {}
     # We remove the old content of the button
     for child in button.get_children():
@@ -1357,12 +1357,13 @@ func _on_close_pressed():
     _hide_upgrade_tooltip()
     hide()
 
-# --- THE ADDITIONAL INGREDIENTS OF A RECIPE ---
+# --- THE ADDITIONAL INGREDIENT OF A RECIPE ---
 #
-# The checkboxes of one slot. A tick adds a concrete good to the recipe id of the slot
-# ("gold_jewelry" -> "gold_jewelry+lazurite_ore+pearl"), and the slot starts the cycle from
-# scratch — the same rule as a change of the recipe itself. The goods of a kind the technology
-# has not opened yet are not offered at all.
+# The radio buttons of one slot. Picking a good puts it into the recipe id of the slot
+# ("gold_jewelry" -> "gold_jewelry+lazurite_ore"), and the slot starts the cycle from scratch —
+# the same rule as a change of the recipe itself. A good carries ONE addition, so the whole list
+# shares one button group; "no addition" is a radio of its own, which is what keeps the choice
+# reversible. The goods of a kind the technology has not opened yet are not offered at all.
 func _extra_options_for(recipe_id: String) -> Array:
     var out: Array = []
     for group in GameData.get_recipe_extra_options(recipe_id):
@@ -1376,12 +1377,11 @@ func _extra_options_for(recipe_id: String) -> Array:
             out.append({"kind": group["kind"], "name": group["name"], "items": items})
     return out
 
-# "+" — nothing chosen, "+2" — two additions.
+# "+" — nothing chosen, "+1" — the addition is attached.
 func _extras_button_text(recipe_id: String) -> String:
-    var chosen: Array = GameData.parse_generated_id(recipe_id).get("extras", [])
-    if chosen.is_empty():
+    if str(GameData.parse_generated_id(recipe_id).get("extra", "")).is_empty():
         return "+"
-    return "+%d" % chosen.size()
+    return "+1"
 
 func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_button):
     if b_index < 0 or b_index >= CityData.city_built_buildings.size():
@@ -1393,7 +1393,7 @@ func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_butto
     var groups := _extra_options_for(recipe_id)
     if groups.is_empty():
         return
-    var chosen: Array = GameData.parse_generated_id(recipe_id).get("extras", [])
+    var chosen := str(GameData.parse_generated_id(recipe_id).get("extra", ""))
 
     for p in popups_list:
         if is_instance_valid(p) and p.visible:
@@ -1412,6 +1412,18 @@ func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_butto
     vbox.add_theme_constant_override("separation", 2)
     popup.add_child(vbox)
 
+    # One group for the whole popup: the kinds are a way to find a good, not a separate choice.
+    # allow_unpress = false — a radio stays pressed once picked; the "no addition" radio is what
+    # takes the choice back.
+    var buttons := ButtonGroup.new()
+    buttons.allow_unpress = false
+
+    var none_radio := _make_extra_radio(buttons, tr("No addition"), "", "", 0, true,
+            chosen.is_empty())
+    none_radio.toggled.connect(_on_extra_toggled.bind(b_index, slot_idx, "",
+            recipe_button, extras_button))
+    vbox.add_child(none_radio)
+
     for group in groups:
         var header := Label.new()
         header.text = str(group["name"])
@@ -1422,27 +1434,16 @@ func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_butto
         grid.add_theme_constant_override("h_separation", 10)
         vbox.add_child(grid)
         for item in group["items"]:
-            var box := CheckBox.new()
-            box.text = str(item["name"])
-            box.focus_mode = Control.FOCUS_NONE
-            var tex := _get_icon_texture(str(item.get("icon", "")))
-            if tex:
-                box.icon = tex
-                box.add_theme_constant_override("icon_max_width", 20)
             var product_id := str(item["product"])
             var in_stock := int(item.get("in_stock", 0))
-            var is_chosen := product_id in chosen
-            # The state is set BEFORE the connection: assigning button_pressed emits toggled,
-            # and a listener would rewrite the slot right while the popup is being built.
-            box.button_pressed = is_chosen
-            # A good that is not in the warehouse cannot be chosen (GameData decides: an addition
-            # that is already in the slot stays clickable, or it could not be unticked).
-            box.disabled = not bool(item.get("selectable", true))
-            box.tooltip_text = tr("In storage: %d") % in_stock if in_stock > 0 \
-                    else tr("Not in storage")
-            box.toggled.connect(_on_extra_toggled.bind(b_index, slot_idx,
+            # A good that is not in the warehouse cannot be chosen (GameData decides: the addition
+            # that is already in the slot stays clickable, or it could not be unchosen).
+            var radio := _make_extra_radio(buttons, str(item["name"]), product_id,
+                    str(item.get("icon", "")), in_stock,
+                    bool(item.get("selectable", true)), product_id == chosen)
+            radio.toggled.connect(_on_extra_toggled.bind(b_index, slot_idx,
                     product_id, recipe_button, extras_button))
-            grid.add_child(box)
+            grid.add_child(radio)
 
     popups_list.append(popup)
     popup.popup_hide.connect(_on_extras_popup_hidden.bind(popup))
@@ -1450,6 +1451,26 @@ func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_butto
     popup.position = extras_button.global_position + Vector2(0, extras_button.size.y)
     popup.popup()
     open_popup = popup
+
+# One radio of the addition list. The state is set BEFORE the connection: assigning
+# button_pressed emits toggled, and a listener would rewrite the slot right while the popup is
+# being built. An empty product_id is the "no addition" row, which carries no stock of its own.
+func _make_extra_radio(buttons: ButtonGroup, label: String, product_id: String, icon_file: String,
+        in_stock: int, selectable: bool, is_chosen: bool) -> CheckBox:
+    var radio := CheckBox.new()
+    radio.button_group = buttons
+    radio.text = label
+    radio.focus_mode = Control.FOCUS_NONE
+    var tex := _get_icon_texture(icon_file)
+    if tex:
+        radio.icon = tex
+        radio.add_theme_constant_override("icon_max_width", 20)
+    radio.button_pressed = is_chosen
+    radio.disabled = not selectable
+    if not product_id.is_empty():
+        radio.tooltip_text = tr("In storage: %d") % in_stock if in_stock > 0 \
+                else tr("Not in storage")
+    return radio
 
 # A closed popup is freed: the panel of the building rebuilds its rows on every change of the
 # state, and a hidden window left behind would be a leak of one per opening.
@@ -1459,8 +1480,12 @@ func _on_extras_popup_hidden(popup):
     if is_instance_valid(popup):
         popup.queue_free()
 
+# Only the radio that has just been pressed writes the slot: the one that loses the choice emits
+# toggled(false) in the same click, and it says nothing about what the slot should hold.
 func _on_extra_toggled(pressed: bool, b_index: int, slot_idx: int, extra_id: String,
         recipe_button, extras_button):
+    if not pressed:
+        return
     if b_index < 0 or b_index >= CityData.city_built_buildings.size():
         return
     var bld: Dictionary = CityData.city_built_buildings[b_index]
@@ -1469,17 +1494,13 @@ func _on_extra_toggled(pressed: bool, b_index: int, slot_idx: int, extra_id: Str
         return
     var parsed := GameData.parse_generated_id(str(slots[slot_idx]))
     var base_id := str(parsed.get("base", slots[slot_idx]))
-    var chosen: Array = parsed.get("extras", [])
-    if pressed and not (extra_id in chosen):
-        chosen.append(extra_id)
-    elif not pressed:
-        chosen.erase(extra_id)
-    var new_id := GameData.make_generated_id(base_id, chosen)
+    # An empty extra_id is the "no addition" radio: the id falls back to the base recipe.
+    var new_id := GameData.make_generated_id(base_id, extra_id)
     if new_id == str(slots[slot_idx]):
         return
     slots[slot_idx] = new_id
     bld["slots"] = slots
-    # The new ingredients change the recipe — the accumulated progress of the slot is dropped,
+    # The new ingredient changes the recipe — the accumulated progress of the slot is dropped,
     # exactly as on a change of the recipe itself.
     CityData.reset_slot_progress(b_index, slot_idx)
     # The row may already have been rebuilt (the panel refreshes on every change of the state):

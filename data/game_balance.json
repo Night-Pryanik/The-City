@@ -56,20 +56,20 @@
       "food_for_new_settler": 1000
     },
 
-    // --- CRAFT: the price of a good with additional ingredients ---
+    // --- CRAFT: the price of a good with an additional ingredient ---
     //
-    // A decorated good ("Wool Clothes (+Purple)") is priced as the sum of its parts, each at
-    // the quality of its own units: the base good at the level of the base and every addition
-    // at the level of the additions (GameData.get_decorated_price). The material of the
-    // additions is paid for in full — there is no premium on top of it, so a cheap dye never
+    // A good with an addition ("Wool Clothes (+Purple)") is priced as the sum of its parts, each
+    // at the quality of its own units: the base good at the level of the base and the addition
+    // at the level of the addition (GameData.get_price_with_extra). The material of the
+    // addition is paid for in full — there is no premium on top of it, so a cheap dye never
     // makes a garment worth more than the dye itself is worth.
     "craft": {
-      // craft_extra_synergy — the coefficient that makes a decorated good worth MORE than its
-      //                        parts sold separately: 0.15 = x1.15 of the sum of the parts. It
-      //                        pays for the craft itself and for the fact that the additions
-      //                        cannot be sold twice. Without it a decorated good is exactly
-      //                        worth the base plus the additions, and the player has no reason
-      //                        to decorate anything but for the population's demand.
+      // craft_extra_synergy — the coefficient that makes a good with an addition worth MORE than
+      //                        its parts sold separately: 0.15 = x1.15 of the sum of the parts.
+      //                        It pays for the craft itself and for the fact that the addition
+      //                        cannot be sold twice. Without it such a good is exactly worth the
+      //                        base plus the addition, and the player has no reason to attach
+      //                        anything but for the population's demand.
       "craft_extra_synergy": 0.15
     },
 

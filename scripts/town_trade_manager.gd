@@ -897,15 +897,16 @@ func _tick_sale_contract(index: int, town: Dictionary, contract: Dictionary) -> 
     return true
 
 
-# The units of a key the city can give up: a concrete good (its decorated variants included —
-# a decorated jewelry is still jewelry, so a contract on the plain good does not tear while the
-# shelves are full of the decorated one), or the sum over the members of a group.
+# The units of a key the city can give up: a concrete good (its generated variants included —
+# a jewelry with an additional ingredient is still jewelry, so a contract on the plain good does
+# not tear while the shelves are full of the generated one), or the sum over the members of a
+# group.
 func _city_stock(key: String) -> int:
     return GameData.get_good_stock(key, CityData.city_storage)
 
 
 # Writes `amount` units of the key off the city storage. A good is taken plain first and from
-# its decorated variants after that — the decoration is worth more, and the deal pays for the
+# its generated variants after that — the addition is worth more, and the deal pays for the
 # plain good. A group is taken from a RANDOM member that still has stock, unit by unit — the
 # rule of the population consumption, which is what makes a group row a real "any fruit" deal
 # rather than an alias of the first member of the group.
@@ -914,7 +915,7 @@ func _take_from_city(key: String, amount: int) -> void:
         return
     if not GameData.is_group_key(key):
         var left := amount
-        for pid in ([key] + GameData.get_decorated_variants(key)):
+        for pid in ([key] + GameData.get_generated_variants(key)):
             if left <= 0:
                 break
             var take := mini(left, int(CityData.city_storage.get(pid, 0)))
