@@ -52,6 +52,16 @@ const WATCHDOG = preload("res://tests/watchdog.gd")
 
 var _failed := false
 
+# The shared formatting of the money readouts: the expected texts are assembled by the
+# same helper the interface uses, icon included. The script is loaded at RUN time: a
+# preloaded copy is compiled before the autoloads are registered.
+var _money_fmt = null
+
+func _money(text: String) -> String:
+    if _money_fmt == null:
+        _money_fmt = load("res://scripts/ui_helpers.gd")
+    return _money_fmt.money(text)
+
 func _initialize():
     WATCHDOG.arm(self)
     _run()
@@ -483,16 +493,16 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
     var scale_stars: Array = []
     var scale_tails: Array = []
     for child in ui.flow_tooltip_vbox.get_children():
-        if child is Label:
-            var label := child as Label
-            if label.text.begins_with("Base price: "):
-                base_line = label.text
+        if (child is Label or child is RichTextLabel) \
+                and str(child.text).begins_with("Base price: "):
+            base_line = str(child.text)
         elif child is HBoxContainer and child.get_child_count() == 2:
-            # A ladder row is an HBox of two Labels: the stars in the level colour and
-            # the gold tail of the price calculation.
+            # A ladder row is an HBox of two labels: the stars in the level colour and
+            # the gold tail of the price calculation. The tail is a RichTextLabel — it
+            # carries the coin icon after the price.
             var stars_label := child.get_child(0) as Label
-            var tail_label := child.get_child(1) as Label
-            if stars_label == null or tail_label == null:
+            var tail_node: Control = child.get_child(1)
+            if stars_label == null or not (tail_node is Label or tail_node is RichTextLabel):
                 continue
             if not str(stars_label.text).begins_with("  ★"):
                 continue
@@ -502,12 +512,13 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
                 "width": stars_label.size.x,
             })
             scale_tails.append({
-                "text": str(tail_label.text),
-                "color": tail_label.get_theme_color("font_color"),
-                "width": tail_label.size.x,
+                "text": str(tail_node.text),
+                "color": tail_node.get_theme_color("default_color") if tail_node is RichTextLabel \
+                        else tail_node.get_theme_color("font_color"),
+                "width": tail_node.size.x,
             })
-    check(base_line == "Base price: %d" % int(round(gd.get_price(sample_id))),
-        "the row tooltip must contain the base price, got \"%s\"" % base_line)
+    check(base_line == "Base price: " + _money(str(int(round(gd.get_price(sample_id))))),
+        "the row tooltip must contain the base price with the coin icon, got \"%s\"" % base_line)
     check(scale_stars.size() == 3,
         "the row tooltip must have 3 rows (only levels from storage), shown %d: %s"
         % [scale_stars.size(), str(scale_stars)])
@@ -522,9 +533,9 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
         check(str(stars_cell["text"]) == "  " + str(row["stars"]),
             "the stars of row #%d did not match the computed ones: \"%s\" instead of \"%s\""
             % [i, str(stars_cell["text"]), "  " + str(row["stars"])])
-        check(str(tail_cell["text"]) == str(row["tail"]),
+        check(str(tail_cell["text"]) == _money(str(row["tail"])),
             "the price calculation of row #%d did not match the computed one: \"%s\" instead of \"%s\""
-            % [i, str(tail_cell["text"]), str(row["tail"])])
+            % [i, str(tail_cell["text"]), _money(str(row["tail"]))])
         check(stars_cell["color"] == gd.get_quality_color(qid),
             "the stars of row #%d (\"%s\") must be in the colour of level \"%s\": %s instead of %s"
             % [i, str(stars_cell["text"]), qid, str(stars_cell["color"]),
@@ -709,9 +720,14 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
             check(str(cells[i]["colon"]) == ":",
                 "the colon of row #%d must stand in its own cell, got \"%s\""
                 % [i, str(cells[i]["colon"])])
-            check(str(cells[i]["tail"]) == str(row["tail"]),
+            # The total row is the price the unit costs, so it carries the coin icon after the
+            # number; the coefficient rows carry no icon.
+            var expected_tail := str(row["tail"])
+            if str(row["kind"]) == "total":
+                expected_tail = _money(expected_tail)
+            check(str(cells[i]["tail"]) == expected_tail,
                 "the calculation of row #%d must be \"%s\", got \"%s\""
-                % [i, str(row["tail"]), str(cells[i]["tail"])])
+                % [i, expected_tail, str(cells[i]["tail"])])
             check(float(cells[i]["width"]) > 20.0,
                 "row #%d collapsed in width (%s px)" % [i, str(cells[i]["width"])])
         # The ladder is a table: the names of the stages and their badges share one column, the
@@ -751,12 +767,13 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
                 str(parsed_generated["extra"]))
         var generated_base_line := ""
         for child in ui.flow_tooltip_vbox.get_children():
-            if child is Label and str(child.text).begins_with("Base price"):
+            if (child is Label or child is RichTextLabel) \
+                    and str(child.text).begins_with("Base prices: "):
                 generated_base_line = str(child.text)
-        check(generated_base_line == "Base prices: good: %d, addition: %s"
-                % [plain_price, gd.format_coins(addition_price)],
-            "the base line of a decorated good must name both prices (%d and %s), got \"%s\""
-            % [plain_price, gd.format_coins(addition_price), generated_base_line])
+        check(generated_base_line == "Base prices: good: %s, addition: %s"
+                % [_money(str(plain_price)), _money(gd.format_coins(addition_price))],
+            "the base line of a decorated good must name both prices with the coin icon (%s and %s), got \"%s\""
+            % [_money(str(plain_price)), _money(gd.format_coins(addition_price)), generated_base_line])
         # The last row is the total of the last key, and it carries the price the game really uses
         # for those units.
         if not expected.is_empty():
@@ -809,26 +826,29 @@ func _build_up_cells(ui) -> Array:
         for i in range(0, children.size() - 2, 3):
             var stage_cell := children[i] as HBoxContainer
             var colon := children[i + 1] as Label
-            var tail := children[i + 2] as Label
-            if stage_cell == null or stage_cell.get_child_count() != 2:
+            # The calculation is a RichTextLabel: the total row carries the coin icon.
+            var tail_node: Control = children[i + 2]
+            if stage_cell == null or stage_cell.get_child_count() != 2 or colon == null:
+                continue
+            if not (tail_node is Label or tail_node is RichTextLabel):
                 continue
             var stage := stage_cell.get_child(0) as Label
             var marker := stage_cell.get_child(1) as Label
-            if marker == null or stage == null or colon == null or tail == null:
+            if marker == null or stage == null:
                 continue
             cells.append({
                 "marker": str(marker.text),
                 "label": str(stage.text),
                 "colon": str(colon.text),
-                "tail": str(tail.text),
+                "tail": str(tail_node.text),
                 "marker_x": stage_cell.position.x + marker.position.x,
                 "marker_right": stage_cell.position.x + marker.position.x + marker.size.x,
                 "marker_width": marker.size.x,
                 "label_x": stage_cell.position.x + stage.position.x,
                 "label_right": stage_cell.position.x + stage.position.x + stage.size.x,
                 "colon_x": colon.position.x,
-                "tail_x": tail.position.x,
-                "width": tail.size.x,
+                "tail_x": tail_node.position.x,
+                "width": tail_node.size.x,
             })
     return cells
 
