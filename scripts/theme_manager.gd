@@ -361,15 +361,21 @@ func _style_tabs(theme: Theme) -> void:
     theme.set_stylebox("panel", "TabContainer", UI_THEME.panel())
 
 func _style_scrollbars(theme: Theme) -> void:
-    # The track paints nothing, but it is what sets the width of the bar: a ScrollBar
-    # takes its size from the styleboxes, and a track without margins collapses the bar
-    # to zero.
-    var no_track := StyleBoxFlat.new()
-    no_track.bg_color = Color(0, 0, 0, 0)
-    no_track.content_margin_left = 4.0
-    no_track.content_margin_right = 4.0
+    # The track paints nothing, but it is what sets the thickness of the bar: a ScrollBar takes
+    # its cross-axis size from the track's margins, and a track without them collapses the bar
+    # to zero. The width of the vertical bar comes from the left/right margins, the height of
+    # the horizontal one from the top/bottom margins, so each orientation needs its own track.
+    var v_track := StyleBoxFlat.new()
+    v_track.bg_color = Color(0, 0, 0, 0)
+    v_track.content_margin_left = 4.0
+    v_track.content_margin_right = 4.0
+    var h_track := StyleBoxFlat.new()
+    h_track.bg_color = Color(0, 0, 0, 0)
+    h_track.content_margin_top = 4.0
+    h_track.content_margin_bottom = 4.0
+    theme.set_stylebox("scroll", "VScrollBar", v_track)
+    theme.set_stylebox("scroll", "HScrollBar", h_track)
     for type in ["VScrollBar", "HScrollBar"]:
-        theme.set_stylebox("scroll", type, no_track)
         theme.set_stylebox("grabber", type, _scroll_grabber(color("scrollbar")))
         theme.set_stylebox("grabber_highlight", type, _scroll_grabber(color("scrollbar_hover")))
         theme.set_stylebox("grabber_pressed", type, _scroll_grabber(color("scrollbar_hover")))

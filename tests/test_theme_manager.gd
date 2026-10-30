@@ -247,11 +247,16 @@ func _run() -> void:
     _check_glyph(theme, manager, "grabber", "HSlider", Vector2i(16, 16), "control_border", state)
     _check_glyph(theme, manager, "grabber", "VSlider", Vector2i(16, 16), "control_border", state)
 
-    # A ScrollBar takes its width from its styleboxes: a track with no margins collapses the
-    # bar to zero and the scroll areas of the whole game stop showing a handle.
+    # A ScrollBar takes its thickness from its styleboxes: a track with no margins collapses the
+    # bar to zero and the scroll areas of the whole game stop showing a handle. The width of the
+    # vertical bar comes from the left/right margins of its track, the height of the horizontal
+    # bar from the top/bottom ones, so both orientations must be checked.
     var scroll_track := theme.get_stylebox("scroll", "VScrollBar")
     check(scroll_track != null and scroll_track.get_minimum_size().x > 0.0,
-        "the scrollbar keeps a width", state)
+        "the vertical scrollbar keeps a width", state)
+    var h_scroll_track := theme.get_stylebox("scroll", "HScrollBar")
+    check(h_scroll_track != null and h_scroll_track.get_minimum_size().y > 0.0,
+        "the horizontal scrollbar keeps a height", state)
 
     var tab := theme.get_stylebox("tab_selected", "TabContainer") as StyleBoxFlat
     check(tab != null and tab.bg_color.is_equal_approx(manager.color("tab_active_bg")),

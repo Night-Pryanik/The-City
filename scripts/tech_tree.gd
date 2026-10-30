@@ -710,6 +710,11 @@ func rebuild():
     var total_height: int = ERA_LABEL_HEIGHT + COL_PADDING * 2 + max(col_height, BUTTON_HEIGHT)
     _inner.size = Vector2(total_width, total_height)
     _inner.custom_minimum_size = Vector2(total_width, total_height)
+    # A ScrollContainer takes the range of its bars from a minimum-size query, and the anchored
+    # TreeRoot above it never makes one. Without this query the bars keep the range of the
+    # previous layout (and stay hidden) until something resizes the window.
+    _scroll.get_combined_minimum_size()
+    _scroll.queue_sort()
 
     # We create the headings of the eras (the strip on the top). We do this BEFORE the columns,
     # so that the headings end up under them in the z-order (the arrows are drawn
