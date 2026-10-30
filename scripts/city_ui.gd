@@ -180,7 +180,7 @@ func _ready():
 
     trade_tab = load("res://scripts/trade_tab.gd").new()
     trade_tab.setup(
-        $ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList,
+        $ContentPanel/TradePanel/Split/InternalPlate/InternalPanel/InternalScroll/InternalList,
         ui_helpers
     )
     add_child(trade_tab)
@@ -188,7 +188,7 @@ func _ready():
     # The right column of the same tab — the foreign trade: the sections "Trade deals" and
     # "Trade partners" with their own sorting.
     external_trade_tab = load("res://scripts/external_trade_tab.gd").new()
-    external_trade_tab.setup($ContentPanel/TradePanel/Split/ExternalPanel, ui_helpers)
+    external_trade_tab.setup($ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel, ui_helpers)
     external_trade_tab.set_map(main_map)
     external_trade_tab.town_focus_requested.connect(_on_town_focus_requested)
     add_child(external_trade_tab)
@@ -204,6 +204,8 @@ func _ready():
     $TabBarPanel.self_modulate = Color(1, 1, 1, 0.8)
     $RightPanel.self_modulate = Color(1, 1, 1, 0.8)
     $ContentPanel.self_modulate = Color(1, 1, 1, 0.8)
+    $ContentPanel/TradePanel/Split/InternalPlate.self_modulate = Color(1, 1, 1, 0.8)
+    $ContentPanel/TradePanel/Split/ExternalPlate.self_modulate = Color(1, 1, 1, 0.8)
     $BottomPanel.self_modulate = Color(1, 1, 1, 0.8)
 
     tab_buttons = [
@@ -887,11 +889,20 @@ func _layout_ui() -> void:
         $RightPanel.offset_left = half
         $RightPanel.offset_right = w
         $RightPanel.offset_top = 50.0
-        $RightPanel.offset_bottom = h
+        # The same bottom edge as the content panel: the message strip is a veil over the map,
+        # so a surface under it would make its own half of the strip darker.
+        $RightPanel.offset_bottom = h - 50.0
     else:
         $ContentPanel.offset_right = w
         $ContentPanel.offset_top = 50.0
         $ContentPanel.offset_bottom = h - 50.0
+
+    # The tab "Trade" takes its plate from its two columns: two surfaces that touch in the
+    # middle, like the halves of the tabs "Resources" and "Buildings". Its own plate would
+    # show a second frame around them.
+    var content_variation := &"SurfaceBlank" if active_tab == "trade" else &"SurfaceInset"
+    if $ContentPanel.theme_type_variation != content_variation:
+        $ContentPanel.theme_type_variation = content_variation
 
     # The close button — in the top right corner over everything.
     _position_close_button_top()

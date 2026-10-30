@@ -397,12 +397,33 @@ func _run() -> void:
     check(city_ui != null, "CityUI not found in MainMap", state)
     if city_ui != null:
         # The columns of the "Trade" tab — from the scene, both in place.
-        var internal_panel = city_ui.get_node_or_null("ContentPanel/TradePanel/Split/InternalPanel")
-        var external_panel = city_ui.get_node_or_null("ContentPanel/TradePanel/Split/ExternalPanel")
+        var internal_panel = city_ui.get_node_or_null("ContentPanel/TradePanel/Split/InternalPlate/InternalPanel")
+        var external_panel = city_ui.get_node_or_null("ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel")
         check(internal_panel != null,
             "the scene has no left column \"Domestic trade\"", state)
         check(external_panel != null,
             "the scene has no right column \"Foreign trade\"", state)
+        # The columns of the "Trade" tab are two plates that touch: the divider between them
+        # is the junction of their frames, as on the tabs "Resources" / "Buildings".
+        var trade_split = city_ui.get_node_or_null("ContentPanel/TradePanel/Split")
+        var internal_plate = city_ui.get_node_or_null("ContentPanel/TradePanel/Split/InternalPlate")
+        var external_plate = city_ui.get_node_or_null("ContentPanel/TradePanel/Split/ExternalPlate")
+        check(internal_plate != null and external_plate != null,
+            "the trade columns must be two plates", state)
+        if trade_split != null and internal_plate != null and external_plate != null:
+            check(internal_plate is PanelContainer and external_plate is PanelContainer,
+                "a plate of the trade must carry its own surface", state)
+            check(internal_plate.theme_type_variation == &"SurfaceInset"
+                    and external_plate.theme_type_variation == &"SurfaceInset",
+                "the plates of the trade must be insets, like the content of the other tabs", state)
+            # The boundary of the columns must lie on the half of the tab, where the panels of
+            # the tabs "Resources" / "Buildings" meet: a box container rounds each column to a
+            # whole pixel, which shifts the divider away from that line at fractional widths.
+            check(is_equal_approx(internal_plate.anchor_right, 0.5)
+                    and is_equal_approx(external_plate.anchor_left, 0.5),
+                "the plates must meet exactly in the middle of the tab", state)
+            check(internal_plate.get_index() < external_plate.get_index(),
+                "the plate of the domestic trade must come first", state)
         if external_panel != null:
             var ext_title: Label = external_panel.get_node_or_null("TitleLabel")
             # The title of the column. The engine does NOT translate the text set directly in
@@ -419,8 +440,21 @@ func _run() -> void:
         city_ui.refresh()
         city_ui._switch_tab("trade")
         await process_frame
+        # The plates of the columns are the plate of the tab: a second frame of the content
+        # panel around them would be visible.
+        check(city_ui.get_node("ContentPanel").theme_type_variation == &"SurfaceBlank",
+            "on the trade tab the content panel must not paint a plate", state)
+        city_ui._switch_tab("resources")
+        check(city_ui.get_node("ContentPanel").theme_type_variation == &"SurfaceInset",
+            "the content panel must take its plate back on the other tabs", state)
+        city_ui._switch_tab("trade")
+        await process_frame
+        check(is_equal_approx(external_plate.position.x, trade_split.size.x * 0.5)
+                and is_equal_approx(internal_plate.size.x + external_plate.size.x,
+                        trade_split.size.x),
+            "the plates must fill the tab, meeting on its half", state)
         var list = city_ui.get_node_or_null(
-            "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList")
+            "ContentPanel/TradePanel/Split/InternalPlate/InternalPanel/InternalScroll/InternalList")
         check(list != null, "there is no list of the cards of the internal trade", state)
         # The available cards lie first, but with an empty storage there may be none at all —
         # then the first child of the list is the collapse toggle. We look for the card explicitly.
@@ -511,7 +545,7 @@ func _run() -> void:
                 # matched, and the whole list was rebuilt every tick. Hence there were
                 # both the flickering of the numbers and the disappearing tooltips.
                 var list2 = city_ui.get_node_or_null(
-                    "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList")
+                    "ContentPanel/TradePanel/Split/InternalPlate/InternalPanel/InternalScroll/InternalList")
                 if list2 != null and list2.get_child_count() > 0:
                     # The regression on the reuse of the cards is checked by adding
                     # a supply to an ALREADY available resource: its availability does not change,
@@ -632,7 +666,7 @@ func _run() -> void:
         await process_frame
         var tab3 = city_ui3.trade_tab
         var ilist = city_ui3.get_node_or_null(
-            "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList")
+            "ContentPanel/TradePanel/Split/InternalPlate/InternalPanel/InternalScroll/InternalList")
         check(ilist != null, "there is no list of the cards of the internal trade", state)
         if ilist != null and tab3 != null:
             # We empty the storage: everything the city does not produce will become unavailable.
@@ -694,7 +728,7 @@ func _run() -> void:
             # and when it closes — wider again. The mode SHOW_ALWAYS reserves space for the
             # scrollbar permanently, and the width of the card does not depend on the overflow.
             var scroll = city_ui3.get_node_or_null(
-                "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll")
+                "ContentPanel/TradePanel/Split/InternalPlate/InternalPanel/InternalScroll")
             check(scroll != null and scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_ALWAYS,
                 "the list must have a permanently reserved vertical scrollbar (SHOW_ALWAYS)", state)
             if scroll != null and ilist != null and tab3 != null and tab3.cards.size() > 0:
@@ -771,7 +805,7 @@ func _all_members(gdata, key: String) -> Array:
 # The right column of the tab "Trade" (the foreign trade): the pair of the section buttons, the
 # sorting of both sections and the list of the towns discovered by the player.
 func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
-    var panel = city_ui.get_node_or_null("ContentPanel/TradePanel/Split/ExternalPanel")
+    var panel = city_ui.get_node_or_null("ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel")
     check(panel != null, "the scene has no right column \"Foreign trade\"", state)
     if panel == null:
         return

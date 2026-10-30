@@ -410,6 +410,8 @@ func _style_surfaces(theme: Theme) -> void:
     _add_surface(theme, "SurfaceWindow", UI_THEME.window_plate())
     _add_surface(theme, "SurfaceProblem", UI_THEME.problem())
     _add_surface(theme, "SurfaceTooltip", UI_THEME.tooltip())
+    # A plate that draws nothing: the region takes its surface from its own children.
+    _add_surface(theme, "SurfaceBlank", StyleBoxEmpty.new())
     theme.set_type_variation("MutedLabel", "Label")
     theme.set_color("font_color", "MutedLabel", color("text_muted"))
 

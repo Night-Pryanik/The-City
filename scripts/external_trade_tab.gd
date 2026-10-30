@@ -43,7 +43,7 @@
 # it is connected as well — that is exactly what the list is for.
 #
 # The layout of the column lives in the scene CityUI.tscn
-# (ContentPanel/TradePanel/Split/ExternalPanel): the buttons, the sort bars and the lists are
+# (ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel): the buttons, the sort bars and the lists are
 # there, and the script only fills the lists and the tooltips.
 extends Node
 

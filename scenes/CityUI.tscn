@@ -279,117 +279,131 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Split" type="HBoxContainer" parent="ContentPanel/TradePanel" unique_id=1900000201]
+[node name="Split" type="Control" parent="ContentPanel/TradePanel" unique_id=1900000201]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 8
 
-[node name="InternalPanel" type="VBoxContainer" parent="ContentPanel/TradePanel/Split" unique_id=1900000202]
+[node name="InternalPlate" type="PanelContainer" parent="ContentPanel/TradePanel/Split" unique_id=1900000230]
+layout_mode = 1
+anchors_preset = 9
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"SurfaceInset"
+
+[node name="InternalPanel" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/InternalPlate" unique_id=1900000202]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
 theme_override_constants/separation = 4
 
-[node name="TitleLabel" type="Label" parent="ContentPanel/TradePanel/Split/InternalPanel" unique_id=1900000203]
+[node name="TitleLabel" type="Label" parent="ContentPanel/TradePanel/Split/InternalPlate/InternalPanel" unique_id=1900000203]
 layout_mode = 2
 text = "Domestic trade"
 
-[node name="InternalScroll" type="ScrollContainer" parent="ContentPanel/TradePanel/Split/InternalPanel" unique_id=1900000204]
+[node name="InternalScroll" type="ScrollContainer" parent="ContentPanel/TradePanel/Split/InternalPlate/InternalPanel" unique_id=1900000204]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="InternalList" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/InternalPanel/InternalScroll" unique_id=1900000205]
+[node name="InternalList" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/InternalPlate/InternalPanel/InternalScroll" unique_id=1900000205]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="ExternalPanel" type="VBoxContainer" parent="ContentPanel/TradePanel/Split" unique_id=1900000206]
+[node name="ExternalPlate" type="PanelContainer" parent="ContentPanel/TradePanel/Split" unique_id=1900000231]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 0.5
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"SurfaceInset"
+
+[node name="ExternalPanel" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPlate" unique_id=1900000206]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
 theme_override_constants/separation = 4
 
-[node name="TitleLabel" type="Label" parent="ContentPanel/TradePanel/Split/ExternalPanel" unique_id=1900000207]
+[node name="TitleLabel" type="Label" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel" unique_id=1900000207]
 layout_mode = 2
 text = "Foreign trade"
 
-[node name="SectionsBar" type="HBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel" unique_id=1900000210]
+[node name="SectionsBar" type="HBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel" unique_id=1900000210]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="DealsButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/SectionsBar" unique_id=1900000211]
+[node name="DealsButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/SectionsBar" unique_id=1900000211]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
 tooltip_text = "Trade deals"
 
-[node name="PartnersButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/SectionsBar" unique_id=1900000212]
+[node name="PartnersButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/SectionsBar" unique_id=1900000212]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
 tooltip_text = "Trade partners"
 
-[node name="DealsSection" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel" unique_id=1900000213]
+[node name="DealsSection" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel" unique_id=1900000213]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
-[node name="SortBar" type="HBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection" unique_id=1900000214]
+[node name="SortBar" type="HBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/DealsSection" unique_id=1900000214]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="NameSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection/SortBar" unique_id=1900000215]
+[node name="NameSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/DealsSection/SortBar" unique_id=1900000215]
 custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
 
-[node name="PriceSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection/SortBar" unique_id=1900000216]
+[node name="PriceSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/DealsSection/SortBar" unique_id=1900000216]
 custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
 
-[node name="TypeSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection/SortBar" unique_id=1900000217]
+[node name="TypeSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/DealsSection/SortBar" unique_id=1900000217]
 custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
 
-[node name="DealsScroll" type="ScrollContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection" unique_id=1900000218]
+[node name="DealsScroll" type="ScrollContainer" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/DealsSection" unique_id=1900000218]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="DealsList" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection/DealsScroll" unique_id=1900000219]
+[node name="DealsList" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/DealsSection/DealsScroll" unique_id=1900000219]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="PartnersSection" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel" unique_id=1900000220]
+[node name="PartnersSection" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel" unique_id=1900000220]
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
-[node name="SortBar" type="HBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/PartnersSection" unique_id=1900000221]
+[node name="SortBar" type="HBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/PartnersSection" unique_id=1900000221]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="NameSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/PartnersSection/SortBar" unique_id=1900000222]
+[node name="NameSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/PartnersSection/SortBar" unique_id=1900000222]
 custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
 
-[node name="DistanceSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/PartnersSection/SortBar" unique_id=1900000223]
+[node name="DistanceSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/PartnersSection/SortBar" unique_id=1900000223]
 custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
 
-[node name="PartnersScroll" type="ScrollContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/PartnersSection" unique_id=1900000224]
+[node name="PartnersScroll" type="ScrollContainer" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/PartnersSection" unique_id=1900000224]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="PartnersList" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/PartnersSection/PartnersScroll" unique_id=1900000225]
+[node name="PartnersList" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPlate/ExternalPanel/PartnersSection/PartnersScroll" unique_id=1900000225]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
