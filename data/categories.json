@@ -6,6 +6,7 @@
 // counted as Food in storage. */
   "categories": [
     { "id": "food", "name": "Food" },
+    { "id": "livestock", "name": "Livestock" },
     { "id": "fruits", "name": "Fruits" },
     { "id": "drinks", "name": "Drinks" },
     { "id": "spices", "name": "Spices" },

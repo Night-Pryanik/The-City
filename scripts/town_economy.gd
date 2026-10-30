@@ -134,7 +134,7 @@ static func forest_plot_product(tile: Dictionary) -> String:
 #
 # The closure of the production does not suffer from this: not a single id from
 # data/resources/** occurs as an ingredient of the recipes in data/crafts/** —
-# the recipes operate only with products (hide, raw_meat, wheat, copper_ore).
+# the recipes operate only with products (live_cows, hide, wheat, copper_ore).
 #
 # It returns an array of ids in a stable order (as the walk of the ring).
 static func collect_base_resources(tiles: Array) -> Array:
@@ -175,9 +175,10 @@ static func collect_base_resources(tiles: Array) -> Array:
         if is_one_time(resource_id) \
                 and str(data.get("category", "")) != ONE_TIME_YIELD_CATEGORY:
             continue
-        # The production of the resource (cows -> raw_meat/hide, wheat_field -> wheat/feed):
-        # the same economy, only a different output. The recipes eat exactly these
-        # products, and not the animals themselves and not the fields themselves.
+        # The production of the resource (cows -> live cattle and milk,
+        # wheat_field -> wheat/feed): the same economy, only a different output.
+        # The recipes eat exactly these products: the slaughterhouse takes the
+        # live herd, not the raw animal on the hex.
         for pid in produces:
             var produced := str(pid)
             if produced.is_empty() or seen.has(produced):

@@ -46,7 +46,6 @@
       "category": "food",
       "icon": "chickpeas.png"
     },
-    { "id": "meat", "price": 9, "name": "Meat", "type": "product", "category": "food", "icon": "meat.png" },
     { "id": "cheese", "price": 14, "name": "Cheese", "type": "product", "category": "food", "icon": "cheese.png" },
     { "id": "eggs", "price": 5, "name": "Eggs", "type": "product", "category": "food", "icon": "eggs.png" },
     { "id": "honey", "price": 16, "name": "Honey", "type": "product", "category": "food", "icon": "honey.png" },

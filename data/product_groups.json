@@ -12,6 +12,19 @@
 // beverages.
   "product_groups": [
     {
+      "id": "bovines",
+      "name": "Bovines",
+      "products": [
+        "live_cows",
+        "live_zebu",
+        "live_banteng",
+        "live_buffalo",
+        "live_bison",
+        "live_yak"
+      ],
+      "icon": "cows.png"
+    },
+    {
       "id": "millable_grains",
       "name": "Millable Grains",
       "products": [

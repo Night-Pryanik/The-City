@@ -396,12 +396,12 @@ func setup():
         if GameData.products[pid].get("category") == "food":
             city_food_pool[pid] = true
 
-    if city_storage.has("meat"):
-        city_storage["meat"] = 10
-        # The starting meat — of the ordinary quality.
-        if not city_quality_detail.has("meat"):
-            city_quality_detail["meat"] = {}
-        city_quality_detail["meat"]["common"] = city_quality_detail["meat"].get("common", 0) + 10
+    if city_storage.has("beef"):
+        city_storage["beef"] = 10
+        # The starting beef — of the ordinary quality.
+        if not city_quality_detail.has("beef"):
+            city_quality_detail["beef"] = {}
+        city_quality_detail["beef"]["common"] = city_quality_detail["beef"].get("common", 0) + 10
 
 func reset_counters():
     # The actual counters of the production/consumption for the tick: they are used for

@@ -135,7 +135,7 @@ func _fill_player_area_with_resources(tile_data: Array) -> void:
 func _in_player_area(row: int, col: int) -> bool:
     return row >= AREA_R0 and row <= AREA_R1 and col >= AREA_C0 and col <= AREA_C1
 
-# Resource output (sheep -> raw_meat/raw_milk/wool). It is exactly this that
+# Resource output (sheep -> live herd/raw_milk/wool). It is exactly this that
 # lies in a town's sell pool, not the resource itself (see
 # TownEconomy.collect_base_resources), so the leak checks look here.
 func _produces(resource_id: String) -> Array:
@@ -267,9 +267,9 @@ func _test_ring_is_clipped_by_player_area(state: Dictionary) -> void:
         "the player start area must not have the in_town_influence flag (violators: %s)" % str(flagged), state)
 
     # The player's resource output did not enter the town's sell pool.
-    # It is exactly the OUTPUT (a sheep's wool/raw_meat/raw_milk) that is
-    # checked, not "sheep" itself: the sell pool holds crops and goods, not
-    # animals (see TownEconomy.collect_base_resources), so "sheep in the pool"
+    # It is exactly the OUTPUT (a sheep's live herd/wool/raw_milk) that is
+    # checked, not "sheep" itself: the sell pool holds products, not the raw
+    # spawn (see TownEconomy.collect_base_resources), so "sheep in the pool"
     # cannot happen in principle and the check would be forever green.
     var player_products := _produces(RES_A)
     check(not player_products.is_empty(),

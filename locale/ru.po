@@ -2949,6 +2949,10 @@ msgid "Household Items"
 msgstr "Предметы быта"
 
 msgctxt "categories.name"
+msgid "Livestock"
+msgstr "Скот"
+
+msgctxt "categories.name"
 msgid "Luxury"
 msgstr "Роскошь"
 
@@ -3429,6 +3433,10 @@ msgid "Weaves clothes out of wool."
 msgstr "Ткёт одежду из шерсти"
 
 msgctxt "crafts.name"
+msgid "Alpaca Meat"
+msgstr "Мясо альпаки"
+
+msgctxt "crafts.name"
 msgid "Amphora"
 msgstr "Амфора"
 
@@ -3439,6 +3447,10 @@ msgstr "Сурьма"
 msgctxt "crafts.name"
 msgid "Arsenic"
 msgstr "Мышьяк"
+
+msgctxt "crafts.name"
+msgid "Beef"
+msgstr "Говядина"
 
 msgctxt "crafts.name"
 msgid "Beer"
@@ -3473,6 +3485,10 @@ msgid "Building Stone"
 msgstr "Строительный камень"
 
 msgctxt "crafts.name"
+msgid "Camel Meat"
+msgstr "Верблюжатина"
+
+msgctxt "crafts.name"
 msgid "Campeche"
 msgstr "Кампеш"
 
@@ -3491,6 +3507,10 @@ msgstr "Древесный уголь"
 msgctxt "crafts.name"
 msgid "Cheese"
 msgstr "Сыр"
+
+msgctxt "crafts.name"
+msgid "Chicken"
+msgstr "Курятина"
 
 msgctxt "crafts.name"
 msgid "Cinnabar"
@@ -3537,6 +3557,10 @@ msgid "Coral Jewelry"
 msgstr "Украшения из кораллов"
 
 msgctxt "crafts.name"
+msgid "Duck"
+msgstr "Утятина"
+
+msgctxt "crafts.name"
 msgid "Empty"
 msgstr "Пусто"
 
@@ -3569,12 +3593,20 @@ msgid "Glassware"
 msgstr "Стеклянная посуда"
 
 msgctxt "crafts.name"
+msgid "Goat Meat"
+msgstr "Козлятина"
+
+msgctxt "crafts.name"
 msgid "Gold"
 msgstr "Золото"
 
 msgctxt "crafts.name"
 msgid "Gold Jewelry"
 msgstr "Золотые украшения"
+
+msgctxt "crafts.name"
+msgid "Goose"
+msgstr "Гусятина"
 
 msgctxt "crafts.name"
 msgid "Grape Wine"
@@ -3585,8 +3617,16 @@ msgid "Green Vitriol"
 msgstr "Железный купорос"
 
 msgctxt "crafts.name"
+msgid "Guineafowl"
+msgstr "Цесарка"
+
+msgctxt "crafts.name"
 msgid "Henna"
 msgstr "Хна"
+
+msgctxt "crafts.name"
+msgid "Horsemeat"
+msgstr "Конина"
 
 msgctxt "crafts.name"
 msgid "Indigo"
@@ -3633,6 +3673,10 @@ msgid "Lime"
 msgstr "Известь"
 
 msgctxt "crafts.name"
+msgid "Llama Meat"
+msgstr "Мясо ламы"
+
+msgctxt "crafts.name"
 msgid "Malachite"
 msgstr "Малахит"
 
@@ -3649,8 +3693,8 @@ msgid "Mead"
 msgstr "Медовый напиток"
 
 msgctxt "crafts.name"
-msgid "Meat"
-msgstr "Мясо"
+msgid "Mutton"
+msgstr "Баранина"
 
 msgctxt "crafts.name"
 msgid "Nephrite Jewelry"
@@ -3659,6 +3703,10 @@ msgstr "Украшения из нефрита"
 msgctxt "crafts.name"
 msgid "Ochre"
 msgstr "Охра"
+
+msgctxt "crafts.name"
+msgid "Ostrich Meat"
+msgstr "Мясо страуса"
 
 msgctxt "crafts.name"
 msgid "Paper"
@@ -3677,8 +3725,16 @@ msgid "Pearl Jewelry"
 msgstr "Украшения из жемчуга"
 
 msgctxt "crafts.name"
+msgid "Pigeon"
+msgstr "Голубятина"
+
+msgctxt "crafts.name"
 msgid "Planks"
 msgstr "Доски"
+
+msgctxt "crafts.name"
+msgid "Pork"
+msgstr "Свинина"
 
 msgctxt "crafts.name"
 msgid "Porphyry Jewelry"
@@ -3695,6 +3751,10 @@ msgstr "Пульке"
 msgctxt "crafts.name"
 msgid "Purple"
 msgstr "Пурпур"
+
+msgctxt "crafts.name"
+msgid "Rabbit Meat"
+msgstr "Крольчатина"
 
 msgctxt "crafts.name"
 msgid "Reed Boats"
@@ -3765,12 +3825,20 @@ msgid "Tin"
 msgstr "Олово"
 
 msgctxt "crafts.name"
+msgid "Turkey"
+msgstr "Индейка"
+
+msgctxt "crafts.name"
 msgid "Ultramarine"
 msgstr "Ультрамарин"
 
 msgctxt "crafts.name"
 msgid "Vegetable Oil"
 msgstr "Растительное масло"
+
+msgctxt "crafts.name"
+msgid "Venison"
+msgstr "Оленина"
 
 msgctxt "crafts.name"
 msgid "Vinegar"
@@ -4019,6 +4087,10 @@ msgstr "Напитки"
 msgctxt "product_groups.name"
 msgid "Boats"
 msgstr "Лодки"
+
+msgctxt "product_groups.name"
+msgid "Bovines"
+msgstr "Быки"
 
 msgctxt "product_groups.name"
 msgid "Bronze Alloys"
@@ -4305,6 +4377,10 @@ msgid "Alabaster"
 msgstr "Алебастр"
 
 msgctxt "resources.name"
+msgid "Alpaca Meat"
+msgstr "Мясо альпаки"
+
+msgctxt "resources.name"
 msgid "Alpacas"
 msgstr "Альпаки"
 
@@ -4347,6 +4423,10 @@ msgstr "Базальт"
 msgctxt "resources.name"
 msgid "Beans"
 msgstr "Фасоль"
+
+msgctxt "resources.name"
+msgid "Beef"
+msgstr "Говядина"
 
 msgctxt "resources.name"
 msgid "Beer"
@@ -4397,6 +4477,10 @@ msgid "Buffalo"
 msgstr "Буйволы"
 
 msgctxt "resources.name"
+msgid "Camel Meat"
+msgstr "Верблюжатина"
+
+msgctxt "resources.name"
 msgid "Camels"
 msgstr "Верблюды"
 
@@ -4443,6 +4527,10 @@ msgstr "Древесный уголь"
 msgctxt "resources.name"
 msgid "Cheese"
 msgstr "Сыр"
+
+msgctxt "resources.name"
+msgid "Chicken"
+msgstr "Курятина"
 
 msgctxt "resources.name"
 msgid "Chickens"
@@ -4561,6 +4649,10 @@ msgid "Deer"
 msgstr "Олени"
 
 msgctxt "resources.name"
+msgid "Duck"
+msgstr "Утятина"
+
+msgctxt "resources.name"
 msgid "Ducks"
 msgstr "Утки"
 
@@ -4621,6 +4713,10 @@ msgid "Glassware"
 msgstr "Стеклянная посуда"
 
 msgctxt "resources.name"
+msgid "Goat Meat"
+msgstr "Козлятина"
+
+msgctxt "resources.name"
 msgid "Goats"
 msgstr "Козы"
 
@@ -4641,6 +4737,10 @@ msgid "Gold Ore"
 msgstr "Золотая руда"
 
 msgctxt "resources.name"
+msgid "Goose"
+msgstr "Гусятина"
+
+msgctxt "resources.name"
 msgid "Granite"
 msgstr "Гранит"
 
@@ -4654,7 +4754,7 @@ msgstr "Железный купорос"
 
 msgctxt "resources.name"
 msgid "Guineafowl"
-msgstr "Цесарки"
+msgstr "Цесарка"
 
 msgctxt "resources.name"
 msgid "Hemp"
@@ -4675,6 +4775,10 @@ msgstr "Мёд"
 msgctxt "resources.name"
 msgid "Hops"
 msgstr "Хмель"
+
+msgctxt "resources.name"
+msgid "Horsemeat"
+msgstr "Конина"
 
 msgctxt "resources.name"
 msgid "Horses"
@@ -4765,6 +4869,10 @@ msgid "Limestone"
 msgstr "Известняк"
 
 msgctxt "resources.name"
+msgid "Llama Meat"
+msgstr "Мясо ламы"
+
+msgctxt "resources.name"
 msgid "Llamas"
 msgstr "Ламы"
 
@@ -4805,10 +4913,6 @@ msgid "Mead"
 msgstr "Медовый напиток"
 
 msgctxt "resources.name"
-msgid "Meat"
-msgstr "Мясо"
-
-msgctxt "resources.name"
 msgid "Meteorite Iron"
 msgstr "Метеоритное железо"
 
@@ -4831,6 +4935,10 @@ msgstr "Тутовое дерево"
 msgctxt "resources.name"
 msgid "Murex"
 msgstr "Мурекс"
+
+msgctxt "resources.name"
+msgid "Mutton"
+msgstr "Баранина"
 
 msgctxt "resources.name"
 msgid "Nephrite"
@@ -4867,6 +4975,10 @@ msgstr "Охра"
 msgctxt "resources.name"
 msgid "Olives"
 msgstr "Оливки"
+
+msgctxt "resources.name"
+msgid "Ostrich Meat"
+msgstr "Мясо страуса"
 
 msgctxt "resources.name"
 msgid "Ostriches"
@@ -4909,6 +5021,10 @@ msgid "Peas"
 msgstr "Горох"
 
 msgctxt "resources.name"
+msgid "Pigeon"
+msgstr "Голубятина"
+
+msgctxt "resources.name"
 msgid "Pigeons"
 msgstr "Голуби"
 
@@ -4927,6 +5043,10 @@ msgstr "Доски"
 msgctxt "resources.name"
 msgid "Pomegranates"
 msgstr "Гранаты"
+
+msgctxt "resources.name"
+msgid "Pork"
+msgstr "Свинина"
 
 msgctxt "resources.name"
 msgid "Porphyry"
@@ -4973,6 +5093,10 @@ msgid "Quinoa"
 msgstr "Киноа"
 
 msgctxt "resources.name"
+msgid "Rabbit Meat"
+msgstr "Крольчатина"
+
+msgctxt "resources.name"
 msgid "Rabbits"
 msgstr "Кролики"
 
@@ -4987,10 +5111,6 @@ msgstr "Рапс"
 msgctxt "resources.name"
 msgid "Raw Fish"
 msgstr "Сырая рыба"
-
-msgctxt "resources.name"
-msgid "Raw Meat"
-msgstr "Сырое мясо"
 
 msgctxt "resources.name"
 msgid "Raw Milk"
@@ -5189,6 +5309,10 @@ msgid "Tulips"
 msgstr "Тюльпаны"
 
 msgctxt "resources.name"
+msgid "Turkey"
+msgstr "Индейка"
+
+msgctxt "resources.name"
 msgid "Turkeys"
 msgstr "Индейки"
 
@@ -5207,6 +5331,10 @@ msgstr "Растительное масло"
 msgctxt "resources.name"
 msgid "Velvetleaf"
 msgstr "Канатник"
+
+msgctxt "resources.name"
+msgid "Venison"
+msgstr "Оленина"
 
 msgctxt "resources.name"
 msgid "Vinegar"

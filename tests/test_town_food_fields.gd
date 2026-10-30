@@ -188,10 +188,10 @@ func _res_group(res_id) -> String:
     var data: Dictionary = _gdata.raw_resources.get(str(res_id), {})
     return str(data.get("group", ""))
 
-# The production of a resource (wheat_field -> wheat/feed, cows -> raw_meat/hide).
-# It is this, and not the resource itself, that ends up in the sell pool (see
-# TownEconomy.collect_base_resources), so the trade checks look here. An empty
-# array means "nothing to sell".
+# The production of a resource (wheat_field -> wheat/feed, cows -> live cattle
+# and milk). It is this, and not the resource itself, that ends up in the sell
+# pool (see TownEconomy.collect_base_resources), so the trade checks look here.
+# An empty array means "nothing to sell".
 func _produces(res_id) -> Array:
     var ids: Array = []
     var data: Dictionary = _gdata.raw_resources.get(str(res_id), {})

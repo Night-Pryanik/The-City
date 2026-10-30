@@ -9,11 +9,145 @@
       "time": 5
     },
     {
-      "id": "meat",
-      "name": "Meat",
+      // The slaughterhouse butchers the live herd into the meat of the
+      // species and, where the animal bears a usable hide, into hides.
+      // The meats are distinct products on purpose: a diversity of meats on
+      // the table is the basis of the diversity bonus system (see
+      // data/bonuses.json). All the bovines share the "Beef" recipe through
+      // the @bovines group (data/product_groups.json).
+      "id": "beef",
+      "name": "Beef",
       "produced_in": [ "slaughterhouse" ],
-      "resources": { "raw_meat": 20 },
-      "result": { "meat": 10 },
+      "resources": { "@bovines": 20 },
+      "result": { "beef": 10, "hide": 10 },
+      "time": 5
+    },
+    {
+      "id": "mutton",
+      "name": "Mutton",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_sheep": 20 },
+      "result": { "mutton": 10 },
+      "time": 5
+    },
+    {
+      "id": "goat_meat",
+      "name": "Goat Meat",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_goats": 20 },
+      "result": { "goat_meat": 10, "hide": 10 },
+      "time": 5
+    },
+    {
+      "id": "horse_meat",
+      "name": "Horsemeat",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_horses": 20 },
+      "result": { "horse_meat": 10, "hide": 10 },
+      "time": 5
+    },
+    {
+      "id": "pork",
+      "name": "Pork",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_pigs": 20 },
+      "result": { "pork": 10, "hide": 10 },
+      "time": 5
+    },
+    {
+      "id": "venison",
+      "name": "Venison",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_deer": 20 },
+      "result": { "venison": 10, "hide": 10 },
+      "time": 5
+    },
+    {
+      "id": "camel_meat",
+      "name": "Camel Meat",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_camel": 20 },
+      "result": { "camel_meat": 10, "hide": 10 },
+      "time": 5
+    },
+    {
+      "id": "llama_meat",
+      "name": "Llama Meat",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_llama": 20 },
+      "result": { "llama_meat": 10 },
+      "time": 5
+    },
+    {
+      "id": "alpaca_meat",
+      "name": "Alpaca Meat",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_alpaca": 20 },
+      "result": { "alpaca_meat": 10 },
+      "time": 5
+    },
+    {
+      "id": "chicken_meat",
+      "name": "Chicken",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_chicken": 20 },
+      "result": { "chicken_meat": 10 },
+      "time": 5
+    },
+    {
+      "id": "turkey_meat",
+      "name": "Turkey",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_turkey": 20 },
+      "result": { "turkey_meat": 10 },
+      "time": 5
+    },
+    {
+      "id": "duck_meat",
+      "name": "Duck",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_duck": 20 },
+      "result": { "duck_meat": 10 },
+      "time": 5
+    },
+    {
+      "id": "goose_meat",
+      "name": "Goose",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_goose": 20 },
+      "result": { "goose_meat": 10 },
+      "time": 5
+    },
+    {
+      "id": "guineafowl_meat",
+      "name": "Guineafowl",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_guineafowl": 20 },
+      "result": { "guineafowl_meat": 10 },
+      "time": 5
+    },
+    {
+      "id": "ostrich_meat",
+      "name": "Ostrich Meat",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_ostrich": 20 },
+      "result": { "ostrich_meat": 10, "hide": 10 },
+      "time": 5
+    },
+    {
+      "id": "rabbit_meat",
+      "name": "Rabbit Meat",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_rabbit": 20 },
+      "result": { "rabbit_meat": 10, "hide": 5 },
+      "time": 5
+    },
+    {
+      "id": "pigeon_meat",
+      "name": "Pigeon",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "live_pigeon": 20 },
+      "result": { "pigeon_meat": 10 },
       "time": 5
     },
     {

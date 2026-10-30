@@ -125,6 +125,15 @@ register it in `project.godot` under
 | мёд | honey |
 | вино | wine |
 | пиво | beer |
+| мясо | meat |
+| говядина | beef |
+| свинина | pork |
+| баранина | mutton |
+| козлятина | goat meat |
+| конина | horsemeat |
+| оленина | venison |
+| скот, домашний скот | livestock |
+| бойня | slaughterhouse |
 | монета | coin |
 | пастбище | pasture |
 | ферма | farm |

@@ -1,14 +1,6 @@
 {
   "resources": [
     {
-      "id": "raw_meat",
-      "price": 6,
-      "name": "Raw Meat",
-      "type": "product",
-      "category": "material",
-      "icon": "raw_meat.png"
-    },
-    {
       "id": "raw_milk",
       "price": 3,
       "name": "Raw Milk",

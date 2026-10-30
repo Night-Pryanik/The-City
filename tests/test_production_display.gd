@@ -68,23 +68,23 @@ func _run() -> void:
     # --- 2. Growing resource without improvement: hint = full rate ---
     _gdata.raw_resources["test_herd"] = {
         "id": "test_herd", "name": "Test Herd", "type": "raw",
-        "improved_by": "pasture", "produces": {"raw_meat": 20},
+        "improved_by": "pasture", "produces": {"live_cows": 20},
         "feed_consumption": 50, "time_to_mature": 40.0,
     }
     tile["resource"] = "test_herd"
     tile["improvement"] = null
     tile["fill_time"] = 0.0
-    var herd_item := _product_item(tooltip, row, col, main_map, "raw_meat")
-    check(not herd_item.is_empty(), "the meat row must be in the production tooltip", state)
+    var herd_item := _product_item(tooltip, row, col, main_map, "live_cows")
+    check(not herd_item.is_empty(), "the herd row must be in the production tooltip", state)
     if not herd_item.is_empty():
         check(float(herd_item.get("amount", 0.0)) > 0.0,
                 "the \"once built\" hint must show the full rate, not 0 (got %.1f)"
                         % float(herd_item.get("amount", 0.0)), state)
         check(absf(float(herd_item.get("amount", 0.0)) - 20.0) < 0.001,
-                "meat rate = produces = 20 units/sec (got %.1f)"
+                "herd rate = produces = 20 units/sec (got %.1f)"
                         % float(herd_item.get("amount", 0.0)), state)
         check(not _has_base_label(str(herd_item.get("name", ""))),
-                "the meat row must not have a base (got: %s)"
+                "the herd row must not have a base (got: %s)"
                         % herd_item.get("name", ""), state)
 
     # --- 3. Single format: neither resource has a base ---

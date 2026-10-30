@@ -1,0 +1,28 @@
+{
+  // The meat of the slaughtered animals: each species (or family) gets its own
+  // product, so that a diversity of meats on the citizens' table stays
+  // distinguishable on the level of goods — the basis of the diversity bonus
+  // system (see data/bonuses.json). All the bovines share "Beef": cattle,
+  // zebu, banteng, buffalo, bison and yak are butchered into the same cut.
+  // The meat is directly edible; the slaughterhouse (data/crafts/food_drinks.json)
+  // is the only processing step between the live animal and the table.
+  "resources": [
+    { "id": "beef", "price": 9, "name": "Beef", "type": "product", "category": "food", "icon": "beef.png" },
+    { "id": "mutton", "price": 9, "name": "Mutton", "type": "product", "category": "food", "icon": "mutton.png" },
+    { "id": "goat_meat", "price": 9, "name": "Goat Meat", "type": "product", "category": "food", "icon": "goat_meat.png" },
+    { "id": "horse_meat", "price": 9, "name": "Horsemeat", "type": "product", "category": "food", "icon": "horse_meat.png" },
+    { "id": "pork", "price": 9, "name": "Pork", "type": "product", "category": "food", "icon": "pork.png" },
+    { "id": "venison", "price": 9, "name": "Venison", "type": "product", "category": "food", "icon": "venison.png" },
+    { "id": "camel_meat", "price": 9, "name": "Camel Meat", "type": "product", "category": "food", "icon": "camel_meat.png" },
+    { "id": "llama_meat", "price": 9, "name": "Llama Meat", "type": "product", "category": "food", "icon": "llama_meat.png" },
+    { "id": "alpaca_meat", "price": 9, "name": "Alpaca Meat", "type": "product", "category": "food", "icon": "alpaca_meat.png" },
+    { "id": "chicken_meat", "price": 9, "name": "Chicken", "type": "product", "category": "food", "icon": "chicken_meat.png" },
+    { "id": "turkey_meat", "price": 9, "name": "Turkey", "type": "product", "category": "food", "icon": "turkey_meat.png" },
+    { "id": "duck_meat", "price": 9, "name": "Duck", "type": "product", "category": "food", "icon": "duck_meat.png" },
+    { "id": "goose_meat", "price": 9, "name": "Goose", "type": "product", "category": "food", "icon": "goose_meat.png" },
+    { "id": "guineafowl_meat", "price": 9, "name": "Guineafowl", "type": "product", "category": "food", "icon": "guineafowl_meat.png" },
+    { "id": "ostrich_meat", "price": 9, "name": "Ostrich Meat", "type": "product", "category": "food", "icon": "ostrich_meat.png" },
+    { "id": "rabbit_meat", "price": 9, "name": "Rabbit Meat", "type": "product", "category": "food", "icon": "rabbit_meat.png" },
+    { "id": "pigeon_meat", "price": 9, "name": "Pigeon", "type": "product", "category": "food", "icon": "pigeon_meat.png" }
+  ]
+}

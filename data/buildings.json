@@ -54,7 +54,7 @@
       "icon": "slaughterhouse.png",
       "production_slots": 1.0,
       "unlock_tech": "animal_husbandry",
-      "default_recipes": [ "meat" ]
+      "default_recipes": [  ]
     },
     {
       "id": "dairy",

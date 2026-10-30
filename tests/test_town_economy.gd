@@ -418,14 +418,17 @@ func _test_base_pool_is_products_only() -> void:
     _check(raw_leaked.is_empty(),
         "there must be no raw resource from data/resources in the sell pool (found: %s)" % str(raw_leaked))
 
-# 11. Animals: the pool has meat/hide/milk/catch, but not the animals themselves.
-func _test_animals_excluded() -> void:
+# 11. Animals: the live herd is a good, and the slaughterhouse opens the meat
+# and the hides through the recipes.
+func _test_livestock_and_slaughter() -> void:
     var pool := _sell_pool_of(["cows", "ostrich", "freshwater_fish"])
+    # The raw spawn (data/resources) is not a good — the live herd product is.
     for animal in ["cows", "ostrich", "freshwater_fish"]:
         _check(not pool.has(animal),
-            "the animal \"%s\" is not a good: the town must not sell it as such" % animal)
-    _check(pool.has("raw_meat"), "cows must yield meat (raw_meat)")
-    _check(pool.has("hide"), "cows must yield raw meat and hide (hide)")
+            "the raw spawn \"%s\" must not be in the pool: the town sells the live herd, not the resource" % animal)
+    _check(pool.has("live_cows"), "cows must yield the live herd (live_cows)")
+    _check(pool.has("beef"), "the slaughterhouse recipe must open beef from the live herd")
+    _check(pool.has("hide"), "the slaughterhouse recipe must open hides from the live herd")
     _check(pool.has("raw_milk"), "cows must yield milk (raw_milk)")
     _check(pool.has("eggs"), "ostriches must yield eggs (eggs)")
     _check(pool.has("raw_fish"), "fish must yield a catch (raw_fish), not the fish itself")
@@ -473,17 +476,15 @@ func _test_town_quality() -> void:
         "stone must get the deposit's quality")
 
     # The highest wins, the traversal order does not matter. A common cow and
-    # an exceptional cow in the same ring give meat/hide/milk of the
+    # an exceptional cow in the same ring give the herd and the milk of the
     # EXCEPTIONAL level.
     var highs: Dictionary = _te.collect_base_qualities([
         {"resource": "cows", "quality": "common"},
         {"resource": "cows", "quality": "exceptional"},
     ])
-    _check(str(highs.get("raw_meat", "")) == "exceptional",
+    _check(str(highs.get("live_cows", "")) == "exceptional",
         "with a mix of a common and an exceptional cow, the exceptional wins (got \"%s\")"
-            % str(highs.get("raw_meat", "")))
-    _check(str(highs.get("hide", "")) == "exceptional",
-        "the cow's by-products (hide) must also be exceptional")
+            % str(highs.get("live_cows", "")))
     _check(str(highs.get("raw_milk", "")) == "exceptional",
         "the cow's by-products (milk) must also be exceptional")
     # The reverse order — the same result (the highest, not the "first encountered").
@@ -491,7 +492,7 @@ func _test_town_quality() -> void:
         {"resource": "cows", "quality": "exceptional"},
         {"resource": "cows", "quality": "common"},
     ])
-    _check(str(highs_rev.get("raw_meat", "")) == "exceptional",
+    _check(str(highs_rev.get("live_cows", "")) == "exceptional",
         "the highest quality must not depend on the ring traversal order")
     # Perfect quality beats exceptional.
     var best: Dictionary = _te.collect_base_qualities([
@@ -499,9 +500,9 @@ func _test_town_quality() -> void:
         {"resource": "cows", "quality": "exceptional"},
         {"resource": "cows", "quality": "perfect"},
     ])
-    _check(str(best.get("raw_meat", "")) == "perfect",
+    _check(str(best.get("live_cows", "")) == "perfect",
         "perfect quality must beat exceptional (got \"%s\")"
-            % str(best.get("raw_meat", "")))
+            % str(best.get("live_cows", "")))
 
     # A resource without a rolled quality (broken save) — the common level, not an empty string.
     var broken: Dictionary = _te.collect_base_qualities([{"resource": "wheat_field"}])
