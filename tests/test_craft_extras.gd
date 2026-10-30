@@ -14,7 +14,8 @@
 #   6) the price of a generated good against its base — the row of the tooltips;
 #   7) the radio buttons follow the warehouse: a good that is not there cannot be picked, while
 #      the chosen one stays clickable so that the choice can be taken back;
-#   8) the quality of the addition raises the quality of the result by one level at most.
+#   8) the quality of the addition raises the quality of the result by one level at most;
+#   9) an open window of the additions refreshes its amounts and availability in place.
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
@@ -56,6 +57,8 @@ func _run() -> void:
         _test_extra_price(gd, state)
     if WATCHDOG.wants_case("extra_options_stock"):
         _test_extra_options_stock(gd, city, state)
+    if WATCHDOG.wants_case("popup_stock_refresh"):
+        _test_popup_stock_refresh(city, state)
     if WATCHDOG.wants_case("quality_rule"):
         _test_quality_rule(gd, city, state)
 
@@ -379,3 +382,48 @@ func _options_by_product(gd, recipe_id: String) -> Dictionary:
         for item in group.get("items", []):
             out[str(item["product"])] = item
     return out
+
+
+# --- 9. The stock row of an open popup ---
+# The window of the additions is built once and is not rebuilt on a tick (a rebuild would close
+# it under the cursor), so the amounts of its radios are refreshed in place.
+func _test_popup_stock_refresh(city, state: Dictionary) -> void:
+    var panel = (load("res://scripts/building_panel.gd") as Script).new()
+    # The radios of the panel are the ones the technology has opened.
+    city.unlocked_technologies.append("dyeing")
+    city.city_storage.clear()
+    city.add_to_storage("woad", 5, "common")
+    city.city_built_buildings = [ {"id": "weaver_house", "slots": ["wool_clothes"],
+            "quality_priority": "best"}]
+
+    var popup := PopupPanel.new()
+    popup.set_meta("extras_slot", [0, 0])
+    var radio = (load("res://scripts/extras_radio.gd") as Script).new()
+    radio.set_meta("extra_product", "woad")
+    popup.add_child(radio)
+    panel.open_popup = popup
+
+    panel._refresh_extras_popup()
+    check(radio.tooltip_text == TranslationServer.translate("In storage: %d") % 5,
+        "an open popup shows the amount in the warehouse, got \"%s\"" % radio.tooltip_text,
+        state)
+    check(not radio.disabled, "a good in the warehouse stays selectable", state)
+
+    city.city_storage.clear()
+    panel._refresh_extras_popup()
+    check(radio.tooltip_text == TranslationServer.translate("Not in storage"),
+        "the amount of an open popup follows the warehouse, got \"%s\"" % radio.tooltip_text,
+        state)
+    check(radio.disabled, "a good that has run out cannot be picked", state)
+
+    # The chosen addition stays clickable with an empty shelf even after a refresh: otherwise
+    # the choice could not be taken back.
+    city.city_built_buildings[0]["slots"] = ["wool_clothes+woad"]
+    panel._refresh_extras_popup()
+    check(not radio.disabled,
+        "the chosen good stays clickable after a refresh so that the choice can be taken back",
+        state)
+
+    panel.open_popup = null
+    panel.free()
+    popup.free()

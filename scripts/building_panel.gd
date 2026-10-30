@@ -5,6 +5,7 @@
 extends Control
 
 const UI_THEME = preload("res://scripts/ui_theme.gd")
+const EXTRAS_RADIO = preload("res://scripts/extras_radio.gd")
 
 var building_id: String = ""
 var products: Dictionary = {}
@@ -676,8 +677,10 @@ func _on_assignments_changed():
     # _refresh(), so that the popup is not rebuilt and does not close on every
     # game tick.
     # (city_updated is emitted on every simulation tick — SIMULATION_TICK — by
-    # do_tick.)
+    # do_tick.) The window itself stays, but the amounts of the additions in it
+    # are refreshed in place: the warehouse changes every tick.
     if open_popup != null:
+        _refresh_extras_popup()
         return
     # If the tooltip of the list of the products (of a group resource) is open —
     # we do not call _refresh() either, so that it does not disappear when the
@@ -1402,6 +1405,9 @@ func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_butto
     var popup := PopupPanel.new()
     popup.add_theme_stylebox_override("panel", UI_THEME.panel_inset())
     popup.set_meta("extras_popup", true)
+    # The slot the window was opened for: the amounts of the goods are refreshed from it on
+    # every tick of the simulation without rebuilding the window.
+    popup.set_meta("extras_slot", [b_index, slot_idx])
     add_child(popup)
     var vbox := VBoxContainer.new()
     vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1457,7 +1463,7 @@ func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_butto
 # being built. An empty product_id is the "no addition" row, which carries no stock of its own.
 func _make_extra_radio(buttons: ButtonGroup, label: String, product_id: String, icon_file: String,
         in_stock: int, selectable: bool, is_chosen: bool) -> CheckBox:
-    var radio := CheckBox.new()
+    var radio: CheckBox = EXTRAS_RADIO.new()
     radio.button_group = buttons
     radio.text = label
     radio.focus_mode = Control.FOCUS_NONE
@@ -1468,9 +1474,39 @@ func _make_extra_radio(buttons: ButtonGroup, label: String, product_id: String, 
     radio.button_pressed = is_chosen
     radio.disabled = not selectable
     if not product_id.is_empty():
-        radio.tooltip_text = tr("In storage: %d") % in_stock if in_stock > 0 \
-                else tr("Not in storage")
+        radio.set_meta("extra_product", product_id)
+        radio.set_tooltip_amount(_extra_stock_tooltip(in_stock))
     return radio
+
+func _extra_stock_tooltip(in_stock: int) -> String:
+    return tr("In storage: %d") % in_stock if in_stock > 0 else tr("Not in storage")
+
+# The warehouse changes on every tick of the simulation, and the window is built once: the
+# amounts and the availability of the goods are refreshed in place, the window is not rebuilt
+# (a rebuild would close it under the cursor).
+func _refresh_extras_popup():
+    var popup = open_popup
+    if not is_instance_valid(popup) or not popup.has_meta("extras_slot"):
+        return
+    var slot_ref: Array = popup.get_meta("extras_slot")
+    var b_index := int(slot_ref[0])
+    var slot_idx := int(slot_ref[1])
+    if b_index < 0 or b_index >= CityData.city_built_buildings.size():
+        return
+    var slots: Array = CityData.city_built_buildings[b_index].get("slots", [])
+    if slot_idx < 0 or slot_idx >= slots.size():
+        return
+    var fresh := {}
+    for group in _extra_options_for(str(slots[slot_idx])):
+        for item in group.get("items", []):
+            fresh[str(item["product"])] = item
+    for radio in popup.find_children("*", "CheckBox", true, false):
+        var product_id := str(radio.get_meta("extra_product", ""))
+        if not fresh.has(product_id):
+            continue
+        var item: Dictionary = fresh[product_id]
+        radio.disabled = not bool(item.get("selectable", true))
+        radio.set_tooltip_amount(_extra_stock_tooltip(int(item.get("in_stock", 0))))
 
 # A closed popup is freed: the panel of the building rebuilds its rows on every change of the
 # state, and a hidden window left behind would be a leak of one per opening.
