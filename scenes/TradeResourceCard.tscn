@@ -23,6 +23,12 @@
 ; PriceValue and IncomeValue are RichTextLabels, not Labels: both show a sum of
 ; coins, and the coin icon is a BBCode [img] tag (see ui_helpers.money).
 ;
+; Every caption and every value of the rows is centred vertically
+; (size_flags_vertical = 4): the coin icon is taller than a line of the body font,
+; so the row grows past the caption's own height, and a caption stretched to the
+; row (size_flags_vertical = 1, the text drawn from the top) reads as sitting
+; above its value.
+;
 ; NameLabel carries the underlined_label.gd script and mouse_filter = 1 (PASS):
 ; the name of a group is a reference, so it is underlined with a dashed line and
 ; unfolds the composition of the group on hover. A single resource has an empty
@@ -78,7 +84,7 @@ theme_override_constants/separation = 6
 
 [node name="StockCaption" type="Label" parent="Layout/StockRow"]
 layout_mode = 2
-size_flags_vertical = 1
+size_flags_vertical = 4
 text = "Storage:"
 
 [node name="StockValue" type="Label" parent="Layout/StockRow"]
@@ -100,7 +106,7 @@ theme_override_constants/separation = 6
 
 [node name="PriceCaption" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
-size_flags_vertical = 1
+size_flags_vertical = 4
 text = "Price:"
 
 [node name="PriceValue" type="RichTextLabel" parent="Layout/DetailRow"]
@@ -116,7 +122,7 @@ autowrap_mode = 0
 
 [node name="ConsumersCaption" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
-size_flags_vertical = 1
+size_flags_vertical = 4
 text = "Buyers:"
 
 [node name="ConsumersValue" type="Label" parent="Layout/DetailRow"]
@@ -126,7 +132,7 @@ text = "0"
 
 [node name="ConsumptionCaption" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
-size_flags_vertical = 1
+size_flags_vertical = 4
 text = "Consumption per 1:"
 
 [node name="ConsumptionValue" type="Label" parent="Layout/DetailRow"]
@@ -140,7 +146,7 @@ theme_override_constants/separation = 6
 
 [node name="IncomeCaption" type="Label" parent="Layout/IncomeRow"]
 layout_mode = 2
-size_flags_vertical = 1
+size_flags_vertical = 4
 text = "Income:"
 
 [node name="IncomeValue" type="RichTextLabel" parent="Layout/IncomeRow"]
