@@ -2204,6 +2204,54 @@ func check_building_additional_req(building_id: String) -> Dictionary:
 
     return {"ok": false, "reason": tr("Unknown construction requirement: %s") % requirement}
 
+# The effects that act on the city right now: the numbers and the availability it really has.
+# Only effects in force are listed — what a technology unlocks belongs to the technology tree,
+# and an effect that does not act on the city is not an entry here.
+# Each element: { "group": String, "icon": String, "name": String, "value": String, "source": String }
+# Groups: "environment" — the hex of the city itself; "technologies" — the researched modifiers.
+func get_city_effects() -> Array:
+    var effects: Array = []
+
+    # The hex of the city. The water access is derived on the fly, so the row is assembled from
+    # the same call the requirement of a building uses — the panel and the requirement cannot
+    # disagree about whether the city has water.
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map != null and not main_map.tile_data.is_empty():
+        var water_access = MapHelpers.get_hex_water_access(
+            main_map.city_row,
+            main_map.city_col,
+            main_map.tile_data,
+            main_map.map_rows,
+            main_map.map_cols
+        )
+        if water_access != "":
+            effects.append({
+                "group": "environment",
+                "icon": "water_chain.png",
+                "name": tr("Fresh water"),
+                "value": tr("direct access") if water_access == "direct" \
+                        else tr("by a chain of conductors"),
+                "source": "",
+            })
+
+    # The researched technologies. The records of data/modifiers.json carry the icon and the
+    # already localized caption, so the row repeats the record instead of wording the effect a
+    # second time.
+    for mod in GameData.modifiers.get("tech_modifiers", []):
+        var tech_id := String(mod.get("tech_id", ""))
+        var icon := String(mod.get("icon", ""))
+        if tech_id == "" or icon == "" or not is_tech_unlocked(tech_id):
+            continue
+        effects.append({
+            "group": "technologies",
+            "icon": icon,
+            "name": String(mod.get("name", "")),
+            "value": "",
+            "source": get_tech_name(tech_id),
+        })
+
+    return effects
+
 # Is the improvement unlocked for the player (by the unlock_tech field of the improvement itself).
 func is_improvement_unlocked(imp_id: String) -> bool:
     if imp_id == null or imp_id == "":

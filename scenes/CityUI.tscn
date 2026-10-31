@@ -71,6 +71,11 @@ custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
 tooltip_text = "Technologies"
 
+[node name="EffectsTabButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1900000501]
+custom_minimum_size = Vector2(36, 34)
+layout_mode = 2
+tooltip_text = "Effects"
+
 [node name="EraChallengesButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1900000401]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
@@ -147,7 +152,7 @@ text = "Resource list"
 layout_mode = 0
 offset_left = 4.0
 offset_top = 32.0
-offset_right = 120.0
+offset_right = 76.0
 offset_bottom = 66.0
 theme_override_constants/separation = 4
 
@@ -160,11 +165,6 @@ tooltip_text = "Storage"
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
 tooltip_text = "Tamed resources"
-
-[node name="DiversityButton" type="Button" parent="ContentPanel/ResourcesPanel/SectionsBar" unique_id=1900000304]
-custom_minimum_size = Vector2(36, 34)
-layout_mode = 2
-tooltip_text = "Diversity"
 
 [node name="StorageSection" type="VBoxContainer" parent="ContentPanel/ResourcesPanel" unique_id=1900000305]
 layout_mode = 1
@@ -198,24 +198,6 @@ layout_mode = 2
 size_flags_vertical = 3
 
 [node name="TamedList" type="VBoxContainer" parent="ContentPanel/ResourcesPanel/TamedSection/ScrollContainer" unique_id=1900000310]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="DiversitySection" type="VBoxContainer" parent="ContentPanel/ResourcesPanel" unique_id=1900000311]
-visible = false
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = 70.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/ResourcesPanel/DiversitySection" unique_id=1900000312]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="DiversityList" type="VBoxContainer" parent="ContentPanel/ResourcesPanel/DiversitySection/ScrollContainer" unique_id=1900000313]
 layout_mode = 2
 theme_override_constants/separation = 4
 
@@ -463,6 +445,84 @@ offset_top = 66.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+
+[node name="EffectsPanel" type="Control" parent="ContentPanel" unique_id=1900000502]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLabel" type="Label" parent="ContentPanel/EffectsPanel" unique_id=1900000503]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 6.0
+offset_right = 183.0
+offset_bottom = 29.0
+text = "City effects"
+
+[node name="SectionsBar" type="HBoxContainer" parent="ContentPanel/EffectsPanel" unique_id=1900000504]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 32.0
+offset_right = 76.0
+offset_bottom = 66.0
+theme_override_constants/separation = 4
+
+[node name="EffectsButton" type="Button" parent="ContentPanel/EffectsPanel/SectionsBar" unique_id=1900000505]
+custom_minimum_size = Vector2(36, 34)
+layout_mode = 2
+tooltip_text = "City effects"
+
+[node name="DiversityButton" type="Button" parent="ContentPanel/EffectsPanel/SectionsBar" unique_id=1900000506]
+custom_minimum_size = Vector2(36, 34)
+layout_mode = 2
+tooltip_text = "Diversity"
+
+[node name="EffectsSection" type="VBoxContainer" parent="ContentPanel/EffectsPanel" unique_id=1900000507]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 70.0
+offset_right = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/EffectsPanel/EffectsSection" unique_id=1900000508]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="EffectsList" type="VBoxContainer" parent="ContentPanel/EffectsPanel/EffectsSection/ScrollContainer" unique_id=1900000509]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="DiversitySection" type="VBoxContainer" parent="ContentPanel/EffectsPanel" unique_id=1900000510]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 70.0
+offset_right = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/EffectsPanel/DiversitySection" unique_id=1900000511]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="DiversityList" type="VBoxContainer" parent="ContentPanel/EffectsPanel/DiversitySection/ScrollContainer" unique_id=1900000512]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
 
 [node name="BottomPanel" type="Panel" parent="." unique_id=47910934]
 layout_mode = 1

@@ -10,12 +10,14 @@ const UiHelpers = preload("res://scripts/ui_helpers.gd")
 @onready var buildings_panel = $ContentPanel/BuildingsPanel
 @onready var trade_panel = $ContentPanel/TradePanel
 @onready var technologies_panel = $ContentPanel/TechnologiesPanel
+@onready var effects_panel = $ContentPanel/EffectsPanel
 
 # The tab buttons
 @onready var resources_tab_button = $TabBarPanel/TabBar/ResourcesTabButton
 @onready var buildings_tab_button = $TabBarPanel/TabBar/BuildingsTabButton
 @onready var trade_tab_button = $TabBarPanel/TabBar/TradeTabButton
 @onready var technologies_tab_button = $TabBarPanel/TabBar/TechnologiesTabButton
+@onready var effects_tab_button = $TabBarPanel/TabBar/EffectsTabButton
 # The section buttons next to the tabs. The sections are not implemented yet, therefore a
 # click only reports that in the bottom strip; the buttons share the look of the tab bar.
 @onready var era_challenges_button = $TabBarPanel/TabBar/EraChallengesButton
@@ -63,6 +65,8 @@ var trade_tab: Node
 # The right column of the tab "Trade" — the foreign trade with the towns
 # (see external_trade_tab.gd).
 var external_trade_tab: Node
+# The tab "Effects" — what acts on the city right now (see effects_tab.gd).
+var effects_tab: Node
 # The map itself: the foreign trade column reads the towns discovered by the player
 # from it (see set_map).
 var main_map: Node = null
@@ -199,8 +203,13 @@ func _ready():
     external_trade_tab.town_focus_requested.connect(_on_town_focus_requested)
     add_child(external_trade_tab)
 
+    # The tab "Effects": the active effects of the city and the bonuses for the diversity.
+    effects_tab = load("res://scripts/effects_tab.gd").new()
+    effects_tab.setup($ContentPanel/EffectsPanel)
+    add_child(effects_tab)
+
     # The signals of the buttons
-    for btn in [resources_tab_button, buildings_tab_button, trade_tab_button, technologies_tab_button]:
+    for btn in [resources_tab_button, buildings_tab_button, trade_tab_button, technologies_tab_button, effects_tab_button]:
         if not btn.pressed.is_connected(_on_tab_button_pressed):
             btn.pressed.connect(_on_tab_button_pressed.bind(btn))
     stub_buttons = [era_challenges_button, reputation_specialization_button, encyclopedia_button]
@@ -222,7 +231,8 @@ func _ready():
         {"button": resources_tab_button, "id": "resources"},
         {"button": buildings_tab_button, "id": "buildings"},
         {"button": trade_tab_button, "id": "trade"},
-        {"button": technologies_tab_button, "id": "technologies"}
+        {"button": technologies_tab_button, "id": "technologies"},
+        {"button": effects_tab_button, "id": "effects"}
     ]
     _highlight_active_tab_button()
 
@@ -414,6 +424,7 @@ func _refresh_all():
     tech_tree.refresh()
     trade_tab.refresh()
     external_trade_tab.refresh()
+    effects_tab.refresh()
     _update_food_label()
 
 func _switch_tab(tab_id: String):
@@ -422,6 +433,7 @@ func _switch_tab(tab_id: String):
     buildings_panel.visible = (tab_id == "buildings")
     trade_panel.visible = (tab_id == "trade")
     technologies_panel.visible = (tab_id == "technologies")
+    effects_panel.visible = (tab_id == "effects")
 
     # The right panel "Built buildings" is shown only on the tabs
     # "Resources" and "Buildings" (when the window is divided in half); on "Trade" and
@@ -445,6 +457,10 @@ func _switch_tab(tab_id: String):
         # of the towns discovered by the player changes with the scouting of the map.
         trade_tab.refresh()
         external_trade_tab.refresh()
+    elif tab_id == "effects":
+        # The effects are derived from the state of the city (the hex, the researched
+        # technologies), so the list is rebuilt on every opening — it is short and cheap.
+        effects_tab.refresh()
 
     ui_helpers.set_message("")
     _highlight_active_tab_button()
@@ -859,6 +875,7 @@ func _setup_tab_bar_icons() -> void:
         buildings_tab_button: "res://icons/buildings/market.png",
         trade_tab_button: "res://icons/resources/products/pottery.png",
         technologies_tab_button: "res://icons/tech/wheel.png",
+        effects_tab_button: "res://icons/city.png",
         era_challenges_button: "res://icons/era_challenges.svg",
         reputation_specialization_button: "res://icons/reputation_specialization.svg",
         encyclopedia_button: "res://icons/encyclopedia.svg"

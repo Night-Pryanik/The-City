@@ -1,11 +1,13 @@
 # resources_tab.gd
 #
-# The tab "Resources" of the city. It is split into three sections, which are
+# The tab "Resources" of the city. It is split into two sections, which are
 # switched by a row of small icon buttons — the same idiom as the sections of the
 # foreign trade (see external_trade_tab.gd):
 #   · "storage"   — the warehouse of the city: the goods by the categories;
-#   · "tamed"     — the resources the city has domesticated, by the subgroups;
-#   · "diversity" — the number of the subgroups and the bonuses of the diversity.
+#   · "tamed"     — the resources the city has domesticated, by the subgroups.
+#
+# The bonuses for the variety of the resources live on the tab "Effects" (see effects_tab.gd):
+# they act on the city as a whole, like the other effects, and not on its warehouse.
 #
 # Every section has its own list, and all of them are rebuilt on a full refresh:
 # the sections are cheap, and a rebuilt list always matches the data of the city.
@@ -24,13 +26,11 @@ const UI_THEME = preload("res://scripts/ui_theme.gd")
 # The sections of the tab.
 const SECTION_STORAGE := "storage"
 const SECTION_TAMED := "tamed"
-const SECTION_DIVERSITY := "diversity"
 
 # The icons of the section buttons. They are taken from the common registry
 # IconRegistry (autoload), the same way the buttons of the foreign trade take theirs.
 const ICON_SECTION_STORAGE := "new_resource.png"
 const ICON_SECTION_TAMED := "animal_husbandry.png"
-const ICON_SECTION_DIVERSITY := "production_bonus.png"
 
 var ui_helpers: Node
 var products: Dictionary = {}
@@ -47,7 +47,6 @@ var cons_labels: Dictionary = {}
 var quality_labels: Dictionary = {}
 var displayed_products: Dictionary = {}
 var row_flow_labels: Dictionary = {}
-var diversity_label: Label = null
 
 # The active quality tooltip (product, name) — for the real-time update.
 var active_quality_product: String = ""
@@ -72,10 +71,8 @@ var planned_production_map: Dictionary = {}
 # is not the active one) and the list of its rows (filled in setup).
 var storage_section: Control = null
 var tamed_section: Control = null
-var diversity_section: Control = null
 var storage_list: Node = null
 var tamed_list: Node = null
-var diversity_list: Node = null
 # The buttons of the section bar: [{ "button": Button, "id": section }].
 var section_buttons: Array = []
 var active_section: String = SECTION_STORAGE
@@ -86,14 +83,11 @@ func setup(panel: Control, helpers: Node):
         return
     storage_section = panel.get_node_or_null("StorageSection")
     tamed_section = panel.get_node_or_null("TamedSection")
-    diversity_section = panel.get_node_or_null("DiversitySection")
     storage_list = panel.get_node_or_null("StorageSection/ScrollContainer/StorageList")
     tamed_list = panel.get_node_or_null("TamedSection/ScrollContainer/TamedList")
-    diversity_list = panel.get_node_or_null("DiversitySection/ScrollContainer/DiversityList")
     section_buttons = [
         {"button": panel.get_node_or_null("SectionsBar/StorageButton"), "id": SECTION_STORAGE},
         {"button": panel.get_node_or_null("SectionsBar/TamedButton"), "id": SECTION_TAMED},
-        {"button": panel.get_node_or_null("SectionsBar/DiversityButton"), "id": SECTION_DIVERSITY},
     ]
     _setup_section_icons()
     _connect_section_buttons()
@@ -104,7 +98,6 @@ func setup(panel: Control, helpers: Node):
 func _setup_section_icons() -> void:
     _set_button_icon(_button_of(SECTION_STORAGE), ICON_SECTION_STORAGE, 30)
     _set_button_icon(_button_of(SECTION_TAMED), ICON_SECTION_TAMED, 30)
-    _set_button_icon(_button_of(SECTION_DIVERSITY), ICON_SECTION_DIVERSITY, 30)
 
 func _set_button_icon(button: Button, icon_name: String, max_size: int) -> void:
     if button == null or not is_instance_valid(button):
@@ -138,8 +131,6 @@ func _switch_section(section_id: String) -> void:
         storage_section.visible = section_id == SECTION_STORAGE
     if tamed_section != null and is_instance_valid(tamed_section):
         tamed_section.visible = section_id == SECTION_TAMED
-    if diversity_section != null and is_instance_valid(diversity_section):
-        diversity_section.visible = section_id == SECTION_DIVERSITY
     _update_section_buttons()
 
 func _on_section_pressed(section_id: String) -> void:
@@ -263,14 +254,12 @@ func refresh():
     
     _clear_list(storage_list)
     _clear_list(tamed_list)
-    _clear_list(diversity_list)
     food_toggles.clear()
     amount_labels.clear()
     prod_labels.clear()
     cons_labels.clear()
     quality_labels.clear()
     displayed_products.clear()
-    diversity_label = null
     row_flow_labels.clear()
     active_flow_product = ""
     active_flow_name = ""
@@ -279,7 +268,6 @@ func refresh():
 
     _fill_tamed_section()
     _fill_storage_section()
-    _fill_diversity_section()
     # The highlight of the buttons of the sections is a per-node override, so a rebuild of the
     # column re-asserts it together with the rows; on a change of the palette it is the only
     # thing that has to change there.
@@ -481,38 +469,6 @@ func _fill_storage_section() -> void:
 
             displayed_products[prod_id] = true
 
-    # --- The section "Diversity" ---
-
-# The number of the subgroups of the domesticated resources and the bonuses of the
-# diversity (a stub).
-func _fill_diversity_section() -> void:
-    if diversity_list == null or not is_instance_valid(diversity_list):
-        return
-    var animal_subgroups_count = 0
-    var plant_subgroups_count = 0
-    var animal_subgroup_map = {}
-    for resource_id in CityData.domesticated_resources:
-        var data = GameData.raw_resources.get(resource_id, {})
-        for subgroup in _get_subgroups(data):
-            animal_subgroup_map[subgroup] = true
-    animal_subgroups_count = animal_subgroup_map.size()
-
-    var plant_subgroup_map = {}
-    plant_subgroups_count = plant_subgroup_map.size()
-
-    var total_subgroups = animal_subgroups_count + plant_subgroups_count
-    if total_subgroups > 0:
-        var div_label = Label.new()
-        div_label.text = tr("Diversity: %d subgroups") % total_subgroups
-        div_label.add_theme_color_override("font_color", UI_THEME.color("warning"))
-        diversity_list.add_child(div_label)
-        diversity_label = div_label
-
-        var bonus_label = Label.new()
-        bonus_label.text = tr("Active bonuses: (coming later)")
-        bonus_label.add_theme_color_override("font_color", UI_THEME.color("warning").darkened(0.3))
-        diversity_list.add_child(bonus_label)
-
 func update_values():
     # A light refresh: we do not recreate the nodes, but update the texts of the existing ones.
     # If the composition of the list has changed (a source of income appeared or the last
@@ -553,16 +509,6 @@ func update_values():
         var q_label = quality_labels.get(prod_id)
         if q_label != null and is_instance_valid(q_label):
             _update_quality_label(q_label, prod_id)
-
-    if diversity_label != null and is_instance_valid(diversity_label):
-        var animal_subgroup_map = {}
-        for resource_id in CityData.domesticated_resources:
-            var data = GameData.raw_resources.get(resource_id, {})
-            for subgroup in _get_subgroups(data):
-                animal_subgroup_map[subgroup] = true
-        var plant_subgroup_map = {}
-        var total_subgroups = animal_subgroup_map.size() + plant_subgroup_map.size()
-        diversity_label.text = tr("Diversity: %d subgroups") % total_subgroups
 
     # We update the open quality tooltip with the fresh data (in real time).
     if active_quality_product != "" and ui_helpers and is_instance_valid(ui_helpers):

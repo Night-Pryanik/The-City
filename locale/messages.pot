@@ -747,6 +747,12 @@ msgstr ""
 msgid "City %s"
 msgstr ""
 
+msgid "City effects"
+msgstr ""
+
+msgid "City hex"
+msgstr ""
+
 msgid "City territory"
 msgstr ""
 
@@ -1059,6 +1065,9 @@ msgstr ""
 msgid "Edit the contract"
 msgstr ""
 
+msgid "Effects"
+msgstr ""
+
 msgid "Encyclopedia"
 msgstr ""
 
@@ -1150,6 +1159,9 @@ msgid "Found %d problems. Some recipes, resources and technologies may work inco
 msgstr ""
 
 msgid "Founding towns..."
+msgstr ""
+
+msgid "Fresh water"
 msgstr ""
 
 msgid "Fresh water access: direct"
@@ -1462,6 +1474,12 @@ msgid "No description available."
 msgstr ""
 
 msgid "No description."
+msgstr ""
+
+msgid "No domesticated resources yet"
+msgstr ""
+
+msgid "No effects act on the city"
 msgstr ""
 
 msgid "No free citizens!"
@@ -2559,10 +2577,16 @@ msgstr ""
 msgid "by %s"
 msgstr ""
 
+msgid "by a chain of conductors"
+msgstr ""
+
 msgid "city access to fresh water"
 msgstr ""
 
 msgid "construction"
+msgstr ""
+
+msgid "direct access"
 msgstr ""
 
 msgid "heads per %.0f sec"

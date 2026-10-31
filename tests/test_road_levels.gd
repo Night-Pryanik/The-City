@@ -24,8 +24,9 @@
 #      road the hex shows the cart road, and the trails stay trails.
 #      The level row is shown in the extended tooltip and in the left column
 #      of the control panel; it is absent from the ordinary tooltip.
-#   8. UPGRADE BUTTON. It remains on a partially upgraded route: one
-#      segment out of several is upgraded — the button must be there while trails remain.
+#   8. UPGRADE BUTTON. It remains on a partially upgraded route: the trails of
+#      the route are upgraded down to the last one — the button must be there while
+#      at least one trail remains.
 #      The road upgrade preview does not contain the production block: the player pressed
 #      the button for the road's sake, and "Will produce" has no
 #      relation to the road upgrade (and the block pushed the level selection down).
@@ -673,9 +674,9 @@ func _hex_in_direction(main_map, row: int, col: int,
 # 8. The "Upgrade road" button on a partially upgraded route
 # -------------------------------------------------------
 #
-# The button must stay while there are trails on the route: one segment out of
-# four is upgraded, the rest stay trails — and the button must remain, because
-# the route is not yet fully upgraded.
+# The button must stay while there are trails on the route: the trails of the route are
+# upgraded down to the last one, and the button must remain, because the route is not yet
+# upgraded to the end.
 func _test_upgrade_button_on_partial_route(main_map, state: Dictionary) -> void:
     var panel = main_map.control_panel
     var rm = main_map.road_manager
@@ -700,29 +701,51 @@ func _test_upgrade_button_on_partial_route(main_map, state: Dictionary) -> void:
             panel.UPGRADE_ROAD_TYPE),
             "on a route of trails the upgrade button must be present", state)
 
-    # We upgrade ONE segment of the route — not all of it. The remaining segments stay
-    # trails, and the button must remain: the route is not yet upgraded to the end.
+    # The route may already carry upgraded segments: the previous cases of the live scene
+    # upgraded a road next to the city, and the route from a far hex runs over it. Upgrading
+    # "the first segment" therefore cannot guarantee that the rest stay trails — on some
+    # generated worlds the first segment IS the last trail, the route becomes the best one,
+    # and the check fails for a reason that has nothing to do with the button. The trails are
+    # upgraded down to the last one instead: whatever the world, the route stays partially
+    # upgraded, which is exactly the state the button must survive.
     var route: Dictionary = main_map.get_route_to_city(row, col)
     var segments: Array = route.get("segments", [])
+    var levels: Array = route.get("levels", [])
     check(segments.size() >= 2,
             "a route of at least two segments is needed for the check (got %d)"
                     % segments.size(), state)
-    if segments.size() < 2:
+    check(levels.size() == segments.size(),
+            "the route must return one level per segment (got %d segments and %d levels)"
+                    % [segments.size(), levels.size()], state)
+    if segments.size() < 2 or levels.size() != segments.size():
         return
-    var first: String = str(segments[0])
-    var parts := first.split("|")
-    var a := parts[0].split(",")
-    var b := parts[1].split(",")
-    check(rm.upgrade_road_segment(int(a[0]), int(a[1]), int(b[0]), int(b[1]), 2),
-            "one segment of the route must be upgradeable", state)
+
+    var max_level: int = _gdata.get_max_unlocked_road_level()
+    var trail_keys: Array = []
+    for i in range(segments.size()):
+        if int(levels[i]) < max_level:
+            trail_keys.append(str(segments[i]))
+    check(not trail_keys.is_empty(),
+            "the route must have at least one trail to upgrade (got %d)" % trail_keys.size(),
+            state)
+    if trail_keys.is_empty():
+        return
+    for i in range(trail_keys.size() - 1):
+        var ends := str(trail_keys[i]).split("|")
+        var from_parts := ends[0].split(",")
+        var to_parts := ends[1].split(",")
+        check(rm.upgrade_road_segment(int(from_parts[0]), int(from_parts[1]),
+                int(to_parts[0]), int(to_parts[1]), max_level),
+                "a trail of the route must be upgradeable", state)
 
     var after: Dictionary = main_map.get_route_to_city(row, col)
     var still_trails := 0
     for level in after.get("levels", []):
-        if int(level) < _gdata.get_max_unlocked_road_level():
+        if int(level) < max_level:
             still_trails += 1
-    check(still_trails > 0,
-            "after upgrading one segment the route must not become entirely the best", state)
+    check(still_trails == 1,
+            "the route must be left partially upgraded: one trail out of %d segments (got %d)"
+                    % [segments.size(), still_trails], state)
     check(_has_action(panel._collect_actions(row, col, main_map.tile_data[row][col]),
             panel.UPGRADE_ROAD_TYPE),
             "on a partially upgraded route the upgrade button must remain", state)

@@ -747,6 +747,12 @@ msgstr "Город"
 msgid "City %s"
 msgstr "Город %s"
 
+msgid "City effects"
+msgstr "Эффекты города"
+
+msgid "City hex"
+msgstr "Клетка города"
+
 msgid "City territory"
 msgstr "Территория города"
 
@@ -1059,6 +1065,9 @@ msgstr "Края с морем"
 msgid "Edit the contract"
 msgstr "Изменить контракт"
 
+msgid "Effects"
+msgstr "Эффекты"
+
 msgid "Encyclopedia"
 msgstr "Энциклопедия"
 
@@ -1151,6 +1160,9 @@ msgstr "Найдено проблем: %d. Часть рецептов, ресу
 
 msgid "Founding towns..."
 msgstr "Основание городов..."
+
+msgid "Fresh water"
+msgstr "Пресная вода"
 
 msgid "Fresh water access: direct"
 msgstr "Доступ к пресной воде: прямой"
@@ -1463,6 +1475,12 @@ msgstr "Описание отсутствует."
 
 msgid "No description."
 msgstr "Нет описания."
+
+msgid "No domesticated resources yet"
+msgstr "Одомашненных ресурсов пока нет"
+
+msgid "No effects act on the city"
+msgstr "На город пока не действуют эффекты"
 
 msgid "No free citizens!"
 msgstr "Нет свободных жителей!"
@@ -2559,11 +2577,17 @@ msgstr "нужен хотя бы 1 житель для строительств�
 msgid "by %s"
 msgstr "Автор: %s"
 
+msgid "by a chain of conductors"
+msgstr "по цепочке проводников"
+
 msgid "city access to fresh water"
 msgstr "доступ города к пресной воде"
 
 msgid "construction"
 msgstr "строительство"
+
+msgid "direct access"
+msgstr "прямой доступ"
 
 msgid "heads per %.0f sec"
 msgstr "голов за %.0f сек"
