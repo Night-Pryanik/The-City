@@ -16,9 +16,10 @@
 # I will grow that way" — and the map would be explored before it is built.
 #
 # The towns are schematic — a sunflower spiral rather than the placement of the generator —
-# and a town stands only where there is land. The gold point in the middle is the player's
-# city: MainMap puts it at half the rows and half the columns, so that mark is exact. The
-# numbers are printed under the square.
+# and a town stands only on land reachable from the city: one that would fall into the sea or
+# on an island moves to the nearest free cell of that land, so the picture keeps the count of
+# the setting. The gold point in the middle is the player's city: MainMap puts it at half the
+# rows and half the columns, so that mark is exact. The numbers are printed under the square.
 extends Control
 
 const PANEL_COLOR := Color(0.12, 0.12, 0.12)
@@ -49,6 +50,8 @@ const TITLE_FONT_SIZE := 17
 const CAPTION_FONT_SIZE := 12
 const TOWN_RADIUS := 3.0
 const CITY_RADIUS := 4.5
+# Town dots keep a gap, so a town moved off the sea does not land on one already drawn.
+const MIN_TOWN_GAP := 7.0
 # The city keeps a ring of its own: the nearest town stands clear of it instead of touching
 # the gold point, whatever the count.
 const CITY_CLEAR := CITY_RADIUS + TOWN_RADIUS + 2.0
@@ -131,11 +134,59 @@ static func build(size: int, sea: Dictionary, preview_seed: int = 20261026) -> D
         else:
             cells[index] = CELL_LAND
 
+    # The city sits at the same row and column, so one number names its cell.
+    var city_cell := clampi(int(float(city) * float(grid) / float(size)), 0, grid - 1)
     return {
         "grid": grid,
         "cells": cells,
+        "reachable": _reachable_cells(cells, grid, city_cell * grid + city_cell),
         "sea_share": float(sea_cells) / float(maxi(size * size, 1)),
     }
+
+# The land a town can stand on: the cells of the picture connected to the cell of the city over
+# land. The world places a town only where it can reach the player's city by land, so an island
+# carries no town on the picture either.
+static func _reachable_cells(cells: PackedByteArray, grid: int, city_cell: int) -> PackedByteArray:
+    var reachable := PackedByteArray()
+    reachable.resize(grid * grid)
+    var start := _nearest_land_cell(cells, grid, city_cell)
+    if start < 0:
+        return reachable
+    reachable[start] = 1
+    var queue := PackedInt32Array([start])
+    var head := 0
+    while head < queue.size():
+        var index := queue[head]
+        head += 1
+        for neighbour in _neighbours(grid, index):
+            if reachable[neighbour] == 1 or not _is_land_cell(cells, neighbour):
+                continue
+            reachable[neighbour] = 1
+            queue.append(neighbour)
+    return reachable
+
+# The land cell closest to the city over the picture. The city is drawn in the middle, but on a
+# small map the sea can reach its cell, and the towns still belong to the shore it stands on.
+static func _nearest_land_cell(cells: PackedByteArray, grid: int, from: int) -> int:
+    var seen := PackedByteArray()
+    seen.resize(cells.size())
+    seen[from] = 1
+    var queue := PackedInt32Array([from])
+    var head := 0
+    while head < queue.size():
+        var index := queue[head]
+        head += 1
+        if _is_land_cell(cells, index):
+            return index
+        for neighbour in _neighbours(grid, index):
+            if seen[neighbour] == 1:
+                continue
+            seen[neighbour] = 1
+            queue.append(neighbour)
+    return -1
+
+static func _is_land_cell(cells: PackedByteArray, index: int) -> bool:
+    return cells[index] == CELL_LAND or cells[index] == CELL_BEACH
 
 # How far every water cell of the picture lies from the coast, in cells, up to the depth the
 # shallow band reaches. The band is set in hexes, so it is scaled to the grid: the shallows of
@@ -228,34 +279,86 @@ func _square(area: Rect2, side_in_hexes: int) -> Rect2:
 
 # The towns are spread on a sunflower spiral: even density without a random seed, so the
 # picture does not change while the player drags the number up and down. The spiral starts
-# outside the city, which is why the middle of the map stays clear. A town stands on land, so
-# a point that falls into the sea is not drawn — the sea takes the room the town would need.
+# outside the city, which is why the middle of the map stays clear. A town stands on land the
+# city reaches; one that would fall into the sea or on an island moves to the nearest free cell
+# of that land, so the picture keeps the count of the setting.
 func _draw_towns(square: Rect2) -> void:
     if town_count <= 0:
         return
     var centre := square.get_center()
     var reach := maxf(square.size.x * 0.5 - TOWN_RADIUS * 2.0, CITY_CLEAR)
     var span := reach - CITY_CLEAR
+    var placed: Array[Vector2] = []
     for index in town_count:
         var distance := CITY_CLEAR + sqrt((float(index) + 0.5) / float(town_count)) * span
         var angle := float(index) * GOLDEN_ANGLE
         var point := centre + Vector2(cos(angle), sin(angle)) * distance
-        if not _is_land(square, point):
+        if _is_town_land(square, point) and _clear_of_towns(point, placed):
+            placed.append(point)
+            draw_circle(point, TOWN_RADIUS, TOWN_COLOR)
             continue
-        draw_circle(point, TOWN_RADIUS, TOWN_COLOR)
+        var cell := _nearest_free_cell(square, point, placed)
+        if cell < 0:
+            continue
+        var spot := _cell_point(square, cell)
+        placed.append(spot)
+        draw_circle(spot, TOWN_RADIUS, TOWN_COLOR)
 
-# Whether a point of the square stands on land. The picture is a grid of blocks of the world,
-# so the answer is the kind of the block the point falls into.
-func _is_land(square: Rect2, point: Vector2) -> bool:
+func _clear_of_towns(point: Vector2, placed: Array[Vector2]) -> bool:
+    for other in placed:
+        if point.distance_to(other) < MIN_TOWN_GAP:
+            return false
+    return true
+
+# The nearest cell of the city's land that can take a town: clear of the city's ring and of the
+# towns already placed. The search crosses water, because the point it starts from may lie in
+# the sea or on an island.
+func _nearest_free_cell(square: Rect2, point: Vector2, placed: Array[Vector2]) -> int:
     var grid: int = _picture.get("grid", 0)
-    if grid <= 0 or square.size.x <= 0.0 or square.size.y <= 0.0:
+    var reachable: PackedByteArray = _picture.get("reachable", PackedByteArray())
+    if grid <= 0 or reachable.size() != grid * grid or square.size.x <= 0.0:
+        return -1
+    var centre := square.get_center()
+    var start := _cell_at(square, point, grid)
+    var seen := PackedByteArray()
+    seen.resize(grid * grid)
+    seen[start] = 1
+    var queue := PackedInt32Array([start])
+    var head := 0
+    while head < queue.size():
+        var index := queue[head]
+        head += 1
+        if reachable[index] == 1:
+            var spot := _cell_point(square, index)
+            if spot.distance_to(centre) >= CITY_CLEAR and _clear_of_towns(spot, placed):
+                return index
+        for neighbour in _neighbours(grid, index):
+            if seen[neighbour] == 1:
+                continue
+            seen[neighbour] = 1
+            queue.append(neighbour)
+    return -1
+
+# Whether a point of the square stands on land a town can stand on. The picture is a grid of
+# blocks of the world, so the answer is the reachable mask built with the picture.
+func _is_town_land(square: Rect2, point: Vector2) -> bool:
+    var grid: int = _picture.get("grid", 0)
+    var reachable: PackedByteArray = _picture.get("reachable", PackedByteArray())
+    if grid <= 0 or reachable.size() != grid * grid:
         return true
-    var x := int((point.x - square.position.x) / square.size.x * float(grid))
-    var y := int((point.y - square.position.y) / square.size.y * float(grid))
-    if x < 0 or y < 0 or x >= grid or y >= grid:
-        return false
-    var code: int = _picture["cells"][y * grid + x]
-    return code == CELL_LAND or code == CELL_BEACH
+    if square.size.x <= 0.0 or square.size.y <= 0.0:
+        return true
+    return reachable[_cell_at(square, point, grid)] == 1
+
+static func _cell_at(square: Rect2, point: Vector2, grid: int) -> int:
+    var x := clampi(int((point.x - square.position.x) / square.size.x * float(grid)), 0, grid - 1)
+    var y := clampi(int((point.y - square.position.y) / square.size.y * float(grid)), 0, grid - 1)
+    return y * grid + x
+
+func _cell_point(square: Rect2, index: int) -> Vector2:
+    var grid: int = _picture.get("grid", 1)
+    var cell := Vector2(float(index % grid) + 0.5, float(int(float(index) / float(grid))) + 0.5)
+    return square.position + cell * (square.size / float(grid))
 
 # The player's city stands in the middle of the map. A dark ring behind it keeps the gold
 # readable on the water, and the towns around it stay pale.

@@ -13,7 +13,8 @@
 #      away from the field and the buttons while it is on.
 #   6. The map preview of both tabs follows the settings, and the water on it is the sea the
 #      generator builds for those settings (the modes, the edges, the islands, the shallows,
-#      the beaches).
+#      the beaches). A town dot stands only on land the city can reach: one that would fall
+#      into the sea or on an island moves to that land, so the count stays as chosen.
 #   7. Neither the map size nor the number of towns is part of data/map_config.json: the
 #      world reads them from the player's choice (CityData.world_map_size / world_town_count).
 #   8. The "Seas" section: the mode dropdown, the rows of the chosen mode only, a tooltip on
@@ -337,6 +338,41 @@ func _run() -> void:
     islands["edge_islands_enabled"] = true
     check(WorldPreview.build(60, islands)["cells"] != one_side["cells"],
             "the islands of the sea change the picture", state)
+
+    # A town of the world stands only where the player's city can reach it by land, and the
+    # dots of the picture keep the rule: the land across a strait is land, but it takes none.
+    var island_grid := 7
+    var island_cells := PackedByteArray()
+    island_cells.resize(island_grid * island_grid)
+    island_cells.fill(WorldPreview.CELL_LAND)
+    island_cells[3 * island_grid + 1] = WorldPreview.CELL_BEACH
+    for y in range(island_grid):
+        island_cells[y * island_grid + 3] = WorldPreview.CELL_DEEP_SEA
+    var reachable: PackedByteArray = WorldPreview._reachable_cells(
+            island_cells, island_grid, 3 * island_grid + 2)
+    check(reachable[3 * island_grid + 2] == 1,
+            "the land of the city is a town site", state)
+    check(reachable[3 * island_grid + 1] == 1,
+            "a beach of the city's shore is a town site", state)
+    check(reachable[3 * island_grid + 5] == 0,
+            "the land of an island is not a town site", state)
+
+    # A town that would fall into the sea or on an island moves to the city's land instead of
+    # vanishing: the picture keeps the count of the setting.
+    var site_preview = WorldPreview.new()
+    site_preview.set_world(60, 1, {
+        "grid": island_grid,
+        "cells": island_cells,
+        "reachable": reachable,
+    })
+    var site_square := Rect2(0.0, 0.0, 70.0, 70.0)
+    var island_point: Vector2 = site_square.position \
+            + Vector2(5.5, 3.5) * (site_square.size / float(island_grid))
+    var no_towns: Array[Vector2] = []
+    var site: int = site_preview._nearest_free_cell(site_square, island_point, no_towns)
+    check(site >= 0 and reachable[site] == 1,
+            "a town that falls on an island moves to the city's land", state)
+    site_preview.free()
 
     # The beach and the shallow band are two rims of the same coast, and both are settings of
     # their own: each must be visible without the other.
