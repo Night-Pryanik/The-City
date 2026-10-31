@@ -16,15 +16,14 @@
 
     // --- THE POLAR BELT ------------------------------------------------------------------
     // The poles are too cold for a tree: the ground of the tundra is covered by moss and lichen,
-    // which yields no timber. The cover has no icon yet — it is drawn as a translucent coloured
-    // overlay, and the file names go here when the art appears.
+    // which yields no timber.
     {
       "id": "tundra_moss",
       "name": "Moss and Lichen",
       "color": [ 186, 200, 196 ],
       "alpha": 0.45,
       "move_cost_bonus": 0,
-      "icons": [  ]
+      "icons": [ "tundra_moss_1.png", "tundra_moss_2.png", "tundra_moss_3.png" ]
     },
 
     // --- THE FORESTS OF THE MILD AND THE SUBTROPICAL BELTS -------------------------------
@@ -50,7 +49,7 @@
       "alpha": 0.55,
       "move_cost_bonus": 0,
       "wood_yield": 10,
-      "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
+      "icons": [ "forest_sparse_1.png", "forest_sparse_2.png", "forest_sparse_3.png" ]
     },
     {
       "id": "temperate_dry_forest",
@@ -59,7 +58,7 @@
       "alpha": 0.8,
       "move_cost_bonus": 0,
       "wood_yield": 16,
-      "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
+      "icons": [ "dry_forest_1.png", "dry_forest_2.png", "dry_forest_3.png" ]
     },
     {
       "id": "temperate_dry_forest_sparse",
@@ -68,12 +67,10 @@
       "alpha": 0.5,
       "move_cost_bonus": 0,
       "wood_yield": 8,
-      "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
+      "icons": [ "dry_forest_sparse_1.png", "dry_forest_sparse_2.png", "dry_forest_sparse_3.png" ]
     },
 
     // --- THE BOREAL FOREST ---------------------------------------------------------------
-    // The taiga has no icon of its own yet: it is drawn as a translucent coloured overlay, and the
-    // file names go here when the art appears.
     {
       "id": "taiga",
       "name": "Taiga",
@@ -81,7 +78,7 @@
       "alpha": 0.4,
       "move_cost_bonus": 0,
       "wood_yield": 20,
-      "icons": [  ]
+      "icons": [ "taiga_1.png", "taiga_2.png", "taiga_3.png" ]
     },
     {
       "id": "taiga_sparse",
@@ -90,7 +87,7 @@
       "alpha": 0.28,
       "move_cost_bonus": 0,
       "wood_yield": 10,
-      "icons": [  ]
+      "icons": [ "taiga_sparse_1.png", "taiga_sparse_2.png", "taiga_sparse_3.png" ]
     },
 
     // --- THE TROPICAL FOREST -------------------------------------------------------------
@@ -101,7 +98,7 @@
       "alpha": 0.44,
       "move_cost_bonus": 0,
       "wood_yield": 25,
-      "icons": [  ]
+      "icons": [ "tropical_rainforest_1.png", "tropical_rainforest_2.png", "tropical_rainforest_3.png" ]
     },
     {
       "id": "tropical_rainforest_sparse",
@@ -110,7 +107,7 @@
       "alpha": 0.3,
       "move_cost_bonus": 0,
       "wood_yield": 12,
-      "icons": [  ]
+      "icons": [ "tropical_rainforest_sparse_1.png", "tropical_rainforest_sparse_2.png", "tropical_rainforest_sparse_3.png" ]
     },
     {
       "id": "tropical_dry_forest",
@@ -119,7 +116,7 @@
       "alpha": 0.4,
       "move_cost_bonus": 0,
       "wood_yield": 18,
-      "icons": [  ]
+      "icons": [ "tropical_dry_forest_1.png", "tropical_dry_forest_2.png", "tropical_dry_forest_3.png" ]
     },
     {
       "id": "tropical_dry_forest_sparse",
@@ -128,7 +125,7 @@
       "alpha": 0.26,
       "move_cost_bonus": 0,
       "wood_yield": 9,
-      "icons": [  ]
+      "icons": [ "tropical_dry_forest_sparse_1.png", "tropical_dry_forest_sparse_2.png", "tropical_dry_forest_sparse_3.png" ]
     },
 
     // --- THE COVERS OUTSIDE THE CLIMATE ---------------------------------------------------
@@ -141,7 +138,7 @@
       "color": [ 154, 205, 50 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
-      "icons": [ "reeds_1.png" ]
+      "icons": [ "reeds_1.png", "reeds_2.png", "reeds_3.png" ]
     },
     {
       "id": "swamp_forest",
@@ -150,7 +147,7 @@
       "alpha": 0.9,
       "move_cost_bonus": 0,
       "wood_yield": 20,
-      "icons": [ "swamp_forest_1.png" ]
+      "icons": [ "swamp_forest_1.png", "swamp_forest_2.png", "swamp_forest_3.png" ]
     },
     {
       "id": "swamp_forest_sparse",
@@ -159,7 +156,7 @@
       "alpha": 0.9,
       "move_cost_bonus": 0,
       "wood_yield": 10,
-      "icons": [ "swamp_forest_sparse_1.png" ]
+      "icons": [ "swamp_forest_sparse_1.png", "swamp_forest_sparse_2.png", "swamp_forest_sparse_3.png" ]
     },
     {
       "id": "oasis",

@@ -40,7 +40,7 @@
       "color": [ 178, 190, 192 ],
       "move_cost": 1,
       "expansion_cost": 2,
-      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
+      "icons": [ "tundra_plain_1.png", "tundra_plain_2.png", "tundra_plain_3.png" ]
     },
     {
       "id": "tundra_hill",
@@ -49,7 +49,7 @@
       "color": [ 140, 152, 154 ],
       "move_cost": 2,
       "expansion_cost": 3,
-      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
+      "icons": [ "tundra_hill_1.png", "tundra_hill_2.png", "tundra_hill_3.png" ]
     },
     {
       "id": "tundra_mountain",
@@ -59,7 +59,7 @@
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,
-      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
+      "icons": [ "tundra_mountain_1.png", "tundra_mountain_2.png", "tundra_mountain_3.png" ]
     },
 
     // --- THE COLD BELT: the boreal zone ---------------------------------------------------
@@ -70,7 +70,7 @@
       "color": [ 196, 208, 200 ],
       "move_cost": 1,
       "expansion_cost": 2,
-      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
+      "icons": [ "boreal_plain_1.png", "boreal_plain_2.png", "boreal_plain_3.png" ]
     },
     {
       "id": "boreal_hill",
@@ -79,7 +79,7 @@
       "color": [ 150, 148, 140 ],
       "move_cost": 2,
       "expansion_cost": 3,
-      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
+      "icons": [ "boreal_hill_1.png", "boreal_hill_2.png", "boreal_hill_3.png" ]
     },
     {
       "id": "boreal_mountain",
@@ -89,7 +89,7 @@
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,
-      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
+      "icons": [ "boreal_mountain_1.png", "boreal_mountain_2.png", "boreal_mountain_3.png" ]
     },
 
     // --- THE MILD BELT -------------------------------------------------------------------
@@ -102,7 +102,7 @@
       "color": [ 214, 198, 132 ],
       "move_cost": 1,
       "expansion_cost": 2,
-      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
+      "icons": [ "steppe_plain_1.png", "steppe_plain_2.png", "steppe_plain_3.png" ]
     },
     {
       "id": "steppe_hill",
@@ -111,7 +111,7 @@
       "color": [ 168, 148, 96 ],
       "move_cost": 2,
       "expansion_cost": 3,
-      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
+      "icons": [ "steppe_hill_1.png", "steppe_hill_2.png", "steppe_hill_3.png" ]
     },
     {
       "id": "steppe_mountain",
@@ -121,7 +121,7 @@
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,
-      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
+      "icons": [ "steppe_mountain_1.png", "steppe_mountain_2.png", "steppe_mountain_3.png" ]
     },
     {
       "id": "prairie_plain",
@@ -130,7 +130,7 @@
       "color": [ 186, 205, 124 ],
       "move_cost": 1,
       "expansion_cost": 2,
-      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
+      "icons": [ "prairie_plain_1.png", "prairie_plain_2.png", "prairie_plain_3.png" ]
     },
     {
       "id": "prairie_hill",
@@ -139,7 +139,7 @@
       "color": [ 150, 165, 96 ],
       "move_cost": 2,
       "expansion_cost": 3,
-      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
+      "icons": [ "prairie_hill_1.png", "prairie_hill_2.png", "prairie_hill_3.png" ]
     },
     {
       "id": "prairie_mountain",
@@ -149,7 +149,7 @@
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,
-      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
+      "icons": [ "prairie_mountain_1.png", "prairie_mountain_2.png", "prairie_mountain_3.png" ]
     },
 
     // --- THE SUBTROPICAL BELT ------------------------------------------------------------
@@ -160,7 +160,7 @@
       "color": [ 222, 192, 112 ],
       "move_cost": 1,
       "expansion_cost": 2,
-      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
+      "icons": [ "savanna_plain_1.png", "savanna_plain_2.png", "savanna_plain_3.png" ]
     },
     {
       "id": "savanna_hill",
@@ -169,7 +169,7 @@
       "color": [ 180, 150, 92 ],
       "move_cost": 2,
       "expansion_cost": 3,
-      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
+      "icons": [ "savanna_hill_1.png", "savanna_hill_2.png", "savanna_hill_3.png" ]
     },
     {
       "id": "savanna_mountain",
@@ -179,7 +179,7 @@
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,
-      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
+      "icons": [ "savanna_mountain_1.png", "savanna_mountain_2.png", "savanna_mountain_3.png" ]
     },
 
     // --- THE TROPICAL BELT ---------------------------------------------------------------
@@ -190,7 +190,7 @@
       "color": [ 122, 178, 104 ],
       "move_cost": 1,
       "expansion_cost": 2,
-      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
+      "icons": [ "tropical_plain_1.png", "tropical_plain_2.png", "tropical_plain_3.png" ]
     },
     {
       "id": "tropical_hill",
@@ -199,7 +199,7 @@
       "color": [ 120, 150, 92 ],
       "move_cost": 2,
       "expansion_cost": 3,
-      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
+      "icons": [ "tropical_hill_1.png", "tropical_hill_2.png", "tropical_hill_3.png" ]
     },
     {
       "id": "tropical_mountain",
@@ -209,7 +209,7 @@
       "move_cost": 3,
       "expansion_cost": 5,
       "work_cost_mult": 2.5,
-      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
+      "icons": [ "tropical_mountain_1.png", "tropical_mountain_2.png", "tropical_mountain_3.png" ]
     },
 
     // --- THE WETLANDS: the swamp of every belt --------------------------------------------
@@ -237,7 +237,7 @@
       "move_cost": 2,
       "expansion_cost": 4,
       "work_cost_mult": 2.0,
-      "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
+      "icons": [ "tundra_swamp_1.png", "tundra_swamp_2.png", "tundra_swamp_3.png" ],
       // The permafrost bog: nothing but moss and lichen. No tree and no reed survives here.
       "cover_chance": { "none": 60, "tundra_moss": 40 }
     },
@@ -249,7 +249,7 @@
       "move_cost": 2,
       "expansion_cost": 4,
       "work_cost_mult": 2.0,
-      "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
+      "icons": [ "boreal_swamp_1.png", "boreal_swamp_2.png", "boreal_swamp_3.png" ],
       // The peat bog of the taiga: pines and birches stunted by the cold water, no reed bed.
       "cover_chance": { "none": 45, "swamp_forest_sparse": 45, "swamp_forest": 10 }
     },
@@ -261,7 +261,7 @@
       "move_cost": 2,
       "expansion_cost": 4,
       "work_cost_mult": 2.0,
-      "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
+      "icons": [ "temperate_swamp_1.png", "temperate_swamp_2.png", "temperate_swamp_3.png" ],
       // The carr of the mild belt: alder and willow standing in the water.
       "cover_chance": { "none": 45, "swamp_forest_sparse": 30, "swamp_forest": 25 }
     },
@@ -273,7 +273,7 @@
       "move_cost": 2,
       "expansion_cost": 4,
       "work_cost_mult": 2.0,
-      "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
+      "icons": [ "tropical_swamp_1.png", "tropical_swamp_2.png", "tropical_swamp_3.png" ],
       // The warm swamp is a reed bed: the papyrus field (data/resources/plants/technical_plants.json)
       // grows on its reeds, and it is the only swamp where they do.
       "cover_chance": { "none": 25, "swamp_forest_sparse": 10, "swamp_forest": 15, "reeds": 50 }
@@ -313,7 +313,7 @@
       "move_cost": 2,
       "expansion_cost": 3,
       "work_cost_mult": 1.5,
-      "icons": [ "marsh_1.png", "marsh_2.png", "marsh_3.png" ],
+      "icons": [ "cold_marsh_1.png", "cold_marsh_2.png", "cold_marsh_3.png" ],
       // The frozen marsh: no reed survives here.
       "cover_chance": { "none": 100 }
     },
@@ -325,7 +325,7 @@
       "move_cost": 2,
       "expansion_cost": 3,
       "work_cost_mult": 1.5,
-      "icons": [ "marsh_1.png", "marsh_2.png", "marsh_3.png" ],
+      "icons": [ "warm_marsh_1.png", "warm_marsh_2.png", "warm_marsh_3.png" ],
       // The warm marsh is a reedy shore.
       "cover_chance": { "none": 50, "reeds": 50 }
     },
@@ -346,7 +346,7 @@
       "move_cost": 999,
       "expansion_cost": 0,
       "work_cost_mult": 1.0,
-      "icons": [ "sea_1.png", "sea_2.png", "sea_3.png" ],
+      "icons": [ "shallow_sea_1.png", "shallow_sea_2.png", "shallow_sea_3.png" ],
       "cover_chance": { "none": 100 }
     },
     {
@@ -366,7 +366,7 @@
       "move_cost": 2.5,
       "expansion_cost": 2.5,
       "work_cost_mult": 2,
-      "icons": [ "beach_1.png" ],
+      "icons": [ "sandy_desert_1.png", "sandy_desert_2.png", "sandy_desert_3.png" ],
       "cover_chance": { "none": 95, "oasis": 5 }
     },
     {
