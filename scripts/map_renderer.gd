@@ -31,6 +31,15 @@ const ROAD_PREVIEW_HALO_WIDTH = 12
 # by the ghost, and green by the highlighting of the hexes.
 const ROUTE_COLOR = Color(0.35, 0.85, 0.95, 0.9)
 const ROUTE_WIDTH = 3
+# The shape of the roads. A road is drawn as a CHAIN of its connected segments: the turns are
+# rounded and the runs are gently wandered, while the ends of a chain stay exactly at the hex
+# centres, so the roads of different levels, networks and plans still meet. The wander is
+# derived from the hex coordinates, so the same network always looks the same.
+const ROAD_WANDER = 0.26        # the lateral drift of a bend, in hex radii
+const ROAD_RUN_WAVE = 0.15      # the lateral wave of a run, in hex radii
+const ROAD_TURN_RADIUS = 1.0    # the radius limit of a rounded turn, in hex radii
+const ROAD_TURN_TRIM = 0.46     # the share of the shorter neighbouring run trimmed by a turn
+const ROAD_SAMPLE_STEP = 24.0   # the distance between the samples of a run, px
 # The radius of the icon markers drawn on top of the hex: a drop of fresh water by
 # an improvement and a trade icon over a connected town. It is set by ONE
 # constant, so that both markers are guaranteed to be of the same size.
@@ -1512,43 +1521,174 @@ func _draw_road_segments_by_level(segments: Dictionary, hide_in_fog: bool) -> vo
 # values are passed (see ROAD_PREVIEW_*).
 func _draw_road_segments(segments: Dictionary, hide_in_fog: bool,
         color: Color = ROAD_COLOR, width: int = ROAD_WIDTH) -> void:
-    if segments.is_empty():
-        return
-    
+    for polyline in _road_chain_polylines(segments, hide_in_fog, main_map.HEX_RADIUS):
+        draw_polyline(polyline, color, width, true)
+
+# The drawn polylines of a set of the segments: one per chain of the connected segments.
+# Chains are cut at the junctions and at the dead ends, where the roads of other levels,
+# networks and plans meet: those ends are drawn exactly at the hex centres, which is what
+# keeps the pieces joined.
+func _road_chain_polylines(segments: Dictionary, hide_in_fog: bool, radius: float) -> Array:
+    var kept: Array = []
+    var links: Dictionary = {}
     for segment_key in segments.keys():
-        var parts = segment_key.split("|")
+        var parts := str(segment_key).split("|")
         if parts.size() != 2:
             continue
-        
-        var start_parts = parts[0].split(",")
-        var end_parts = parts[1].split(",")
-        
+        var start_parts := parts[0].split(",")
+        var end_parts := parts[1].split(",")
         if start_parts.size() != 2 or end_parts.size() != 2:
             continue
-        
-        var row1 = int(start_parts[0])
-        var col1 = int(start_parts[1])
-        var row2 = int(end_parts[0])
-        var col2 = int(end_parts[1])
-
-        if hide_in_fog and not is_town_road_segment_visible(row1, col1, row2, col2):
+        var a := Vector2i(int(start_parts[0]), int(start_parts[1]))
+        var b := Vector2i(int(end_parts[0]), int(end_parts[1]))
+        if hide_in_fog and not is_town_road_segment_visible(a.x, a.y, b.x, b.y):
             continue
-
         # The culling of the segments outside the drawn area: they can never be seen,
         # because the scroll clamp does not let the screen there.
-        var c1 = HexUtils.hex_center(row1, col1, main_map.HEX_RADIUS)
-        var c2 = HexUtils.hex_center(row2, col2, main_map.HEX_RADIUS)
-        var road_rect = Rect2(
-            min(c1.x, c2.x) - main_map.HEX_RADIUS,
-            min(c1.y, c2.y) - main_map.HEX_RADIUS,
-            abs(c2.x - c1.x) + main_map.HEX_RADIUS * 2,
-            abs(c2.y - c1.y) + main_map.HEX_RADIUS * 2
-        )
-        if not _is_rect_visible(road_rect):
+        if not _is_rect_visible(_road_segment_rect(a, b, radius)):
             continue
+        var index := kept.size()
+        kept.append([a, b])
+        if not links.has(a):
+            links[a] = []
+        if not links.has(b):
+            links[b] = []
+        links[a].append(index)
+        links[b].append(index)
+    if kept.is_empty():
+        return []
 
-        var points = _generate_natural_road(row1, col1, row2, col2, main_map.HEX_RADIUS)
-        draw_polyline(points, color, width, true)
+    var used: Dictionary = {}
+    var chains: Array = []
+    for hex in links.keys():
+        if links[hex].size() == 2:
+            continue
+        for index in links[hex]:
+            if not used.has(index):
+                chains.append(_walk_road_chain(kept, links, used, hex, int(index)))
+    for index in range(kept.size()):
+        # A ring of the roads without any junction: it is walked from an arbitrary segment
+        # and closes on itself.
+        if not used.has(index):
+            chains.append(_walk_road_chain(kept, links, used, kept[index][0], index))
+
+    var polylines: Array = []
+    for chain in chains:
+        if chain.size() < 2:
+            continue
+        polylines.append(_road_chain_points(chain, radius))
+    return polylines
+
+func _road_segment_rect(a: Vector2i, b: Vector2i, radius: float) -> Rect2:
+    var c1 := HexUtils.hex_center(a.x, a.y, radius)
+    var c2 := HexUtils.hex_center(b.x, b.y, radius)
+    return Rect2(
+        min(c1.x, c2.x) - radius,
+        min(c1.y, c2.y) - radius,
+        abs(c2.x - c1.x) + radius * 2.0,
+        abs(c2.y - c1.y) + radius * 2.0
+    )
+
+# The hexes of one chain in the order of the walking. The walk breaks at a junction
+# or at a dead end, because a cell where three roads meet has no single turn to round.
+func _walk_road_chain(kept: Array, links: Dictionary, used: Dictionary,
+        start: Vector2i, first: int) -> Array:
+    var chain: Array = [start]
+    var current := start
+    var index := first
+    while index >= 0:
+        used[index] = true
+        var ends: Array = kept[index]
+        var next_hex: Vector2i = ends[1] if ends[0] == current else ends[0]
+        chain.append(next_hex)
+        current = next_hex
+        index = -1
+        if links[current].size() != 2:
+            break
+        for candidate in links[current]:
+            if not used.has(candidate):
+                index = int(candidate)
+                break
+    return chain
+
+# The polyline of one chain: the runs between the hex centres carry a slight lateral wave,
+# the turns are rounded arcs, and the bend of every hex is shifted aside a little. The first
+# and the last point are the exact hex centres of the chain ends.
+func _road_chain_points(chain: Array, radius: float) -> PackedVector2Array:
+    var last := chain.size() - 1
+    var guide := PackedVector2Array()
+    guide.resize(chain.size())
+    for i in range(chain.size()):
+        var hex: Vector2i = chain[i]
+        var point := HexUtils.hex_center(hex.x, hex.y, radius)
+        if i > 0 and i < last:
+            var prev: Vector2i = chain[i - 1]
+            var next_hex: Vector2i = chain[i + 1]
+            var direction := (HexUtils.hex_center(next_hex.x, next_hex.y, radius)
+                    - HexUtils.hex_center(prev.x, prev.y, radius)).normalized()
+            point += Vector2(-direction.y, direction.x) * (
+                    _road_hex_shift(hex.x, hex.y) * radius * ROAD_WANDER)
+        guide[i] = point
+
+    var trims := PackedFloat32Array()
+    trims.resize(chain.size())
+    for i in range(1, last):
+        var shorter := minf(guide[i].distance_to(guide[i - 1]),
+                guide[i].distance_to(guide[i + 1]))
+        trims[i] = minf(shorter * ROAD_TURN_TRIM, radius * ROAD_TURN_RADIUS)
+
+    var runs: Array = []
+    for i in range(last):
+        var direction := (guide[i + 1] - guide[i]).normalized()
+        runs.append([
+            guide[i] + direction * trims[i],
+            guide[i + 1] - direction * trims[i + 1],
+        ])
+
+    var points := PackedVector2Array()
+    for i in range(runs.size()):
+        _append_road_run(points, runs[i][0], runs[i][1], radius,
+                _road_span_shift(chain[i], chain[i + 1]))
+        if i + 1 < runs.size():
+            _append_road_turn(points, runs[i][1], guide[i + 1], runs[i + 1][0])
+    return points
+
+func _append_road_run(points: PackedVector2Array, from: Vector2, to: Vector2,
+        radius: float, shift: float) -> void:
+    var span := from.distance_to(to)
+    if span <= 0.01:
+        return
+    var direction := (to - from) / span
+    var normal := Vector2(-direction.y, direction.x)
+    var amplitude := shift * radius * ROAD_RUN_WAVE
+    var steps := maxi(1, int(ceil(span / ROAD_SAMPLE_STEP)))
+    for step in range(steps + 1):
+        var t := float(step) / float(steps)
+        var point := from.lerp(to, t) + normal * (sin(PI * t) * amplitude)
+        if points.is_empty() or points[-1].distance_to(point) > 0.5:
+            points.append(point)
+
+# The rounded turn through a hex centre: a quadratic curve from the end of the incoming run,
+# through the centre, to the start of the outgoing one.
+func _append_road_turn(points: PackedVector2Array, from: Vector2, corner: Vector2,
+        to: Vector2) -> void:
+    var steps := maxi(2, int(ceil(from.distance_to(to) / ROAD_SAMPLE_STEP)))
+    for step in range(1, steps + 1):
+        var t := float(step) / float(steps)
+        var point := from.lerp(corner, t).lerp(corner.lerp(to, t), t)
+        if points.is_empty() or points[-1].distance_to(point) > 0.5:
+            points.append(point)
+
+# A stable shift in [-1, 1] per hex and per segment: the wander must not change between
+# the frames, and the same cell must be bent alike in every network drawn over it.
+func _road_hex_shift(row: int, col: int) -> float:
+    var raw := (row * 73856093 + col * 19349663) & 0x7fffffff
+    return float(raw) / float(0x7fffffff) * 2.0 - 1.0
+
+func _road_span_shift(a: Vector2i, b: Vector2i) -> float:
+    var raw := (a.x * 73856093 + a.y * 19349663
+            + b.x * 83492791 + b.y * 2971215073) & 0x7fffffff
+    return float(raw) / float(0x7fffffff) * 2.0 - 1.0
 
 # The "ghost" road: the segments of the plan which is open in the preview. Two passes - a wide
 # semi-transparent halo and a line on top: the route reads over the terrain, the rivers and
@@ -1881,34 +2021,6 @@ func _clip_river_to_rect(points: PackedVector2Array, rect: Rect2) -> Array:
 
 func _draw_roads(_row: int, _col: int):
     pass
-
-func _generate_natural_road(
-    row1: int,
-    col1: int,
-    row2: int,
-    col2: int,
-    radius: float
-) -> Array:
-    var segments = 3
-    var points = []
-    var center1 = HexUtils.hex_center(row1, col1, radius)
-    var center2 = HexUtils.hex_center(row2, col2, radius)
-    
-    points.append(center1)
-    for i in range(1, segments):
-        var t = float(i) / segments
-        var mid = center1.lerp(center2, t)
-        var dir = (center2 - center1).normalized()
-        var perp = Vector2(-dir.y, dir.x)
-        var hash_input = (
-            row1 * 73856093 + col1 * 19349663 + row2 * 83492791
-        ) & 0x7fffffff
-        var hash_val = float(hash_input) / 0x7fffffff
-        var offset = (hash_val - 0.5) * radius * 0.5
-        mid += perp * offset
-        points.append(mid)
-    points.append(center2)
-    return points
 
 func _generate_natural_river(river_points: PackedVector2Array, radius: float) -> PackedVector2Array:
     if river_points.size() < 2:
