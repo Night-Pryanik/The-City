@@ -583,6 +583,8 @@ const GAME_BALANCE_BLOCKS := {
         "distance_cost_modifier_per_hex": LEAF,
         "road_distance_cost_modifier_per_hex": LEAF,
         "scouting_cost_per_hex": LEAF,
+        "outpost_fee_base": LEAF,
+        "outpost_fee_per_hex": LEAF,
     },
     "logistics": {
         "transit_time_per_hex": LEAF,

@@ -192,6 +192,37 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
             emit_signal("build_message", tr("This is inside another town's influence ring — cannot build"), 1)
             return false
 
+    # --- An outpost: an improvement on a scouted resource hex outside the Region ---
+    # The technology "Emporia" opens this placement; the improvement must match the resource
+    # (improved_by), and a one-time fee in coins is paid on top of the labour. The road to the
+    # hex is mandatory: without it the improvement would stand idle (see main_map, the
+    # production tick). The special actions are not outposts — they leave no improvement.
+    var is_outpost := false
+    var outpost_fee := 0
+    if main_map_check != null and not is_road_action \
+            and not GameData.special_actions.has(imp_id) \
+            and main_map_check.has_method("is_outpost_build_target") \
+            and main_map_check.is_outpost_build_target(row, col):
+        if not main_map_check.is_emporia_researched():
+            emit_signal("build_message", tr("Requires the %s technology to build outside the Region")
+                    % main_map_check.get_emporia_tech_name(), 1)
+            return false
+        var outpost_tile = main_map_check.tile_data[row][col]
+        var outpost_res := str(MapHelpers.get_effective_resource(outpost_tile))
+        var outpost_improved_by := str(GameData.raw_resources.get(outpost_res, {}).get("improved_by", ""))
+        if imp_id != outpost_improved_by:
+            emit_signal("build_message", tr("Outside the Region this resource can only be improved with %s")
+                    % GameData.get_improvement_display_name(outpost_improved_by), 1)
+            return false
+        is_outpost = true
+        outpost_fee = int(main_map_check.get_outpost_fee(row, col))
+        # The check stands before the active pause intercept: the player must learn about
+        # the lack of coins immediately, even when the simulation is stopped.
+        if not CityData.ignore_build_requirements and CityData.treasury < outpost_fee:
+            emit_signal("build_message", tr("Not enough coins for the outpost fee: %d needed")
+                    % outpost_fee, 1)
+            return false
+
     # The breeding (an improvement with a chosen animal/plant on an EMPTY hex) of a species
     # with a live product needs a seed herd in the storage. The check stands before both
     # further paths — the ordinary build and the "road → improvement" project — so that an
@@ -296,7 +327,19 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
                 row, col, effective_road_level)
         if bool(road_bd.get("ok", false)):
             return main_map.start_improvement_road_project(row, col, imp_id, imp_name,
-                    target_res_id, effective_road_level)
+                    target_res_id, effective_road_level, outpost_fee)
+        # An outpost cannot exist without a road: if there is neither a route to the hex nor
+        # a plan to lay one, the ordinary build would leave an idle improvement behind the
+        # Region, so it is refused with the reason of the plan.
+        if is_outpost and not main_map.has_road_route(row, col):
+            if bool(road_bd.get("pending", false)):
+                emit_signal("build_message", tr("A road to this hex is already under construction"), 1)
+                return false
+            var reason := str(road_bd.get("reason", ""))
+            if not reason.is_empty():
+                reason = reason.substr(0, 1).to_lower() + reason.substr(1)
+            emit_signal("build_message", tr("Cannot build an outpost: %s") % reason, 1)
+            return false
 
     # Everything above has already been checked, therefore the player learns about an
     # impossible target right away, even with the simulation stopped. From here on the
@@ -317,7 +360,11 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     # below, so that a rejected build cannot lose the heads. The cancellation of an
     # unfinished build returns them (cancel_build); the demolition of the finished
     # breeding does not — the herd is gone together with the improvement.
+    # The outpost fee is written off at the same moment for the same reason: an action queued
+    # in the active pause must not pay twice when it is executed anew.
     if work_cost <= 0 or CityData.ignore_build_requirements:
+        if not _pay_outpost_fee(is_outpost, outpost_fee):
+            return false
         if not _take_seed_herd(livestock_res_id):
             return false
         emit_signal("build_message", tr("Built instantly: %s") % imp_name, 0)
@@ -327,6 +374,9 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     # The general limit of simultaneous builds (buildings + improvements) equals the number of citizens
     if get_total_active_builds() >= CityData.total_population:
         emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population, 1)
+        return false
+
+    if not _pay_outpost_fee(is_outpost, outpost_fee):
         return false
 
     if not _take_seed_herd(livestock_res_id):
@@ -343,6 +393,8 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
         "status": "active",
         "allocated_labor": 0.0,
         "livestock_res_id": livestock_res_id,
+        # The fee of an outpost is stored so that cancel_build can return it.
+        "outpost_fee": outpost_fee if is_outpost else 0,
     }
     _active_build_count += 1
 
@@ -360,6 +412,17 @@ func _take_seed_herd(livestock_res_id: String) -> bool:
             % [CityData.livestock_breeding_cost(),
             GameData.get_product_name(GameData.live_product_of(livestock_res_id))], 1)
     return false
+
+# The one-time fee of an outpost. It is written off at the moment the construction really
+# starts, and cancel_build returns it together with the cancel of the build.
+func _pay_outpost_fee(is_outpost: bool, fee: int) -> bool:
+    if not is_outpost or fee <= 0 or CityData.ignore_build_requirements:
+        return true
+    if not CityData.spend_treasury(fee):
+        emit_signal("build_message", tr("Not enough coins for the outpost fee: %d needed") % fee, 1)
+        return false
+    CityData.record_treasury_expense(GameData.SRC_OUTPOST, fee)
+    return true
 
 # Starts the claiming of a chunk of territory for labour. The labour accumulates over time
 # through the common labour pool (like the building of buildings/improvements). When the
@@ -599,6 +662,13 @@ func cancel_build(row: int, col: int):
     var livestock_res_id = str(data.get("livestock_res_id", ""))
     if livestock_res_id != "":
         CityData.return_livestock_for(livestock_res_id)
+
+    # The outpost fee returns to the treasury together with the cancel of the build: the
+    # improvement was never placed, and the player did not get what the coins were paid for.
+    var outpost_fee := int(data.get("outpost_fee", 0))
+    if outpost_fee > 0:
+        CityData.add_treasury(outpost_fee)
+        CityData.record_treasury_expense(GameData.SRC_OUTPOST, -outpost_fee)
 
     active_builds.erase(key)
     _active_build_count -= 1

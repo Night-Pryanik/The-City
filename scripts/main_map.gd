@@ -111,6 +111,10 @@ const SAVE_LOAD_WINDOW_SCENE := preload("res://scenes/save_load_window.tscn")
 # the hover and the click (see is_hex_interactive). The data of the technology —
 # data/technologies/antiquity.json, id "cartography".
 const CARTOGRAPHY_TECH_ID := "cartography"
+# The technology that allows building improvements on scouted resource hexes
+# outside the Region (outposts). The data of the technology —
+# data/technologies/antiquity.json, id "emporia".
+const EMPORIA_TECH_ID := "emporia"
 # The absolute boundaries of the Influence Ring (inclusive) over the whole map.
 
 var tile_data = []
@@ -962,22 +966,50 @@ func _process(delta):
         _growing_pastures = {}
         _has_growing_pastures = false
         CityData.reset_counters()
-        # The warning triangle over an improvement is drawn from tile.road_capacity_short.
-        # The map redraws on demand (see InputHandler), so a flag that flips here must ask
-        # for a redraw itself: otherwise an upgraded road would leave the triangle on the
-        # screen until the next mouse move.
-        var capacity_flag_changed := false
-        for row in range(region_start_row, region_end_row + 1):
-            for col in range(region_start_col, region_end_col + 1):
+        # The warning triangle over an improvement is drawn from tile.road_capacity_short,
+        # the badge of a cut-off improvement from tile.road_missing. The map redraws on
+        # demand (see InputHandler), so a flag that flips here must ask for a redraw itself:
+        # otherwise an upgraded road would leave the triangle on the screen until the next
+        # mouse move.
+        var overlay_flag_changed := false
+        # The whole map, and not only the Region: an outpost — an improvement outside the
+        # Region, opened by "Emporia" — produces on this very tick. The scan of the empty
+        # hexes costs one null check, and the tick runs once a second.
+        for row in range(map_rows):
+            for col in range(map_cols):
                 var tile = tile_data[row][col]
-                if tile.improvement == null:
+                if tile == null or tile.improvement == null:
                     continue
-                if bool(tile.get("decorative", false)) or not worker_manager.has_worker(row, col):
-                    # A decorative or a paused improvement transports nothing: there is no
-                    # road-capacity problem to warn about.
+                if bool(tile.get("decorative", false)):
+                    # An improvement of a town is not the player's: it neither produces for
+                    # the city nor is served by its roads.
+                    if bool(tile.get("road_capacity_short", false)) \
+                            or bool(tile.get("road_missing", false)):
+                        tile["road_capacity_short"] = false
+                        tile["road_missing"] = false
+                        overlay_flag_changed = true
+                    continue
+                # A road is what carries the goods to the city: an improvement that needs one
+                # and has no route to the city stands idle. The improvements that are never
+                # reached by a road (no_road, no_worker) keep delivering straight into the
+                # storage — see _deliver_production.
+                var route_avg_speed := _route_avg_speed(row, col)
+                var road_missing := route_avg_speed < 0.0 \
+                        and MapHelpers.improvement_needs_road(str(tile.improvement))
+                if bool(tile.get("road_missing", false)) != road_missing:
+                    tile["road_missing"] = road_missing
+                    overlay_flag_changed = true
+                if road_missing:
                     if bool(tile.get("road_capacity_short", false)):
                         tile["road_capacity_short"] = false
-                        capacity_flag_changed = true
+                        overlay_flag_changed = true
+                    continue
+                if not worker_manager.has_worker(row, col):
+                    # A paused improvement transports nothing: there is no road-capacity
+                    # problem to warn about.
+                    if bool(tile.get("road_capacity_short", false)):
+                        tile["road_capacity_short"] = false
+                        overlay_flag_changed = true
                     continue
                 # The road to the city limits the throughput: the surplus of a fast
                 # improvement queues on the route instead of being destroyed (see the
@@ -988,9 +1020,8 @@ func _process(delta):
                 var capacity_short := not map_tooltip.road_capacity_shortfall(
                         row, col, tile_data).is_empty()
                 if bool(tile.get("road_capacity_short", false)) != capacity_short:
-                    capacity_flag_changed = true
+                    overlay_flag_changed = true
                 tile["road_capacity_short"] = capacity_short
-                var route_avg_speed := _route_avg_speed(row, col)
                 # The production goes both from the natural resource (tile.resource), and from
                 # the bred one (tile.crop_bred, see the breeding scheme). If both are
                 # null — there is nothing to produce on the hex.
@@ -1137,7 +1168,7 @@ func _process(delta):
             # rebuild the delivery rows from it. Shipping afterwards would show the fresh
             # production as "waiting to ship" even on a road that carries everything.
             delivery_manager.ship()
-        if capacity_flag_changed:
+        if overlay_flag_changed:
             map_renderer.queue_redraw()
         CityData.do_tick()
         # The consumption of the city of the pseudo-profession "all" (all the citizens of the city,
@@ -1286,10 +1317,11 @@ func _emit_continuous_production(tile: Dictionary, produces: Dictionary, product
 # Hands a unit of production to the city: through the route when the hex has one, and
 # straight into the storage when it does not.
 #
-# A road that does not exist cannot limit anything: the water improvements behind a
-# harbour (no_road) have no land route at all, and they must keep producing. That is
-# why the absence of a route (route_avg_speed < 0) means "deliver at once", not
-# "deliver nothing".
+# A road that does not exist cannot limit anything, so the absence of a route
+# (route_avg_speed < 0) means "deliver at once". The improvements that are due a road never
+# reach this case: the production tick skips them while they have no route (see
+# MapHelpers.improvement_needs_road), so what is delivered at once is only the produce of the
+# water improvements behind a harbour and of the other no_road/no_worker infrastructure.
 #
 # The amounts are whole units: the caller keeps the sub-unit remainder of the
 # production, so the delivery never has to deal with fractions.
@@ -2002,13 +2034,16 @@ func start_road_project(row: int, col: int, road_level: int) -> bool:
 # target_res_id are needed by the last step (target_res_id — the breeding: the id of the animal
 # or the plant which has to be planted on the hex).
 #
+# outpost_fee is the one-time coin fee of an improvement built outside the Region (0 for
+# an ordinary improvement). It is paid once at the start of the project, not per step.
+#
 # A refusal here means the improvement is built in an ordinary way: if the road is not
 # needed (the hex is already connected, the improvement with the flag no_road, there is no
 # land route), the calling code will not pass the control here, and the improvement will stand as an ordinary
 # build. The errors of the level and the limit, on the contrary, are shown by the same rows as
 # the other builds.
 func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name: String,
-        target_res_id, road_level: int) -> bool:
+        target_res_id, road_level: int, outpost_fee: int = 0) -> bool:
     if project_manager == null or road_level <= 0:
         return false
     if row < 0 or row >= tile_data.size() or col < 0 or col >= tile_data[row].size():
@@ -2066,7 +2101,7 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
             "bar_color": UI_THEME.color("info"),
             "bar_offset": 16,
             "execute": func(): start_improvement_road_project(row, col, imp_id, imp_name,
-                    target_res_id, road_level),
+                    target_res_id, road_level, outpost_fee),
     }):
         return true
 
@@ -2088,6 +2123,15 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
                 return false
             livestock_meta = {"livestock_res_id": str(target_res_id)}
 
+    # The one-time fee of an outpost is written off when the project really starts (after the
+    # active pause) and travels in meta, so that the cancellation can return it.
+    if outpost_fee > 0 and not CityData.ignore_build_requirements:
+        if not CityData.spend_treasury(outpost_fee):
+            hud.show_message(tr("Not enough coins for the outpost fee: %d needed") % outpost_fee,
+                    GameData.HUD_MESSAGE_IMPORTANT)
+            return false
+        CityData.record_treasury_expense(GameData.SRC_OUTPOST, outpost_fee)
+
     # The input data for the save: the road of this hex is going by a phased
     # project. While the flag is absent, the recalculation of the network "by the fact of the improvement"
     # (road_manager.rebuild_roads_from_existing) would count the hex as ready and
@@ -2095,11 +2139,16 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
     # if the project has not started after all, — otherwise the hex would remain forever
     # an "improvement without a road" in the data of the save.
     tile_data[row][col]["road_staged"] = true
-    if not _start_road_project_steps(row, col, steps, total_cost, false, title,
-            livestock_meta.merged({"improvement": imp_name, "improvement_id": imp_id})):
+    var project_meta: Dictionary = livestock_meta.merged({
+            "improvement": imp_name, "improvement_id": imp_id,
+            "outpost_fee": outpost_fee if outpost_fee > 0 else 0})
+    if not _start_road_project_steps(row, col, steps, total_cost, false, title, project_meta):
         tile_data[row][col]["road_staged"] = false
         if not livestock_meta.is_empty():
             CityData.return_livestock_for(str(livestock_meta.get("livestock_res_id", "")))
+        if outpost_fee > 0 and not CityData.ignore_build_requirements:
+            CityData.add_treasury(outpost_fee)
+            CityData.record_treasury_expense(GameData.SRC_OUTPOST, -outpost_fee)
         return false
     return true
 
@@ -2534,6 +2583,12 @@ func _on_project_cancelled(_project_id: String, _kind: String, _meta: Dictionary
     var livestock_res_id = str(_meta.get("livestock_res_id", ""))
     if livestock_res_id != "":
         CityData.return_livestock_for(livestock_res_id)
+    # The fee of an outpost returns together with the project: the improvement was not
+    # placed, so the player did not get what the coins were paid for.
+    var outpost_fee := int(_meta.get("outpost_fee", 0))
+    if outpost_fee > 0 and not CityData.ignore_build_requirements:
+        CityData.add_treasury(outpost_fee)
+        CityData.record_treasury_expense(GameData.SRC_OUTPOST, -outpost_fee)
     _refresh_project_ghost()
     map_renderer.queue_redraw()
     _redraw_progress_layer()
@@ -3436,6 +3491,61 @@ func is_cartography_researched() -> bool:
 # will update automatically).
 func get_cartography_tech_name() -> String:
     return CityData.get_tech_name(CARTOGRAPHY_TECH_ID)
+
+# Is the technology "Emporia" learned. It allows building improvements on scouted
+# resource hexes outside the Region (outposts).
+func is_emporia_researched() -> bool:
+    return CityData.is_tech_unlocked(EMPORIA_TECH_ID)
+
+# The name of the technology "Emporia" for the messages to the player.
+func get_emporia_tech_name() -> String:
+    return CityData.get_tech_name(EMPORIA_TECH_ID)
+
+# Is the hex a place where an outpost improvement can be built: a scouted hex
+# outside the Region with a revealed resource that has an ordinary improvement
+# (the "improved_by" field) and no foreign or already built structure. The
+# improvement itself still needs the "Emporia" technology — this check is only
+# about the land and the resource.
+func is_outpost_build_target(row: int, col: int) -> bool:
+    if not is_hex_on_map(row, col) or is_valid_hex(row, col):
+        return false
+    var tile = tile_data[row][col]
+    if tile == null:
+        return false
+    if not bool(tile.get("is_explored", false)):
+        return false
+    if bool(tile.get("in_influence", false)) or bool(tile.get("in_town_influence", false)) \
+            or bool(tile.get("has_town", false)) or bool(tile.get("decorative", false)):
+        return false
+    if tile.get("improvement", null) != null:
+        return false
+    var res_id := MapHelpers.get_effective_resource(tile)
+    if res_id == "" or not MapHelpers.is_resource_revealed(tile):
+        return false
+    var improved_by = GameData.raw_resources.get(res_id, {}).get("improved_by", null)
+    if improved_by == null:
+        return false
+    return MapHelpers.improvement_needs_road(str(improved_by))
+
+# A built improvement outside the Region — an outpost. The status is derived from
+# the tile, so no separate save field is needed.
+func is_outpost_improvement(row: int, col: int) -> bool:
+    if not is_hex_on_map(row, col) or is_valid_hex(row, col):
+        return false
+    var tile = tile_data[row][col]
+    if tile == null or tile.get("improvement", null) == null:
+        return false
+    return not bool(tile.get("in_influence", false)) \
+            and not bool(tile.get("decorative", false)) \
+            and not bool(tile.get("in_town_influence", false))
+
+# The one-time fee in coins for building an outpost on this hex.
+func get_outpost_fee(row: int, col: int) -> int:
+    return MapHelpers.get_outpost_fee(row, col, city_row, city_col)
+
+# Is the hex connected to the city by an already built road network.
+func has_road_route(row: int, col: int) -> bool:
+    return bool(get_route_to_city(row, col).get("ok", false))
 
 # Is the hex available for the interaction of the player: the tooltip on hover,
 # the highlighting of the chunk of the scouting/purchase, the selection by a click of the LMB. The Region is available

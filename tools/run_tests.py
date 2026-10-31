@@ -139,6 +139,7 @@ SLOW = {
     "test_cartography_gate",
     "test_scouting_frontier",
     "test_territory_costs",
+    "test_outpost_emporia",
     "test_town_food_fields",
     "test_town_forest_plot",
     "test_town_economy",

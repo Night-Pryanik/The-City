@@ -82,6 +82,17 @@
       "unlock_effects": [ { "icon": "visibility.png", "name": "Allows scouts to explore areas in the fog of war." } ]
     },
     {
+      "id": "emporia",
+      "name": "Emporia",
+      "era": "antiquity",
+      "science_cost": 5.0,
+      "icon": "emporia.png",
+      "prerequisites": [ [ "cartography", "wheel" ] ],
+      "description": "Allows you to build improvements on explored resource hexes outside the Region. Such an outpost needs a road to the city and costs coins on top of labour; the further from the city, the more expensive.",
+      "flavor": "An emporion was neither a colony nor a city: a foothold on a foreign shore where the road met the sea and goods changed hands.",
+      "unlock_effects": [ { "icon": "outpost_flag.svg", "name": "Allows you to build improvements on explored resource hexes outside the Region." } ]
+    },
+    {
       "id": "alchemy",
       "name": "Alchemy",
       "era": "antiquity",

@@ -1450,6 +1450,7 @@ const SRC_POP_FOOD := "@pop_food"
 const SRC_TOWN_TRADE := "@town_trade"
 const SRC_SCOUTING := "@scouting"
 const SRC_CLAIMING := "@claim"
+const SRC_OUTPOST := "@outpost"
 
     # The source identifier for a data entity. An empty id gives an empty key —
     # a record without a source does not go into the plans (the callers check this before writing).
@@ -1476,6 +1477,8 @@ func get_source_display_name(source_id: String) -> String:
         return tr("Scouting")
     if source_id == SRC_CLAIMING:
         return tr("Claiming land chunks")
+    if source_id == SRC_OUTPOST:
+        return tr("Outposts")
     if source_id.begins_with(SRC_PREFIX_PROFESSION):
         return get_profession_name(source_id.substr(SRC_PREFIX_PROFESSION.length()))
     if source_id.begins_with(SRC_PREFIX_BUILDING):

@@ -150,7 +150,17 @@
       //                        The labour is counted SEPARATELY and is NOT scaled by
       //                        distance: that is the expansion_cost of the terrain in
       //                        data/terrains.json.
-      "expansion_cost_per_hex": 5
+      "expansion_cost_per_hex": 5,
+
+      // outpost_fee_base / outpost_fee_per_hex — the one-time fee in treasury coins
+      //                        for building an improvement OUTSIDE the Region (an
+      //                        outpost, unlocked by "Emporia"). The fee is paid once
+      //                        when the construction starts, on top of the labour, and
+      //                        is returned if the construction is cancelled. The total
+      //                        is base + distance × per_hex, see
+      //                        MapHelpers.get_outpost_fee.
+      "outpost_fee_base": 10,
+      "outpost_fee_per_hex": 2
     },
 
     // --- LOGISTICS: how the road carries the goods to the city ---

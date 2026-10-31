@@ -46,6 +46,16 @@ func _init(tooltip_text_label: RichTextLabel, tooltip_products_container: VBoxCo
     _worker_manager = worker_manager
 
 
+# Whether the hex carries an outpost of the city — an improvement outside the Region
+# (the technology "Emporia"). The status lives on the tile, not in a separate field: see
+# main_map.is_outpost_improvement.
+func _is_outpost_hex(row: int, col: int) -> bool:
+    var main_map = _map_renderer.main_map if _map_renderer != null else null
+    if main_map == null or not main_map.has_method("is_outpost_improvement"):
+        return false
+    return main_map.is_outpost_improvement(row, col)
+
+
 # Assembles the rows of the markers of someone else's territory for the tooltip.
 # It returns an Array<String> in the order:
 #   1) "Territory of a city" — if the hex is a part of the influence ring (in_town_influence);
@@ -744,12 +754,20 @@ func _build_text(row: int, col: int, tile_data: Array, _city_row: int = 0, _city
             # An infrastructure improvement (no_worker, for example a harbor):
             # it functions on its own — the status "no worker" does not apply.
             imp_status = tr(" (infrastructure: no worker required)")
+        elif bool(tile.get("road_missing", false)):
+            # A cut-off improvement produces nothing: the goods have no way to the city.
+            # The flag is set by the production tick (see main_map).
+            imp_status = tr(" (inactive: no road to the city)")
         else:
             var has_worker = _worker_manager.has_worker(row, col)
             if not has_worker:
                 imp_status = tr(" (inactive: no worker)")
             else:
                 imp_status = tr(" (working)")
+        # An improvement outside the Region is an outpost of the city (the technology
+        # "Emporia"): the same plantation, but on foreign land and with a road of its own.
+        if _is_outpost_hex(row, col):
+            imp_status = tr(" (outpost outside the Region)") + imp_status
     else:
         if res_id != "":
             var res_data = GameData.raw_resources.get(res_id, {})

@@ -29,6 +29,10 @@ const UI_THEME = preload("res://scripts/ui_theme.gd")
 # kind of the action of the panel, and not as one more record in the common list.
 const ROAD_ACTION_ID := "build_road"
 
+# The technology that opens the construction of improvements outside the Region (an
+# outpost). The same id as main_map.EMPORIA_TECH_ID; the panel needs it to offer its study.
+const EMPORIA_TECH_ID := "emporia"
+
 # The references to the nodes (filled in from main_map.gd through initialize()).
 const UPGRADE_ROAD_TYPE := "upgrade_road"
 
@@ -514,6 +518,8 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         return actions
 
     # A hex outside the Influence Ring — the actions through the control panel:
+    #   an improvement already standing here or a scouted resource hex that can take one →
+    #     the outpost (see _collect_region_actions and the technology "Emporia");
     #   the unexplored area (incl. the fog of war and the territory of the towns) →
     #     "Send the scouts": before the learning of the Cartography — only into
     #     the unexplored part of the Region (in the fog of war the chunk is not gathered,
@@ -543,42 +549,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         return actions
     # --- AN ALREADY BUILT IMPROVEMENT ---
     if tile.improvement != null:
-        var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)
-        # The infrastructure improvements (no_worker, for example a harbor) work
-        # without a worker — we do not show the start/pause buttons for them at all.
-        if not GameData.is_no_worker_improvement(tile.improvement):
-            var has_worker = worker_manager.has_worker(row, col)
-            if has_worker:
-                actions.append({
-                    "type": "pause_improvement",
-                    "label": tr("Pause operation (%s)") % imp_name,
-                    "enabled": true,
-                    "tooltip": tr("Remove the worker from the improvement"),
-                    "icon": "building_pause.png"
-                })
-            else:
-                actions.append({
-                    "type": "resume_improvement",
-                    "label": tr("Start operation (%s)") % imp_name,
-                    "enabled": CityData.idle_population > 0,
-                    "tooltip": tr("Assign a worker to the improvement") if CityData.idle_population > 0 else tr("No free workers"),
-                    "icon": "building_resume.png"
-                })
-
-        # The special actions applicable to the hex with an improvement (for example, the demolition).
-        _add_special_actions(actions, row, col, tile)
-
-        # The improvement of the road to this hex. The same call stands on the hex WITHOUT an
-        # improvement (see below): the road can be improved on ANY hex with a route to the city,
-        # not only on the hexes with an improvement. See _append_upgrade_road_action.
-        _append_upgrade_road_action(actions, row, col)
-
-        # The interruption of a build and/or a project. It is exactly here that the check of the project
-        # was LOST earlier: the branch of the hex with an improvement did a return, without reaching
-        # the common block of the cancellation. And the road to a hex with an improvement can be built
-        # (the "Build a road" button is available, if the improvement is not no_road), that is,
-        # it was possible to start a project and impossible to interrupt it.
-        _append_cancel_actions(actions, row, col)
+        _append_improvement_actions(actions, row, col, tile)
         return actions
 
     # --- A HEX WITHOUT AN IMPROVEMENT ---
@@ -935,8 +906,9 @@ func _append_queued_cancel(actions: Array, row: int, col: int) -> bool:
     })
     return true
 
-# Adds the special actions (special_actions.json) applicable to the hex.
 # Assembles the actions for a hex outside the Influence Ring:
+#   an outpost (an improvement outside the Region) or a scouted resource hex that can take one
+#     - see _append_outpost_build_action and the technology "Emporia";
 #   the unexplored area - the scouting of a chunk: before the learning of the Cartography
 #     only in the unexplored part of the Region, after - on everything
 #     reachable by the scrolling of the map (including the fog of war and the territory of the towns);
@@ -947,14 +919,28 @@ func _append_queued_cancel(actions: Array, row: int, col: int) -> bool:
 #   the scouted area - the purchase (the claiming), but ONLY within the Region.
 func _collect_region_actions(row: int, col: int) -> Array:
     var actions := []
+    var tile = main_map.get_tile_data(row, col)
+    if tile != null:
+        # --- An outpost: an improvement outside the Region ---
+        # A hex that already carries one is operated as any other improvement; a scouted
+        # resource hex offers its construction, gated by "Emporia" and by the possibility to
+        # lay a road. The scouting and the claiming do not reach these hexes (the hex is
+        # explored, and a chunk outside the Region cannot be claimed), so the branch owns the
+        # whole list of the actions of the hex.
+        if main_map.is_outpost_improvement(row, col):
+            _append_improvement_actions(actions, row, col, tile)
+            return actions
+        if main_map.is_outpost_build_target(row, col):
+            _append_outpost_build_action(actions, row, col, tile)
+            return actions
+
     # The interruption goes BEFORE all the early returns: the scouting and the claiming are
     # long actions, and the cancel button must appear on the hex of the chunk
-    # regardless of whether it is already scouted or not. Previously there was no
-    # cancellation here at all - the expedition and the claiming could only be waited for.
+    # regardless of whether it is already scouted or not.
     _append_long_action_cancel(actions, row, col)
-    var tile = main_map.get_tile_data(row, col)
     if tile == null:
         return actions
+
     var chunk = main_map.expansion_manager.get_chunk_hexes(row, col)
     if chunk.is_empty():
         # An empty chunk - there are no actions, but the player must understand WHY.
@@ -1059,6 +1045,113 @@ func _collect_region_actions(row: int, col: int) -> Array:
         "icon": "check.svg"
     })
     return actions
+
+# The actions on a scouted resource hex outside the Region: the construction of an OUTPOST.
+# An outpost repeats the improvement of the same resource inside the Region and adds two
+# requirements — the technology "Emporia" and a road to the hex (without a route the building
+# stands idle). The one-time coin fee of the outpost is counted by main_map.get_outpost_fee and
+# shown in the preview of the price.
+func _append_outpost_build_action(actions: Array, row: int, col: int, tile: Dictionary) -> void:
+    # A build, a project or an action waiting in the queue of the active pause is closed by the
+    # interruption button; offering the construction again here would only be refused by
+    # build_manager.
+    _append_cancel_actions(actions, row, col)
+    if build_manager != null and build_manager.is_building(row, col):
+        return
+    if main_map.project_manager != null and main_map.project_manager.has_project_at(row, col):
+        return
+    if main_map.active_pause != null and main_map.active_pause.has_pending_at(row, col):
+        return
+
+    var res_id := str(MapHelpers.get_effective_resource(tile))
+    var imp_id := str(GameData.raw_resources.get(res_id, {}).get("improved_by", ""))
+    var imp_data: Dictionary = GameData.improvements.get(imp_id, {})
+    var imp_name := str(imp_data.get("name", imp_id))
+    var fee := int(main_map.get_outpost_fee(row, col))
+    var action := {
+        "type": "build_improvement",
+        "label": tr("Build %s") % imp_name,
+        "enabled": true,
+        "tooltip": tr("Build %s (outpost outside the Region)") % imp_name,
+        "imp_id": imp_id,
+        "target_res_id": tile.resource,
+        "icon": str(imp_data.get("icon", "")),
+    }
+
+    if not main_map.is_emporia_researched():
+        action["enabled"] = false
+        action["tooltip"] = tr("%s outside the Region — requires technology: %s") % [
+                imp_name, main_map.get_emporia_tech_name()]
+        var emporia_chain: Array = CityData.get_tech_study_chain(EMPORIA_TECH_ID)
+        if not emporia_chain.is_empty() \
+                and CityData.get_tech_hops(EMPORIA_TECH_ID) <= CityData.TECH_HOPS_MAX:
+            actions.append(_make_research_action(str(emporia_chain[0]), tr("outposts outside the Region")))
+        actions.append(action)
+        return
+
+    var unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
+    if not CityData.is_improvement_unlocked(imp_id):
+        action["enabled"] = false
+        action["tooltip"] = tr("%s — requires technology: %s") % [imp_name, _get_tech_name(str(unlock_tech))]
+        var chain: Array = CityData.get_tech_study_chain(str(unlock_tech))
+        if not chain.is_empty():
+            actions.append(_make_research_action(str(chain[0]), imp_name))
+        actions.append(action)
+        return
+
+    # A road is a part of the construction, not an option: when neither a route exists nor a
+    # new one can be planned, the outpost would be built for nothing.
+    var road_bd: Dictionary = main_map.get_road_cost_breakdown_for_improvement(
+            row, col, GameData.get_max_unlocked_road_level())
+    if not bool(road_bd.get("ok", false)) and not main_map.has_road_route(row, col):
+        action["enabled"] = false
+        action["tooltip"] = tr("%s — no land route to the city") % imp_name
+    elif not CityData.ignore_build_requirements \
+            and build_manager.get_total_active_builds() >= CityData.total_population:
+        action["enabled"] = false
+        action["tooltip"] = tr("No work available: construction limit (number of citizens) reached")
+    elif CityData.treasury < fee:
+        action["enabled"] = false
+        action["tooltip"] = tr("%s — the outpost fee needs %d coins from the treasury") % [imp_name, fee]
+    actions.append(action)
+
+# The actions on a hex with an already built improvement. The same set applies both
+# inside the Influence Ring and to an outpost outside the Region: once the building
+# stands, it is operated by one and the same rules (a worker, a road, demolition).
+func _append_improvement_actions(actions: Array, row: int, col: int, tile: Dictionary) -> void:
+    var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)
+    # The infrastructure improvements (no_worker, for example a harbor) work
+    # without a worker — we do not show the start/pause buttons for them at all.
+    if not GameData.is_no_worker_improvement(tile.improvement):
+        var has_worker = worker_manager.has_worker(row, col)
+        if has_worker:
+            actions.append({
+                "type": "pause_improvement",
+                "label": tr("Pause operation (%s)") % imp_name,
+                "enabled": true,
+                "tooltip": tr("Remove the worker from the improvement"),
+                "icon": "building_pause.png"
+            })
+        else:
+            actions.append({
+                "type": "resume_improvement",
+                "label": tr("Start operation (%s)") % imp_name,
+                "enabled": CityData.idle_population > 0,
+                "tooltip": tr("Assign a worker to the improvement") if CityData.idle_population > 0 else tr("No free workers"),
+                "icon": "building_resume.png"
+            })
+
+    # The special actions applicable to the hex with an improvement (for example, the demolition).
+    _add_special_actions(actions, row, col, tile)
+
+    # The improvement of the road to this hex. A road can be improved on ANY hex with a route
+    # to the city, not only on the hexes with an improvement. See _append_upgrade_road_action.
+    _append_upgrade_road_action(actions, row, col)
+
+    # The interruption of a build and/or a project. A road to a hex with an improvement can be
+    # built (the "Build a road" action is offered when the improvement is not no_road), so the
+    # started project must be interruptable right here.
+    _append_cancel_actions(actions, row, col)
 
 func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
     for sa_id in GameData.special_actions:
@@ -1639,6 +1732,18 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             road_steps_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
             road_steps_hint.add_theme_color_override("font_color", UI_THEME.color("info").lightened(0.35))
             _preview_container.add_child(road_steps_hint)
+
+    # The fee of an outpost is paid in COINS, and not in labour, therefore it does not enter
+    # "Total" — the sums above are measured in work. Like the seed herd of a breeding it is
+    # written off at the start of the construction and returned by its cancellation.
+    if type == "build_improvement" and main_map.is_outpost_build_target(row, col):
+        var fee_label := Label.new()
+        fee_label.text = tr(" Outpost fee: %d coins from the treasury") % int(main_map.get_outpost_fee(row, col)) \
+                if not CityData.ignore_build_requirements \
+                else tr(" Outpost fee: free (debug)")
+        fee_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        fee_label.add_theme_color_override("font_color", UI_THEME.color("warning").lightened(0.2))
+        _preview_container.add_child(fee_label)
 
     # The details of the cost (it moved here from the extended tooltip).
     var base_label = Label.new()

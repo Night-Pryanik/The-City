@@ -59,6 +59,8 @@ const ROAD_MERGE_MIN_DOT = 0.5
 const MARKER_ICON_RADIUS = 6.0
 # The colour of the markers on the hex (the drop of water and the trade icon).
 const MARKER_ICON_COLOR = Color(0.45, 0.8, 1.0)
+# The marker of an outpost — an improvement outside the Region (the technology "Emporia").
+const OUTPOST_FLAG_ICON = "outpost_flag.svg"
 
 # The row/col deltas of the odd-r neighbours (the same grid as HexUtils.get_neighbors_odd_r),
 # inlined so that the fog test of a river point does not allocate a dictionary per neighbour.
@@ -222,6 +224,9 @@ func load_icons():
             for icon_name in c.icons:
                 _cache_icon(icon_name)
     _cache_icon("city.png")
+    # The marker of an outpost is not referenced by any data file: the hex carries an ordinary
+    # improvement, and the flag is drawn by the renderer alone.
+    _cache_icon(OUTPOST_FLAG_ICON)
     # The key "city" is needed by the renderer of the towns (town_manager.TOWN_ICON_NAME),
     # in order to get the same texture by the "full" name of the file.
     if icon_textures.has("city.png"):
@@ -883,7 +888,10 @@ func _draw_hex_overlays(row: int, col: int):
     if eff_res != "" and is_resource_visible and tile.improvement != null:
         _draw_quality_stars(tile, center)
 
-    if in_influence and tile.improvement != null:
+    # An improvement is drawn inside the Influence Ring and on an outpost hex outside the
+    # Region (the technology "Emporia") — the building itself looks the same, its flag below
+    # tells them apart.
+    if tile.improvement != null and (in_influence or _is_outpost_hex(row, col)):
         var has_worker = main_map.worker_manager.has_worker(row, col)
         var imp_data = GameData.improvements.get(tile.improvement, {})
         var imp_icon = imp_data.get("icon", "")
@@ -967,12 +975,18 @@ func _draw_hex_overlays(row: int, col: int):
                     closed_points.append(drop_points[0])
                     draw_polyline(closed_points, Color(0.5, 0.7, 0.95, 0.9), 1.5)
 
-        # The road to the city cannot carry everything the improvement produces, so the
-        # surplus queues on the route and arrives later. The warning sits next to the
-        # droplet (or where it would be), so the player reads the two marks together.
-        # The flag is set by main_map during the production tick.
-        if bool(tile.get("road_capacity_short", false)):
+        # The road to the city cannot carry everything the improvement produces, or there is
+        # no road at all, so the goods do not reach the city. The same triangle in both
+        # cases: one meaning. The flags are set by main_map during the production tick.
+        if bool(tile.get("road_capacity_short", false)) \
+                or bool(tile.get("road_missing", false)):
             _draw_road_capacity_warning(icon_pos, imp_icon_size)
+
+        # The flag of an outpost: an improvement of the city on foreign land. It stands in the
+        # upper LEFT corner of the hex — the upper right one is occupied by the warning
+        # triangle of a tech_reveal conflict.
+        if _is_outpost_hex(row, col):
+            _draw_outpost_flag(center)
 
     # --- The icon of the town ---
     # It is drawn AFTER all the other overlays (the resource/the improvement/the drop of water),
@@ -1146,7 +1160,9 @@ func _draw_tech_reveal_warning(center: Vector2):
 
 # A small "!" triangle over an improvement whose road cannot carry everything it produces:
 # the surplus queues on the route and arrives later. It is placed to the right of the
-# droplet (or of where the droplet would be), so the two marks are read together.
+# droplet (or of where the droplet would be), so the two marks are read together. The same
+# triangle marks an improvement with no road at all — in both cases the goods do not reach
+# the city.
 func _draw_road_capacity_warning(icon_pos: Vector2, imp_icon_size: float) -> void:
     var drop_offset := Vector2(imp_icon_size * 0.5 + 6, 0)
     if imp_icon_size > IMPROVEMENT_ICON_SIZE:
@@ -1179,6 +1195,26 @@ func _draw_warning_triangle(pos: Vector2, tri_size: float) -> void:
     var text_size = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
     var text_pos = Vector2(pos.x - text_size.x / 2.0, pos.y + text_size.y / 2.0 - 1)
     draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
+
+# An improvement outside the Region — an outpost of the city (the technology "Emporia").
+# The status is derived from the tile by main_map, so that the renderer, the tooltip and the
+# panel do not decide it three times in their own way.
+func _is_outpost_hex(row: int, col: int) -> bool:
+    if main_map == null or not main_map.has_method("is_outpost_improvement"):
+        return false
+    return main_map.is_outpost_improvement(row, col)
+
+# The flag of an outpost, in the upper left corner of the hex — the upper right one is
+# occupied by the warning triangle of a tech_reveal conflict. The marker is of the same class
+# as the drop of water and the trade badge, but it is an icon and not a procedural drawing:
+# the same flag stands in the list of the effects of the technology that opens outposts.
+func _draw_outpost_flag(center: Vector2) -> void:
+    if not icon_textures.has(OUTPOST_FLAG_ICON):
+        return
+    var size := MARKER_ICON_RADIUS * 2.6
+    var pos := center + Vector2(-main_map.HEX_RADIUS * 0.55, -main_map.HEX_RADIUS * 0.55)
+    draw_texture_rect(icon_textures[OUTPOST_FLAG_ICON],
+            Rect2(pos.x - size / 2.0, pos.y - size / 2.0, size, size), false)
 
 # Returns the style of the highlighting of the chunk - {"fill": Color, "border": Color,
 # "width": float} - by the four types of the chunks. Two axes of the encoding:

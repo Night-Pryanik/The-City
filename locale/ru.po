@@ -93,6 +93,9 @@ msgstr " (группа)"
 msgid " (idle)"
 msgstr " (простаивает)"
 
+msgid " (inactive: no road to the city)"
+msgstr " (неактивно: нет дороги до города)"
+
 msgid " (inactive: no worker)"
 msgstr " (неактивно: нет рабочего)"
 
@@ -110,6 +113,9 @@ msgstr " (не работает)"
 
 msgid " (only across scouted territory)"
 msgstr " (только по разведанной территории)"
+
+msgid " (outpost outside the Region)"
+msgstr " (фактория вне Региона)"
 
 msgid " (replaced: %s)"
 msgstr " (заменён: %s)"
@@ -161,6 +167,12 @@ msgstr " Расстояние до города: от %d до %d гекс(а)"
 
 msgid " New route sections: %d"
 msgstr " Новых участков трассы: %d"
+
+msgid " Outpost fee: %d coins from the treasury"
+msgstr " Плата за факторию: %d монет из казны"
+
+msgid " Outpost fee: free (debug)"
+msgstr " Плата за факторию: бесплатно (дебаг)"
 
 msgid " Per section: %d to %d work"
 msgstr " За участок: от %d до %d труда"
@@ -336,8 +348,14 @@ msgstr "%s одомашнены — %d голов теперь в хранили
 msgid "%s is under development"
 msgstr "«%s» — в разработке"
 
+msgid "%s outside the Region — requires technology: %s"
+msgstr "%s вне Региона — нужна технология: %s"
+
 msgid "%s with the identifier \"%s\" does not exist."
 msgstr "%s с идентификатором «%s» не существует."
+
+msgid "%s — no land route to the city"
+msgstr "%s — от города нет сухопутного пути"
 
 msgid "%s — no work available: construction limit (number of citizens) reached"
 msgstr "%s — нет труда: лимит строек (число жителей) исчерпан"
@@ -347,6 +365,9 @@ msgstr "%s — нужна Пристань на берегу этого водо
 
 msgid "%s — requires technology: %s"
 msgstr "%s — нужна технология: %s"
+
+msgid "%s — the outpost fee needs %d coins from the treasury"
+msgstr "%s — плата за факторию требует %d монет из казны"
 
 msgid "%s%s/sec"
 msgstr "%s%s/сек"
@@ -455,6 +476,9 @@ msgstr "Ссылка на %s присутствует в %s %s, поле %s."
 
 msgid "A road to the hex already exists"
 msgstr "К гексу уже проложена дорога"
+
+msgid "A road to this hex is already under construction"
+msgstr "Дорога до этого гекса уже строится"
 
 msgid "A technology is being researched"
 msgstr "Изучается технология"
@@ -585,6 +609,9 @@ msgstr "Построить"
 msgid "Build %s"
 msgstr "Построить %s"
 
+msgid "Build %s (outpost outside the Region)"
+msgstr "Построить %s (фактория вне Региона)"
+
 msgid "Build %s for breeding"
 msgstr "Построить %s для разведения"
 
@@ -710,6 +737,9 @@ msgstr "Дорогу построить нельзя"
 
 msgid "Cannot build a road here: %s"
 msgstr "Дорогу сюда построить нельзя: %s"
+
+msgid "Cannot build an outpost: %s"
+msgstr "Факторию построить нельзя: %s"
 
 msgid "Cannot build in the mountains"
 msgstr "Нельзя строить в горах"
@@ -1551,6 +1581,9 @@ msgstr "В группе продуктов несуществующий прод
 msgid "Not enough coins for the contract: %d per second."
 msgstr "Недостаточно монет для контракта: %d в секунду."
 
+msgid "Not enough coins for the outpost fee: %d needed"
+msgstr "Недостаточно монет на плату за факторию: нужно %d"
+
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
 msgstr "Недостаточно монет в казне! Нужно %d, в казне %d"
 
@@ -1607,6 +1640,12 @@ msgstr "Перейти в интерфейс городка «%s»"
 
 msgid "Open town"
 msgstr "Открыть городок"
+
+msgid "Outposts"
+msgstr "Фактории"
+
+msgid "Outside the Region this resource can only be improved with %s"
+msgstr "Вне Региона для этого ресурса подходит только %s"
 
 msgid "Overwrite the save"
 msgstr "Перезаписать сохранение"
@@ -1811,6 +1850,9 @@ msgstr "Не выполнены требования: "
 
 msgid "Requires the \"Canals\" technology"
 msgstr "Нужна технология «Каналы»"
+
+msgid "Requires the %s technology to build outside the Region"
+msgstr "Для постройки вне Региона нужна технология «%s»"
 
 msgid "Requires: %s"
 msgstr "Требует: %s"
@@ -2609,6 +2651,9 @@ msgstr "нет"
 
 msgid "not working"
 msgstr "не работает"
+
+msgid "outposts outside the Region"
+msgstr "факторий вне Региона"
 
 msgid "position %d: \"%s\" (U+%04X"
 msgstr "позиция %d: «%s» (U+%04X"
@@ -5559,6 +5604,10 @@ msgid "Allows you to build forest plots (logging) and the carpenter's workshop (
 msgstr "Даёт возможность строить лесную делянку (добыча древесины) и плотницкую мастерскую (древесина → доски)."
 
 msgctxt "technologies.description"
+msgid "Allows you to build improvements on explored resource hexes outside the Region. Such an outpost needs a road to the city and costs coins on top of labour; the further from the city, the more expensive."
+msgstr "Позволяет строить улучшения на разведанных гексах с ресурсами вне Региона.\nТакая фактория требует дороги до города и стоит монет в дополнение к труду; чем дальше от города, тем дороже."
+
+msgctxt "technologies.description"
 msgid "Allows you to build libraries."
 msgstr "Дает возможность строить библиотеки."
 
@@ -5721,6 +5770,10 @@ msgstr "Плуг, запряжённый волами, позволил обра
 msgctxt "technologies.flavor"
 msgid "A protoscience of attempts to turn base metals into gold."
 msgstr "Протонаука о попытках превращения неблагородных металлов в золото."
+
+msgctxt "technologies.flavor"
+msgid "An emporion was neither a colony nor a city: a foothold on a foreign shore where the road met the sea and goods changed hands."
+msgstr "Эмпорий не был ни колонией, ни городом: плацдарм на чужом берегу, где дорога встречалась с морем и товары переходили из рук в руки."
 
 msgctxt "technologies.flavor"
 msgid "Ancient civilizations could count, but only now has knowledge moved from simple recipes to strict proofs. Geometry and abstract calculation let people not just watch the world but compute it: from the shape of a wheel's teeth to the motion of the stars."
@@ -5947,6 +6000,10 @@ msgid "Dyeing"
 msgstr "Красильное дело"
 
 msgctxt "technologies.name"
+msgid "Emporia"
+msgstr "Эмпории"
+
+msgctxt "technologies.name"
 msgid "Farming"
 msgstr "Растениеводство"
 
@@ -6089,6 +6146,10 @@ msgstr "Письменность"
 msgctxt "technologies.unlock_effects.name"
 msgid "Allows scouts to explore areas in the fog of war."
 msgstr "Даёт возможность разведчикам исследовать области в тумане войны."
+
+msgctxt "technologies.unlock_effects.name"
+msgid "Allows you to build improvements on explored resource hexes outside the Region."
+msgstr "Позволяет строить улучшения на разведанных гексах с ресурсами вне Региона."
 
 msgctxt "technologies.unlock_effects.name"
 msgid "Unlocks the ability to find and gather native metals."

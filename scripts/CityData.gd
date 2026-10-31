@@ -2380,8 +2380,9 @@ func _has_improvement(improvement_id: String) -> bool:
     var main_map = get_tree().root.find_child("MainMap", true, false)
     if not main_map:
         return false
-    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
-        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
+    # The whole map: an outpost outside the Region is the same improvement of the city.
+    for row in range(main_map.map_rows):
+        for col in range(main_map.map_cols):
             var tile = main_map.get_tile_data(row, col)
             if tile and tile.get("improvement") == improvement_id:
                 return true

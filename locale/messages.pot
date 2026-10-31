@@ -93,6 +93,9 @@ msgstr ""
 msgid " (idle)"
 msgstr ""
 
+msgid " (inactive: no road to the city)"
+msgstr ""
+
 msgid " (inactive: no worker)"
 msgstr ""
 
@@ -109,6 +112,9 @@ msgid " (not working)"
 msgstr ""
 
 msgid " (only across scouted territory)"
+msgstr ""
+
+msgid " (outpost outside the Region)"
 msgstr ""
 
 msgid " (replaced: %s)"
@@ -160,6 +166,12 @@ msgid " Distance to city: %d to %d hex(es)"
 msgstr ""
 
 msgid " New route sections: %d"
+msgstr ""
+
+msgid " Outpost fee: %d coins from the treasury"
+msgstr ""
+
+msgid " Outpost fee: free (debug)"
 msgstr ""
 
 msgid " Per section: %d to %d work"
@@ -336,7 +348,13 @@ msgstr ""
 msgid "%s is under development"
 msgstr ""
 
+msgid "%s outside the Region — requires technology: %s"
+msgstr ""
+
 msgid "%s with the identifier \"%s\" does not exist."
+msgstr ""
+
+msgid "%s — no land route to the city"
 msgstr ""
 
 msgid "%s — no work available: construction limit (number of citizens) reached"
@@ -346,6 +364,9 @@ msgid "%s — requires a Dock on the shore of this water body"
 msgstr ""
 
 msgid "%s — requires technology: %s"
+msgstr ""
+
+msgid "%s — the outpost fee needs %d coins from the treasury"
 msgstr ""
 
 msgid "%s%s/sec"
@@ -454,6 +475,9 @@ msgid "A reference to %s is present in %s %s, field %s."
 msgstr ""
 
 msgid "A road to the hex already exists"
+msgstr ""
+
+msgid "A road to this hex is already under construction"
 msgstr ""
 
 msgid "A technology is being researched"
@@ -585,6 +609,9 @@ msgstr ""
 msgid "Build %s"
 msgstr ""
 
+msgid "Build %s (outpost outside the Region)"
+msgstr ""
+
 msgid "Build %s for breeding"
 msgstr ""
 
@@ -709,6 +736,9 @@ msgid "Cannot build a road"
 msgstr ""
 
 msgid "Cannot build a road here: %s"
+msgstr ""
+
+msgid "Cannot build an outpost: %s"
 msgstr ""
 
 msgid "Cannot build in the mountains"
@@ -1551,6 +1581,9 @@ msgstr ""
 msgid "Not enough coins for the contract: %d per second."
 msgstr ""
 
+msgid "Not enough coins for the outpost fee: %d needed"
+msgstr ""
+
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
 msgstr ""
 
@@ -1606,6 +1639,12 @@ msgid "Open the town interface \"%s\""
 msgstr ""
 
 msgid "Open town"
+msgstr ""
+
+msgid "Outposts"
+msgstr ""
+
+msgid "Outside the Region this resource can only be improved with %s"
 msgstr ""
 
 msgid "Overwrite the save"
@@ -1810,6 +1849,9 @@ msgid "Requirements not met: "
 msgstr ""
 
 msgid "Requires the \"Canals\" technology"
+msgstr ""
+
+msgid "Requires the %s technology to build outside the Region"
 msgstr ""
 
 msgid "Requires: %s"
@@ -2608,6 +2650,9 @@ msgid "none"
 msgstr ""
 
 msgid "not working"
+msgstr ""
+
+msgid "outposts outside the Region"
 msgstr ""
 
 msgid "position %d: \"%s\" (U+%04X"
@@ -5559,6 +5604,10 @@ msgid "Allows you to build forest plots (logging) and the carpenter's workshop (
 msgstr ""
 
 msgctxt "technologies.description"
+msgid "Allows you to build improvements on explored resource hexes outside the Region. Such an outpost needs a road to the city and costs coins on top of labour; the further from the city, the more expensive."
+msgstr ""
+
+msgctxt "technologies.description"
 msgid "Allows you to build libraries."
 msgstr ""
 
@@ -5720,6 +5769,10 @@ msgstr ""
 
 msgctxt "technologies.flavor"
 msgid "A protoscience of attempts to turn base metals into gold."
+msgstr ""
+
+msgctxt "technologies.flavor"
+msgid "An emporion was neither a colony nor a city: a foothold on a foreign shore where the road met the sea and goods changed hands."
 msgstr ""
 
 msgctxt "technologies.flavor"
@@ -5947,6 +6000,10 @@ msgid "Dyeing"
 msgstr ""
 
 msgctxt "technologies.name"
+msgid "Emporia"
+msgstr ""
+
+msgctxt "technologies.name"
 msgid "Farming"
 msgstr ""
 
@@ -6088,6 +6145,10 @@ msgstr ""
 
 msgctxt "technologies.unlock_effects.name"
 msgid "Allows scouts to explore areas in the fog of war."
+msgstr ""
+
+msgctxt "technologies.unlock_effects.name"
+msgid "Allows you to build improvements on explored resource hexes outside the Region."
 msgstr ""
 
 msgctxt "technologies.unlock_effects.name"

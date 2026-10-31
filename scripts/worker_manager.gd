@@ -33,8 +33,10 @@ func find_vacancy() -> Dictionary:
     var tile_data = main_map.tile_data
 
     var candidates = []
-    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
-        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
+    # The whole map, and not only the Region: an outpost (an improvement outside the Region,
+    # see the technology "Emporia") is staffed by the same free residents.
+    for row in range(main_map.map_rows):
+        for col in range(main_map.map_cols):
             var tile = tile_data[row][col]
             if tile == null:
                 continue

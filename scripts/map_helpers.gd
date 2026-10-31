@@ -62,6 +62,28 @@ static func get_distance_tech_mult() -> float:
 static func get_distance_mult(distance: int) -> float:
     return 1.0 + float(distance) * get_distance_cost_modifier()
 
+## The one-time fee in coins for building an outpost on the hex (row, col): a base
+## sum plus a per-hex distance charge. It is paid on top of the labour when the
+## construction starts (build_manager) and returned if the construction is
+## cancelled. The constants live in data/game_balance.json ("outpost_fee_base",
+## "outpost_fee_per_hex").
+static func get_outpost_fee(row: int, col: int, city_row: int, city_col: int) -> int:
+    var base := int(GameData.game_balance.get("outpost_fee_base", 10))
+    var per_hex := float(GameData.game_balance.get("outpost_fee_per_hex", 2.0))
+    var distance := HexUtils.hex_distance(row, col, city_row, city_col)
+    return base + int(ceil(float(distance) * per_hex))
+
+## Whether a built improvement works only while a road connects it to the city.
+## Infrastructure improvements (no_worker) and the ones deliberately left without a
+## road (no_road, for example fishing boats or irrigation canals) are exempt: they
+## either produce nothing or are not served by land transport.
+static func improvement_needs_road(imp_id: String) -> bool:
+    if imp_id.is_empty() or not GameData.improvements.has(imp_id):
+        return false
+    if bool(GameData.improvements[imp_id].get("no_road", false)):
+        return false
+    return not GameData.is_no_worker_improvement(imp_id)
+
 ## Returns the actual labour cost of building the improvement imp_id on the hex
 ## (row, col). The cost depends on the base work_cost of the improvement, on the
 ## type of the terrain (move_cost) and on the distance from the city. Returns a
