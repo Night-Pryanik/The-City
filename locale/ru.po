@@ -333,6 +333,9 @@ msgstr "У %s нет такого количества."
 msgid "%s is domesticated — %d heads of livestock are in the storage"
 msgstr "%s одомашнены — %d голов теперь в хранилище"
 
+msgid "%s is under development"
+msgstr "«%s» — в разработке"
+
 msgid "%s with the identifier \"%s\" does not exist."
 msgstr "%s с идентификатором «%s» не существует."
 
@@ -1056,6 +1059,12 @@ msgstr "Края с морем"
 msgid "Edit the contract"
 msgstr "Изменить контракт"
 
+msgid "Encyclopedia"
+msgstr "Энциклопедия"
+
+msgid "Era challenges"
+msgstr "Вызовы эпохи"
+
 msgid "Era: %s"
 msgstr "Эпоха: %s"
 
@@ -1763,6 +1772,9 @@ msgstr "Убрать «%s» из очереди. Действие ещё не н
 
 msgid "Remove the worker from the improvement"
 msgstr "Снять рабочего с улучшения"
+
+msgid "Reputation and specialization"
+msgstr "Репутация и специализация"
 
 msgid "Requirement:"
 msgstr "Условие:"

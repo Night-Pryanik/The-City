@@ -333,6 +333,9 @@ msgstr ""
 msgid "%s is domesticated — %d heads of livestock are in the storage"
 msgstr ""
 
+msgid "%s is under development"
+msgstr ""
+
 msgid "%s with the identifier \"%s\" does not exist."
 msgstr ""
 
@@ -1056,6 +1059,12 @@ msgstr ""
 msgid "Edit the contract"
 msgstr ""
 
+msgid "Encyclopedia"
+msgstr ""
+
+msgid "Era challenges"
+msgstr ""
+
 msgid "Era: %s"
 msgstr ""
 
@@ -1762,6 +1771,9 @@ msgid "Remove \"%s\" from the queue. It has not started yet and nothing has been
 msgstr ""
 
 msgid "Remove the worker from the improvement"
+msgstr ""
+
+msgid "Reputation and specialization"
 msgstr ""
 
 msgid "Requirement:"

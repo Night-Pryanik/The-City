@@ -16,6 +16,11 @@ const UiHelpers = preload("res://scripts/ui_helpers.gd")
 @onready var buildings_tab_button = $TabBarPanel/TabBar/BuildingsTabButton
 @onready var trade_tab_button = $TabBarPanel/TabBar/TradeTabButton
 @onready var technologies_tab_button = $TabBarPanel/TabBar/TechnologiesTabButton
+# The section buttons next to the tabs. The sections are not implemented yet, therefore a
+# click only reports that in the bottom strip; the buttons share the look of the tab bar.
+@onready var era_challenges_button = $TabBarPanel/TabBar/EraChallengesButton
+@onready var reputation_specialization_button = $TabBarPanel/TabBar/ReputationSpecializationButton
+@onready var encyclopedia_button = $TabBarPanel/TabBar/EncyclopediaButton
 @onready var close_button_top = $CloseButtonTop
 
 # The top bar
@@ -47,6 +52,7 @@ var _displayed_treasury: int = 0
 
 var active_tab = "resources"
 var tab_buttons = []
+var stub_buttons = []
 
 var ui_helpers: Node
 var worker_manager: Node # it is passed from main_map (see set_worker_manager)
@@ -197,6 +203,10 @@ func _ready():
     for btn in [resources_tab_button, buildings_tab_button, trade_tab_button, technologies_tab_button]:
         if not btn.pressed.is_connected(_on_tab_button_pressed):
             btn.pressed.connect(_on_tab_button_pressed.bind(btn))
+    stub_buttons = [era_challenges_button, reputation_specialization_button, encyclopedia_button]
+    for btn in stub_buttons:
+        if not btn.pressed.is_connected(_on_stub_button_pressed):
+            btn.pressed.connect(_on_stub_button_pressed.bind(btn))
     if not close_button_top.pressed.is_connected(_on_close_pressed):
         close_button_top.pressed.connect(_on_close_pressed)
 
@@ -458,6 +468,14 @@ func _on_town_focus_requested(row: int, col: int):
 func _highlight_active_tab_button():
     for tab in tab_buttons:
         UiHelpers.highlight_toggle_button(tab["button"], tab["id"] == active_tab)
+    # The section buttons never become active: they keep the inactive look of the group, and
+    # this pass repaints them together with the tabs when a palette is applied.
+    for btn in stub_buttons:
+        UiHelpers.highlight_toggle_button(btn, false)
+
+func _on_stub_button_pressed(btn: Button):
+    if ui_helpers:
+        ui_helpers.set_message(tr("%s is under development") % tr(btn.tooltip_text))
 
 func _update_food_label():
     var pool = resources_tab.get_food_pool()
@@ -840,7 +858,10 @@ func _setup_tab_bar_icons() -> void:
         resources_tab_button: "res://icons/resources/products/bread.png",
         buildings_tab_button: "res://icons/buildings/market.png",
         trade_tab_button: "res://icons/resources/products/pottery.png",
-        technologies_tab_button: "res://icons/tech/wheel.png"
+        technologies_tab_button: "res://icons/tech/wheel.png",
+        era_challenges_button: "res://icons/era_challenges.svg",
+        reputation_specialization_button: "res://icons/reputation_specialization.svg",
+        encyclopedia_button: "res://icons/encyclopedia.svg"
     }
     for btn in icons:
         if btn == null:
@@ -868,6 +889,11 @@ func _layout_ui() -> void:
     var tab_bar = $TabBarPanel/TabBar
     if tab_bar:
         tab_bar.position = Vector2(8, 8)
+        # The top row of the values follows the actual width of the buttons, so a change of
+        # their number does not leave a gap or an overlap.
+        var top_food = $TabBarPanel/TopFoodLabel
+        if top_food:
+            top_food.offset_left = tab_bar.position.x + tab_bar.get_combined_minimum_size().x + 16.0
 
     # The bottom panel of messages — over the whole width of the window.
     $BottomPanel.offset_left = 0

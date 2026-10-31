@@ -71,10 +71,25 @@ custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
 tooltip_text = "Technologies"
 
+[node name="EraChallengesButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1900000401]
+custom_minimum_size = Vector2(36, 34)
+layout_mode = 2
+tooltip_text = "Era challenges"
+
+[node name="ReputationSpecializationButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1900000402]
+custom_minimum_size = Vector2(36, 34)
+layout_mode = 2
+tooltip_text = "Reputation and specialization"
+
+[node name="EncyclopediaButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1900000403]
+custom_minimum_size = Vector2(36, 34)
+layout_mode = 2
+tooltip_text = "Encyclopedia"
+
 [node name="TopFoodLabel" type="HBoxContainer" parent="TabBarPanel" unique_id=1528058809]
 layout_mode = 1
 anchor_right = 1.0
-offset_left = 190.0
+offset_left = 300.0
 offset_top = 8.0
 offset_right = -60.0
 offset_bottom = 42.0
