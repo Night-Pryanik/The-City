@@ -40,6 +40,19 @@ const ROAD_RUN_WAVE = 0.15      # the lateral wave of a run, in hex radii
 const ROAD_TURN_RADIUS = 1.0    # the radius limit of a rounded turn, in hex radii
 const ROAD_TURN_TRIM = 0.46     # the share of the shorter neighbouring run trimmed by a turn
 const ROAD_SAMPLE_STEP = 24.0   # the distance between the samples of a run, px
+const ROAD_SAMPLE_ANGLE = 12.0  # the turn between the samples of a curve, degrees
+# At a junction the roads are continued into each other, the most opposite pair first. A pair
+# whose directions are closer than this is not joined: two roads leaving the same hex almost
+# in one direction have no turn between them, only a hairpin.
+const ROAD_JUNCTION_MAX_DOT = 0.5
+# A road that has no continuation through a junction is blended into the road it meets: the
+# blend takes this share of the last run and leans towards the other road by this share of it.
+const ROAD_MERGE_SHARE = 0.4
+const ROAD_MERGE_STRENGTH = 0.55
+# A road meeting the through road of a junction at a wider angle than this is not blended into
+# it: such a merge would have to turn almost in place and reads as a squiggle. It ends at the
+# junction centre, which the through road passes through, so the roads meet as a plain T.
+const ROAD_MERGE_MIN_DOT = 0.5
 # The radius of the icon markers drawn on top of the hex: a drop of fresh water by
 # an improvement and a trade icon over a connected town. It is set by ONE
 # constant, so that both markers are guaranteed to be of the same size.
@@ -1268,6 +1281,11 @@ func is_resource_locked(resource_id: String) -> bool:
     return _is_resource_locked(resource_id)
 
 # --- The "ghost" road: the unbuilt route from the preview ---
+# The hexes where the drawn networks branch, collected over all of them at once. The roads
+# belonging to the different networks, levels and plans meet there, so their guide points are
+# kept exactly at the hex centre instead of being wandered aside.
+var _road_junction_hexes: Dictionary = {}
+
 # The control panel puts the NEW segments of the plan here (road_manager
 # .get_plan_new_segments) for as long as the preview of the special action
 # "Build a road" is open, and removes them as soon as the preview is closed. This is a hint,
@@ -1341,6 +1359,9 @@ func _draw_all_roads():
 
     var city_segments: Dictionary = road_manager.get_all_road_segments()
     var link_segments: Dictionary = road_manager.get_all_town_link_segments()
+    var town_segments: Dictionary = road_manager.get_all_town_road_segments()
+    _road_junction_hexes = _collect_road_junction_hexes(city_segments, town_segments,
+            link_segments)
 
     # PHASE 2a: the roads of the CITY of the player. They have no visibility gates and never had:
     # they always lie on their own claimed territory, where there is no fog of war
@@ -1366,7 +1387,7 @@ func _draw_all_roads():
     # (PHASE 2a/2c), and the town's trail must not be drawn over the highway.
     if are_town_roads_visible():
         var town_only: Dictionary = {}
-        for key in road_manager.get_all_town_road_segments().keys():
+        for key in town_segments.keys():
             if not city_segments.has(key):
                 town_only[key] = true
         _draw_road_segments(town_only, true)
@@ -1524,23 +1545,22 @@ func _draw_road_segments(segments: Dictionary, hide_in_fog: bool,
     for polyline in _road_chain_polylines(segments, hide_in_fog, main_map.HEX_RADIUS):
         draw_polyline(polyline, color, width, true)
 
-# The drawn polylines of a set of the segments: one per chain of the connected segments.
-# Chains are cut at the junctions and at the dead ends, where the roads of other levels,
-# networks and plans meet: those ends are drawn exactly at the hex centres, which is what
-# keeps the pieces joined.
+# The drawn polylines of a set of the segments: one per route, that is, per run of the segments
+# continued into each other. Within the set the routes are continued through the junctions: at a
+# hex where three or more segments meet the roads are paired and rounded through the centre, so
+# the branches curve into each other instead of running straight into the same point. A route
+# that has no continuation bends into the road it meets when it approaches it at a shallow angle
+# and ends at the hex centre otherwise, which is what keeps the pieces of the different levels,
+# networks and plans joined.
 func _road_chain_polylines(segments: Dictionary, hide_in_fog: bool, radius: float) -> Array:
     var kept: Array = []
     var links: Dictionary = {}
     for segment_key in segments.keys():
-        var parts := str(segment_key).split("|")
-        if parts.size() != 2:
+        var ends := _road_segment_ends(segment_key)
+        if ends.is_empty():
             continue
-        var start_parts := parts[0].split(",")
-        var end_parts := parts[1].split(",")
-        if start_parts.size() != 2 or end_parts.size() != 2:
-            continue
-        var a := Vector2i(int(start_parts[0]), int(start_parts[1]))
-        var b := Vector2i(int(end_parts[0]), int(end_parts[1]))
+        var a: Vector2i = ends[0]
+        var b: Vector2i = ends[1]
         if hide_in_fog and not is_town_road_segment_visible(a.x, a.y, b.x, b.y):
             continue
         # The culling of the segments outside the drawn area: they can never be seen,
@@ -1558,26 +1578,141 @@ func _road_chain_polylines(segments: Dictionary, hide_in_fog: bool, radius: floa
     if kept.is_empty():
         return []
 
+    var pairs := _road_junction_pairs(kept, links, radius)
+    var merges := _road_junction_tangents(kept, pairs, radius)
     var used: Dictionary = {}
     var chains: Array = []
     for hex in links.keys():
-        if links[hex].size() == 2:
-            continue
+        var at: Dictionary = pairs.get(hex, {})
         for index in links[hex]:
-            if not used.has(index):
-                chains.append(_walk_road_chain(kept, links, used, hex, int(index)))
+            if used.has(index) or at.has(index):
+                continue
+            chains.append(_walk_road_chain(kept, pairs, used, hex, int(index)))
     for index in range(kept.size()):
         # A ring of the roads without any junction: it is walked from an arbitrary segment
         # and closes on itself.
         if not used.has(index):
-            chains.append(_walk_road_chain(kept, links, used, kept[index][0], index))
+            chains.append(_walk_road_chain(kept, pairs, used, kept[index][0], index))
 
     var polylines: Array = []
     for chain in chains:
         if chain.size() < 2:
             continue
-        polylines.append(_road_chain_points(chain, radius))
+        polylines.append(_road_chain_points(chain, radius, merges))
     return polylines
+
+func _road_segment_ends(segment_key) -> Array:
+    var parts := str(segment_key).split("|")
+    if parts.size() != 2:
+        return []
+    var start_parts := parts[0].split(",")
+    var end_parts := parts[1].split(",")
+    if start_parts.size() != 2 or end_parts.size() != 2:
+        return []
+    return [Vector2i(int(start_parts[0]), int(start_parts[1])),
+            Vector2i(int(end_parts[0]), int(end_parts[1]))]
+
+# The continuations of the roads through the hexes of one set. At a hex with two segments the
+# road simply goes on. At a junction the segments are paired by their directions, the most
+# opposite pair first: the remaining segment of a junction of an odd degree has no continuation
+# and the route ends at the hex centre.
+func _road_junction_pairs(kept: Array, links: Dictionary, radius: float) -> Dictionary:
+    var pairs: Dictionary = {}
+    for hex in links.keys():
+        var incident: Array = links[hex]
+        if incident.size() == 2:
+            pairs[hex] = {int(incident[0]): int(incident[1]), int(incident[1]): int(incident[0])}
+            continue
+        if incident.size() < 3:
+            continue
+        var directions: Array = []
+        for index in incident:
+            var ends: Array = kept[int(index)]
+            var other: Vector2i = ends[1] if ends[0] == hex else ends[0]
+            directions.append((HexUtils.hex_center(other.x, other.y, radius)
+                    - HexUtils.hex_center(hex.x, hex.y, radius)).normalized())
+        var free: Array = range(incident.size())
+        var at: Dictionary = {}
+        while free.size() >= 2:
+            var best_i := 0
+            var best_j := 1
+            var best_dot := 2.0
+            for i in range(free.size()):
+                for j in range(i + 1, free.size()):
+                    var dot: float = directions[free[i]].dot(directions[free[j]])
+                    if dot < best_dot:
+                        best_dot = dot
+                        best_i = i
+                        best_j = j
+            if best_dot > ROAD_JUNCTION_MAX_DOT:
+                break
+            var first := int(incident[free[best_i]])
+            var second := int(incident[free[best_j]])
+            at[first] = second
+            at[second] = first
+            free.remove_at(maxi(best_i, best_j))
+            free.remove_at(mini(best_i, best_j))
+        if not at.is_empty():
+            pairs[hex] = at
+    return pairs
+
+# The directions of the through roads at the junctions: every paired road gives the direction of
+# its continuation, and the other roads of the junction blend into it.
+func _road_junction_tangents(kept: Array, pairs: Dictionary, radius: float) -> Dictionary:
+    var merges: Dictionary = {}
+    for hex in pairs.keys():
+        var at: Dictionary = pairs[hex]
+        var centre := HexUtils.hex_center(hex.x, hex.y, radius)
+        var tangents: Array = []
+        for index in at.keys():
+            var other := int(at[index])
+            if other < int(index):
+                continue
+            var ends_a: Array = kept[int(index)]
+            var a: Vector2i = ends_a[1] if ends_a[0] == hex else ends_a[0]
+            var ends_b: Array = kept[other]
+            var b: Vector2i = ends_b[1] if ends_b[0] == hex else ends_b[0]
+            tangents.append((HexUtils.hex_center(b.x, b.y, radius) - centre
+                    - (HexUtils.hex_center(a.x, a.y, radius) - centre)).normalized())
+        if not tangents.is_empty():
+            merges[hex] = tangents
+    return merges
+
+# The through direction of the junction at the given hex that the road approaching along
+# direction blends into best, or ZERO if the junction has no through road.
+func _road_merge_tangent(merges: Dictionary, hex: Vector2i, direction: Vector2) -> Vector2:
+    if not merges.has(hex):
+        return Vector2.ZERO
+    var best := Vector2.ZERO
+    var best_alignment := -1.0
+    for tangent in merges[hex]:
+        var alignment: float = absf(tangent.dot(direction))
+        if alignment > best_alignment:
+            best_alignment = alignment
+            best = tangent
+    return best if best.dot(direction) >= 0.0 else -best
+
+# The hexes where any of the drawn networks branches. The networks are looked at together,
+# because their roads meet at the junctions of each other.
+func _collect_road_junction_hexes(city_segments: Dictionary, town_segments: Dictionary,
+        link_segments: Dictionary) -> Dictionary:
+    var degree: Dictionary = {}
+    _count_road_hexes(degree, city_segments)
+    _count_road_hexes(degree, town_segments)
+    _count_road_hexes(degree, link_segments)
+    var junctions: Dictionary = {}
+    for hex in degree.keys():
+        if int(degree[hex]) >= 3:
+            junctions[hex] = true
+    return junctions
+
+func _count_road_hexes(degree: Dictionary, segments: Dictionary) -> void:
+    for segment_key in segments.keys():
+        var ends := _road_segment_ends(segment_key)
+        if ends.is_empty():
+            continue
+        for hex in ends:
+            degree[hex] = int(degree.get(hex, 0)) + 1
 
 func _road_segment_rect(a: Vector2i, b: Vector2i, radius: float) -> Rect2:
     var c1 := HexUtils.hex_center(a.x, a.y, radius)
@@ -1589,9 +1724,9 @@ func _road_segment_rect(a: Vector2i, b: Vector2i, radius: float) -> Rect2:
         abs(c2.y - c1.y) + radius * 2.0
     )
 
-# The hexes of one chain in the order of the walking. The walk breaks at a junction
-# or at a dead end, because a cell where three roads meet has no single turn to round.
-func _walk_road_chain(kept: Array, links: Dictionary, used: Dictionary,
+# The hexes of one route in the order of the walking. The walk goes through a hex along the
+# continuation of the road and stops where the road has no continuation.
+func _walk_road_chain(kept: Array, pairs: Dictionary, used: Dictionary,
         start: Vector2i, first: int) -> Array:
     var chain: Array = [start]
     var current := start
@@ -1601,27 +1736,28 @@ func _walk_road_chain(kept: Array, links: Dictionary, used: Dictionary,
         var ends: Array = kept[index]
         var next_hex: Vector2i = ends[1] if ends[0] == current else ends[0]
         chain.append(next_hex)
+        var at: Dictionary = pairs.get(next_hex, {})
+        var next_index := -1
+        if at.has(index):
+            next_index = int(at[index])
         current = next_hex
-        index = -1
-        if links[current].size() != 2:
-            break
-        for candidate in links[current]:
-            if not used.has(candidate):
-                index = int(candidate)
-                break
+        index = -1 if next_index < 0 or used.has(next_index) else next_index
     return chain
 
-# The polyline of one chain: the runs between the hex centres carry a slight lateral wave,
+# The polyline of one route: the runs between the hex centres carry a slight lateral wave,
 # the turns are rounded arcs, and the bend of every hex is shifted aside a little. The first
-# and the last point are the exact hex centres of the chain ends.
-func _road_chain_points(chain: Array, radius: float) -> PackedVector2Array:
+# and the last point are the exact hex centres of the route ends, and so is every junction:
+# the pieces of the other networks have to meet the road there. A route that ends at a junction
+# bends and joins the road it meets along that road, unless it arrives at a wide angle — then it
+# ends at the centre, and the junction reads as a plain T.
+func _road_chain_points(chain: Array, radius: float, merges: Dictionary) -> PackedVector2Array:
     var last := chain.size() - 1
     var guide := PackedVector2Array()
     guide.resize(chain.size())
     for i in range(chain.size()):
         var hex: Vector2i = chain[i]
         var point := HexUtils.hex_center(hex.x, hex.y, radius)
-        if i > 0 and i < last:
+        if i > 0 and i < last and not _road_junction_hexes.has(hex):
             var prev: Vector2i = chain[i - 1]
             var next_hex: Vector2i = chain[i + 1]
             var direction := (HexUtils.hex_center(next_hex.x, next_hex.y, radius)
@@ -1645,12 +1781,35 @@ func _road_chain_points(chain: Array, radius: float) -> PackedVector2Array:
             guide[i + 1] - direction * trims[i + 1],
         ])
 
+    var start_dir := (guide[1] - guide[0]).normalized()
+    var end_dir := (guide[last] - guide[last - 1]).normalized()
+    var start_tangent := _road_merge_tangent(merges, chain[0], start_dir)
+    var end_tangent := _road_merge_tangent(merges, chain[last], end_dir)
+    if absf(start_tangent.dot(start_dir)) < ROAD_MERGE_MIN_DOT:
+        start_tangent = Vector2.ZERO
+    if absf(end_tangent.dot(end_dir)) < ROAD_MERGE_MIN_DOT:
+        end_tangent = Vector2.ZERO
+    if start_tangent != Vector2.ZERO:
+        runs[0][0] = guide[0] + start_dir * minf(
+                guide[0].distance_to(guide[1]) * ROAD_MERGE_SHARE, radius * ROAD_TURN_RADIUS)
+    if end_tangent != Vector2.ZERO:
+        runs[runs.size() - 1][1] = guide[last] - end_dir * minf(
+                guide[last].distance_to(guide[last - 1]) * ROAD_MERGE_SHARE,
+                radius * ROAD_TURN_RADIUS)
+
     var points := PackedVector2Array()
+    if start_tangent != Vector2.ZERO:
+        _append_road_blend(points, guide[0], start_tangent, runs[0][0], start_dir)
     for i in range(runs.size()):
         _append_road_run(points, runs[i][0], runs[i][1], radius,
                 _road_span_shift(chain[i], chain[i + 1]))
         if i + 1 < runs.size():
-            _append_road_turn(points, runs[i][1], guide[i + 1], runs[i + 1][0])
+            if _road_junction_hexes.has(chain[i + 1]):
+                _append_road_join(points, runs[i][1], guide[i + 1], runs[i + 1][0])
+            else:
+                _append_road_turn(points, runs[i][1], guide[i + 1], runs[i + 1][0])
+    if end_tangent != Vector2.ZERO:
+        _append_road_blend(points, runs[runs.size() - 1][1], end_dir, guide[last], end_tangent)
     return points
 
 func _append_road_run(points: PackedVector2Array, from: Vector2, to: Vector2,
@@ -1660,22 +1819,77 @@ func _append_road_run(points: PackedVector2Array, from: Vector2, to: Vector2,
         return
     var direction := (to - from) / span
     var normal := Vector2(-direction.y, direction.x)
-    var amplitude := shift * radius * ROAD_RUN_WAVE
+    # A short run (the turns have eaten most of the span) must not bulge into a bubble.
+    var amplitude := shift * minf(radius * ROAD_RUN_WAVE, span * 0.25)
     var steps := maxi(1, int(ceil(span / ROAD_SAMPLE_STEP)))
     for step in range(steps + 1):
         var t := float(step) / float(steps)
-        var point := from.lerp(to, t) + normal * (sin(PI * t) * amplitude)
+        # The wave is squared so that its slope is zero at both ends: the run then continues
+        # into a turn or a blend without a kink.
+        var wave := sin(PI * t)
+        var point := from.lerp(to, t) + normal * (wave * wave * amplitude)
         if points.is_empty() or points[-1].distance_to(point) > 0.5:
             points.append(point)
 
-# The rounded turn through a hex centre: a quadratic curve from the end of the incoming run,
-# through the centre, to the start of the outgoing one.
+# The rounded turn at a hex: a quadratic curve from the end of the incoming run to the start of
+# the outgoing one, pulled towards the hex centre by the control point.
 func _append_road_turn(points: PackedVector2Array, from: Vector2, corner: Vector2,
         to: Vector2) -> void:
+    var turn := rad_to_deg(absf((corner - from).angle_to(to - corner)))
     var steps := maxi(2, int(ceil(from.distance_to(to) / ROAD_SAMPLE_STEP)))
+    steps = maxi(steps, int(ceil(turn / ROAD_SAMPLE_ANGLE)))
     for step in range(1, steps + 1):
         var t := float(step) / float(steps)
         var point := from.lerp(corner, t).lerp(corner.lerp(to, t), t)
+        if points.is_empty() or points[-1].distance_to(point) > 0.5:
+            points.append(point)
+
+# The turn through a junction hex centre. Unlike an ordinary hex, the centre of a junction is
+# the point the routes of the other networks, levels and plans end at or pass through, so the
+# road has to pass exactly through it. Two cubic halves meet there with a common tangent, so the
+# bend is smooth instead of a corner at the point.
+func _append_road_join(points: PackedVector2Array, from: Vector2, corner: Vector2,
+        to: Vector2) -> void:
+    var in_span := from.distance_to(corner)
+    var out_span := to.distance_to(corner)
+    if in_span <= 0.01 or out_span <= 0.01:
+        return
+    var in_dir := (corner - from) / in_span
+    var out_dir := (to - corner) / out_span
+    var middle := in_dir + out_dir
+    if middle.length() > 0.01:
+        middle = middle.normalized()
+    else:
+        middle = Vector2(-in_dir.y, in_dir.x)
+    _append_road_cubic(points, from, from + in_dir * (in_span * 0.5),
+            corner - middle * (in_span * 0.5), corner)
+    _append_road_cubic(points, corner, corner + middle * (out_span * 0.5),
+            to - out_dir * (out_span * 0.5), to)
+
+# The blend of a road into the road it meets at a junction: a cubic curve that starts along
+# one of the two directions and ends along the other.
+func _append_road_blend(points: PackedVector2Array, from: Vector2, from_tangent: Vector2,
+        to: Vector2, to_tangent: Vector2) -> void:
+    var span := from.distance_to(to)
+    if span <= 0.01:
+        return
+    var strength := span * ROAD_MERGE_STRENGTH
+    _append_road_cubic(points, from, from + from_tangent * strength,
+            to - to_tangent * strength, to)
+
+func _append_road_cubic(points: PackedVector2Array, from: Vector2, control_a: Vector2,
+        control_b: Vector2, to: Vector2) -> void:
+    var span := from.distance_to(to)
+    var turn := rad_to_deg(absf((control_a - from).angle_to(control_b - control_a))
+            + absf((control_b - control_a).angle_to(to - control_b)))
+    var steps := maxi(4, int(ceil(span / ROAD_SAMPLE_STEP)))
+    steps = maxi(steps, int(ceil(turn / ROAD_SAMPLE_ANGLE)))
+    for step in range(steps + 1):
+        var t := float(step) / float(steps)
+        var ab := from.lerp(control_a, t)
+        var bc := control_a.lerp(control_b, t)
+        var cd := control_b.lerp(to, t)
+        var point := ab.lerp(bc, t).lerp(bc.lerp(cd, t), t)
         if points.is_empty() or points[-1].distance_to(point) > 0.5:
             points.append(point)
 
