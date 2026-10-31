@@ -14,8 +14,9 @@
 # graph), so the search expands close to the path corridor. All hex edges have the same length,
 # therefore the number of edges is proportional to the path length.
 #
-# The number of rivers and the minimum lengths are taken from data/map_config.json:
-#   num_main_rivers, num_tributaries, min_river_length, min_tributary_length.
+# The number of rivers and the minimum lengths are chosen by the player in the world
+# settings of a new game (CityData.world_rivers): num_main_rivers, num_tributaries,
+# min_river_length, min_tributary_length.
 #
 # The rivers and the lakes give production bonuses to the resources by the improvements
 # that have access to fresh water.
@@ -200,8 +201,8 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array) -> v
     # The distance to the nearest mouth is shared by all the main river searches.
     _dist_field = _build_distance_field(graph, mouth_ids)
 
-    # The parameters from the configuration.
-    var cfg: Dictionary = GameData.map_config
+    # The parameters from the world settings of a new game.
+    var cfg: Dictionary = CityData.world_rivers
     var num_main = int(cfg.get("num_main_rivers", 3))
     var num_trib = int(cfg.get("num_tributaries", 5))
     var min_main_len = int(cfg.get("min_river_length", 8))

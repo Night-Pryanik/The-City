@@ -1368,6 +1368,9 @@ msgstr "Загрузить игру"
 msgid "Load order"
 msgstr "Порядок загрузки"
 
+msgid "Main rivers"
+msgstr "Главные реки"
+
 msgid "Map actions"
 msgstr "Действия на карте"
 
@@ -1860,6 +1863,9 @@ msgstr "Вернуться в игру"
 msgid "Return to main menu"
 msgstr "Перейти в главное меню"
 
+msgid "Rivers"
+msgstr "Реки"
+
 msgid "Road"
 msgstr "Дорога"
 
@@ -1994,6 +2000,12 @@ msgstr "Глубина отмели"
 
 msgid "Shaping landscape..."
 msgstr "Формирование ландшафта..."
+
+msgid "Shortest main river"
+msgstr "Кратчайшая главная река"
+
+msgid "Shortest tributary"
+msgstr "Кратчайший приток"
 
 msgid "Show FPS counter"
 msgstr "Показывать счётчик FPS"
@@ -2196,6 +2208,12 @@ msgstr "Порог «земля/море»: гекс на нём или ниже
 msgid "The least distance between two islands, in hexes, so that they do not stick together."
 msgstr "Наименьшее расстояние между двумя островами, в гексах, — чтобы они не слипались."
 
+msgid "The least length of a main river, in hexes."
+msgstr "Наименьшая длина главной реки, в гексах."
+
+msgid "The least length of a tributary, in hexes."
+msgstr "Наименьшая длина притока, в гексах."
+
 msgid "The loader does not read this key, so everything under it is ignored. Check the spelling of the collection name."
 msgstr "Загрузчик не читает этот ключ, поэтому всё, что под ним, игнорируется. Проверьте написание имени коллекции."
 
@@ -2228,6 +2246,12 @@ msgstr "Самая узкая полоса берега, в гексах. Нол
 
 msgid "The number of islands follows the area of the sea: the area times this share, plus a random spread. A small sea often gets none, a large one may get many."
 msgstr "Число островов следует за площадью моря: площадь, умноженная на эту долю, плюс случайный разброс. В маленьком море островов часто нет, в большом их может быть много."
+
+msgid "The number of main rivers. A main river starts in the mountains and mouths in a lake or the sea."
+msgstr "Число главных рек. Главная река начинается в горах и впадает в озеро или море."
+
+msgid "The number of tributaries. A tributary starts in the mountains or on the hills and flows into a river."
+msgstr "Число притоков. Приток начинается в горах или на холмах и впадает в реку."
 
 msgid "The radius around the city that is always land, in hexes."
 msgstr "Радиус вокруг города, который всегда остаётся землёй, в гексах."
@@ -2390,6 +2414,9 @@ msgstr "Казна: %s %s"
 
 msgid "Treasury: 0"
 msgstr "Казна: 0"
+
+msgid "Tributaries"
+msgstr "Притоки"
 
 msgid "Turn a one-time deal into a standing contract"
 msgstr "Превращает разовую сделку в долговременный контракт"

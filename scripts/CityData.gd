@@ -122,6 +122,22 @@ const DEFAULT_SEA := {
 # not part of the save: a loaded game restores its own map.
 var world_sea: Dictionary = DEFAULT_SEA.duplicate(true)
 
+# The river generation settings a new game starts from. The player changes them in the world
+# settings of a new game (the "Rivers" section), and RiverManager reads the result from
+# world_rivers. Main rivers run from a source in the mountains to a lake or the sea;
+# tributaries flow into the rivers. The lengths are measured in path points.
+const DEFAULT_RIVERS := {
+    "num_main_rivers": 3,
+    "num_tributaries": 5,
+    "min_river_length": 8,
+    "min_tributary_length": 4,
+}
+
+# The river generation settings of the world being generated, chosen by the player in the
+# world settings of a new game. The rivers are built from them at generation time and are
+# saved as geometry, so the settings are not part of the save.
+var world_rivers: Dictionary = DEFAULT_RIVERS.duplicate(true)
+
 var food_for_new_settler: int = 1000
 var food_per_citizen: int = 10
     # The record of the FACT of the write-off on the internal market for the tick. A separate counter

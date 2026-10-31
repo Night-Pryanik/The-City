@@ -19,6 +19,9 @@
 #      world reads them from the player's choice (CityData.world_map_size / world_town_count).
 #   8. The "Seas" section: the mode dropdown, the rows of the chosen mode only, a tooltip on
 #      every control, the numeric fields and the ranges they are clamped to.
+#   9. The "Rivers" section: the four settings (also out of data/map_config.json), their
+#      fields, and the schematic main rivers on the picture — the chosen count, no tributaries
+#      and not a single point in the water.
 #
 # The generation of the world is not started here: the size is read through the dialog,
 # and test_new_game_loading covers the path from a new game to a generated map.
@@ -551,6 +554,85 @@ func _run() -> void:
     check(str(city_data.world_sea.get("mode", "")) == "edge",
             "a new game starts with the default sea (got %s)"
                     % str(city_data.world_sea.get("mode", "")), state)
+
+    # --- 9. The rivers ---
+    for key in ["num_main_rivers", "num_tributaries", "min_river_length", "min_tributary_length"]:
+        check(not game_data.map_config.has(key),
+                "the river setting %s is not part of data/map_config.json" % key, state)
+
+    check(menu.river_controls.size() == 4,
+            "the world tab owns four river settings (got %d)" % menu.river_controls.size(), state)
+    var river_defaults: Dictionary = menu._selected_river_config()
+    check(int(river_defaults["num_main_rivers"]) == 3
+            and int(river_defaults["num_tributaries"]) == 5
+            and int(river_defaults["min_river_length"]) == 8
+            and int(river_defaults["min_tributary_length"]) == 4,
+            "the river settings start from their defaults (got %s)" % str(river_defaults), state)
+    for key in menu.river_controls.keys():
+        var spec: Dictionary = menu.river_controls[key]
+        check(tabs.get_tab_control(menu.TAB_WORLD).is_ancestor_of(spec["control"]),
+                "the river setting %s lives on the world tab" % key, state)
+        var carrier = WRAPPED_TOOLTIP.find_carrier(spec["control"])
+        check(carrier != null and not carrier.tooltip_text.is_empty(),
+                "the river setting %s has a tooltip" % key, state)
+
+    var main_rivers_edit: LineEdit = menu.river_controls["num_main_rivers"]["control"]
+    main_rivers_edit.text = ""
+    menu._keep_number(main_rivers_edit, "4a", false)
+    check(main_rivers_edit.text == "4", "the river field keeps the digits only (got %s)"
+            % main_rivers_edit.text, state)
+    main_rivers_edit.text = "999"
+    menu._normalize_river_fields()
+    check(main_rivers_edit.text == "20"
+            and int(menu._selected_river_config()["num_main_rivers"]) == 20,
+            "a count above the maximum is pulled to it (got %s)" % main_rivers_edit.text, state)
+
+    # The default sea of the dialog has water, so every main river the setting asks for has a
+    # coast to mouth at. The tributaries are not drawn: their count must not touch the picture.
+    menu.map_size_option.select(1)
+    menu._on_map_size_selected(1)
+    menu.sea_mode_option.select(menu.SEA_MODES.find("edge"))
+    menu._on_sea_mode_selected(menu.SEA_MODES.find("edge"))
+    menu.river_controls["num_main_rivers"]["control"].text = "4"
+    menu.river_controls["num_tributaries"]["control"].text = "7"
+    menu.river_controls["min_river_length"]["control"].text = "8"
+    menu._refresh_preview()
+
+    var river_picture: Dictionary = menu.world_previews[0]._picture
+    var rivers: Array = river_picture["rivers"]
+    check(rivers.size() == 4,
+            "the picture draws the chosen number of main rivers (got %d)" % rivers.size(), state)
+    var all_on_land := true
+    var grid: int = int(river_picture["grid"])
+    var cells: PackedByteArray = river_picture["cells"]
+    for path in rivers:
+        check(path.size() >= 2, "every river on the picture has a path", state)
+        for index in range(path.size() - 1):
+            var steps := maxi(1, ceili(path[index].distance_to(path[index + 1]) * 4.0))
+            for step in range(steps + 1):
+                var point: Vector2 = path[index].lerp(path[index + 1],
+                        float(step) / float(steps))
+                var cell := clampi(int(floor(point.y)), 0, grid - 1) * grid \
+                        + clampi(int(floor(point.x)), 0, grid - 1)
+                if _is_water(cells[cell]):
+                    all_on_land = false
+    check(all_on_land, "no river on the picture flows through the sea", state)
+
+    menu.river_controls["num_tributaries"]["control"].text = "20"
+    menu._refresh_preview()
+    check(menu.world_previews[0]._picture["rivers"].size() == 4,
+            "the tributaries are not drawn on the picture (got %d rivers)"
+                    % menu.world_previews[0]._picture["rivers"].size(), state)
+
+    menu.river_controls["num_main_rivers"]["control"].text = "0"
+    menu._refresh_preview()
+    check(menu.world_previews[0]._picture["rivers"].is_empty(),
+            "zero main rivers leaves the picture without rivers", state)
+
+    menu.river_controls["num_main_rivers"]["control"].text = "3"
+    menu.river_controls["num_tributaries"]["control"].text = "5"
+    menu._normalize_river_fields()
+    menu._refresh_preview()
 
     get_root().remove_child(menu)
     menu.free()

@@ -81,16 +81,6 @@
     // Lone wooded hexes are cleared and lone holes in a forest are filled, so that the woods
     // read as groves instead of a random scatter of cells.
     "cover_smoothing": true
-  },
-
-    // --- River generation ---
-    // Main rivers: the source in the mountains, the mouth in a lake or the sea.
-    // They do not intersect each other.
-    // Tributaries: the source in the mountains (or hills, if there are few mountains),
-    // flowing into the main rivers or into other tributaries (a confluence point).
-    "num_main_rivers": 3,      // The number of main rivers
-    "num_tributaries": 5,      // The number of tributaries
-    "min_river_length": 8,     // The minimum length of a main river (in path points)
-    "min_tributary_length": 4  // The minimum length of a tributary (in path points)
+  }
   }
 }

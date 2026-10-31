@@ -559,10 +559,6 @@ const MAP_CONFIG_FIELDS := {
     "target_cluster": LEAF,
     "terrain_config": {"id_map": {"density": LEAF, "target_cluster": LEAF}, "keys": KEY_TERRAINS},
     "climate": CLIMATE_FIELDS,
-    "num_main_rivers": LEAF,
-    "num_tributaries": LEAF,
-    "min_river_length": LEAF,
-    "min_tributary_length": LEAF,
 }
 
 # The balance is grouped into blocks by the system that owns the constants; the block names are a

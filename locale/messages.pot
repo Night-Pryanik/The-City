@@ -1368,6 +1368,9 @@ msgstr ""
 msgid "Load order"
 msgstr ""
 
+msgid "Main rivers"
+msgstr ""
+
 msgid "Map actions"
 msgstr ""
 
@@ -1860,6 +1863,9 @@ msgstr ""
 msgid "Return to main menu"
 msgstr ""
 
+msgid "Rivers"
+msgstr ""
+
 msgid "Road"
 msgstr ""
 
@@ -1993,6 +1999,12 @@ msgid "Shallow water depth"
 msgstr ""
 
 msgid "Shaping landscape..."
+msgstr ""
+
+msgid "Shortest main river"
+msgstr ""
+
+msgid "Shortest tributary"
 msgstr ""
 
 msgid "Show FPS counter"
@@ -2196,6 +2208,12 @@ msgstr ""
 msgid "The least distance between two islands, in hexes, so that they do not stick together."
 msgstr ""
 
+msgid "The least length of a main river, in hexes."
+msgstr ""
+
+msgid "The least length of a tributary, in hexes."
+msgstr ""
+
 msgid "The loader does not read this key, so everything under it is ignored. Check the spelling of the collection name."
 msgstr ""
 
@@ -2227,6 +2245,12 @@ msgid "The narrowest coastal strip, in hexes. Zero lets the shore break into bay
 msgstr ""
 
 msgid "The number of islands follows the area of the sea: the area times this share, plus a random spread. A small sea often gets none, a large one may get many."
+msgstr ""
+
+msgid "The number of main rivers. A main river starts in the mountains and mouths in a lake or the sea."
+msgstr ""
+
+msgid "The number of tributaries. A tributary starts in the mountains or on the hills and flows into a river."
 msgstr ""
 
 msgid "The radius around the city that is always land, in hexes."
@@ -2389,6 +2413,9 @@ msgid "Treasury: %s %s"
 msgstr ""
 
 msgid "Treasury: 0"
+msgstr ""
+
+msgid "Tributaries"
 msgstr ""
 
 msgid "Turn a one-time deal into a standing contract"

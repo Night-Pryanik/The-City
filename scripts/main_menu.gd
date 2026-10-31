@@ -93,6 +93,8 @@ var proportional_check: CheckBox = null
 var sea_mode_option: OptionButton = null
 var sea_controls: Dictionary = {}
 var sea_rows: Array = []
+# The "Rivers" section of the world settings, keyed by its field in CityData.world_rivers.
+var river_controls: Dictionary = {}
 # The map previews, one on the City tab and one on the World tab. Both show the same world,
 # so they are refreshed together.
 var world_previews: Array = []
@@ -416,7 +418,8 @@ func _resolved_sea_config(seed_value: int = 0) -> Dictionary:
 func _refresh_preview():
     var side := _selected_map_size()
     var towns := _selected_town_count()
-    var picture := WorldPreview.build(side, _resolved_sea_config(_preview_seed), _preview_seed)
+    var picture := WorldPreview.build(side, _resolved_sea_config(_preview_seed),
+            _preview_seed, _selected_river_config())
     for preview in world_previews:
         preview.set_world(side, towns, picture)
 
@@ -427,8 +430,8 @@ func _regenerate_preview():
     _preview_seed = next_seed
     _refresh_preview()
 
-# The world settings of a new game: the map size, the number of towns and the seas. Every
-# setting is one line of the list, and the list grows downwards.
+# The world settings of a new game: the map size, the number of towns, the seas and the
+# rivers. Every setting is one line of the list, and the list grows downwards.
 func _build_world_settings(column: VBoxContainer):
     # The map size: a preset dropdown and a custom side field that appears only when
     # "Custom size" is chosen. The map is square, so one side applies to width and height.
@@ -487,6 +490,7 @@ func _build_world_settings(column: VBoxContainer):
     _add_setting_row(column, tr("Number of towns"), towns_control)
 
     _build_sea_settings(column)
+    _build_river_settings(column)
 
 # The "Seas" section: how the seas of the world are generated. The rows follow the modes of
 # the generator (CityData.world_sea): the coastal strips own the island settings, the
@@ -564,6 +568,30 @@ func _build_sea_settings(column: VBoxContainer):
     _add_sea_int_row(column, "noise_city_bump_radius", tr("Guaranteed land radius"),
             tr("The radius around the city that is always land, in hexes."), 0, 50, noise)
 
+# The "Rivers" section: how many rivers the world gets and how long they have to be. The
+# preview draws the main rivers in the chosen count; the tributaries are not on it.
+func _build_river_settings(column: VBoxContainer):
+    _add_section_header(column, tr("Rivers"))
+    _add_river_int_row(column, "num_main_rivers", tr("Main rivers"),
+            tr("The number of main rivers. A main river starts in the mountains and mouths in a lake or the sea."),
+            0, 20)
+    _add_river_int_row(column, "num_tributaries", tr("Tributaries"),
+            tr("The number of tributaries. A tributary starts in the mountains or on the hills and flows into a river."),
+            0, 50)
+    _add_river_int_row(column, "min_river_length", tr("Shortest main river"),
+            tr("The least length of a main river, in hexes."), 1, 100)
+    _add_river_int_row(column, "min_tributary_length", tr("Shortest tributary"),
+            tr("The least length of a tributary, in hexes."), 1, 100)
+
+# A whole-number row of the "Rivers" section.
+func _add_river_int_row(column: VBoxContainer, key: String, label: String, tooltip: String,
+        lo: int, hi: int):
+    var default := int(_river_default(key))
+    var edit := _make_number_field(str(default), false, tooltip, _normalize_river_fields)
+    _add_setting_row(column, label, edit, tooltip)
+    river_controls[key] = {"kind": SEA_INT, "control": edit, "lo": lo, "hi": hi,
+            "default": default}
+
 # A heading of the settings list, with a line above it: the sections of a long list read
 # apart, and the line tells where the next one starts.
 func _add_section_header(column: VBoxContainer, text: String):
@@ -591,7 +619,8 @@ func _add_sea_subheader(column: VBoxContainer, text: String, modes: Array) -> Di
 # A whole-number row of the "Seas" section.
 func _add_sea_int_row(column: VBoxContainer, key: String, label: String, tooltip: String,
         lo: int, hi: int, modes: Array, gate: BaseButton = null):
-    var edit := _make_sea_field(str(int(_sea_default(key))), false, tooltip)
+    var edit := _make_number_field(str(int(_sea_default(key))), false, tooltip,
+            _normalize_sea_fields)
     _add_sea_row(column, key, label, edit, tooltip, modes,
             {"kind": SEA_INT, "control": edit, "lo": lo, "hi": hi,
                     "default": int(_sea_default(key))}, gate)
@@ -599,7 +628,8 @@ func _add_sea_int_row(column: VBoxContainer, key: String, label: String, tooltip
 # A fractional row of the "Seas" section.
 func _add_sea_float_row(column: VBoxContainer, key: String, label: String, tooltip: String,
         lo: float, hi: float, modes: Array, gate: BaseButton = null):
-    var edit := _make_sea_field(_format_number(float(_sea_default(key))), true, tooltip)
+    var edit := _make_number_field(_format_number(float(_sea_default(key))), true, tooltip,
+            _normalize_sea_fields)
     _add_sea_row(column, key, label, edit, tooltip, modes,
             {"kind": SEA_FLOAT, "control": edit, "lo": lo, "hi": hi,
                     "default": float(_sea_default(key))}, gate)
@@ -609,8 +639,10 @@ func _add_sea_float_row(column: VBoxContainer, key: String, label: String, toolt
 func _add_sea_pair_row(column: VBoxContainer, key: String, label: String, tooltip: String,
         lo: int, hi: int, modes: Array, gate: BaseButton = null):
     var default: Array = _sea_default(key)
-    var from_edit := _make_sea_field(str(int(default[0])), false, tooltip)
-    var to_edit := _make_sea_field(str(int(default[1])), false, tooltip)
+    var from_edit := _make_number_field(str(int(default[0])), false, tooltip,
+            _normalize_sea_fields)
+    var to_edit := _make_number_field(str(int(default[1])), false, tooltip,
+            _normalize_sea_fields)
 
     var box := HBoxContainer.new()
     box.add_theme_constant_override("separation", 6)
@@ -647,10 +679,12 @@ func _add_sea_row(column: VBoxContainer, key: String, label: String, control: Co
     spec["row"] = row
     sea_controls[key] = spec
 
-# A field of the "Seas" section. A whole number keeps the digits, a fraction also keeps a
-# single decimal point and a leading minus. The field is rewritten only when the input
-# really holds something else, so the caret does not jump on every keystroke.
-func _make_sea_field(value: String, fractional: bool, tooltip: String) -> LineEdit:
+# A number field of the world settings. A whole number keeps the digits, a fraction also
+# keeps a single decimal point and a leading minus. The field is rewritten only when the input
+# really holds something else, so the caret does not jump on every keystroke. The normalizer
+# of the section brings the value into its allowed range when the field loses focus.
+func _make_number_field(value: String, fractional: bool, tooltip: String,
+        normalizer: Callable) -> LineEdit:
     var edit := LineEdit.new()
     edit.custom_minimum_size = Vector2(SEA_FIELD_WIDTH, SETTING_CONTROL_HEIGHT)
     edit.max_length = 6
@@ -659,14 +693,19 @@ func _make_sea_field(value: String, fractional: bool, tooltip: String) -> LineEd
     WrappedTooltip.attach(edit, tooltip)
     edit.text_changed.connect(func(text): _keep_number(edit, text, fractional))
     # The picture follows the number while it is being typed, not only when the field loses
-    # focus: the sea is the one part of the world a setting changes by a visible amount.
+    # focus: the sea and the rivers are the parts of the world a setting changes by a
+    # visible amount.
     edit.text_changed.connect(func(_text): _refresh_preview())
-    edit.focus_exited.connect(_normalize_sea_fields)
+    edit.focus_exited.connect(normalizer)
     return edit
 
 # The value of a sea setting a new game starts from (CityData.DEFAULT_SEA).
 func _sea_default(key: String):
     return CityData.DEFAULT_SEA.get(key)
+
+# The value of a river setting a new game starts from (CityData.DEFAULT_RIVERS).
+func _river_default(key: String):
+    return CityData.DEFAULT_RIVERS.get(key)
 
 # The rows of the "Seas" section follow the chosen mode, and the rows of a group follow the
 # checkbox that switches the group on. A row that is not shown keeps its value: switching
@@ -712,6 +751,14 @@ func _selected_sea_config() -> Dictionary:
                 cfg[key] = _read_pair(spec)
     return cfg
 
+# The river configuration the world will be generated with.
+func _selected_river_config() -> Dictionary:
+    var cfg: Dictionary = CityData.DEFAULT_RIVERS.duplicate(true)
+    for key in river_controls.keys():
+        var spec: Dictionary = river_controls[key]
+        cfg[key] = _read_whole(spec["control"], spec["lo"], spec["hi"], spec["default"])
+    return cfg
+
 # A whole number of a sea setting. An empty or a malformed field is read as the default of
 # the setting: the game must never be started with a number that cannot be parsed.
 func _read_whole(edit: LineEdit, lo: int, hi: int, fallback: int) -> int:
@@ -749,6 +796,12 @@ func _normalize_sea_fields():
                 var pair := _read_pair(spec)
                 spec["from"].text = str(pair[0])
                 spec["to"].text = str(pair[1])
+
+# Every field of the "Rivers" section shows the value the game will use, like the sea fields.
+func _normalize_river_fields():
+    for spec in river_controls.values():
+        spec["control"].text = str(_read_whole(spec["control"], spec["lo"],
+                spec["hi"], spec["default"]))
 
 # A fraction of a sea setting, without the trailing zeros of a longer number.
 func _format_number(value: float) -> String:
@@ -941,6 +994,7 @@ func _start_new_game(city_name: String):
     CityData.world_map_size = _selected_map_size()
     CityData.world_town_count = _selected_town_count()
     CityData.world_sea = _resolved_sea_config(_preview_seed)
+    CityData.world_rivers = _selected_river_config()
     # The overlay is hung on the ROOT, not on the menu: the scene change frees the
     # menu, and the world generation runs inside MainMap. MainMap updates the very
     # same bar and removes it when the world is ready.
