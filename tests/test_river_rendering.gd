@@ -8,6 +8,9 @@
 # Checked against live data of the real MainMap scene (new game):
 #   1. River data is intact: there are main rivers/tributaries and hexes with
 #      river_edges.
+#   1b. No two main rivers meet: the generator keeps the vertices of a river out of the
+#      search of the next one, so the paths of the planar lattice of the hex corners cannot
+#      cross.
 #   2. The drawn rectangle is in world coordinates, has a positive size and covers the city.
 #   3. On the live map at least one river actually yields non-empty lines, and all their
 #      points lie inside the drawn rectangle (clipping, not discarding).
@@ -65,6 +68,23 @@ func _run() -> void:
 
     # --- 1a. The whole map is revealed (see the header) ---
     main_map.debug_open_whole_map()
+
+    # --- 1b. No two main rivers cross ---
+    # A river owns its vertices: the search of the next river skips them, except the mouths the
+    # first one has not taken, so the paths can meet neither at a corner nor across an edge.
+    var shared_vertices: Array = []
+    var crossing_pairs: Array = []
+    for first in range(main_rivers.size()):
+        for second in range(first + 1, main_rivers.size()):
+            var shared: Array = _shared_points(main_rivers[first], main_rivers[second])
+            if not shared.is_empty():
+                shared_vertices.append([first, second, shared])
+            if _lines_meet(main_rivers[first], main_rivers[second]):
+                crossing_pairs.append([first, second])
+    check(shared_vertices.is_empty(),
+        "two main rivers must not share a corner (pairs %s)" % str(shared_vertices), state)
+    check(crossing_pairs.is_empty(),
+        "two main rivers must not cross (pairs %s)" % str(crossing_pairs), state)
 
     # --- 2. The drawn rectangle is in world coordinates ---
     var draw_rect: Rect2 = r._get_draw_rect()
@@ -194,6 +214,27 @@ func _points_outside(runs: Array, draw_rect: Rect2, radius: float) -> Array:
             if not grown.has_point(pt):
                 bad.append(pt)
     return bad
+
+# The corners two main rivers have in common.
+func _shared_points(first: Array, second: Array) -> Array:
+    var taken := {}
+    for point in first:
+        taken[point] = true
+    var shared: Array = []
+    for point in second:
+        if taken.has(point):
+            shared.append(point)
+    return shared
+
+# Whether two polylines meet anywhere. The rivers are paths of a planar lattice, so a meeting
+# at a point that is no shared corner would mean the paths cross.
+func _lines_meet(first: Array, second: Array) -> bool:
+    for i in range(first.size() - 1):
+        for j in range(second.size() - 1):
+            if Geometry2D.segment_intersects_segment(first[i], first[i + 1],
+                    second[j], second[j + 1]) != null:
+                return true
+    return false
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if not condition:

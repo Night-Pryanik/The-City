@@ -13,7 +13,7 @@
 # the picture has none of them. So a river starts at a random inland cell and runs downhill to
 # the coast of the sea the picture shows. Only the main rivers are drawn, in the number the
 # player chose, and a path never leaves the land — a river mouths at the shore and does not
-# cross the water.
+# cross the water, and no two rivers cross each other.
 #
 # It is a SAMPLE of the settings and never the world the player is about to get. The caller
 # picks the seed, so the same settings keep the same coast until the player rerolls the preview;
@@ -100,7 +100,8 @@ func _init() -> void:
 # they are one or two cells wide whatever their depth in hexes.
 #
 # The rivers are generated on that same grid (see _build_rivers), so a river can only run
-# through the cells the picture draws as land: it never crosses the sea it is drawn on.
+# through the cells the picture draws as land: it never crosses the sea it is drawn on, and it
+# never crosses a river already drawn.
 static func build(size: int, sea: Dictionary, preview_seed: int = 20261026,
         rivers: Dictionary = {}) -> Dictionary:
     var grid := mini(maxi(size, 1), GRID_MAX)
@@ -263,6 +264,10 @@ static func _touches(water: PackedByteArray, grid: int, index: int, kind: int) -
 # describes. A straight shortest path would read as a drawn line rather than a river, so the
 # noise is what makes the route wander.
 #
+# The drawn rivers are recorded in a map of the cells they cover, and a later river keeps clear
+# of it: no two rivers cross and no two mouths meet. A source whose course cannot stay clear is
+# skipped, so a crowded map can end up with fewer rivers than asked.
+#
 # Only the main rivers are drawn: the tributaries depend on the main rivers and on the terrain
 # the picture does not have, and the count of the setting that matters on the picture is the
 # count of the rivers the player will look for.
@@ -298,33 +303,69 @@ static func _build_rivers(grid: int, water: PackedByteArray, size: int,
     if sources.is_empty():
         return []
 
-    var used := PackedByteArray()
-    used.resize(grid * grid)
-    var empty_used := PackedByteArray()
-    empty_used.resize(grid * grid)
+    var blocked := PackedByteArray()
+    blocked.resize(grid * grid)
+    var mouths := PackedByteArray()
+    mouths.resize(grid * grid)
     var origins: Array[int] = []
     # Sources keep their distance from each other, so the rivers spread over the map instead of
-    # gathering in one bay. The fallback drops the rule when the count is too large for it.
+    # gathering in one bay.
     var separation := maxi(1, roundi(float(grid) / 6.0))
 
     var result: Array = []
+    # The rivers already drawn, each with its segments bucketed: an attempt compares its curve
+    # with them, and the buckets are the same for every attempt.
+    var drawn: Array = []
     for _i in range(count):
-        var path := _pick_river_path(grid, water, distances, weights, used, sources, origins,
-                separation, rng)
-        if path.is_empty():
-            var source := _free_source(any_sources, used, rng)
-            if source < 0:
-                break
-            # The best effort: the path may touch a river that is already drawn, which reads as
-            # a confluence rather than as a missing river.
-            path = _river_path(grid, water, distances, weights, empty_used, source)
-            if path.is_empty():
-                break
-        for cell in path:
-            used[cell] = 1
+        var river := _next_river(grid, water, distances, weights, blocked, mouths, drawn,
+                sources, origins, separation, seed_value, rng)
+        if river.is_empty():
+            break
+        var path: PackedInt32Array = river["path"]
         origins.append(path[0])
-        result.append(_river_points(grid, water, distances, path, seed_value))
+        _ink_river(grid, blocked, mouths, water, river["points"], path)
+        result.append(river["points"])
+        drawn.append({"points": river["points"],
+                "buckets": _segment_buckets(grid, river["points"])})
     return result
+
+# One main river: a free source and the cheapest course to a free coast cell that stays clear
+# of the rivers already drawn. Sources away from the ones taken are tried first; a source whose
+# course cannot avoid the others is skipped and another one is tried.
+static func _next_river(grid: int, water: PackedByteArray, distances: PackedInt32Array,
+        weights: PackedFloat32Array, blocked: PackedByteArray, mouths: PackedByteArray,
+        drawn: Array, sources: PackedInt32Array, origins: Array[int], separation: int,
+        seed_value: int, rng: RandomNumberGenerator) -> Dictionary:
+    for attempt in range(80):
+        var source: int = sources[rng.randi() % sources.size()]
+        if blocked[source] == 1:
+            continue
+        if attempt < 40 and _near_origin(source, origins, grid, separation):
+            continue
+        var path := _river_path(grid, water, distances, weights, blocked, mouths, source)
+        if path.is_empty():
+            continue
+        var points := _river_points(grid, water, distances, path, seed_value, blocked, mouths,
+                drawn)
+        if points.is_empty():
+            continue
+        return {"path": path, "points": points}
+    return {}
+
+# Records a drawn river: the cells its line covers are blocked, and the water cell at its mouth
+# is claimed, so no later river runs over it or mouths into the same spot.
+static func _ink_river(grid: int, blocked: PackedByteArray, mouths: PackedByteArray,
+        water: PackedByteArray, points: PackedVector2Array, path: PackedInt32Array) -> void:
+    for index in range(points.size() - 1):
+        var steps := maxi(1, ceili(points[index].distance_to(points[index + 1]) * 4.0))
+        for step in range(steps + 1):
+            var point := points[index].lerp(points[index + 1], float(step) / float(steps))
+            blocked[clampi(int(floor(point.y)), 0, grid - 1) * grid
+                    + clampi(int(floor(point.x)), 0, grid - 1)] = 1
+    for neighbour in _neighbours(grid, path[path.size() - 1]):
+        if water[neighbour] == 1:
+            mouths[neighbour] = 1
+            break
 
 # The distance in cells from every cell of the picture to the nearest water cell, -1 beyond
 # the last one. The water is the goal, so the land next to it is 1 and every step inland adds 1.
@@ -349,22 +390,6 @@ static func _water_distances(grid: int, water: PackedByteArray) -> PackedInt32Ar
             queue.append(neighbour)
     return distances
 
-# A path from a source that is not yet part of a river and stands apart from the sources already
-# taken. An empty result means no candidate survived, and the caller falls back.
-static func _pick_river_path(grid: int, water: PackedByteArray, distances: PackedInt32Array,
-        weights: PackedFloat32Array, used: PackedByteArray, sources: PackedInt32Array,
-        origins: Array[int], separation: int, rng: RandomNumberGenerator) -> PackedInt32Array:
-    for attempt in range(160):
-        var source: int = sources[rng.randi() % sources.size()]
-        if used[source] == 1:
-            continue
-        if attempt < 80 and _near_origin(source, origins, grid, separation):
-            continue
-        var path := _river_path(grid, water, distances, weights, used, source)
-        if not path.is_empty():
-            return path
-    return PackedInt32Array()
-
 static func _near_origin(source: int, origins: Array[int], grid: int,
         separation: int) -> bool:
     var source_row := int(float(source) / float(grid))
@@ -374,17 +399,6 @@ static func _near_origin(source: int, origins: Array[int], grid: int,
                 and absi(source_row - int(float(origin) / float(grid))) <= separation:
             return true
     return false
-
-static func _free_source(sources: PackedInt32Array, used: PackedByteArray,
-        rng: RandomNumberGenerator) -> int:
-    if sources.is_empty():
-        return -1
-    var start := rng.randi() % sources.size()
-    for offset in range(sources.size()):
-        var source: int = sources[(start + offset) % sources.size()]
-        if used[source] == 0:
-            return source
-    return -1
 
 # The cost of a cell in the river search. The noise is smooth rather than independent per cell:
 # independent values only jitter the path, while ridges several cells wide make the cheapest way
@@ -411,11 +425,12 @@ static func _river_weights(grid: int, water: PackedByteArray,
     return weights
 
 # The cheapest way from the source to a free coast cell. The cells of the rivers already drawn
-# are walls, like the water, so a new river goes around them and finds another mouth instead of
-# joining them — main rivers do not meet. The distance field is a lower bound on the length of
-# the path, so a source taken far enough from the water gives a river of at least that length.
+# are walls, like the water, so a new river goes around them and finds another mouth — main
+# rivers do not meet. A coast cell is a goal only while one of its water neighbours has no river
+# mouthing into it. The distance field is a lower bound on the length of the path, so a source
+# taken far enough from the water gives a river of at least that length.
 static func _river_path(grid: int, water: PackedByteArray, distances: PackedInt32Array,
-        weights: PackedFloat32Array, used: PackedByteArray,
+        weights: PackedFloat32Array, blocked: PackedByteArray, mouths: PackedByteArray,
         source: int) -> PackedInt32Array:
     var cell_count := grid * grid
     var best := PackedFloat32Array()
@@ -437,11 +452,11 @@ static func _river_path(grid: int, water: PackedByteArray, distances: PackedInt3
         if settled[index] == 1:
             continue
         settled[index] = 1
-        if distances[index] == 1:
+        if distances[index] == 1 and _free_mouth(grid, index, mouths, water):
             goal = index
             break
         for neighbour in _neighbours(grid, index):
-            if water[neighbour] == 1 or used[neighbour] == 1:
+            if water[neighbour] == 1 or blocked[neighbour] == 1:
                 continue
             var cost := best[index] + weights[neighbour] \
                     + 0.1 * float(distances[neighbour])
@@ -461,6 +476,14 @@ static func _river_path(grid: int, water: PackedByteArray, distances: PackedInt3
     path.append(source)
     path.reverse()
     return path
+
+# Whether a coast cell still has a water neighbour without a river mouthing into it.
+static func _free_mouth(grid: int, cell: int, mouths: PackedByteArray,
+        water: PackedByteArray) -> bool:
+    for neighbour in _neighbours(grid, cell):
+        if water[neighbour] == 1 and mouths[neighbour] == 0:
+            return true
+    return false
 
 # A binary min-heap over two parallel arrays: the search pops the cheapest cell first.
 static func _heap_push(cells: Array, costs: Array, cell: int, cost: float) -> void:
@@ -511,20 +534,16 @@ static func _heap_swap(cells: Array, costs: Array, first: int, second: int) -> v
 # is pushed aside across the course, by a wave that holds its side for a few cells and by an
 # amount the distance to the water allows: the river keeps to the shore near the mouth and may
 # swing wider inland. Corner cutting then smooths the staircase into a course. The bend is cut
-# down when the curve would cross a water cell, so the line never leaves the land.
+# down when the curve would cross a water cell or a river already drawn, so the line never
+# leaves the land and never crosses another river. An empty result means no course was clear.
 static func _river_points(grid: int, water: PackedByteArray, distances: PackedInt32Array,
-        path: PackedInt32Array, seed_value: int) -> PackedVector2Array:
+        path: PackedInt32Array, seed_value: int, blocked: PackedByteArray,
+        mouths: PackedByteArray, drawn: Array) -> PackedVector2Array:
     var mouth := _cell_center(grid, path[path.size() - 1])
     for neighbour in _neighbours(grid, path[path.size() - 1]):
-        if water[neighbour] != 1:
-            continue
-        mouth = mouth.lerp(_cell_center(grid, neighbour), 0.45)
-        break
-
-    var plain := PackedVector2Array()
-    for index in range(path.size()):
-        plain.append(_cell_center(grid, path[index]))
-    plain.append(mouth)
+        if water[neighbour] == 1 and mouths[neighbour] == 0:
+            mouth = mouth.lerp(_cell_center(grid, neighbour), 0.45)
+            break
 
     for factor in [1.0, 0.55, 0.25]:
         var bent := PackedVector2Array()
@@ -532,9 +551,18 @@ static func _river_points(grid: int, water: PackedByteArray, distances: PackedIn
             bent.append(_bent_point(grid, path, index, distances, seed_value, factor))
         bent.append(mouth)
         var curve := _smooth_curve(bent)
-        if _stays_on_land(grid, water, curve):
+        if _clear_of(grid, water, curve) and _clear_of(grid, blocked, curve) \
+                and _self_clear(grid, curve) and _clear_of_drawn(grid, drawn, curve):
             return curve
-    return plain
+
+    var plain := PackedVector2Array()
+    for index in range(path.size()):
+        plain.append(_cell_center(grid, path[index]))
+    plain.append(mouth)
+    if _clear_of(grid, water, plain) and _clear_of(grid, blocked, plain) \
+            and _clear_of_drawn(grid, drawn, plain):
+        return plain
+    return PackedVector2Array()
 
 static func _bent_point(grid: int, path: PackedInt32Array, index: int,
         distances: PackedInt32Array, seed_value: int, factor: float) -> Vector2:
@@ -574,7 +602,64 @@ static func _hash01(seed_value: int, value: int) -> float:
     hash = hash ^ (hash >> 16)
     return float(hash & 0xFFFF) / 65535.0
 
-static func _stays_on_land(grid: int, water: PackedByteArray,
+# The segments of a line grouped by the cell of their middle. Comparing two lines segment by
+# segment would cost the square of their length, while two segments can meet only if they lie
+# in the same cell or in neighbouring ones.
+static func _segment_buckets(grid: int, points: PackedVector2Array) -> Dictionary:
+    var buckets: Dictionary = {}
+    for index in range(points.size() - 1):
+        var middle := (points[index] + points[index + 1]) * 0.5
+        var key := clampi(int(floor(middle.y)), 0, grid - 1) * grid \
+                + clampi(int(floor(middle.x)), 0, grid - 1)
+        if buckets.has(key):
+            buckets[key].append(index)
+        else:
+            buckets[key] = PackedInt32Array([index])
+    return buckets
+
+# Whether any segment of `points` meets the bucketed line. The curves are sampled finer than a
+# cell and a crossing slips between the samples, so the segments themselves are compared. The
+# segments of one line meet at their shared ends, hence `skip`: the segments that follow the
+# tested one within a few samples are the same line, not a crossing.
+static func _meets(grid: int, buckets: Dictionary, line: PackedVector2Array,
+        points: PackedVector2Array, skip: int) -> bool:
+    for index in range(points.size() - 1):
+        var middle := (points[index] + points[index + 1]) * 0.5
+        var row := clampi(int(floor(middle.y)), 0, grid - 1)
+        var col := clampi(int(floor(middle.x)), 0, grid - 1)
+        for offset_row in range(-1, 2):
+            for offset_col in range(-1, 2):
+                var r := row + offset_row
+                var c := col + offset_col
+                if r < 0 or r >= grid or c < 0 or c >= grid:
+                    continue
+                var key := r * grid + c
+                if not buckets.has(key):
+                    continue
+                for other in buckets[key]:
+                    if skip > 0 and other < index + skip:
+                        continue
+                    if Geometry2D.segment_intersects_segment(points[index],
+                            points[index + 1], line[other], line[other + 1]) != null:
+                        return true
+    return false
+
+# A bend that turns the river on itself reads as a crossing as well, so the river is compared
+# with itself.
+static func _self_clear(grid: int, points: PackedVector2Array) -> bool:
+    return not _meets(grid, _segment_buckets(grid, points), points, points, 3)
+
+# Whether the curve runs into a river already drawn. The blocked cells keep the courses apart
+# as well, but they are a sampled mask, and the lines themselves are what the player sees.
+static func _clear_of_drawn(grid: int, drawn: Array, points: PackedVector2Array) -> bool:
+    for river in drawn:
+        if _meets(grid, river["buckets"], river["points"], points, 0):
+            return false
+    return true
+
+# Whether the whole polyline lies outside the masked cells. The segments are sampled finer than
+# a cell, because a corner cut can pass over a cell without touching its centre.
+static func _clear_of(grid: int, mask: PackedByteArray,
         points: PackedVector2Array) -> bool:
     for index in range(points.size() - 1):
         var steps := maxi(1, ceili(points[index].distance_to(points[index + 1]) * 4.0))
@@ -583,7 +668,7 @@ static func _stays_on_land(grid: int, water: PackedByteArray,
                     float(step) / float(steps))
             var cell := clampi(int(floor(point.y)), 0, grid - 1) * grid \
                     + clampi(int(floor(point.x)), 0, grid - 1)
-            if water[cell] == 1:
+            if mask[cell] == 1:
                 return false
     return true
 

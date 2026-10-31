@@ -20,8 +20,8 @@
 #   8. The "Seas" section: the mode dropdown, the rows of the chosen mode only, a tooltip on
 #      every control, the numeric fields and the ranges they are clamped to.
 #   9. The "Rivers" section: the four settings (also out of data/map_config.json), their
-#      fields, and the schematic main rivers on the picture — the chosen count, no tributaries
-#      and not a single point in the water.
+#      fields, and the schematic main rivers on the picture — the chosen count, no tributaries,
+#      not a single point in the water, and no two rivers meeting each other or themselves.
 #
 # The generation of the world is not started here: the size is read through the dialog,
 # and test_new_game_loading covers the path from a new game to a generated map.
@@ -618,6 +618,29 @@ func _run() -> void:
                     all_on_land = false
     check(all_on_land, "no river on the picture flows through the sea", state)
 
+    var crossings: Array = _crossing_pairs(rivers, grid)
+    check(crossings.is_empty(),
+            "the rivers on the picture do not cross each other (pairs %s)"
+                    % str(crossings), state)
+    var self_crossed: Array = _self_crossed(rivers, grid)
+    check(self_crossed.is_empty(),
+            "no river on the picture crosses itself (rivers %s)" % str(self_crossed), state)
+
+    # The courses are a roll of the preview seed, so more than one seed is checked: a crossing
+    # is the kind of mistake that shows on one roll and hides on another.
+    for preview_seed in [101, 202, 303]:
+        var rolled: Dictionary = WorldPreview.build(60,
+                menu._resolved_sea_config(preview_seed), preview_seed,
+                menu._selected_river_config())
+        var rolled_rivers: Array = rolled["rivers"]
+        check(rolled_rivers.size() == 4,
+                "seed %d draws the chosen number of rivers (got %d)"
+                        % [preview_seed, rolled_rivers.size()], state)
+        check(_crossing_pairs(rolled_rivers, int(rolled["grid"])).is_empty(),
+                "seed %d keeps the rivers apart" % preview_seed, state)
+        check(_self_crossed(rolled_rivers, int(rolled["grid"])).is_empty(),
+                "seed %d keeps every river clear of itself" % preview_seed, state)
+
     menu.river_controls["num_tributaries"]["control"].text = "20"
     menu._refresh_preview()
     check(menu.world_previews[0]._picture["rivers"].size() == 4,
@@ -680,6 +703,66 @@ func _sea_edges(picture: Dictionary) -> int:
 
 func _is_water(code: int) -> bool:
     return code == _preview_script.CELL_DEEP_SEA or code == _preview_script.CELL_SHALLOW_SEA
+
+# The segments of a line grouped by the cell of their middle, so two lines are compared only
+# where they can meet.
+func _segment_buckets(path: PackedVector2Array, grid: int) -> Dictionary:
+    var buckets := {}
+    for index in range(path.size() - 1):
+        var middle := (path[index] + path[index + 1]) * 0.5
+        var key := clampi(int(floor(middle.y)), 0, grid - 1) * grid \
+                + clampi(int(floor(middle.x)), 0, grid - 1)
+        if buckets.has(key):
+            buckets[key].append(index)
+        else:
+            buckets[key] = PackedInt32Array([index])
+    return buckets
+
+# Whether a segment of `points` meets the bucketed line. On one line the segments that follow
+# the tested one meet it at a shared end rather than across, so `skip` leaves them out.
+func _meets(buckets: Dictionary, line: PackedVector2Array, points: PackedVector2Array,
+        grid: int, skip: int) -> bool:
+    for index in range(points.size() - 1):
+        var middle := (points[index] + points[index + 1]) * 0.5
+        var row := clampi(int(floor(middle.y)), 0, grid - 1)
+        var col := clampi(int(floor(middle.x)), 0, grid - 1)
+        for offset_row in range(-1, 2):
+            for offset_col in range(-1, 2):
+                var r := row + offset_row
+                var c := col + offset_col
+                if r < 0 or r >= grid or c < 0 or c >= grid:
+                    continue
+                var key := r * grid + c
+                if not buckets.has(key):
+                    continue
+                for other in buckets[key]:
+                    if skip > 0 and other < index + skip:
+                        continue
+                    if Geometry2D.segment_intersects_segment(points[index],
+                            points[index + 1], line[other], line[other + 1]) != null:
+                        return true
+    return false
+
+# The pairs of rivers of the picture whose lines meet.
+func _crossing_pairs(rivers: Array, grid: int) -> Array:
+    var buckets: Array = []
+    for path in rivers:
+        buckets.append(_segment_buckets(path, grid))
+    var pairs: Array = []
+    for first in range(rivers.size()):
+        for second in range(first + 1, rivers.size()):
+            if _meets(buckets[first], rivers[first], rivers[second], grid, 0):
+                pairs.append([first, second])
+    return pairs
+
+# The rivers of the picture that cross themselves.
+func _self_crossed(rivers: Array, grid: int) -> Array:
+    var crossed: Array = []
+    for index in range(rivers.size()):
+        if _meets(_segment_buckets(rivers[index], grid), rivers[index],
+                rivers[index], grid, 3):
+            crossed.append(index)
+    return crossed
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if not condition:
