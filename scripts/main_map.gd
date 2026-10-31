@@ -3917,6 +3917,7 @@ func _on_era_dialog_declined():
     get_tree().paused = false
     era_advance_button.visible = (current_era == 0)
 func _load_settings():
+    var previous_show_hex_borders: bool = show_hex_borders
     var err = settings_config.load("user://settings.cfg")
     if err == OK:
         show_hex_borders = settings_config.get_value("interface", "show_hex_borders", true)
@@ -3942,6 +3943,10 @@ func _load_settings():
         show_clock = true
         show_fps = true
         set_zoom(1.0)
+    # The flag is baked into the recorded hex commands, and the map is redrawn on demand:
+    # without a request the new value would only show up after an unrelated redraw.
+    if show_hex_borders != previous_show_hex_borders and map_renderer != null:
+        map_renderer.queue_redraw()
 
 func apply_settings():
     _load_settings()
