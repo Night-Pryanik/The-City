@@ -8,6 +8,12 @@
 #   - The rivers do not run along the edges of the lake/sea hexes and their neighbours (except
 #     for the last step into the mouth/confluence point), so that the river does not flow along the shore.
 #
+# The search is one multi-goal A* per attempt instead of one search per random (source, goal) pair:
+# a main river searches for the nearest free mouth, a tributary — for the nearest existing river vertex.
+# The heuristic is the exact graph distance to the nearest goal (a multi-source BFS over the vertex
+# graph), so the search expands close to the path corridor. All hex edges have the same length,
+# therefore the number of edges is proportional to the path length.
+#
 # The number of rivers and the minimum lengths are taken from data/map_config.json:
 #   num_main_rivers, num_tributaries, min_river_length, min_tributary_length.
 #
@@ -19,7 +25,29 @@ extends Node
 # --- Constants ---
 const MAX_TURN_ANGLE_DEG := 60.0 # The maximum turn angle per step
 const MAX_TURN_ANGLE_SOFT_DEG := 90.0 # The fallback angle when getting stuck.
-const NUM_RIVER_ATTEMPTS := 40 # The attempts to build one river
+const NUM_RIVER_ATTEMPTS := 8 # The attempts to build one river
+const SOFT_ANGLE_BONUS_DEG := 30.0 # A node relaxes the angle limit by this much when no candidate fits
+
+# The vertices of the odd-r hex grid form a triangular lattice. In units of a sixth of
+# the lattice step a vertex of hex (row, col) at index vidx is
+#   x = 6 * col + 3 * (row & 1) + VDX[vidx]
+#   y = 6 * row + VDY[vidx]
+# These integer coordinates are exact: the shared vertices of adjacent hexes always get
+# the same key, independent of the floating-point position.
+const VDX := [3, 0, -3, -3, 0, 3]
+const VDY := [2, 4, 2, -2, -4, -2]
+
+# The spatial buckets for looking up a vertex by a world position (loaded rivers).
+const POS_BUCKET := 64.0
+const POS_SNAP := 1.0
+
+# The bits of the per-vertex terrain mask.
+const TERRAIN_MOUNTAIN := 1
+const TERRAIN_HILL := 2
+const TERRAIN_LAKE := 4
+const TERRAIN_SEA := 8
+const TERRAIN_SHALLOW_SEA := 16
+const TERRAIN_WATER := 32
 
 const RIVER_COLOR := Color(26.0 / 255.0, 95.0 / 255.0, 180.0 / 255.0, 0.9) # The dark blue body of the river (#1a5fb4)
 const RIVER_WIDTH := 10.0 # The thickness of the body of the river
@@ -44,69 +72,91 @@ var tributaries: Array = [] # Only the tributaries (flowing into the main rivers
 # so as not to build the graph (thousands of vertices) twice per map generation.
 var _cached_graph: Dictionary = {}
 
+# The working copies of the graph arrays: the hot loops of A* read them without dictionary lookups.
+var _graph_positions := PackedVector2Array()
+var _graph_nbr := PackedInt32Array()
+var _graph_forb := PackedByteArray()
+var _graph_degree := PackedByteArray()
+var _graph_edge_len := 1.0
+var _vertex_restricted := PackedByteArray()
+
+# The vertices occupied by the accepted rivers, and their list for the merge candidates.
+var _used := PackedByteArray()
+var _used_ids: Array = []
+
+# The water vertices: the tributaries do not merge into them.
+var _water := PackedByteArray()
+
+# The distance in edges from every vertex to the nearest goal of the current search.
+var _dist_field := PackedInt32Array()
+
+# The per-search state. The epoch stamps replace clearing the arrays before every search:
+# a value is valid only when its stamp equals the current epoch.
+var _g_score := PackedFloat32Array()
+var _came_from := PackedInt32Array()
+var _seen_stamp := PackedInt32Array()
+var _closed_stamp := PackedInt32Array()
+var _heap_stamp := PackedInt32Array()
+var _goal_stamp := PackedInt32Array()
+var _approach_stamp := PackedInt32Array()
+var _goal_epoch := 0
+var _path_epoch := 0
+
 
 # -------------------------------------------------------
 # A minimal binary heap (priority queue) for A*.
-# push/pop in O(log n) instead of sort_custom + pop_front in O(n log n) per step.
 # -------------------------------------------------------
 class PriorityQueue:
-    var _keys: Array = []
-    var _priorities: Array = []
+    var _keys := PackedInt32Array()
+    var _priorities := PackedFloat32Array()
 
-    func push(key: String, priority: float) -> void:
+    func push(key: int, priority: float) -> void:
         _keys.append(key)
         _priorities.append(priority)
-        _sift_up(_keys.size() - 1)
+        var idx := _keys.size() - 1
+        while idx > 0:
+            var parent := (idx - 1) >> 1
+            if _priorities[idx] >= _priorities[parent]:
+                break
+            var tk := _keys[idx]
+            _keys[idx] = _keys[parent]
+            _keys[parent] = tk
+            var tp := _priorities[idx]
+            _priorities[idx] = _priorities[parent]
+            _priorities[parent] = tp
+            idx = parent
 
-    func pop_min() -> String:
-        if _keys.is_empty():
-            return ""
-        var top: String = _keys[0]
-        var last_idx: int = _keys.size() - 1
-        _keys[0] = _keys[last_idx]
-        _priorities[0] = _priorities[last_idx]
-        _keys.resize(last_idx)
-        _priorities.resize(last_idx)
-        if _keys.size() > 1:
-            _sift_down(0)
+    func pop_min() -> int:
+        var top := _keys[0]
+        var last := _keys.size() - 1
+        _keys[0] = _keys[last]
+        _priorities[0] = _priorities[last]
+        _keys.resize(last)
+        _priorities.resize(last)
+        var size := _keys.size()
+        if size > 1:
+            var idx := 0
+            while true:
+                var left := idx * 2 + 1
+                var right := left + 1
+                var smallest := idx
+                if left < size and _priorities[left] < _priorities[smallest]:
+                    smallest = left
+                if right < size and _priorities[right] < _priorities[smallest]:
+                    smallest = right
+                if smallest == idx:
+                    break
+                var tk := _keys[idx]
+                _keys[idx] = _keys[smallest]
+                _keys[smallest] = tk
+                var tp := _priorities[idx]
+                _priorities[idx] = _priorities[smallest]
+                _priorities[smallest] = tp
+                idx = smallest
         return top
 
     func is_empty() -> bool:
         return _keys.is_empty()
-
-    func _sift_up(idx: int) -> void:
-        while idx > 0:
-            var parent: int = (idx - 1) >> 1
-            if _priorities[idx] < _priorities[parent]:
-                var tk: String = _keys[idx]
-                _keys[idx] = _keys[parent]
-                _keys[parent] = tk
-                var tp: float = _priorities[idx]
-                _priorities[idx] = _priorities[parent]
-                _priorities[parent] = tp
-                idx = parent
-            else:
-                break
-
-    func _sift_down(idx: int) -> void:
-        var size: int = _keys.size()
-        while true:
-            var left: int = idx * 2 + 1
-            var right: int = left + 1
-            var smallest: int = idx
-            if left < size and _priorities[left] < _priorities[smallest]:
-                smallest = left
-            if right < size and _priorities[right] < _priorities[smallest]:
-                smallest = right
-            if smallest == idx:
-                break
-            var tk: String = _keys[idx]
-            _keys[idx] = _keys[smallest]
-            _keys[smallest] = tk
-            var tp: float = _priorities[idx]
-            _priorities[idx] = _priorities[smallest]
-            _priorities[smallest] = tp
-            idx = smallest
 
 
 # -------------------------------------------------------
@@ -119,26 +169,36 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array) -> v
         return
 
     # The hexes along which the rivers CANNOT flow (the lakes and their neighbours, the swamps
-    # themselves and the marsh hexes). They are built BEFORE the graph, so that the flags of the forbidden edges
-    # are precomputed in the graph itself (an O(1) check during A*
-    # instead of O(hexes^2) per neighbour).
-    var restricted_hexes = _build_restricted_hexes(tile_data, rows, cols)
-
-    var graph = _build_vertex_graph(rows, cols, radius, restricted_hexes)
+    # themselves and the marsh hexes). They are built BEFORE the graph, so that the flags of the forbidden
+    # edges and vertices are precomputed once instead of being checked per neighbour.
+    var restricted_hexes := _build_restricted_hexes(tile_data, rows, cols)
+    var graph := _build_vertex_graph(rows, cols, radius, restricted_hexes)
     _cached_graph = graph
+    _alloc_search_buffers(graph)
 
-    # The candidates for the sources (the mountains) and the mouths of the main rivers (the lakes and the seas).
-    var mountain_vertices = _find_terrain_vertices(graph, tile_data, "mountain")
-    var lake_vertices = _find_terrain_vertices(graph, tile_data, "lake")
-    var sea_vertices = _find_terrain_vertices(graph, tile_data, "sea") \
-            + _find_terrain_vertices(graph, tile_data, "shallow_sea")
-    var hill_vertices = _find_terrain_vertices(graph, tile_data, "hill")
+    var vertex_terrain := _build_terrain_vertex_mask(graph, tile_data, rows, cols)
+    var mountain_ids := _vertices_with_bit(vertex_terrain, TERRAIN_MOUNTAIN)
+    var hill_ids := _vertices_with_bit(vertex_terrain, TERRAIN_HILL)
+    var lake_ids := _vertices_with_bit(vertex_terrain, TERRAIN_LAKE)
+    var mouth_ids := _vertices_with_bit(vertex_terrain, TERRAIN_SEA | TERRAIN_SHALLOW_SEA)
 
+    var n := _graph_positions.size()
+    _water.resize(n)
+    _used.resize(n)
+    _used_ids = []
+    for id in range(n):
+        var is_water := (vertex_terrain[id] & TERRAIN_WATER) != 0
+        _water[id] = 1 if is_water else 0
+        _used[id] = 0
+
+    mouth_ids = lake_ids + mouth_ids
     # The mouths of the main rivers: the lakes + the seas. If there are neither lakes nor seas — we do not build the rivers.
-    var mouth_vertices: Array = lake_vertices + sea_vertices
-    if mountain_vertices.is_empty() or mouth_vertices.is_empty():
+    if mountain_ids.is_empty() or mouth_ids.is_empty():
         print("RIVER DEBUG: there are no mountains or mouths (lakes/seas), exiting")
         return
+
+    # The distance to the nearest mouth is shared by all the main river searches.
+    _dist_field = _build_distance_field(graph, mouth_ids)
 
     # The parameters from the configuration.
     var cfg: Dictionary = GameData.map_config
@@ -147,31 +207,22 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array) -> v
     var min_main_len = int(cfg.get("min_river_length", 8))
     var min_trib_len = int(cfg.get("min_tributary_length", 4))
 
-    var used_vertices: Dictionary = {} # The vertices already occupied by the rivers
-    main_rivers = []
-
     # --- The generation of the main rivers (mountain -> lake/sea, they do not intersect) ---
-    # _try_generate_main_river returns the best path found (a compromise),
-    # even if it is shorter than min_river_length. Therefore we accept any non-empty
-    # river: with 40 attempts the overwhelming majority of the paths is still longer than
-    # min_len, and the fallback guarantees that we do not get 0 rivers because of
-    # a random shortfall of the length (which was also the cause of the bug).
+    main_rivers = []
     for _i in range(num_main):
-        var river = _try_generate_main_river(graph, mountain_vertices, mouth_vertices,
-                restricted_hexes, used_vertices, min_main_len)
+        var river = _try_generate_main_river(mountain_ids, mouth_ids, min_main_len)
         if not river.is_empty():
-            _mark_used(river, used_vertices)
-            main_rivers.append(river)
+            _mark_used(river)
+            main_rivers.append(_ids_to_positions(river))
     print("RIVER DEBUG: main rivers generated=", main_rivers.size())
 
     # --- The generation of the tributaries (mountain/hill -> an occupied vertex, a confluence) ---
     tributaries = []
     for _i in range(num_trib):
-        var river = _try_generate_tributary(graph, mountain_vertices, hill_vertices,
-                lake_vertices, sea_vertices, restricted_hexes, used_vertices, min_trib_len)
-        if river.size() >= min_trib_len:
-            _mark_used(river, used_vertices)
-            tributaries.append(river)
+        var river = _try_generate_tributary(graph, mountain_ids, hill_ids, min_trib_len)
+        if not river.is_empty():
+            _mark_used(river)
+            tributaries.append(_ids_to_positions(river))
 
     rivers = main_rivers + tributaries
     print("RIVER DEBUG: total rivers=", rivers.size())
@@ -179,114 +230,82 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array) -> v
 
 # -------------------------------------------------------
 # Tries to generate one main river: the source in the mountains, the mouth in a lake/sea.
-# The main rivers do not intersect: A* goes with forbidden = used_vertices.
+# A single search reaches the nearest free mouth; the attempts pick different sources.
 # -------------------------------------------------------
-func _try_generate_main_river(graph: Dictionary, mountain_vertices: Array,
-        mouth_vertices: Array, restricted_hexes: Dictionary,
-        used_vertices: Dictionary, min_len: int) -> Array:
+func _try_generate_main_river(mountain_ids: Array,
+        mouth_ids: Array, min_len: int) -> PackedInt32Array:
     var free_mountains: Array = []
-    for vk in mountain_vertices:
-        if not used_vertices.has(vk) and not mouth_vertices.has(vk) and not _vertex_in_hexes(vk, graph, restricted_hexes):
-            free_mountains.append(vk)
+    for id in mountain_ids:
+        if _used[id] == 0 and _vertex_restricted[id] == 0:
+            free_mountains.append(id)
     var free_mouths: Array = []
-    for vk in mouth_vertices:
-        if not used_vertices.has(vk):
-            free_mouths.append(vk)
+    for id in mouth_ids:
+        if _used[id] == 0:
+            free_mouths.append(id)
     if free_mountains.is_empty() or free_mouths.is_empty():
-        return []
+        return PackedInt32Array()
 
-    var best_path_len := 0
-    var best_path: Array = [] # The best path found (a compromise, if none reaches min_len)
-    var best_attempt := -1
-    # The pairs (start -> goal) already searched in THIS call. The inputs of the search
-    # (graph/used_vertices/restricted_hexes) do not change between the attempts of one
-    # _try_generate_main_river, so a pair that failed once fails identically again: a
-    # repeated pair is skipped instead of re-running the same A*. The RNG is still drawn
-    # for every attempt, so the stream and the outcome are unchanged - only the redundant
-    # A* runs disappear (the repeated failures are exactly what burned tens of attempts
-    # per river).
-    var tried_pairs: Dictionary = {}
+    _prepare_search(free_mouths)
+
+    var best_path := PackedInt32Array()
+    var tried: Dictionary = {}
     for _attempt in range(NUM_RIVER_ATTEMPTS):
-        var start = free_mountains[randi() % free_mountains.size()]
-        var goal = free_mouths[randi() % free_mouths.size()]
-        var pair_key: String = start + "|" + goal
-        if tried_pairs.has(pair_key):
+        var start: int = free_mountains[randi() % free_mountains.size()]
+        if tried.has(start):
             continue
-        tried_pairs[pair_key] = true
-        var path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_DEG, {}, restricted_hexes)
+        tried[start] = true
+        var path := _find_path_astar(start, MAX_TURN_ANGLE_DEG)
         if path.is_empty():
-            path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, restricted_hexes)
-        if path.size() > best_path_len:
-            best_path_len = path.size()
+            path = _find_path_astar(start, MAX_TURN_ANGLE_SOFT_DEG)
+        if path.size() > best_path.size():
             best_path = path
-            best_attempt = _attempt
         if path.size() >= min_len:
-            return _keys_to_positions(path, graph)
-    if best_path_len > 0:
-        print("    [RIVER] main: best=%d (need %d) at attempt %d, used_vertices=%d" % [best_path_len, min_len, best_attempt, used_vertices.size()])
-        return _keys_to_positions(best_path, graph)
-    return []
+            return path
+
+    # A compromise: the best path found may be shorter than min_len, but the river is still built.
+    return best_path
 
 
 # -------------------------------------------------------
 # Tries to generate a tributary: the source in the mountains (or hills, if there are few mountains),
-# the mouth — an occupied vertex (the confluence point with any river). The tributaries do not flow
-# into the lakes and the seas: their vertices are excluded from merge_keys.
+# the mouth — a vertex occupied by any river except the lake/sea ones (a confluence point).
 # -------------------------------------------------------
-func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
-        hill_vertices: Array, lake_vertices: Array, sea_vertices: Array,
-        restricted_hexes: Dictionary, used_vertices: Dictionary, min_len: int) -> Array:
-    if used_vertices.is_empty():
-        return []
+func _try_generate_tributary(graph: Dictionary, mountain_ids: Array,
+        hill_ids: Array, min_len: int) -> PackedInt32Array:
+    var used_merge: Array = []
+    for id in _used_ids:
+        if _water[id] == 0:
+            used_merge.append(id)
+    if used_merge.is_empty():
+        return PackedInt32Array()
 
     # The source: the free mountain vertices; if there are too few — we add the hilly ones.
     var free_sources: Array = []
-    for vk in mountain_vertices:
-        if not used_vertices.has(vk) and not lake_vertices.has(vk) and not sea_vertices.has(vk) and not _vertex_in_hexes(vk, graph, restricted_hexes):
-            free_sources.append(vk)
+    for id in mountain_ids:
+        if _used[id] == 0 and _vertex_restricted[id] == 0:
+            free_sources.append(id)
     if free_sources.size() < 3:
-        for vk in hill_vertices:
-            if not used_vertices.has(vk) and not lake_vertices.has(vk) and not sea_vertices.has(vk) and not _vertex_in_hexes(vk, graph, restricted_hexes):
-                free_sources.append(vk)
+        for id in hill_ids:
+            if _used[id] == 0 and _vertex_restricted[id] == 0:
+                free_sources.append(id)
     if free_sources.is_empty():
-        return []
+        return PackedInt32Array()
 
-    # The mouths: the occupied vertices, excluding the lake and sea ones (the tributaries do not flow into them).
-    var merge_keys: Dictionary = used_vertices.duplicate()
-    for vk in lake_vertices:
-        merge_keys.erase(vk)
-    for vk in sea_vertices:
-        merge_keys.erase(vk)
-    if merge_keys.is_empty():
-        return []
-    var merge_list: Array = merge_keys.keys()
+    _prepare_search(used_merge)
+    _dist_field = _build_distance_field(graph, used_merge)
 
+    var tried: Dictionary = {}
     for _attempt in range(NUM_RIVER_ATTEMPTS):
-        var start = free_sources[randi() % free_sources.size()]
-        var goal = merge_list[randi() % merge_list.size()]
-        var path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_DEG, merge_keys, restricted_hexes)
+        var start: int = free_sources[randi() % free_sources.size()]
+        if tried.has(start):
+            continue
+        tried[start] = true
+        var path := _find_path_astar(start, MAX_TURN_ANGLE_DEG)
         if path.is_empty():
-            path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, merge_keys, restricted_hexes)
+            path = _find_path_astar(start, MAX_TURN_ANGLE_SOFT_DEG)
         if path.size() >= min_len:
-            return _keys_to_positions(path, graph)
-    return []
-
-
-# -------------------------------------------------------
-# Finds the vertices at which at least one hex has the given relief.
-# -------------------------------------------------------
-# The vertices whose hexes stand on a terrain. The name may be a terrain or a relief family: the
-# sources of the rivers are looked up by the family ("mountain", "hill"), because the climate turns
-# every one of them into the variety of its belt — a boreal mountain, a steppe mountain, …
-func _find_terrain_vertices(graph: Dictionary, tile_data: Array, terrain_id: String) -> Array:
-    var vertex_hexes: Dictionary = graph["hexes"]
-    var result: Array = []
-    for vk in vertex_hexes.keys():
-        for hex_info in vertex_hexes[vk]:
-            if GameData.terrain_matches(str(tile_data[hex_info.row][hex_info.col]["terrain"]), terrain_id):
-                result.append(vk)
-                break
-    return result
+            return path
+    return PackedInt32Array()
 
 
 # -------------------------------------------------------
@@ -294,24 +313,20 @@ func _find_terrain_vertices(graph: Dictionary, tile_data: Array, terrain_id: Str
 #   - the lake and sea hexes and their neighbours (so that the river does not flow along the shore);
 #   - the wetland hexes themselves (a swamp of any belt and a marsh) — the rivers do not pass
 #     through them.
-# It returns a dictionary with the keys "row_col" -> true.
+# Returns a flag array indexed by row * cols + col.
 # -------------------------------------------------------
-func _build_restricted_hexes(tile_data: Array, rows: int, cols: int) -> Dictionary:
-    var result: Dictionary = {}
+func _build_restricted_hexes(tile_data: Array, rows: int, cols: int) -> PackedByteArray:
+    var result := PackedByteArray()
+    result.resize(rows * cols)
 
-    # We collect the lake and sea hexes.
-    var water_hexes: Array = []
+    # We mark the water hexes and their neighbours.
     for row in range(rows):
         for col in range(cols):
             var terrain_id = tile_data[row][col]["terrain"]
             if terrain_id == "lake" or terrain_id == "sea" or terrain_id == "shallow_sea":
-                water_hexes.append({"row": row, "col": col})
-
-    # We mark the water hexes and their neighbours.
-    for wh in water_hexes:
-        result["%d_%d" % [wh.row, wh.col]] = true
-        for n in HexUtils.get_neighbors_odd_r(wh.row, wh.col, rows, cols):
-            result["%d_%d" % [n.row, n.col]] = true
+                result[row * cols + col] = 1
+                for n in HexUtils.get_neighbors_odd_r(row, col, rows, cols):
+                    result[n.row * cols + n.col] = 1
 
     # The wetland hexes themselves — the rivers do not pass through them (their neighbours
     # are not marked: that would be too restrictive).
@@ -319,291 +334,402 @@ func _build_restricted_hexes(tile_data: Array, rows: int, cols: int) -> Dictiona
         for col in range(cols):
             var terrain_id = tile_data[row][col]["terrain"]
             if MapHelpers.is_wetland_terrain(terrain_id):
-                result["%d_%d" % [row, col]] = true
+                result[row * cols + col] = 1
 
     return result
 
 
 # -------------------------------------------------------
-# Returns true if the vertex belongs to at least one hex from the dictionary.
+# Builds the "graph of the vertices": the nodes are the unique points of the world coordinates,
+# the edges are the sides of the hexes. The representation is flat arrays indexed by an integer
+# vertex id:
+#   positions      — the world coordinates of the vertices;
+#   nbr / forb     — up to 3 neighbours per vertex and the "edge lies in a restricted hex" flags;
+#   degree         — the number of the neighbours;
+#   hex_off/hex_data — the CSR list of the hexes containing each vertex (for mark_river_edges);
+#   pos_buckets    — the spatial buckets for looking up a vertex by a world position.
 # -------------------------------------------------------
-func _vertex_in_hexes(vk: String, graph: Dictionary, hexes_dict: Dictionary) -> bool:
-    var vertex_hexes: Dictionary = graph["hexes"]
-    if not vertex_hexes.has(vk):
-        return false
-    for hex_info in vertex_hexes[vk]:
-        if hexes_dict.has("%d_%d" % [hex_info.row, hex_info.col]):
-            return true
-    return false
+func _build_vertex_graph(rows: int, cols: int, radius: float, restricted_hexes: PackedByteArray = PackedByteArray()) -> Dictionary:
+    var hex_count := rows * cols
+    var has_restricted := restricted_hexes.size() == hex_count
+    var x_spacing := radius * sqrt(3.0)
+    var y_spacing := radius * 1.5
+
+    # The six vertex offsets of a hex are the same for every hex: the trigonometry runs once.
+    var offsets := PackedVector2Array()
+    offsets.resize(6)
+    for i in range(6):
+        var angle := deg_to_rad(60.0 * i + 30.0)
+        offsets[i] = Vector2(radius * cos(angle), radius * sin(angle))
+
+    var positions := PackedVector2Array()
+    var key_ids: Dictionary = {}
+    var counts := PackedInt32Array()
+    var hex_vertex_ids := PackedInt32Array()
+    hex_vertex_ids.resize(hex_count * 6)
+
+    for row in range(rows):
+        var center_y := row * y_spacing
+        var row_shift := x_spacing * 0.5 if row % 2 == 1 else 0.0
+        for col in range(cols):
+            var center := Vector2(col * x_spacing + row_shift, center_y)
+            var base := (row * cols + col) * 6
+            for vidx in range(6):
+                var key := Vector2i(6 * col + 3 * (row & 1) + VDX[vidx], 6 * row + VDY[vidx])
+                var id: int = key_ids.get(key, -1)
+                if id < 0:
+                    id = positions.size()
+                    key_ids[key] = id
+                    positions.append(center + offsets[vidx])
+                    counts.append(1)
+                else:
+                    counts[id] += 1
+                hex_vertex_ids[base + vidx] = id
+
+    var n := positions.size()
+    var hex_off := PackedInt32Array()
+    hex_off.resize(n + 1)
+    for id in range(n):
+        hex_off[id + 1] = hex_off[id] + counts[id]
+    var hex_data := PackedInt32Array()
+    hex_data.resize(hex_off[n])
+    var cursor := hex_off.duplicate()
+    var vertex_restricted := PackedByteArray()
+    vertex_restricted.resize(n)
+
+    for row in range(rows):
+        for col in range(cols):
+            var hex_index := row * cols + col
+            var base := hex_index * 6
+            var restr := has_restricted and restricted_hexes[hex_index] != 0
+            for vidx in range(6):
+                var id := hex_vertex_ids[base + vidx]
+                hex_data[cursor[id]] = base + vidx
+                cursor[id] += 1
+                if restr:
+                    vertex_restricted[id] = 1
+
+    var nbr := PackedInt32Array()
+    nbr.resize(n * 3)
+    nbr.fill(-1)
+    var forb := PackedByteArray()
+    forb.resize(n * 3)
+    forb.fill(0)
+    var degree := PackedByteArray()
+    degree.resize(n)
+    degree.fill(0)
+
+    for hex_index in range(hex_count):
+        var base := hex_index * 6
+        var restr := has_restricted and restricted_hexes[hex_index] != 0
+        for vidx in range(6):
+            var id := hex_vertex_ids[base + vidx]
+            var slot_base := id * 3
+            for delta in [-1, 1]:
+                var nvi: int = (vidx + delta + 6) % 6
+                var nid := hex_vertex_ids[base + nvi]
+                if nid == id:
+                    continue
+                var found := false
+                for k in range(degree[id]):
+                    if nbr[slot_base + k] == nid:
+                        if restr:
+                            forb[slot_base + k] = 1
+                        found = true
+                        break
+                if not found:
+                    var k := int(degree[id])
+                    nbr[slot_base + k] = nid
+                    forb[slot_base + k] = 1 if restr else 0
+                    degree[id] = k + 1
+
+    var edge_len := radius
+    for id in range(n):
+        if degree[id] > 0:
+            edge_len = positions[id].distance_to(positions[nbr[id * 3]])
+            break
+
+    var pos_buckets: Dictionary = {}
+    for id in range(n):
+        var bucket := Vector2i(floori(positions[id].x / POS_BUCKET), floori(positions[id].y / POS_BUCKET))
+        if not pos_buckets.has(bucket):
+            pos_buckets[bucket] = []
+        pos_buckets[bucket].append(id)
+
+    return {
+        "positions": positions,
+        "nbr": nbr,
+        "forb": forb,
+        "degree": degree,
+        "hex_off": hex_off,
+        "hex_data": hex_data,
+        "pos_buckets": pos_buckets,
+        "vertex_restricted": vertex_restricted,
+        "edge_len": edge_len
+    }
 
 
 # -------------------------------------------------------
-# Returns true if the edge (a_key -> b_key) belongs to at least one
-# forbidden hex (a lake or its neighbour).
+# Builds the per-vertex mask of the terrain families the rivers care about.
 # -------------------------------------------------------
-func _edge_in_forbidden_hexes(a_key: String, b_key: String, vertex_hexes: Dictionary, forbidden_hexes: Dictionary) -> bool:
-    if forbidden_hexes.is_empty():
-        return false
-    if not vertex_hexes.has(a_key) or not vertex_hexes.has(b_key):
-        return false
-    var a_hexes = vertex_hexes[a_key]
-    var b_hexes = vertex_hexes[b_key]
-    for ha in a_hexes:
-        for hb in b_hexes:
-            if ha.row == hb.row and ha.col == hb.col:
-                if forbidden_hexes.has("%d_%d" % [ha.row, ha.col]):
-                    return true
-    return false
+func _build_terrain_vertex_mask(graph: Dictionary, tile_data: Array, rows: int, cols: int) -> PackedByteArray:
+    var hex_bits := PackedByteArray()
+    hex_bits.resize(rows * cols)
+    for row in range(rows):
+        for col in range(cols):
+            var terrain_id := str(tile_data[row][col]["terrain"])
+            var family := GameData.terrain_family(terrain_id)
+            var bits := 0
+            if terrain_id == "mountain" or family == "mountain":
+                bits |= TERRAIN_MOUNTAIN
+            if terrain_id == "hill" or family == "hill":
+                bits |= TERRAIN_HILL
+            if terrain_id == "lake":
+                bits |= TERRAIN_LAKE
+            if terrain_id == "sea":
+                bits |= TERRAIN_SEA
+            if terrain_id == "shallow_sea":
+                bits |= TERRAIN_SHALLOW_SEA
+            if bits & (TERRAIN_LAKE | TERRAIN_SEA | TERRAIN_SHALLOW_SEA):
+                bits |= TERRAIN_WATER
+            hex_bits[row * cols + col] = bits
+
+    var hex_off: PackedInt32Array = graph["hex_off"]
+    var hex_data: PackedInt32Array = graph["hex_data"]
+    var n: int = graph["positions"].size()
+    var mask := PackedByteArray()
+    mask.resize(n)
+    for id in range(n):
+        var bits := 0
+        for k in range(hex_off[id], hex_off[id + 1]):
+            bits |= hex_bits[hex_data[k] / 6]
+        mask[id] = bits
+    return mask
+
+
+func _vertices_with_bit(mask: PackedByteArray, required: int) -> Array:
+    var result: Array = []
+    for id in range(mask.size()):
+        if mask[id] & required:
+            result.append(id)
+    return result
+
+
+# -------------------------------------------------------
+# Allocates the reusable per-search buffers and binds the graph arrays to the hot-loop copies.
+# -------------------------------------------------------
+func _alloc_search_buffers(graph: Dictionary) -> void:
+    var n: int = graph["positions"].size()
+    _graph_positions = graph["positions"]
+    _graph_nbr = graph["nbr"]
+    _graph_forb = graph["forb"]
+    _graph_degree = graph["degree"]
+    _graph_edge_len = graph["edge_len"]
+    _vertex_restricted = graph["vertex_restricted"]
+
+    _g_score.resize(n)
+    _came_from.resize(n)
+    _seen_stamp.resize(n)
+    _closed_stamp.resize(n)
+    _heap_stamp.resize(n)
+    _goal_stamp.resize(n)
+    _approach_stamp.resize(n)
+
+    _goal_stamp.fill(0)
+    _approach_stamp.fill(0)
+    _seen_stamp.fill(0)
+    _closed_stamp.fill(0)
+    _heap_stamp.fill(0)
+    _goal_epoch = 0
+    _path_epoch = 0
+
+
+# -------------------------------------------------------
+# Marks the goals of the next searches and the vertices from which a river may approach them.
+# The approach set includes the goal and its neighbours: entering an approach vertex from outside
+# is allowed, but a transition between two approach vertices is not.
+# -------------------------------------------------------
+func _prepare_search(goal_ids: Array) -> void:
+    _goal_epoch += 1
+    var epoch := _goal_epoch
+    for gid in goal_ids:
+        _goal_stamp[gid] = epoch
+    for gid in goal_ids:
+        _approach_stamp[gid] = epoch
+        var base: int = gid * 3
+        for k in range(_graph_degree[gid]):
+            _approach_stamp[_graph_nbr[base + k]] = epoch
+
+
+# -------------------------------------------------------
+# The distance in edges from every vertex to the nearest source, or -1 if unreachable.
+# -------------------------------------------------------
+func _build_distance_field(graph: Dictionary, source_ids: Array) -> PackedInt32Array:
+    var n: int = graph["positions"].size()
+    var field := PackedInt32Array()
+    field.resize(n)
+    field.fill(-1)
+    var nbr: PackedInt32Array = graph["nbr"]
+    var degree: PackedByteArray = graph["degree"]
+    var queue := PackedInt32Array()
+    queue.resize(n)
+    var head := 0
+    var tail := 0
+    for sid in source_ids:
+        if field[sid] == -1:
+            field[sid] = 0
+            queue[tail] = sid
+            tail += 1
+    while head < tail:
+        var current: int = queue[head]
+        head += 1
+        var next_dist: int = field[current] + 1
+        var base: int = current * 3
+        for k in range(degree[current]):
+            var nb: int = nbr[base + k]
+            if field[nb] == -1:
+                field[nb] = next_dist
+                queue[tail] = nb
+                tail += 1
+    return field
+
+
+# -------------------------------------------------------
+# The multi-goal A* on the vertex graph with a filtering by the turn angle.
+# It returns the vertex ids of the path or an empty array.
+#
+# The goals and their approach vertices are prepared by _prepare_search();
+# _dist_field holds the exact distance to the nearest goal.
+# The vertices occupied by other rivers are forbidden, except the goals themselves.
+# An edge inside a restricted hex is forbidden, except the last step into a goal
+# and one step from outside into an approach vertex.
+# -------------------------------------------------------
+func _find_path_astar(start_id: int, max_turn_angle_deg: float) -> PackedInt32Array:
+    _path_epoch += 1
+    var epoch := _path_epoch
+    var goal_epoch := _goal_epoch
+    var positions := _graph_positions
+    var nbr := _graph_nbr
+    var forb := _graph_forb
+    var degree := _graph_degree
+    var edge_len := _graph_edge_len
+    var max_angle := deg_to_rad(max_turn_angle_deg)
+    var soft_angle := deg_to_rad(max_turn_angle_deg + SOFT_ANGLE_BONUS_DEG)
+
+    var open_set := PriorityQueue.new()
+    _seen_stamp[start_id] = epoch
+    _g_score[start_id] = 0.0
+    _came_from[start_id] = -1
+    _heap_stamp[start_id] = epoch
+    var start_h := _dist_field[start_id]
+    open_set.push(start_id, float(maxi(start_h, 0)) * edge_len)
+
+    while not open_set.is_empty():
+        var current := open_set.pop_min()
+        # The lazy deletion: a stale entry of the heap is skipped.
+        if _heap_stamp[current] != epoch:
+            continue
+        _heap_stamp[current] = 0
+        if _closed_stamp[current] == epoch:
+            continue
+        _closed_stamp[current] = epoch
+
+        if _goal_stamp[current] == goal_epoch:
+            return _reconstruct_path(current)
+
+        var current_pos := positions[current]
+        var came := _came_from[current]
+        var has_dir := came >= 0
+        var dir := Vector2.ZERO
+        if has_dir:
+            dir = current_pos - positions[came]
+        var current_is_approach := _approach_stamp[current] == goal_epoch
+        var base := current * 3
+        var valid: Array = []
+        for iteration in range(2):
+            if iteration == 1:
+                if not has_dir or not valid.is_empty():
+                    break
+            var angle_limit := (max_angle if iteration == 0 else soft_angle) + 0.02
+            for k in range(degree[current]):
+                var n := nbr[base + k]
+                if _used[n] and _goal_stamp[n] != goal_epoch:
+                    continue
+                if forb[base + k]:
+                    if _goal_stamp[n] != goal_epoch \
+                            and not (_approach_stamp[n] == goal_epoch and not current_is_approach):
+                        continue
+                if has_dir and abs((positions[n] - current_pos).angle_to(dir)) > angle_limit:
+                    continue
+                valid.append(n)
+            if not has_dir:
+                break
+
+        var g_current := _g_score[current]
+        for n in valid:
+            var tentative := g_current + edge_len
+            if _seen_stamp[n] != epoch or tentative < _g_score[n]:
+                _seen_stamp[n] = epoch
+                _g_score[n] = tentative
+                _came_from[n] = current
+                _heap_stamp[n] = epoch
+                var h := _dist_field[n]
+                open_set.push(n, tentative + (float(h) * edge_len if h >= 0 else 0.0))
+    return PackedInt32Array()
+
+
+func _reconstruct_path(current: int) -> PackedInt32Array:
+    var total: Array = []
+    while current >= 0:
+        total.append(current)
+        current = _came_from[current]
+    total.reverse()
+    return PackedInt32Array(total)
 
 
 # -------------------------------------------------------
 # Marks all the vertices of the river as occupied.
 # -------------------------------------------------------
-func _mark_used(river: Array, used_vertices: Dictionary) -> void:
-    for pt in river:
-        used_vertices[_vertex_key(pt)] = true
+func _mark_used(path: PackedInt32Array) -> void:
+    for id in path:
+        if _used[id] == 0:
+            _used[id] = 1
+            _used_ids.append(id)
 
 
 # -------------------------------------------------------
-# Converts an array of vertex keys into an array of world coordinates.
+# Converts an array of vertex ids into an array of world coordinates.
 # -------------------------------------------------------
-func _keys_to_positions(path_keys: Array, graph: Dictionary) -> Array:
-    var positions: Dictionary = graph["positions"]
-    var path: Array = []
-    for k in path_keys:
-        path.append(positions[k])
-    return path
-
-
-# -------------------------------------------------------
-# Builds the "graph of the vertices": the nodes = the unique points of the world coordinates,
-# the edges = the connections through the neighbouring vertices inside the hexes.
-#
-# The optimisation: the flag "forb" (the edge belongs to a forbidden hex by a lake)
-# is precomputed here ONCE for all the edges, therefore A* checks
-# the prohibition in O(1) per neighbour instead of iterating over the hexes of both vertices.
-# -------------------------------------------------------
-func _build_vertex_graph(rows: int, cols: int, radius: float, forbidden_hexes: Dictionary = {}) -> Dictionary:
-    var vertex_positions: Dictionary = {} # key -> Vector2
-    var vertex_hexes: Dictionary = {} # key -> Array of {row, col, vidx}
-
-    for row in range(rows):
-        for col in range(cols):
-            for vidx in range(6):
-                var pos = HexUtils.hex_vertex(row, col, vidx, radius)
-                var key = _vertex_key(pos)
-                if not vertex_positions.has(key):
-                    vertex_positions[key] = pos
-                    vertex_hexes[key] = []
-                vertex_hexes[key].append({"row": row, "col": col, "vidx": vidx})
-
-    # The adjacency graph: for each vertex the neighbours are
-    # the vertices (vidx-1)%6 and (vidx+1)%6 in each hex containing the vertex.
-    # The representation — PARALLEL ARRAYS (important for the speed of A*):
-    #   neighbors[vkey] = Array of String (the keys of the neighbours)
-    #   forb_mask[vkey] = Array of bool  (true = the edge lies in a hex by a lake)
-    # This gives an O(1) check of a forbidden edge without allocating a dictionary per edge.
-    var neighbors: Dictionary = {}
-    var forb_mask: Dictionary = {}
-    var forbidden_empty := forbidden_hexes.is_empty()
-    for vkey in vertex_positions.keys():
-        var nbrs: Array = []
-        var forbs: Array = []
-        var nbr_set: Dictionary = {} # the deduplication of the neighbours
-        var hex_list = vertex_hexes[vkey]
-        for hex_info in hex_list:
-            for delta in [-1, 1]:
-                var nvi = (hex_info.vidx + delta) % 6
-                var npos = HexUtils.hex_vertex(hex_info.row, hex_info.col, nvi, radius)
-                var nkey = _vertex_key(npos)
-                if nkey != vkey and not nbr_set.has(nkey):
-                    nbr_set[nkey] = true
-                    nbrs.append(nkey)
-                    forbs.append(false if forbidden_empty else _edge_in_forbidden_hexes(vkey, nkey, vertex_hexes, forbidden_hexes))
-        neighbors[vkey] = nbrs
-        forb_mask[vkey] = forbs
-
-    return {
-        "positions": vertex_positions,
-        "neighbors": neighbors,
-        "hexes": vertex_hexes,
-        "forb": forb_mask
-    }
+func _ids_to_positions(path: PackedInt32Array) -> Array:
+    var positions := _graph_positions
+    var result: Array = []
+    for id in path:
+        result.append(positions[id])
+    return result
 
 
 # -------------------------------------------------------
-# The rounding of the position for creating a stable vertex key
+# Finds the vertex id by a world position. A saved river keeps only the coordinates,
+# so the lookup is spatial: the nearest vertex within POS_SNAP.
 # -------------------------------------------------------
-func _vertex_key(pos: Vector2) -> String:
-    return "%d_%d" % [roundi(pos.x * 100.0), roundi(pos.y * 100.0)]
-
-
-# -------------------------------------------------------
-# The A* search of a path between two vertices of the graph with a filtering
-# by the turn angle. It returns an array of the vertex keys or an empty array.
-#
-# forbidden_keys — the vertices occupied by other rivers (it is not allowed to pass through,
-# except goal_key and merge_keys).
-# forbidden_hexes — the hexes by the lakes (the lake + the neighbours). The flags of the forbidden edges
-# are precomputed in the graph (the "forb" field — a parallel bool array).
-# The river cannot pass along the EDGES by the lakes, except for the last step into the mouth/
-# confluence point. So that the river can enter the lake, one step
-# outside to the vertex neighbouring the mouth (approach) is allowed, after which the path must
-# finish at the mouth.
-# merge_keys — the vertices at which the path can end (the confluence points).
-#
-# The key optimisations (the replacement of sort_custom + pop_front of the original code):
-#   - the open list — a binary heap (PriorityQueue): push/pop in O(log n);
-#   - in_heap + closed_set: the stale entries of the heap are skipped, the heap does not
-#     grow, each vertex is processed exactly once;
-#   - the check of the forbidden edges — O(1) by the precomputed flag forb;
-#   - angle_to does not require normalized vectors — normalized() is removed.
-# -------------------------------------------------------
-func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, forbidden_keys: Dictionary, max_turn_angle_deg: float, merge_keys: Dictionary = {}, _forbidden_hexes: Dictionary = {}) -> Array:
-    var vertex_positions: Dictionary = graph["positions"]
-    var neighbors_map: Dictionary = graph["neighbors"]
-    var forb_mask: Dictionary = graph.get("forb", {})
-
-    # We limit the search area by the bbox around start and goal.
-    # This speeds up A* many times over on large maps, without changing the data format of the rivers:
-    # the path is still built along the hex vertices, therefore mark_river_edges
-    # and all the functionality (the bonuses at the rivers, near_river) work as before.
-    var start_pos = vertex_positions[start_key]
-    var goal_pos = vertex_positions[goal_key]
-    var min_x = minf(start_pos.x, goal_pos.x)
-    var max_x = maxf(start_pos.x, goal_pos.x)
-    var min_y = minf(start_pos.y, goal_pos.y)
-    var max_y = maxf(start_pos.y, goal_pos.y)
-    # The margin: 25% of the sum of the sides of the bbox, but not less than a fixed minimum,
-    # so that the river can bend naturally and flow into the merge vertices.
-    var margin = maxf((max_x - min_x + max_y - min_y) * 0.25, 200.0)
-    min_x -= margin
-    max_x += margin
-    min_y -= margin
-    max_y += margin
-
-    # The vertices through which the river can approach the mouth/confluence:
-    # the mouth itself and its immediate neighbours. Entering such a vertex from outside
-    # is allowed (one step), after which the path must finish at the mouth.
-    var approach_keys: Dictionary = {}
-    approach_keys[goal_key] = true
-    var goal_nbrs: Array = neighbors_map.get(goal_key, [])
-    for n in goal_nbrs:
-        approach_keys[n] = true
-    for mk in merge_keys.keys():
-        approach_keys[mk] = true
-        var mk_nbrs: Array = neighbors_map.get(mk, [])
-        for n in mk_nbrs:
-            approach_keys[n] = true
-
-    var open_set = PriorityQueue.new()
-    open_set.push(start_key, _heuristic(start_key, goal_key, vertex_positions))
-    var came_from: Dictionary = {}
-    var g_score: Dictionary = {start_key: 0.0}
-    var closed_set: Dictionary = {}
-    var in_heap: Dictionary = {start_key: true}
-
-    var has_merge := not merge_keys.is_empty()
-    var has_forbidden := not forbidden_keys.is_empty()
-    var has_forb := not forb_mask.is_empty()
-    var max_angle_rad = deg_to_rad(max_turn_angle_deg)
-    var soft_angle_rad = deg_to_rad(max_turn_angle_deg + 30.0)
-
-    while not open_set.is_empty():
-        var current = open_set.pop_min()
-        # The lazy deletion: we skip the stale entries of the heap.
-        if not in_heap.has(current):
-            continue
-        in_heap.erase(current)
-        # closed_set — each vertex is processed exactly once.
-        if closed_set.has(current):
-            continue
-        closed_set[current] = true
-
-        if current == goal_key or (has_merge and merge_keys.has(current)):
-            return _reconstruct_path(came_from, current)
-
-        var current_pos = vertex_positions[current]
-        var dir = Vector2.ZERO
-        if came_from.has(current):
-            dir = current_pos - vertex_positions[came_from[current]]
-        else:
-            # For the starting vertex the direction to the goal
-            dir = vertex_positions[goal_key] - current_pos
-
-        # The neighbours:
-        # 1) The vertices occupied by other rivers are forbidden (except the mouth/confluence).
-        # 2) The edges with the flag forb are forbidden, EXCEPT:
-        #    - the last step into the mouth/confluence point;
-        #    - one step from outside to the approach vertex (to enter the lake).
-        #    A transition between two approach vertices is forbidden — that prevents
-        #    the river from flowing along the shore of the lake.
-        # We discard the neighbours outside the bbox — that is the main speedup.
-        var current_is_approach = approach_keys.has(current)
-        var candidates: Array = []
-        var current_nbrs: Array = neighbors_map[current]
-        var current_forbs: Array = forb_mask.get(current, [])
-        for i in range(current_nbrs.size()):
-            var n: String = current_nbrs[i]
-            if has_forbidden and forbidden_keys.has(n) and n != goal_key and not merge_keys.has(n):
+func _find_vertex_id(pos: Vector2, graph: Dictionary) -> int:
+    var buckets: Dictionary = graph["pos_buckets"]
+    var positions: PackedVector2Array = graph["positions"]
+    var bx := floori(pos.x / POS_BUCKET)
+    var by := floori(pos.y / POS_BUCKET)
+    var best := -1
+    var best_dist := POS_SNAP * POS_SNAP
+    for dx in [-1, 0, 1]:
+        for dy in [-1, 0, 1]:
+            var ids = buckets.get(Vector2i(bx + dx, by + dy))
+            if ids == null:
                 continue
-            if has_forb and i < current_forbs.size() and current_forbs[i]:
-                if n == goal_key or merge_keys.has(n):
-                    pass # the last step into the mouth/confluence is allowed
-                elif approach_keys.has(n) and not current_is_approach:
-                    pass # entering from outside to the approach vertex is allowed
-                else:
-                    continue
-            var npos = vertex_positions[n]
-            if npos.x < min_x or npos.x > max_x or npos.y < min_y or npos.y > max_y:
-                continue
-            candidates.append(n)
-
-        # We filter by the angle
-        var valid: Array = _filter_by_angle(candidates, current_pos, dir, vertex_positions, max_angle_rad)
-        if valid.is_empty():
-            valid = _filter_by_angle(candidates, current_pos, dir, vertex_positions, soft_angle_rad)
-            if valid.is_empty():
-                continue
-
-        var g_current = g_score[current]
-        for neighbor in valid:
-            var tentative_g = g_current + current_pos.distance_to(vertex_positions[neighbor])
-            if tentative_g < g_score.get(neighbor, INF):
-                came_from[neighbor] = current
-                g_score[neighbor] = tentative_g
-                open_set.push(neighbor, tentative_g + _heuristic(neighbor, goal_key, vertex_positions))
-                in_heap[neighbor] = true
-    return []
-
-
-func _heuristic(a_key: String, b_key: String, vertex_positions: Dictionary) -> float:
-    return vertex_positions[a_key].distance_to(vertex_positions[b_key])
-
-
-func _reconstruct_path(came_from: Dictionary, current: String) -> Array:
-    var total_path: Array = [current]
-    while came_from.has(current):
-        current = came_from[current]
-        total_path.append(current)
-    total_path.reverse()
-    return total_path
-
-
-# -------------------------------------------------------
-# Filters the candidates by the turn angle relative to dir.
-# max_angle_rad is passed in radians (it is computed once in A*).
-# angle_to does not require normalized vectors — normalized() is not needed.
-# -------------------------------------------------------
-func _filter_by_angle(candidates: Array, current_pos: Vector2, dir: Vector2,
-        vertex_positions: Dictionary, max_angle_rad: float) -> Array:
-    var valid: Array = []
-    for n in candidates:
-        var ndir = vertex_positions[n] - current_pos
-        var angle = abs(ndir.angle_to(dir))
-        if angle <= max_angle_rad + 0.02:
-            valid.append(n)
-    return valid
+            for id in ids:
+                var dist := positions[id].distance_squared_to(pos)
+                if dist < best_dist:
+                    best_dist = dist
+                    best = id
+    return best
 
 
 # -------------------------------------------------------
@@ -637,7 +763,7 @@ func get_cached_graph() -> Dictionary:
 
 # -------------------------------------------------------
 # Serializes the rivers for the save (Vector2 -> [x, y]).
-# The new format is a dictionary { "main": [...], "tributaries": [...] },
+# The format is a dictionary { "main": [...], "tributaries": [...] },
 # so that on loading the difference between the main rivers and the tributaries is preserved.
 # -------------------------------------------------------
 func serialize_rivers():
@@ -676,11 +802,9 @@ func load_rivers(river_data) -> void:
     tributaries = []
 
     if river_data is Dictionary:
-        # The new format: a dictionary with the separation into main rivers and tributaries.
         main_rivers = _deserialize_list(river_data.get("main", []))
         tributaries = _deserialize_list(river_data.get("tributaries", []))
     else:
-        # An array instead of a dictionary — we consider all the rivers main.
         main_rivers = _deserialize_list(river_data)
 
     rivers = main_rivers + tributaries
@@ -700,14 +824,14 @@ func _deserialize_list(river_list: Array) -> Array:
 
 # Marks the edges of the rivers in the hex data.
 # graph — an optional ready graph (from get_cached_graph()); if it is not passed
-# or is empty — the graph is rebuilt. This removes the double building of the graph
-# (thousands of vertices) when generating a new map.
+# or is empty — the graph is rebuilt.
 func mark_river_edges(tile_data: Array, rows: int, cols: int, radius: float, graph: Dictionary = {}) -> void:
     if tile_data == null or tile_data.size() == 0:
         return
 
     var use_graph = graph if not graph.is_empty() else _build_vertex_graph(rows, cols, radius)
-    var vertex_hexes = use_graph["hexes"]
+    var hex_off: PackedInt32Array = use_graph["hex_off"]
+    var hex_data: PackedInt32Array = use_graph["hex_data"]
 
     # We clear the existing river_edges, if there are any
     for row in range(rows):
@@ -720,37 +844,34 @@ func mark_river_edges(tile_data: Array, rows: int, cols: int, radius: float, gra
         if river.size() < 2:
             continue
         var prev_pos = river[0]
-        var prev_key = _vertex_key(prev_pos)
+        var prev_id := _find_vertex_id(prev_pos, use_graph)
         for i in range(1, river.size()):
             var cur_pos = river[i]
-            var cur_key = _vertex_key(cur_pos)
-            if not vertex_hexes.has(prev_key) or not vertex_hexes.has(cur_key):
+            var cur_id := _find_vertex_id(cur_pos, use_graph)
+            if prev_id < 0 or cur_id < 0:
                 prev_pos = cur_pos
-                prev_key = cur_key
+                prev_id = cur_id
                 continue
-            var prev_hexes = vertex_hexes[prev_key]
-            var cur_hexes = vertex_hexes[cur_key]
-            var common_hexes = []
-            for prev_hex in prev_hexes:
-                for cur_hex in cur_hexes:
-                    if prev_hex.row == cur_hex.row and prev_hex.col == cur_hex.col:
-                        common_hexes.append({"row": prev_hex.row, "col": prev_hex.col, "v1": prev_hex.vidx, "v2": cur_hex.vidx})
-            for info in common_hexes:
-                var row = info.row
-                var col = info.col
-                var v1 = info.v1
-                var v2 = info.v2
-                var edge_index = -1
-                if (v1 + 1) % 6 == v2:
-                    edge_index = v1
-                elif (v2 + 1) % 6 == v1:
-                    edge_index = v2
-                if edge_index >= 0:
-                    var tile = tile_data[row][col]
-                    if tile != null:
-                        var edges = tile.get("river_edges", [])
-                        if edge_index not in edges:
-                            edges.append(edge_index)
-                            tile["river_edges"] = edges
+            for a in range(hex_off[prev_id], hex_off[prev_id + 1]):
+                var ma := hex_data[a]
+                var hex_a := ma / 6
+                var v1 := ma % 6
+                for b in range(hex_off[cur_id], hex_off[cur_id + 1]):
+                    var mb := hex_data[b]
+                    if mb / 6 != hex_a:
+                        continue
+                    var v2 := mb % 6
+                    var edge_index := -1
+                    if (v1 + 1) % 6 == v2:
+                        edge_index = v1
+                    elif (v2 + 1) % 6 == v1:
+                        edge_index = v2
+                    if edge_index >= 0:
+                        var tile = tile_data[hex_a / cols][hex_a % cols]
+                        if tile != null:
+                            var edges = tile.get("river_edges", [])
+                            if edge_index not in edges:
+                                edges.append(edge_index)
+                                tile["river_edges"] = edges
             prev_pos = cur_pos
-            prev_key = cur_key
+            prev_id = cur_id
