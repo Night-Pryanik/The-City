@@ -795,6 +795,27 @@ static func get_time_to_full(tile: Dictionary, res_data: Dictionary) -> float:
     return maxf(0.0, ttm - float(tile.get("fill_time", 0.0)))
 
 
+## The length of one breeding cycle in seconds: breeding_cycle_multiplier ×
+## time_to_mature (see game_balance.json). The pasture yields one batch of heads
+## (the live_* value in produces) per cycle.
+static func get_breeding_cycle_period(res_data: Dictionary) -> float:
+    var ttm = float(res_data.get("time_to_mature", 0))
+    if ttm <= 0.0:
+        return 0.0
+    return ttm * float(GameData.game_balance.get("breeding_cycle_multiplier", 1))
+
+
+## The progress of the breeding in [0, 1]: the share of the current breeding
+## cycle passed (the fill_time is reset by every batch of heads). Before the
+## first maturation the same bar doubles as the filling of the herd, but the
+## fraction is always relative to the full period, so the bar never jumps.
+static func get_breeding_cycle_fraction(tile: Dictionary, res_data: Dictionary) -> float:
+    var period := get_breeding_cycle_period(res_data)
+    if period <= 0.0:
+        return 1.0
+    return clampf(fmod(float(tile.get("fill_time", 0.0)), period) / period, 0.0, 1.0)
+
+
 ## Looks on the map for an already domesticated instance of the resource res_id (a hex with this resource
 
 ## Looks on the map for an already domesticated instance of the resource res_id (a

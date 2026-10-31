@@ -133,6 +133,10 @@ register it in `project.godot` under
 | конина | horsemeat |
 | оленина | venison |
 | скот, домашний скот | livestock |
+| голова (единица скота) | head |
+| стадо | herd |
+| разведение, закладка стада | breeding |
+| одомашнивание | domestication |
 | бойня | slaughterhouse |
 | монета | coin |
 | пастбище | pasture |

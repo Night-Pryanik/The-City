@@ -216,6 +216,9 @@ msgstr " | Требуется: "
 msgid " | Requires advancing to the next era"
 msgstr " | Требуется переход в следующую эпоху"
 
+msgid " — %d heads of livestock are needed to start a herd"
+msgstr " — для закладки стада нужно %d голов"
+
 msgid " — in storage: %d"
 msgstr " — на складе: %d"
 
@@ -326,6 +329,9 @@ msgstr "У %s нет %d ед. для долгосрочного контракт
 
 msgid "%s does not have that many units."
 msgstr "У %s нет такого количества."
+
+msgid "%s is domesticated — %d heads of livestock are in the storage"
+msgstr "%s одомашнены — %d голов теперь в хранилище"
 
 msgid "%s with the identifier \"%s\" does not exist."
 msgstr "%s с идентификатором «%s» не существует."
@@ -1092,8 +1098,8 @@ msgstr "Дорогу построить не удалось"
 msgid "Failed to build the road: %s"
 msgstr "Дорогу построить не удалось: %s"
 
-msgid "Feed consumption: %d per cycle"
-msgstr "Потребляет корма: %d за цикл"
+msgid "Feed consumption: %d per sec"
+msgstr "Потребляет корма: %d в секунду"
 
 msgid "Field is not part of the data model"
 msgstr "Поле отсутствует в модели данных"
@@ -1184,6 +1190,9 @@ msgstr "Время показа сообщений в верхней панел�
 
 msgid "Harbor"
 msgstr "Пристань"
+
+msgid "Herd: extinct"
+msgstr "Поголовье: вымерло"
 
 msgid "Herd: full (100%)"
 msgstr "Поголовье: полное (100%)"
@@ -1514,6 +1523,9 @@ msgstr "Недостаточно монет для контракта: %d в с�
 
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
 msgstr "Недостаточно монет в казне! Нужно %d, в казне %d"
+
+msgid "Not enough livestock: %d heads of %s are needed to start a herd"
+msgstr "Недостаточно скота: для закладки стада нужно %d голов — %s"
 
 msgid "Not in storage"
 msgstr "Нет на складе"
@@ -2513,6 +2525,9 @@ msgstr "доступ города к пресной воде"
 
 msgid "construction"
 msgstr "строительство"
+
+msgid "heads per %.0f sec"
+msgstr "голов за %.0f сек"
 
 msgid "idle"
 msgstr "простаивает"

@@ -80,15 +80,16 @@ func _draw_progress_bars(row: int, col: int):
 
     var tile = tile_data[row][col]
 
-    # --- The pasture fill progress bar (time_to_mature) ---
-    # It is shown ONLY while the herd is growing (0% < fill < 100%)
-    # and there is a worker on the improvement. At full headcount the bar disappears.
+    # --- The breeding progress bar of the pasture ---
+    # It shows the progress of the current breeding cycle (and, before the first
+    # maturation, the filling of the herd). At the very end of the cycle the
+    # pasture yields a batch of heads and the bar restarts.
     var eff_res_fill = MapHelpers.get_effective_resource(tile)
     if eff_res_fill != "" and tile.get("improvement", null) != null \
             and main_map.worker_manager.has_worker(row, col):
         var res_data_fill = GameData.raw_resources.get(eff_res_fill, {})
         if MapHelpers.is_growing_resource(res_data_fill):
-            var fill_frac = MapHelpers.get_fill_fraction(tile, res_data_fill)
+            var fill_frac = MapHelpers.get_breeding_cycle_fraction(tile, res_data_fill)
             if fill_frac > 0.0 and fill_frac < 1.0:
                 var pasture_bar_width = RESOURCE_ICON_SIZE
                 var pasture_bar_height = 6

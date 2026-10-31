@@ -7,12 +7,17 @@
 # the data is exactly what the player actually receives per second. There is no
 # "per cycle" base and no production interval to divide by.
 #
+# The livestock products are the exception: the heads are bred in whole batches once
+# per breeding cycle, so the row shows the batch and the length of the cycle
+# ("20 heads per 40 sec") instead of a rate.
+#
 # Checks:
 #   1. NON-GROWING RESOURCE. The rate equals the resource's produces value
 #      (limestone: 10 → 10 units/sec), and the row has no base.
 #   2. GROWING RESOURCE WITHOUT IMPROVEMENT. The "once built" hint shows the
-#      FULL rate (the produces value), not 0: the herd only starts filling after
-#      construction, so a zero fraction must not suppress the hint.
+#      FULL batch (the produces value), not 0: the herd only starts filling after
+#      construction, so a zero fraction must not suppress the hint. The suffix
+#      names the breeding cycle.
 #   3. SINGLE FORMAT. Both resources have a row of the same structure — name and
 #      rate, without the base.
 extends SceneTree
@@ -65,7 +70,7 @@ func _run() -> void:
                 "the limestone row must not have a base (got: %s)"
                         % stone_item.get("name", ""), state)
 
-    # --- 2. Growing resource without improvement: hint = full rate ---
+    # --- 2. Growing resource without improvement: hint = full batch per cycle ---
     _gdata.raw_resources["test_herd"] = {
         "id": "test_herd", "name": "Test Herd", "type": "raw",
         "improved_by": "pasture", "produces": {"live_cows": 20},
@@ -78,11 +83,15 @@ func _run() -> void:
     check(not herd_item.is_empty(), "the herd row must be in the production tooltip", state)
     if not herd_item.is_empty():
         check(float(herd_item.get("amount", 0.0)) > 0.0,
-                "the \"once built\" hint must show the full rate, not 0 (got %.1f)"
+                "the \"once built\" hint must show the full batch, not 0 (got %.1f)"
                         % float(herd_item.get("amount", 0.0)), state)
         check(absf(float(herd_item.get("amount", 0.0)) - 20.0) < 0.001,
-                "herd rate = produces = 20 units/sec (got %.1f)"
+                "the herd batch = produces = 20 heads (got %.1f)"
                         % float(herd_item.get("amount", 0.0)), state)
+        # The cycle = time_to_mature × breeding_cycle_multiplier (40 × 1 = 40 sec).
+        check(str(herd_item.get("suffix", "")).contains("heads per 40 sec"),
+                "the herd row must name the breeding cycle \"heads per 40 sec\" (got: %s)"
+                        % herd_item.get("suffix", ""), state)
         check(not _has_base_label(str(herd_item.get("name", ""))),
                 "the herd row must not have a base (got: %s)"
                         % herd_item.get("name", ""), state)

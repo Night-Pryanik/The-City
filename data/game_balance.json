@@ -8,6 +8,7 @@
   // The object is grouped into blocks by the system that owns the constants:
   //   city       — the treasury of the player's city and its internal market;
   //   craft      — the price of a good with additional ingredients;
+  //   breeding   — the livestock: the seed herd of a new herd, the breeding cycle and the core the slaughterhouse keeps;
   //   expansion  — the costs of extending the city's territory on the map;
   //   towns      — the economy of the towns (their treasury, warehouse and trade).
   //
@@ -71,6 +72,38 @@
       //                        base plus the addition, and the player has no reason to attach
       //                        anything but for the population's demand.
       "craft_extra_synergy": 0.15
+    },
+
+    // --- BREEDING: the livestock, the seed herd for a breeding on an empty hex ---
+    "breeding": {
+      // livestock_breeding_cost — how many heads of the live animal product
+      //                        (live_cows, live_pigs, ...) the breeding of a NEW herd
+      //                        on an empty hex takes from the city storage
+      //                        (CityData.take_livestock_for). The same number of heads
+      //                        is granted when a species is domesticated for the first
+      //                        time — the build on a natural herd (main_map
+      //                        ._apply_improvement) — so the first herd of every
+      //                        species starts for free, and the further herds must be
+      //                        bought in a town or grown.
+      //
+      //                        The same number is the breeding core the slaughterhouse
+      //                        never touches: the last livestock_breeding_cost heads
+      //                        always stay in the storage, so the automatic butchering
+      //                        cannot extinct the species (only selling them all away
+      //                        or demolishing every pasture can).
+      "livestock_breeding_cost": 10,
+      // breeding_cycle_multiplier — the length of one breeding cycle in units of
+      //                        time_to_mature (see the animal raw resources). A pasture
+      //                        breeds one batch of heads (the live_* value in its
+      //                        produces) per cycle: for the cattle it is 1 × 60 s = 60 s.
+      //                        The batch holds 4 heads per second of time_to_mature:
+      //                        with the multiplier 1 the pasture yields 4 heads per
+      //                        second, which is what one slaughterhouse butchers (20
+      //                        heads into 120 units of meat every 5 s). The cycle is
+      //                        never shorter than time_to_mature: the herd matures only
+      //                        when the fill time reaches time_to_mature, and the
+      //                        milk/wool/eggs flow waits for that.
+      "breeding_cycle_multiplier": 1
     },
 
     // --- EXPANSION: the cost of extending the city's territory over the map ---

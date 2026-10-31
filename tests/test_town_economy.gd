@@ -146,8 +146,8 @@ func _run() -> void:
         _test_group_helpers()
     if WATCHDOG.wants_case("base_pool_is_products_only"):
         _test_base_pool_is_products_only()
-    if WATCHDOG.wants_case("animals_excluded"):
-        _test_animals_excluded()
+    if WATCHDOG.wants_case("livestock_and_slaughter"):
+        _test_livestock_and_slaughter()
     if WATCHDOG.wants_case("one_time_resources"):
         _test_one_time_resources()
     if WATCHDOG.wants_case("duplicate_names_hidden"):

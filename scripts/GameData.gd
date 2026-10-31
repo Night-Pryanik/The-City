@@ -125,6 +125,32 @@ func _assign_from(loader) -> void:
     entity_sources = loader.entity_sources
     raw_data = loader.raw_data
     blacklisted = loader.blacklisted
+    _build_live_maps()
+
+# The two directions of the "raw animal -> live herd product" link. A raw resource of an
+# animal (cows) produces the live_* product (live_cows) on the pastures; the breeding and
+# the trade need the id of the live product by the raw resource (the herd to start a new
+# breeding) and back (a purchased herd of an unknown species registers the species itself).
+# The link is derived from the data: the live product is the produced good of the category
+# "livestock", so the maps never diverge from data/resources and data/products.
+var live_product_of_raw: Dictionary = {}
+var raw_resource_of_live_product: Dictionary = {}
+
+func _build_live_maps() -> void:
+    live_product_of_raw.clear()
+    raw_resource_of_live_product.clear()
+    for res_id in raw_resources:
+        var raw: Dictionary = raw_resources[res_id]
+        for pid in raw.get("produces", {}):
+            if products.has(pid) and str(products[pid].get("category", "")) == "livestock":
+                live_product_of_raw[str(res_id)] = str(pid)
+                raw_resource_of_live_product[str(pid)] = str(res_id)
+
+func live_product_of(res_id: String) -> String:
+    return str(live_product_of_raw.get(res_id, ""))
+
+func raw_of_live_product(pid: String) -> String:
+    return str(raw_resource_of_live_product.get(pid, ""))
 
 # === TERRAIN FAMILIES AND CLIMATE ZONES ===
 #

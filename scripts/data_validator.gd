@@ -578,6 +578,10 @@ const GAME_BALANCE_BLOCKS := {
     "craft": {
         "craft_extra_synergy": LEAF,
     },
+    "breeding": {
+        "livestock_breeding_cost": LEAF,
+        "breeding_cycle_multiplier": LEAF,
+    },
     "expansion": {
         "expansion_cost_per_hex": LEAF,
         "distance_cost_modifier_per_hex": LEAF,

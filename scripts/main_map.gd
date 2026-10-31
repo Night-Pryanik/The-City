@@ -394,7 +394,7 @@ func _ready():
                 # crop_bred — the id of a domesticated animal/plant which is bred
                 # on an empty hex (see docs.md, the section "Breeding of animals/plants").
                 # For the natural resources tile.resource remains.
-                var tile = {"terrain": "plain", "cover": "none", "climate": "", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false, "road_built": false, "road_level": 1, "road_staged": false}
+                var tile = {"terrain": "plain", "cover": "none", "climate": "", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "herd_mature": false, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false, "road_built": false, "road_level": 1, "road_staged": false}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
@@ -408,6 +408,7 @@ func _ready():
                         tile["crop_bred"] = saved.get("crop_bred")
                         # The occupancy of the livestock
                         tile["fill_time"] = float(saved.get("fill_time", 0.0))
+                        tile["herd_mature"] = bool(saved.get("herd_mature", false))
                         # The fractional remainder of the continuous production of an improvement.
                         # The obsolete production_progress is not used; if it is present
                         # we simply ignore it and start from zero.
@@ -1060,15 +1061,24 @@ func _process(delta):
                 # it is equal to 1.0 without the bonus or with a shortage of the supplies.
                 production_multiplier *= consumption_multiplier
 
-                # The growing resources (time_to_mature > 0): while the pasture is filling up,
-                # the output is proportional to the degree of the occupancy. The filling itself
-                # is advanced FRAME BY FRAME in _tick_pasture_fill() (a smooth bar),
-                # here we only collect the list of the growing pastures and cut the output.
+                # The growing resources (time_to_mature > 0): the herd breeds in cycles,
+                # the fill is advanced FRAME BY FRAME in _tick_pasture_fill() (a smooth
+                # bar) and the batches of the heads are yielded there. The non-lethal
+                # produce (the milk, the wool, the eggs) is ramped up only until the
+                # FIRST maturation: after it the herd is established, and the breeding
+                # cycles do not cut its output any more.
+                var live_pid := GameData.live_product_of(eff_res)
+                # The herd of the species lives in the city storage (the live_* units
+                # there are the whole population). An extinct species (zero heads)
+                # leaves the pasture empty: it yields nothing and consumes no feed.
+                var herd_gone := live_pid != "" and CityData.get_storage_amount(live_pid) <= 0
                 if MapHelpers.is_growing_resource(res_data):
-                    if float(tile.get("fill_time", 0.0)) < float(res_data["time_to_mature"]):
-                        # The key "row,col" — so that the duplicates do not accumulate between the ticks.
-                        _growing_pastures[str(row) + "," + str(col)] = {"row": row, "col": col}
-                    production_multiplier *= MapHelpers.get_fill_fraction(tile, res_data)
+                    # The key "row,col" — so that the duplicates do not accumulate between the ticks.
+                    _growing_pastures[str(row) + "," + str(col)] = {"row": row, "col": col}
+                    if not bool(tile.get("herd_mature", false)):
+                        production_multiplier *= MapHelpers.get_fill_fraction(tile, res_data)
+                if herd_gone:
+                    production_multiplier = 0.0
 
                 # The quality of the resource on the hex is passed into the production.
                 var tile_quality = tile.get("quality", "common")
@@ -1088,7 +1098,7 @@ func _process(delta):
                 var produces: Dictionary = res_data.get("produces", {})
                 var feed_per_sec: float = float(feed_needed)
 
-                if feed_needed > 0:
+                if feed_needed > 0 and not herd_gone:
                     var feed_consumed: int = _consume_feed_continuous(tile, feed_per_sec, improvement_source)
                     var actual_mult: float = production_multiplier if feed_consumed >= feed_per_sec * CityData.SIMULATION_TICK else 0.25
                     _emit_continuous_production(tile, produces, actual_mult, tile_quality, improvement_source, row, col, route_avg_speed)
@@ -1101,13 +1111,17 @@ func _process(delta):
                 for planned_pid in GameData.raw_resources.get(eff_res, {}).get("produces", {}):
                     if not CityData.is_product_available(planned_pid):
                         continue
+                    # The live_* heads are bred in batches by the cycle, they are not
+                    # a per-second planned output.
+                    if str(GameData.products.get(planned_pid, {}).get("category", "")) == "livestock":
+                        continue
                     var planned_amount := 0
                     if feed_needed > 0 and CityData.city_storage.get("feed", 0) < feed_needed:
                         planned_amount = int(ceil(float(RangeUtils.get_min_value(res_data["produces"][planned_pid], 1)) * 0.25))
                     else:
                         planned_amount = int(ceil(float(RangeUtils.get_min_value(res_data["produces"][planned_pid], 1)) * production_multiplier))
                     CityData.record_planned_improvement_production(planned_pid, improvement_source, planned_amount)
-                if feed_needed > 0:
+                if feed_needed > 0 and not herd_gone:
                     CityData.record_planned_improvement_consumption("feed", improvement_source, feed_needed)
 
         # The standing contracts with the towns are paid and fulfilled on the city
@@ -1161,6 +1175,7 @@ func _tick_pasture_fill(delta: float):
         return
     var had_growing := true
     var still_growing := {}
+    var cycle_mult := float(GameData.game_balance.get("breeding_cycle_multiplier", 1))
     for key in _growing_pastures:
         var entry: Dictionary = _growing_pastures[key]
         var row: int = entry["row"]
@@ -1170,19 +1185,40 @@ func _tick_pasture_fill(delta: float):
         if tile.improvement == null or bool(tile.get("decorative", false)) \
                 or not worker_manager.has_worker(row, col):
             continue
-        var res_data = GameData.raw_resources.get(MapHelpers.get_effective_resource(tile), {})
+        var eff_res := MapHelpers.get_effective_resource(tile)
+        var res_data = GameData.raw_resources.get(eff_res, {})
         if not MapHelpers.is_growing_resource(res_data):
             continue
-        var ttm = float(res_data["time_to_mature"])
-        var fill_time = float(tile.get("fill_time", 0.0))
-        if fill_time >= ttm:
+        var live_pid := GameData.live_product_of(eff_res)
+        # The herd lives in the city storage: while the species is extinct (zero
+        # heads), the pasture stays empty — the fill is frozen, nothing breeds.
+        if live_pid != "" and CityData.get_storage_amount(live_pid) <= 0:
+            still_growing[key] = entry
             continue
-        tile["fill_time"] = minf(fill_time + delta, ttm)
+        var ttm: float = float(res_data["time_to_mature"])
+        var fill_time: float = float(tile.get("fill_time", 0.0))
+        fill_time += delta
+        # The first maturation establishes the herd: from now on the non-lethal
+        # produce flows in full and the fill becomes the progress of the breeding.
+        if not bool(tile.get("herd_mature", false)) and fill_time >= ttm:
+            tile["herd_mature"] = true
+        var period: float = ttm * cycle_mult
+        var produces: Dictionary = res_data.get("produces", {})
+        while fill_time >= period:
+            # The breeding batch: the pasture yields the heads straight into the
+            # herd (the storage). The overshoot stays in fill_time for the next cycle.
+            fill_time -= period
+            if live_pid != "" and produces.has(live_pid) and int(produces[live_pid]) > 0:
+                var batch := int(produces[live_pid])
+                var source := GameData.improvement_source_id(str(tile.improvement))
+                CityData.add_to_storage(live_pid, batch, str(tile.get("quality", "common")))
+                CityData.record_production_source(live_pid, source, batch)
+        tile["fill_time"] = fill_time
         still_growing[key] = entry
     _growing_pastures = still_growing
     _has_growing_pastures = not still_growing.is_empty()
     # We redraw while it is growing; the final frame — so as to erase the bar,
-    # when the last pasture has filled up (otherwise the bar hangs on the screen).
+    # when the last pasture has been demolished (otherwise the bar hangs on the screen).
     if _has_growing_pastures or had_growing:
         progress_bar_layer.queue_redraw()
 
@@ -1234,6 +1270,10 @@ func _emit_continuous_production(tile: Dictionary, produces: Dictionary, product
     var tick := float(CityData.SIMULATION_TICK)
     for pid in produces:
         if not CityData._is_product_available(pid):
+            continue
+        # The live_* heads are not a continuous flow: the herd breeds in batches
+        # through the fill cycle (_tick_pasture_fill).
+        if str(GameData.products.get(pid, {}).get("category", "")) == "livestock":
             continue
         var per_sec_amt := float(RangeUtils.get_min_value(produces[pid], 1)) * production_multiplier
         var remainder: float = float(tile.get("production_fractional_remainder", 0.0)) + per_sec_amt * tick
@@ -1765,6 +1805,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             tile.crop_bred = null
             # The herd disappears on the demolition — the accumulated occupancy is reset.
             tile["fill_time"] = 0.0
+            tile["herd_mature"] = false
             # The fractional remainder of the production cycle of the demolished improvement — as well.
             tile["production_fractional_remainder"] = 0.0
             tile["feed_fractional_remainder"] = 0.0
@@ -1788,6 +1829,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             tile.crop_bred = null
             tile.cover = "none"
             tile["fill_time"] = 0.0
+            tile["herd_mature"] = false
             # The fractional remainder of the production cycle of the removed improvement — as well.
             tile["production_fractional_remainder"] = 0.0
             tile["feed_fractional_remainder"] = 0.0
@@ -1827,6 +1869,7 @@ func _apply_improvement(row: int, col: int, imp_id: String, target_res_id = null
     var tile = tile_data[row][col]
     tile.improvement = imp_id
     tile["fill_time"] = 0.0
+    tile["herd_mature"] = false
     # The production cycle of the new improvement starts from zero.
     tile["production_fractional_remainder"] = 0.0
     tile["feed_fractional_remainder"] = 0.0
@@ -1862,7 +1905,17 @@ func _apply_improvement(row: int, col: int, imp_id: String, target_res_id = null
             else:
                 tile["quality"] = GameData.roll_quality()
         if CityData:
-            CityData.register_domesticated_resource(target_res_id)
+            # The first domestication of a species grants the seed herd: the heads to start
+            # the breeding of a NEW herd on an empty hex. A known species (the breeding
+            # itself, an earlier find) grants nothing — the breeding of an unknown species
+            # is impossible, so the grant fires exactly once per species.
+            if CityData.register_domesticated_resource(target_res_id):
+                var live_pid := GameData.live_product_of(target_res_id)
+                if live_pid != "":
+                    CityData.add_to_storage(live_pid, CityData.livestock_breeding_cost())
+                    hud.show_message(tr("%s is domesticated — %d heads of livestock are in the storage")
+                            % [GameData.get_product_name(live_pid), CityData.livestock_breeding_cost()],
+                            GameData.HUD_MESSAGE_NORMAL)
     if not worker_manager.assign_worker(row, col):
         pass
     map_renderer.queue_redraw()
@@ -2017,6 +2070,24 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
     }):
         return true
 
+    # The breeding as the last step of the project: the seed herd is written off here,
+    # because the improvement will be applied from the queue, and not from an ordinary
+    # build. The check itself was passed in build_manager.start_build; the write-off can
+    # fail only if the heads went somewhere during the pause. The heads travel in the
+    # project meta — the cancellation of the project returns them.
+    var livestock_meta := {}
+    if target_res_id != null:
+        var target_tile = tile_data[row][col]
+        if target_tile != null and target_tile.get("resource", null) == null \
+                and GameData.live_product_of(str(target_res_id)) != "":
+            if not CityData.take_livestock_for(str(target_res_id)):
+                hud.show_message(tr("Not enough livestock: %d heads of %s are needed to start a herd")
+                        % [CityData.livestock_breeding_cost(),
+                        GameData.get_product_name(GameData.live_product_of(str(target_res_id)))],
+                        GameData.HUD_MESSAGE_IMPORTANT)
+                return false
+            livestock_meta = {"livestock_res_id": str(target_res_id)}
+
     # The input data for the save: the road of this hex is going by a phased
     # project. While the flag is absent, the recalculation of the network "by the fact of the improvement"
     # (road_manager.rebuild_roads_from_existing) would count the hex as ready and
@@ -2025,8 +2096,10 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
     # an "improvement without a road" in the data of the save.
     tile_data[row][col]["road_staged"] = true
     if not _start_road_project_steps(row, col, steps, total_cost, false, title,
-            {"improvement": imp_name, "improvement_id": imp_id}):
+            livestock_meta.merged({"improvement": imp_name, "improvement_id": imp_id})):
         tile_data[row][col]["road_staged"] = false
+        if not livestock_meta.is_empty():
+            CityData.return_livestock_for(str(livestock_meta.get("livestock_res_id", "")))
         return false
     return true
 
@@ -2455,6 +2528,12 @@ func _on_project_completed(_project_id: String, kind: String, meta: Dictionary) 
 func _on_project_cancelled(_project_id: String, _kind: String, _meta: Dictionary) -> void:
     # The laid segments remain (the cancellation does not roll back the road), only
     # the ghost of what could not be completed disappears.
+    # The seed herd of a cancelled "road → breeding" project returns to the storage.
+    # It travels in the meta only while the improvement step is NOT applied: after it
+    # the project completes and the cancellation is impossible.
+    var livestock_res_id = str(_meta.get("livestock_res_id", ""))
+    if livestock_res_id != "":
+        CityData.return_livestock_for(livestock_res_id)
     _refresh_project_ghost()
     map_renderer.queue_redraw()
     _redraw_progress_layer()

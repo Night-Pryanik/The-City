@@ -193,10 +193,20 @@ func production_rates(row: int, col: int, tile_data: Array) -> Dictionary:
     var bonus_multiplier: float = CityData.get_improvement_production_multiplier(
         tile.improvement, has_water, tile.get("terrain", ""), eff_res)
     var fill_frac: float = MapHelpers.get_fill_fraction(tile, res_data)
+    var cycle_period := MapHelpers.get_breeding_cycle_period(res_data)
     for prod_id in res_data["produces"]:
         if not CityData.is_product_available(prod_id):
             continue
         var base_amount := float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
+        if str(GameData.products.get(prod_id, {}).get("category", "")) == "livestock":
+            # The heads are bred in batches once per cycle, not per second: the
+            # average rate is batch/period — a small number that never trips
+            # the route warning.
+            var per_sec := 0.0
+            if cycle_period > 0.0:
+                per_sec = base_amount / cycle_period
+            rates[str(prod_id)] = {"rate": per_sec, "base": base_amount}
+            continue
         var final_amount := ceili(base_amount * bonus_multiplier * fill_frac)
         rates[str(prod_id)] = {"rate": float(final_amount), "base": base_amount}
     return rates
@@ -595,25 +605,28 @@ func _collect_hex_properties(row: int, col: int, tile_data: Array) -> Array:
         var res_data = GameData.raw_resources.get(res_id, {})
         var feed_consumption = res_data.get("feed_consumption", 0)
         if feed_consumption > 0:
-            lines.append(tr("Feed consumption: %d per cycle") % feed_consumption)
+            lines.append(tr("Feed consumption: %d per sec") % feed_consumption)
         var time_to_mature = res_data.get("time_to_mature", 0)
         if time_to_mature > 0:
-    # The feed and the occupancy of the herd are the economic indicators of the improvement. In the
-    # influence ring of SOMEONE ELSE'S town we do not show them: the player does not control these hexes
-    # (the same gate that was in the basic tooltip).
+            # The feed and the occupancy of the herd are the economic indicators of the
+            # improvement. In the influence ring of SOMEONE ELSE'S town we do not show
+            # them: the player does not control these hexes (the same gate that was in
+            # the basic tooltip).
             if tile.improvement != null and _worker_manager.has_worker(row, col):
-                var fill_frac = MapHelpers.get_fill_fraction(tile, res_data)
-                if fill_frac >= 1.0:
-                    lines.append(tr("Herd: full (100%)"))
-                else:
+                var live_pid := GameData.live_product_of(res_id)
+                if live_pid != "" and CityData.get_storage_amount(live_pid) <= 0:
+                    # The herd lives in the city storage: zero heads means the species
+                    # is extinct — the pasture is empty until it is re-purchased.
+                    lines.append(tr("Herd: extinct"))
+                elif not bool(tile.get("herd_mature", false)):
+                    var fill_frac = MapHelpers.get_fill_fraction(tile, res_data)
                     var t_left = MapHelpers.get_time_to_full(tile, res_data)
                     lines.append(tr("Fill level: %d%% (full in %.0f sec)") % [
                             roundi(fill_frac * 100), ceilf(t_left)])
+                else:
+                    lines.append(tr("Herd: full (100%)"))
             else:
                 lines.append(tr("Fill time: %.0f sec") % time_to_mature)
-
-            # A growing resource (the animals on the pasture): the current occupancy and
-            # the remaining time — if the improvement is already working.
     var water_access = MapHelpers.get_hex_water_access(
             row, col, tile_data, tile_data.size(), tile_data[0].size())
     if water_access == "direct":
@@ -854,14 +867,17 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         header_text = tr("Once built, %s will produce:") % imp_name_display
     result.append({"type": "header", "text": header_text})
 
-    # The growing resources: while the pasture is filling up, the actual output
-    # is proportional to the degree of the occupancy of the herd.
+    # The growing resources: while the herd is filling up, the actual output of the
+    # non-lethal produce (the milk, the wool, the eggs) is proportional to the
+    # occupancy. The first maturation establishes the herd, and from then on these
+    # products flow in full.
     #
     # The "once built" hint (no improvement on the hex yet) describes the POTENTIAL output: the
     # herd starts filling only after the improvement is built, so the current fraction would
     # always be zero and the row would show no rate at all. The fill reduces the rate of a
     # working improvement, not of a planned one.
-    var fill_frac = 1.0 if tile.improvement == null else MapHelpers.get_fill_fraction(tile, res_data)
+    var herd_mature := bool(tile.get("herd_mature", false))
+    var fill_frac = 1.0 if tile.improvement == null or herd_mature else MapHelpers.get_fill_fraction(tile, res_data)
 
     var base_amount = 0.0
     var final_amount = 0
@@ -869,15 +885,21 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         # produces can be a number or a range [min, max] — in the summary
         # we show the deterministic minimum (see RangeUtils).
         base_amount = float(RangeUtils.get_min_value(available_products[prod_id], 1))
-        final_amount = ceili(base_amount * bonus_multiplier * fill_frac)
-        var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
-        var icon_path = ""
         var prod_data = GameData.products.get(prod_id, {})
+        var suffix: String = " " + TranslationServer.translate("units/sec")
+        if str(prod_data.get("category", "")) == "livestock":
+            # The heads are bred in whole batches once per cycle — the row shows the
+            # batch and the length of the cycle, not a per-second rate.
+            final_amount = int(base_amount)
+            suffix = " " + tr("heads per %.0f sec") % MapHelpers.get_breeding_cycle_period(res_data)
+        else:
+            final_amount = ceili(base_amount * bonus_multiplier * fill_frac)
+        var prod_name = prod_data.get("name", prod_id)
+        var icon_path = ""
         if prod_data.has("icon"):
             var icon_name = prod_data["icon"]
             icon_path = IconRegistry.icon_path(icon_name)
-        # The display is per second: produces is already a rate.
-        var item := {"type": "product", "name": prod_name, "amount": float(final_amount), "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")}
+        var item := {"type": "product", "name": prod_name, "amount": float(final_amount), "icon_path": icon_path, "suffix": suffix}
         _append_route_shortfall(item, str(prod_id), shortfall)
         result.append(item)
 

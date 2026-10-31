@@ -588,7 +588,7 @@ func _take_group(members: Array, amount: int, priority: String) -> Dictionary:
     for pid in ordered:
         if remaining <= 0:
             break
-        var avail = int(CityData.city_storage.get(pid, 0))
+        var avail = _available_for_craft(pid)
         if avail <= 0:
             continue
         # We write off greedily at this pid within the limits of remaining.
@@ -606,7 +606,7 @@ func _take_group(members: Array, amount: int, priority: String) -> Dictionary:
 # CityData.remove_from_storage() — it will correctly update city_storage
 # and city_quality_detail itself and return the breakdown by quality.
 func _take_single(pid: String, amount: int, priority: String) -> Dictionary:
-    var avail = int(CityData.city_storage.get(pid, 0))
+    var avail = _available_for_craft(pid)
     if avail <= 0:
         return {"taken": 0, "breakdown": {}, "pids": {}}
     var take = mini(avail, amount)
@@ -627,14 +627,23 @@ func _take_by_variant(_slot: Dictionary, variant: Dictionary, amount: int,
         return _take_group(members, amount, priority)
     return _take_single(key, amount, priority)
 
+# The amount of the product that a craft may take. The live_* heads are the whole
+# herd of the species: the breeding core (livestock_breeding_cost heads) is
+# untouchable, so the automatic butchering cannot extinct a species.
+func _available_for_craft(pid: String) -> int:
+    var avail := int(CityData.city_storage.get(pid, 0))
+    if GameData.raw_of_live_product(pid) != "":
+        return maxi(0, avail - CityData.livestock_breeding_cost())
+    return avail
+
 # How many units of the key (a product or an @-group) are there in the storage.
 func _available_of_key(key: String) -> int:
     if key.begins_with("@"):
         var total := 0
         for member in _resolve_group_members(key.substr(1)):
-            total += int(CityData.city_storage.get(str(member), 0))
+            total += _available_for_craft(str(member))
         return total
-    return int(CityData.city_storage.get(key, 0))
+    return _available_for_craft(key)
 
 # Orders the members of an @-group by the quality priority.
 # - "best"  — first the members with the LARGER amount of the BEST quality in the storage;

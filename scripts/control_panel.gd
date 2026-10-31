@@ -1458,8 +1458,13 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             for cult in crops:
                 var cult_btn = Button.new()
                 cult_btn.custom_minimum_size = Vector2(40, 40) # a square button with an icon
-                # The tooltip is the name of the resource (an icon without a label).
+                # The tooltip is the name of the resource (an icon without a label);
+                # a species with a live herd product adds the seed cost of the breeding.
                 cult_btn.tooltip_text = cult.get("name", cult.id)
+                var cult_live := GameData.live_product_of(str(cult.id))
+                if cult_live != "":
+                    cult_btn.tooltip_text += tr(" — %d heads of livestock are needed to start a herd") \
+                            % CityData.livestock_breeding_cost()
                 # The icon of the domesticated kind; if there is none - a question mark.
                 var cult_icon = GameData.raw_resources.get(cult.id, {}).get("icon", "")
                 var cult_tex = _load_action_icon(cult_icon)
@@ -1535,14 +1540,20 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 # produces can be a number or a range [min, max] - in the
                 # preview we show the deterministic minimum (see RangeUtils).
                 var base_amount = float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
-                var final_amount = ceili(base_amount * bonus_multiplier)
                 var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
                 var icon_path = ""
                 var prod_data = GameData.products.get(prod_id, {})
                 if prod_data.has("icon"):
                     var icon_name = prod_data["icon"]
                     icon_path = IconRegistry.icon_path(icon_name)
-                products.append({"type": "product", "name": prod_name, "amount": float(final_amount), "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")})
+                if str(prod_data.get("category", "")) == "livestock":
+                    # The heads are bred in whole batches once per cycle, not per second.
+                    products.append({"type": "product", "name": prod_name,
+                            "amount": float(int(base_amount)), "icon_path": icon_path,
+                            "suffix": " " + tr("heads per %.0f sec") % MapHelpers.get_breeding_cycle_period(res_data)})
+                else:
+                    var final_amount = ceili(base_amount * bonus_multiplier)
+                    products.append({"type": "product", "name": prod_name, "amount": float(final_amount), "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")})
             for mod in modifiers:
                 products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": UI_THEME.color("income").lightened(0.35)})
             # We render into a SEPARATE box: render_products cleans the passed

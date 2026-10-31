@@ -216,6 +216,9 @@ msgstr ""
 msgid " | Requires advancing to the next era"
 msgstr ""
 
+msgid " — %d heads of livestock are needed to start a herd"
+msgstr ""
+
 msgid " — in storage: %d"
 msgstr ""
 
@@ -325,6 +328,9 @@ msgid "%s does not have %d units for a standing contract."
 msgstr ""
 
 msgid "%s does not have that many units."
+msgstr ""
+
+msgid "%s is domesticated — %d heads of livestock are in the storage"
 msgstr ""
 
 msgid "%s with the identifier \"%s\" does not exist."
@@ -1092,7 +1098,7 @@ msgstr ""
 msgid "Failed to build the road: %s"
 msgstr ""
 
-msgid "Feed consumption: %d per cycle"
+msgid "Feed consumption: %d per sec"
 msgstr ""
 
 msgid "Field is not part of the data model"
@@ -1183,6 +1189,9 @@ msgid "HUD message display time"
 msgstr ""
 
 msgid "Harbor"
+msgstr ""
+
+msgid "Herd: extinct"
 msgstr ""
 
 msgid "Herd: full (100%)"
@@ -1513,6 +1522,9 @@ msgid "Not enough coins for the contract: %d per second."
 msgstr ""
 
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
+msgstr ""
+
+msgid "Not enough livestock: %d heads of %s are needed to start a herd"
 msgstr ""
 
 msgid "Not in storage"
@@ -2512,6 +2524,9 @@ msgid "city access to fresh water"
 msgstr ""
 
 msgid "construction"
+msgstr ""
+
+msgid "heads per %.0f sec"
 msgstr ""
 
 msgid "idle"
@@ -3690,10 +3705,6 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Mead"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Meat"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4917,10 +4928,6 @@ msgid "Mead"
 msgstr ""
 
 msgctxt "resources.name"
-msgid "Meat"
-msgstr ""
-
-msgctxt "resources.name"
 msgid "Meteorite Iron"
 msgstr ""
 
@@ -5118,10 +5125,6 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Raw Fish"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Raw Meat"
 msgstr ""
 
 msgctxt "resources.name"

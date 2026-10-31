@@ -1192,6 +1192,12 @@ func add_to_storage(pid: String, amount: int, quality: String = "common"):
         city_quality_detail[pid] = {}
     var detail: Dictionary = city_quality_detail[pid]
     detail[quality] = detail.get(quality, 0) + amount
+    # A herd that has reached the city IS the species: the arrival of a live animal product
+    # registers the species as domesticated, so a herd bought in a town opens the breeding
+    # of this species on empty hexes even if the player has never met it on the map.
+    var raw_id := GameData.raw_of_live_product(pid)
+    if raw_id != "":
+        register_domesticated_resource(raw_id)
 
 # Decreases the total amount of the product pid by amount units.
 # It writes off by the priority of the quality (best/worst/random) and returns
@@ -2748,20 +2754,56 @@ func add_animal(animal_id: String):
         return
     register_domesticated_resource(animal_id)
 
-func register_domesticated_resource(res_id: String):
+# Registers the species among the domesticated ones. Returns true, if the species
+# was NOT in the list before the call — the caller (the completion of the build on a
+# natural herd) uses it to grant the first seed heads.
+func register_domesticated_resource(res_id: String) -> bool:
     if Engine.is_editor_hint() or not GameData.raw_resources.has(res_id):
-        return
+        return false
     if not MapHelpers.can_breed_resource(res_id):
-        return
+        return false
     if MapHelpers.get_breeding_improvement(res_id).is_empty():
-        return
+        return false
     if not (res_id in domesticated_resources):
         domesticated_resources.append(res_id)
+        return true
+    return false
 
 func add_plant(plant_id: String):
     if Engine.is_editor_hint():
         return
     register_domesticated_resource(plant_id)
+
+# --- The livestock: the seed herd for the breeding ---
+#
+# The breeding of a herd on an empty hex takes livestock_breeding_cost heads of the
+# live product of the species from the storage (data/game_balance.json). Species
+# without a live product (the plants, the bees) breed without a seed herd.
+
+func livestock_breeding_cost() -> int:
+    return int(GameData.game_balance.get("livestock_breeding_cost", 5))
+
+func has_livestock_for(res_id: String) -> bool:
+    var live_pid := GameData.live_product_of(res_id)
+    if live_pid == "":
+        return true
+    return get_storage_amount(live_pid) >= livestock_breeding_cost()
+
+func take_livestock_for(res_id: String) -> bool:
+    var live_pid := GameData.live_product_of(res_id)
+    if live_pid == "":
+        return true
+    var cost := livestock_breeding_cost()
+    if get_storage_amount(live_pid) < cost:
+        return false
+    remove_from_storage(live_pid, cost)
+    return true
+
+func return_livestock_for(res_id: String) -> void:
+    var live_pid := GameData.live_product_of(res_id)
+    if live_pid == "":
+        return
+    add_to_storage(live_pid, livestock_breeding_cost())
 
 func is_product_available(product_id: String) -> bool:
     return _is_product_available(product_id)

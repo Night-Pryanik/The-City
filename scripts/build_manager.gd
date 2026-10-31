@@ -192,6 +192,24 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
             emit_signal("build_message", tr("This is inside another town's influence ring — cannot build"), 1)
             return false
 
+    # The breeding (an improvement with a chosen animal/plant on an EMPTY hex) of a species
+    # with a live product needs a seed herd in the storage. The check stands before both
+    # further paths — the ordinary build and the "road → improvement" project — so that an
+    # impossible breeding is rejected right away, with the simulation even stopped. The
+    # heads themselves are written off later, at the moment the build really starts.
+    var livestock_res_id := ""
+    if main_map_check != null and target_res_id != null \
+            and row >= 0 and row < main_map_check.tile_data.size() \
+            and col >= 0 and col < main_map_check.tile_data[row].size():
+        var b_tile = main_map_check.tile_data[row][col]
+        if b_tile != null and b_tile.get("resource", null) == null:
+            livestock_res_id = str(target_res_id)
+            if not CityData.has_livestock_for(livestock_res_id):
+                emit_signal("build_message", tr("Not enough livestock: %d heads of %s are needed to start a herd")
+                        % [CityData.livestock_breeding_cost(),
+                        GameData.get_product_name(GameData.live_product_of(livestock_res_id))], 1)
+                return false
+
     var key = str(row) + "," + str(col)
     if active_builds.has(key):
         emit_signal("build_message", tr("Construction is already underway here"), 1)
@@ -295,7 +313,13 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     }):
         return true
 
+    # The seed herd is written off when the build really starts — after the limit check
+    # below, so that a rejected build cannot lose the heads. The cancellation of an
+    # unfinished build returns them (cancel_build); the demolition of the finished
+    # breeding does not — the herd is gone together with the improvement.
     if work_cost <= 0 or CityData.ignore_build_requirements:
+        if not _take_seed_herd(livestock_res_id):
+            return false
         emit_signal("build_message", tr("Built instantly: %s") % imp_name, 0)
         emit_signal("build_completed", row, col, imp_id, target_res_id)
         return true
@@ -303,6 +327,9 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     # The general limit of simultaneous builds (buildings + improvements) equals the number of citizens
     if get_total_active_builds() >= CityData.total_population:
         emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population, 1)
+        return false
+
+    if not _take_seed_herd(livestock_res_id):
         return false
 
     active_builds[key] = {
@@ -315,11 +342,24 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
         "col": col,
         "status": "active",
         "allocated_labor": 0.0,
+        "livestock_res_id": livestock_res_id,
     }
     _active_build_count += 1
 
     emit_signal("build_message", tr("Construction of %s started (%.0f work)") % [imp_name, work_cost], 0)
     return true
+
+# The seed herd of a breeding build: "" for the builds that need none (an improvement on an
+# existing resource, a plant). Fails with a message when the storage cannot cover the cost.
+func _take_seed_herd(livestock_res_id: String) -> bool:
+    if livestock_res_id == "":
+        return true
+    if CityData.take_livestock_for(livestock_res_id):
+        return true
+    emit_signal("build_message", tr("Not enough livestock: %d heads of %s are needed to start a herd")
+            % [CityData.livestock_breeding_cost(),
+            GameData.get_product_name(GameData.live_product_of(livestock_res_id))], 1)
+    return false
 
 # Starts the claiming of a chunk of territory for labour. The labour accumulates over time
 # through the common labour pool (like the building of buildings/improvements). When the
@@ -554,6 +594,11 @@ func cancel_build(row: int, col: int):
     var imp_name = data["imp_name"]
     var work_done = data["progress"]
     var work_total = data["work_cost"]
+
+    # The seed herd of a cancelled breeding returns to the storage.
+    var livestock_res_id = str(data.get("livestock_res_id", ""))
+    if livestock_res_id != "":
+        CityData.return_livestock_for(livestock_res_id)
 
     active_builds.erase(key)
     _active_build_count -= 1

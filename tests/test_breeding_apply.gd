@@ -37,6 +37,9 @@ func _initialize() -> void:
 func _run() -> void:
     var state = {"failed": false}
 
+    # The map is seeded: the breeding cases need at least two empty plain hexes
+    # in the start region, and a lucky map must not be part of the pass.
+    seed(31415)
     get_root().get_node("SaveManager").new_game()
     var city = get_root().get_node("CityData")
     var gdata = get_root().get_node("GameData")

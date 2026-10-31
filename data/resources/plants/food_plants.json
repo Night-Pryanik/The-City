@@ -45,7 +45,7 @@
       "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
-      "produces": { "wheat": 10, "feed": 120 },
+      "produces": { "wheat": 11, "feed": 120 },
       "icon": "wheat.png",
       "color": [ 218, 165, 32 ]
     },
@@ -63,7 +63,7 @@
       ],
       "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "farm",
-      "produces": { "oats": 10, "feed": 120 },
+      "produces": { "oats": 11, "feed": 120 },
       "icon": "oats.png",
       "color": [ 214, 210, 82 ]
     },
@@ -83,7 +83,7 @@
                                  "savanna_dry", "tropical_dry" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
-      "produces": { "barley": 10, "feed": 120 },
+      "produces": { "barley": 11, "feed": 120 },
       "icon": "barley.png",
       "color": [ 218, 184, 96 ]
     },
@@ -103,7 +103,7 @@
                                  "tropical_dry", "tropical_wet" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
-      "produces": { "millet": 10, "feed": 120 },
+      "produces": { "millet": 11, "feed": 120 },
       "icon": "millet.png",
       "color": [ 240, 230, 140 ]
     },
@@ -121,7 +121,7 @@
       ],
       "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "farm",
-      "produces": { "rye": 10, "feed": 120 },
+      "produces": { "rye": 11, "feed": 120 },
       "icon": "rye.png",
       "color": [ 160, 150, 100 ]
     },
@@ -141,7 +141,7 @@
                                  "tropical_dry", "tropical_wet" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
-      "produces": { "rice": 10, "feed": 120 },
+      "produces": { "rice": 11, "feed": 120 },
       "icon": "rice.png",
       "color": [ 180, 220, 120 ],
       "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
@@ -161,7 +161,7 @@
       "allowed_climate_zones": [ "prairie", "savanna_dry", "savanna_wet",
                                  "tropical_dry", "tropical_wet" ],
       "improved_by": "farm",
-      "produces": { "soybean": 10, "feed": 60 },
+      "produces": { "soybean": 11, "feed": 60 },
       "icon": "soybean.png",
       "color": [ 170, 190, 100 ]
     },
@@ -179,7 +179,7 @@
       ],
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "farm",
-      "produces": { "quinoa": 10, "feed": 80 },
+      "produces": { "quinoa": 11, "feed": 80 },
       "icon": "quinoa.png",
       "color": [ 210, 150, 110 ]
     },
@@ -197,7 +197,7 @@
       ],
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "farm",
-      "produces": { "canihua": 10, "feed": 80 },
+      "produces": { "canihua": 11, "feed": 80 },
       "icon": "canihua.png",
       "color": [ 200, 140, 100 ]
     },
@@ -215,7 +215,7 @@
       ],
       "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "farm",
-      "produces": { "potato": 10, "feed": 40 },
+      "produces": { "potato": 11, "feed": 40 },
       "icon": "potato.png",
       "color": [ 180, 160, 110 ]
     },
@@ -233,7 +233,7 @@
       ],
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "farm",
-      "produces": { "oca": 10, "feed": 40 },
+      "produces": { "oca": 11, "feed": 40 },
       "icon": "oca.png",
       "color": [ 230, 160, 120 ]
     },
@@ -253,7 +253,7 @@
                                  "tropical_dry", "tropical_wet" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
-      "produces": { "corn": 10, "feed": 120 },
+      "produces": { "corn": 11, "feed": 120 },
       "icon": "corn.png",
       "color": [ 240, 200, 50 ]
     },
@@ -271,7 +271,7 @@
       ],
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "farm",
-      "produces": { "yam": 10, "feed": 40 },
+      "produces": { "yam": 11, "feed": 40 },
       "icon": "yam.png",
       "color": [ 160, 120, 80 ]
     },
@@ -289,7 +289,7 @@
       ],
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "farm",
-      "produces": { "cassava": 10, "feed": 40 },
+      "produces": { "cassava": 11, "feed": 40 },
       "icon": "cassava.png",
       "color": [ 180, 140, 100 ]
     },
@@ -308,7 +308,7 @@
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
-      "produces": { "sorghum": 10, "feed": 120 },
+      "produces": { "sorghum": 11, "feed": 120 },
       "icon": "sorghum.png",
       "color": [ 200, 130, 70 ]
     },
@@ -327,7 +327,7 @@
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
-      "produces": { "amaranth": 10, "feed": 80 },
+      "produces": { "amaranth": 11, "feed": 80 },
       "icon": "amaranth.png",
       "color": [ 180, 50, 50 ]
     },
@@ -345,7 +345,7 @@
       ],
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "farm",
-      "produces": { "teff": 10, "feed": 120 },
+      "produces": { "teff": 11, "feed": 120 },
       "icon": "teff.png",
       "color": [ 150, 100, 50 ]
     },
@@ -363,7 +363,7 @@
       ],
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "farm",
-      "produces": { "taro": 10, "feed": 40 },
+      "produces": { "taro": 11, "feed": 40 },
       "icon": "taro.png",
       "color": [ 140, 180, 140 ],
       "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
@@ -382,7 +382,7 @@
       ],
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "improved_by": "farm",
-      "produces": { "maca": 10, "feed": 40 },
+      "produces": { "maca": 11, "feed": 40 },
       "icon": "maca.png",
       "color": [ 200, 180, 100 ]
     },
@@ -400,7 +400,7 @@
       ],
       "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "farm",
-      "produces": { "buckwheat": 10, "feed": 120 },
+      "produces": { "buckwheat": 11, "feed": 120 },
       "icon": "buckwheat.png",
       "color": [ 160, 110, 70 ]
     },
@@ -419,7 +419,7 @@
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
-      "produces": { "beans": 10, "feed": 60 },
+      "produces": { "beans": 11, "feed": 60 },
       "icon": "beans.png",
       "color": [ 180, 100, 60 ]
     },
@@ -438,7 +438,7 @@
       "allowed_climate_zones": ["savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet"],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
-      "produces": { "cowpea": 10, "feed": 60 },
+      "produces": { "cowpea": 11, "feed": 60 },
       "icon": "cowpea.png",
       "color": [ 170, 120, 80 ]
     },
@@ -456,7 +456,7 @@
       ],
       "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "farm",
-      "produces": { "peas": 10, "feed": 60 },
+      "produces": { "peas": 11, "feed": 60 },
       "icon": "peas.png",
       "color": [ 120, 180, 80 ]
     },
@@ -475,7 +475,7 @@
       "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
-      "produces": { "lentils": 10, "feed": 60 },
+      "produces": { "lentils": 11, "feed": 60 },
       "icon": "lentils.png",
       "color": [ 160, 140, 80 ]
     },
@@ -494,7 +494,7 @@
       "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
       "improved_by": "farm",
-      "produces": { "chickpeas": 10, "feed": 60 },
+      "produces": { "chickpeas": 11, "feed": 60 },
       "icon": "chickpeas.png",
       "color": [ 200, 170, 100 ]
     },

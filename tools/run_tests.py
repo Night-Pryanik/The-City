@@ -135,6 +135,7 @@ SLOW = {
     "test_river_rendering",
     "test_breeding_terrains",
     "test_breeding_apply",
+    "test_herd_cycle",
     "test_cartography_gate",
     "test_scouting_frontier",
     "test_territory_costs",

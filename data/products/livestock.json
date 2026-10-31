@@ -1,5 +1,5 @@
 {
-  // Live animals are goods like any other: a pasture yields them, and the
+  // Live animals are goods like any other: the pasture breeds them, and the
   // slaughterhouse turns them into meat and hides. The non-lethal produce
   // (milk, wool, eggs, feathers, honey, wax) skips this step and comes
   // straight from the improvement, see data/resources/animals/animals.json.
@@ -7,28 +7,33 @@
   // live_* product here is the herd the city owns — hence the separate ids.
   // The display name repeats the name of the raw resource on purpose: the
   // player raises the same animal.
+  //
+  // The price repeats the price of the corresponding wild animal: a live
+  // animal is worth at least as much as the one on the range, and the city
+  // herd on the storage IS the wealth of the species (the slaughterhouse
+  // never touches the breeding core of 10 heads, see game_balance.json).
   "resources": [
-    { "id": "live_cows", "price": 6, "name": "Cattle", "type": "product", "category": "livestock", "icon": "cows.png" },
-    { "id": "live_sheep", "price": 6, "name": "Sheep", "type": "product", "category": "livestock", "icon": "sheep.png" },
-    { "id": "live_goats", "price": 6, "name": "Goats", "type": "product", "category": "livestock", "icon": "goats.png" },
-    { "id": "live_horses", "price": 6, "name": "Horses", "type": "product", "category": "livestock", "icon": "horses.png" },
-    { "id": "live_pigs", "price": 6, "name": "Pigs", "type": "product", "category": "livestock", "icon": "pigs.png" },
-    { "id": "live_zebu", "price": 6, "name": "Zebu", "type": "product", "category": "livestock", "icon": "zebu.png" },
-    { "id": "live_banteng", "price": 6, "name": "Banteng", "type": "product", "category": "livestock", "icon": "banteng.png" },
-    { "id": "live_buffalo", "price": 6, "name": "Buffalo", "type": "product", "category": "livestock", "icon": "buffalo.png" },
-    { "id": "live_bison", "price": 6, "name": "Bison", "type": "product", "category": "livestock", "icon": "bison.png" },
-    { "id": "live_yak", "price": 6, "name": "Yak", "type": "product", "category": "livestock", "icon": "yak.png" },
-    { "id": "live_llama", "price": 6, "name": "Llamas", "type": "product", "category": "livestock", "icon": "llama.png" },
-    { "id": "live_alpaca", "price": 6, "name": "Alpacas", "type": "product", "category": "livestock", "icon": "alpaca.png" },
-    { "id": "live_camel", "price": 6, "name": "Camels", "type": "product", "category": "livestock", "icon": "camel.png" },
-    { "id": "live_deer", "price": 6, "name": "Deer", "type": "product", "category": "livestock", "icon": "deer.png" },
-    { "id": "live_ostrich", "price": 6, "name": "Ostriches", "type": "product", "category": "livestock", "icon": "ostrich.png" },
-    { "id": "live_chicken", "price": 3, "name": "Chickens", "type": "product", "category": "livestock", "icon": "chicken.png" },
-    { "id": "live_turkey", "price": 3, "name": "Turkeys", "type": "product", "category": "livestock", "icon": "turkey.png" },
-    { "id": "live_duck", "price": 3, "name": "Ducks", "type": "product", "category": "livestock", "icon": "duck.png" },
-    { "id": "live_goose", "price": 3, "name": "Geese", "type": "product", "category": "livestock", "icon": "goose.png" },
-    { "id": "live_guineafowl", "price": 3, "name": "Guineafowl", "type": "product", "category": "livestock", "icon": "guineafowl.png" },
-    { "id": "live_rabbit", "price": 3, "name": "Rabbits", "type": "product", "category": "livestock", "icon": "rabbit.png" },
-    { "id": "live_pigeon", "price": 3, "name": "Pigeons", "type": "product", "category": "livestock", "icon": "pigeon.png" }
+    { "id": "live_cows", "price": 60, "name": "Cattle", "type": "product", "category": "livestock", "icon": "cows.png" },
+    { "id": "live_sheep", "price": 30, "name": "Sheep", "type": "product", "category": "livestock", "icon": "sheep.png" },
+    { "id": "live_goats", "price": 28, "name": "Goats", "type": "product", "category": "livestock", "icon": "goats.png" },
+    { "id": "live_horses", "price": 150, "name": "Horses", "type": "product", "category": "livestock", "icon": "horses.png" },
+    { "id": "live_pigs", "price": 35, "name": "Pigs", "type": "product", "category": "livestock", "icon": "pigs.png" },
+    { "id": "live_zebu", "price": 55, "name": "Zebu", "type": "product", "category": "livestock", "icon": "zebu.png" },
+    { "id": "live_banteng", "price": 65, "name": "Banteng", "type": "product", "category": "livestock", "icon": "banteng.png" },
+    { "id": "live_buffalo", "price": 75, "name": "Buffalo", "type": "product", "category": "livestock", "icon": "buffalo.png" },
+    { "id": "live_bison", "price": 70, "name": "Bison", "type": "product", "category": "livestock", "icon": "bison.png" },
+    { "id": "live_yak", "price": 70, "name": "Yak", "type": "product", "category": "livestock", "icon": "yak.png" },
+    { "id": "live_llama", "price": 40, "name": "Llamas", "type": "product", "category": "livestock", "icon": "llama.png" },
+    { "id": "live_alpaca", "price": 40, "name": "Alpacas", "type": "product", "category": "livestock", "icon": "alpaca.png" },
+    { "id": "live_camel", "price": 120, "name": "Camels", "type": "product", "category": "livestock", "icon": "camel.png" },
+    { "id": "live_deer", "price": 50, "name": "Deer", "type": "product", "category": "livestock", "icon": "deer.png" },
+    { "id": "live_ostrich", "price": 40, "name": "Ostriches", "type": "product", "category": "livestock", "icon": "ostrich.png" },
+    { "id": "live_chicken", "price": 10, "name": "Chickens", "type": "product", "category": "livestock", "icon": "chicken.png" },
+    { "id": "live_turkey", "price": 14, "name": "Turkeys", "type": "product", "category": "livestock", "icon": "turkey.png" },
+    { "id": "live_duck", "price": 12, "name": "Ducks", "type": "product", "category": "livestock", "icon": "duck.png" },
+    { "id": "live_goose", "price": 15, "name": "Geese", "type": "product", "category": "livestock", "icon": "goose.png" },
+    { "id": "live_guineafowl", "price": 12, "name": "Guineafowl", "type": "product", "category": "livestock", "icon": "guineafowl.png" },
+    { "id": "live_rabbit", "price": 8, "name": "Rabbits", "type": "product", "category": "livestock", "icon": "rabbit.png" },
+    { "id": "live_pigeon", "price": 8, "name": "Pigeons", "type": "product", "category": "livestock", "icon": "pigeon.png" }
   ]
 }

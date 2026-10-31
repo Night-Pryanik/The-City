@@ -14,6 +14,17 @@
   // species lives in (data/climate.json), so that no poultry or tropical cattle
   // appears in the tundra. Breeding ignores the field: a domesticated animal
   // may still be raised on any hex the terrain and the cover allow.
+  //
+  // The produces value of a live_* product is not a per-second rate: it is the
+  // breeding batch — the number of heads the pasture yields once per cycle.
+  // The cycle lasts breeding_cycle_multiplier × time_to_mature seconds
+  // (game_balance.json). The batch holds 4 heads per second of time_to_mature,
+  // so with the multiplier 1 the pasture yields 4 heads per second and keeps
+  // one slaughterhouse busy: it butchers 20 heads into 120 units of meat every
+  // 5 s (data/crafts/food_drinks.json). The herd lives in the
+  // city storage: the live_* units there are the whole population of the
+  // species, and the pasture yields nothing (and gives no milk/wool/eggs)
+  // while the population is extinct — zero heads in the storage.
   "resources": [
     {
       "id": "cows", "price": 60,
@@ -30,7 +41,7 @@
       ],
       "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "pasture",
-      "produces": { "live_cows": 30, "raw_milk": 20 },
+      "produces": { "live_cows": 240, "raw_milk": 20 },
       "feed_consumption": 100,
       "time_to_mature": 60.0,
       "icon": "cows.png",
@@ -53,7 +64,7 @@
                                  "steppe", "prairie", "savanna_dry", "savanna_wet" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ], [ { "terrain": "mountain" } ] ],
       "improved_by": "pasture",
-      "produces": { "live_sheep": 20, "raw_milk": 10, "wool": 20 },
+      "produces": { "live_sheep": 160, "raw_milk": 10, "wool": 20 },
       "feed_consumption": 50,
       "time_to_mature": 40.0,
       "icon": "sheep.png",
@@ -77,7 +88,7 @@
                                  "tropical_dry", "tropical_wet" ],
       "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ], [ { "terrain": "mountain" } ] ],
       "improved_by": "pasture",
-      "produces": { "live_goats": 20, "raw_milk": 20 },
+      "produces": { "live_goats": 160, "raw_milk": 20 },
       "feed_consumption": 50,
       "time_to_mature": 40.0,
       "icon": "goats.png",
@@ -98,7 +109,7 @@
       ],
       "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "pasture",
-      "produces": { "live_horses": 30, "raw_milk": 20 },
+      "produces": { "live_horses": 200, "raw_milk": 20 },
       "feed_consumption": 80,
       "time_to_mature": 50.0,
       "icon": "horses.png",
@@ -121,7 +132,7 @@
       // Pigs live in a sty, not on a range: they do not graze, and a sty is
       // what the player expects to see on the hex.
       "improved_by": "pigsty",
-      "produces": { "live_pigs": 40 },
+      "produces": { "live_pigs": 160 },
       "feed_consumption": 50,
       "time_to_mature": 40.0,
       "icon": "pigs.png",
@@ -142,7 +153,7 @@
       ],
       "allowed_climate_zones": [ "savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet" ],
       "improved_by": "pasture",
-      "produces": { "live_zebu": 30, "raw_milk": 20 },
+      "produces": { "live_zebu": 240, "raw_milk": 20 },
       "feed_consumption": 100,
       "time_to_mature": 60.0,
       "icon": "zebu.png",
@@ -163,7 +174,7 @@
       ],
       "allowed_climate_zones": [ "savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet" ],
       "improved_by": "pasture",
-      "produces": { "live_banteng": 30, "raw_milk": 10 },
+      "produces": { "live_banteng": 240, "raw_milk": 10 },
       "feed_consumption": 100,
       "time_to_mature": 60.0,
       "icon": "banteng.png",
@@ -186,7 +197,7 @@
                                  "tropical_dry", "tropical_wet" ],
       "breeding": [ [ { "terrain": "swamp" }, { "cover": "reeds" } ], [ { "terrain": "marsh" }, { "cover": "reeds" } ] ],
       "improved_by": "pasture",
-      "produces": { "live_buffalo": 40, "raw_milk": 20 },
+      "produces": { "live_buffalo": 240, "raw_milk": 20 },
       "feed_consumption": 100,
       "time_to_mature": 60.0,
       "icon": "buffalo.png",
@@ -207,7 +218,7 @@
       ],
       "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
       "improved_by": "pasture",
-      "produces": { "live_bison": 50, "raw_milk": 10 },
+      "produces": { "live_bison": 240, "raw_milk": 10 },
       "feed_consumption": 100,
       "time_to_mature": 60.0,
       "icon": "bison.png",
@@ -228,7 +239,7 @@
       ],
       "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry", "savanna_wet" ],
       "improved_by": "pasture",
-      "produces": { "live_yak": 30, "raw_milk": 20 },
+      "produces": { "live_yak": 240, "raw_milk": 20 },
       "feed_consumption": 100,
       "time_to_mature": 60.0,
       "icon": "yak.png",
@@ -249,7 +260,7 @@
       ],
       "allowed_climate_zones": [ "savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet" ],
       "improved_by": "pasture",
-      "produces": { "live_llama": 20, "wool": 20 },
+      "produces": { "live_llama": 180, "wool": 20 },
       "feed_consumption": 60,
       "time_to_mature": 45.0,
       "icon": "llama.png",
@@ -270,7 +281,7 @@
       ],
       "allowed_climate_zones": [ "savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet" ],
       "improved_by": "pasture",
-      "produces": { "live_alpaca": 10, "wool": 30 },
+      "produces": { "live_alpaca": 160, "wool": 30 },
       "feed_consumption": 50,
       "time_to_mature": 40.0,
       "icon": "alpaca.png",
@@ -290,7 +301,7 @@
       ],
       "allowed_climate_zones": [ "savanna_dry", "savanna_wet", "tropical_dry", "tropical_wet" ],
       "improved_by": "pasture",
-      "produces": { "live_camel": 40, "raw_milk": 20 },
+      "produces": { "live_camel": 180, "raw_milk": 20 },
       "feed_consumption": 70,
       "time_to_mature": 45.0,
       "icon": "camel.png",
@@ -313,7 +324,7 @@
         "taiga_sparse", "taiga", "tundra_moss"
       ],
       "improved_by": "pasture",
-      "produces": { "live_deer": 30 },
+      "produces": { "live_deer": 140 },
       "feed_consumption": 40,
       "time_to_mature": 35.0,
       "icon": "deer.png",
@@ -339,7 +350,7 @@
       // (docs.md, "Improvement types are a convention"). Grazing herds and
       // the ostrich stay on the pasture.
       "improved_by": "farmstead",
-      "produces": { "live_chicken": 10, "eggs": 30, "feathers": 10 },
+      "produces": { "live_chicken": 80, "eggs": 30, "feathers": 10 },
       "feed_consumption": 20,
       "time_to_mature": 20.0,
       "icon": "chicken.png",
@@ -361,7 +372,7 @@
       "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry", "savanna_wet",
                                  "tropical_dry", "tropical_wet" ],
       "improved_by": "farmstead",
-      "produces": { "live_turkey": 20, "eggs": 20, "feathers": 10 },
+      "produces": { "live_turkey": 80, "eggs": 20, "feathers": 10 },
       "feed_consumption": 20,
       "time_to_mature": 20.0,
       "icon": "turkey.png",
@@ -384,7 +395,7 @@
                                  "tropical_dry", "tropical_wet" ],
       "breeding": [ [ { "terrain": "swamp" }, { "cover": "reeds" } ], [ { "terrain": "marsh" }, { "cover": "reeds" } ] ],
       "improved_by": "farmstead",
-      "produces": { "live_duck": 20, "eggs": 20, "feathers": 10 },
+      "produces": { "live_duck": 80, "eggs": 20, "feathers": 10 },
       "feed_consumption": 20,
       "time_to_mature": 20.0,
       "icon": "duck.png",
@@ -408,7 +419,7 @@
       "breeding": [ [ { "terrain": "swamp" }, { "cover": [ "reeds", "none" ] } ],
                     [ { "terrain": "marsh" }, { "cover": [ "reeds", "none" ] } ] ],
       "improved_by": "farmstead",
-      "produces": { "live_goose": 30, "eggs": 10, "feathers": 20 },
+      "produces": { "live_goose": 80, "eggs": 10, "feathers": 20 },
       "feed_consumption": 20,
       "time_to_mature": 20.0,
       "icon": "goose.png",
@@ -430,7 +441,7 @@
       "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry", "savanna_wet",
                                  "tropical_dry", "tropical_wet" ],
       "improved_by": "farmstead",
-      "produces": { "live_guineafowl": 10, "eggs": 20, "feathers": 10 },
+      "produces": { "live_guineafowl": 80, "eggs": 20, "feathers": 10 },
       "feed_consumption": 20,
       "time_to_mature": 20.0,
       "icon": "guineafowl.png",
@@ -452,7 +463,7 @@
       "allowed_climate_zones": [ "savanna_dry", "savanna_wet", "tropical_dry" ],
       "breeding": [ [ { "terrain": "sandy_desert" } ] ],
       "improved_by": "pasture",
-      "produces": { "live_ostrich": 40, "eggs": 10, "feathers": 20 },
+      "produces": { "live_ostrich": 120, "eggs": 10, "feathers": 20 },
       "feed_consumption": 40,
       "time_to_mature": 30.0,
       "icon": "ostrich.png",
@@ -496,7 +507,7 @@
         "temperate_rainforest", "temperate_dry_forest"
       ],
       "improved_by": "farmstead",
-      "produces": { "live_rabbit": 10 },
+      "produces": { "live_rabbit": 60 },
       "feed_consumption": 10,
       "time_to_mature": 15.0,
       "icon": "rabbit.png",
@@ -518,7 +529,7 @@
       "allowed_climate_zones": [ "steppe", "prairie", "savanna_dry", "savanna_wet",
                                  "tropical_dry", "tropical_wet" ],
       "improved_by": "farmstead",
-      "produces": { "live_pigeon": 10, "eggs": 20, "feathers": 10 },
+      "produces": { "live_pigeon": 80, "eggs": 20, "feathers": 10 },
       "feed_consumption": 20,
       "time_to_mature": 20.0,
       "icon": "pigeon.png",
