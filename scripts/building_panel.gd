@@ -18,6 +18,10 @@ const LISTS_Z_INDEX := 900
 # screen (the ScrollContainer takes it from the content's row width).
 const POPUP_SCROLLBAR_WIDTH := 14.0
 
+# The side of an icon in a recipe row. The recipe list and the button of the slot
+# share _make_craft_content(), so one constant sizes the icons in both.
+const RECIPE_ICON_SIZE := 32
+
 var building_id: String = ""
 var products: Dictionary = {}
 var raw_resources: Dictionary = {}
@@ -504,6 +508,9 @@ func _refresh():
     var popup_width = panel.custom_minimum_size.x - 70 - 40
     for popup in popups:
         popup.custom_minimum_size.x = popup_width
+        # The base width _fit_popup_size counts from: without it the scrollbar
+        # allowance of one opening would be added again on the next one.
+        popup.set_meta("popup_base_width", popup_width)
 
     # We update popup_map and remove the popups that are no longer needed
     for key in popup_map.keys():
@@ -582,7 +589,7 @@ func _fill_consumption_section(tm, indices: Array) -> float:
                 str(row.get("name", "")), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x \
             + font.get_string_size(" " + str(row.get("rate_label", "")),
                 HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x \
-            + 18.0 + 12.0 + 20.0 + 24.0
+            +18.0 + 12.0 + 20.0 + 24.0
         content_width = maxf(content_width, row_width)
     consumption_box.visible = true
     return content_width
@@ -621,7 +628,7 @@ func _wrap_popup_scroll(popup: Panel, content: Control, margin: float) -> Scroll
     scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
     scroll.offset_left = margin
     scroll.offset_top = 6
-    scroll.offset_right = -margin
+    scroll.offset_right = - margin
     scroll.offset_bottom = -6
     scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -654,7 +661,7 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
         var item_btn = Button.new()
         item_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
         item_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        item_btn.custom_minimum_size.y = 30
+        item_btn.custom_minimum_size.y = RECIPE_ICON_SIZE + 6
         item_btn.focus_mode = Control.FOCUS_NONE
 
         var normal_style = UI_THEME.row(Color.TRANSPARENT)
@@ -1180,6 +1187,12 @@ func _on_upgrade_pressed(b_index: int):
     _refresh()
 
 func _on_slot_button_pressed(_b_index: int, _slot_idx: int, popup, button):
+    # Pressing the button of an already open list closes it. _input() leaves the
+    # opener out of the click-to-close rule so that the button's own handler
+    # decides what the press does.
+    if popup.visible:
+        _close_popup(popup)
+        return
     # We close the other open popups
     for p in popups_list:
         if is_instance_valid(p) and p != popup and p.visible:
@@ -1196,7 +1209,11 @@ func _on_slot_button_pressed(_b_index: int, _slot_idx: int, popup, button):
 # ScrollContainer inside shows a vertical scrollbar, whose width is reserved so
 # that the recipe rows do not shrink under it.
 func _fit_popup_size(popup, pos: Vector2) -> void:
-    var widest: float = popup.custom_minimum_size.x
+    # The counting starts from the width _refresh() gave the list, not from its
+    # current minimum: otherwise the scrollbar allowance reserved here would be
+    # added again on every next opening.
+    var widest: float = popup.get_meta("popup_base_width") \
+            if popup.has_meta("popup_base_width") else popup.custom_minimum_size.x
     var tallest: float = 0.0
     var scroll = popup.get_meta("popup_scroll") if popup.has_meta("popup_scroll") else null
     for child in popup.get_children():
@@ -1313,7 +1330,7 @@ func _make_craft_content(craft_name: String, craft_resources, craft_result: Dict
             # A group resource — a label with a tooltip (through the single helper).
             # We use MOUSE_FILTER_PASS, so that the hover shows the tooltip and the
             # click passes through to the parent button (the recipe selection).
-            content.add_child(ui_helpers.make_resource_entry(str(variant.get("key", "")), _get_all_resources()))
+            content.add_child(ui_helpers.make_resource_entry(str(variant.get("key", "")), _get_all_resources(), -1, "x", RECIPE_ICON_SIZE))
             var amount = int(variant.get("amount", 0))
             if amount >= 1:
                 var amount_label = Label.new()
@@ -1347,7 +1364,7 @@ func _make_craft_content(craft_name: String, craft_resources, craft_result: Dict
         if tex:
             var icon_rect = TextureRect.new()
             icon_rect.texture = tex
-            icon_rect.custom_minimum_size = Vector2(24, 24)
+            icon_rect.custom_minimum_size = Vector2(RECIPE_ICON_SIZE, RECIPE_ICON_SIZE)
             icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
             icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
             icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1397,10 +1414,13 @@ func _update_slot_button(button, craft_id: String):
     content.set_anchors_preset(Control.PRESET_FULL_RECT)
     content.offset_left = 8
     content.offset_right = -8
-    # We pass the minimum width of the content to the button, so that a long
+    # We pass the minimum size of the content to the button, so that a long
     # recipe is taken into account by the parent row when the width of the panel
-    # is calculated.
+    # is calculated, and so that the row grows as tall as its icons: the content
+    # is anchored to the button, so the button does not learn its height on its
+    # own.
     button.custom_minimum_size.x = content.get_minimum_size().x + 16
+    button.custom_minimum_size.y = maxf(content.get_minimum_size().y, RECIPE_ICON_SIZE) + 6
     button.add_child(content)
 
 func _input(event: InputEvent):

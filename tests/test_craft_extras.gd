@@ -16,6 +16,9 @@
 #      the chosen one stays clickable so that the choice can be taken back;
 #   8) the quality of the addition raises the quality of the result by one level at most;
 #   9) an open window of the additions refreshes its amounts and availability in place.
+#  10) Escape closes an open list.
+#  11) pressing the button of an already open list of recipes closes it instead of
+#      re-opening and re-fitting it.
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
@@ -61,6 +64,8 @@ func _run() -> void:
         _test_popup_stock_refresh(city, state)
     if WATCHDOG.wants_case("close_open_popup"):
         _test_close_open_popup(state)
+    if WATCHDOG.wants_case("press_open_list"):
+        _test_press_open_list(state)
     if WATCHDOG.wants_case("quality_rule"):
         _test_quality_rule(gd, city, state)
 
@@ -461,3 +466,28 @@ func _test_close_open_popup(state: Dictionary) -> void:
     panel.open_popup = null
     panel.free()
     recipe_popup.free()
+
+
+# --- 11. Pressing the button of an already open list ---
+# The click on the opener reaches the pressed signal (_input leaves the opener
+# out so that the list does not blink). The handler must close the list, not
+# show and re-fit it again.
+func _test_press_open_list(state: Dictionary) -> void:
+    var panel = (load("res://scripts/building_panel.gd") as Script).new()
+
+    var popup := Panel.new()
+    popup.show()
+    popup.custom_minimum_size = Vector2(300, 120)
+    panel.popups_list.append(popup)
+    panel.open_popup = popup
+
+    panel._on_slot_button_pressed(0, 0, popup, null)
+    check(not popup.visible, "a press on the button of an open list closes it", state)
+    check(panel.open_popup == null, "the panel forgets the list closed by the press", state)
+    check(popup.custom_minimum_size == Vector2(300, 120),
+        "the press does not re-fit the list, so its width does not grow", state)
+    check(not popup.is_queued_for_deletion(),
+        "the list of recipes is kept for the next opening", state)
+
+    panel.free()
+    popup.free()
