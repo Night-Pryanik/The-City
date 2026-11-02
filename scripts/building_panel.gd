@@ -14,6 +14,10 @@ const EXTRAS_RADIO = preload("res://scripts/extras_radio.gd")
 # above the plate of the window.
 const LISTS_Z_INDEX := 900
 
+# The width reserved for the vertical scrollbar of a list that overflows the
+# screen (the ScrollContainer takes it from the content's row width).
+const POPUP_SCROLLBAR_WIDTH := 14.0
+
 var building_id: String = ""
 var products: Dictionary = {}
 var raw_resources: Dictionary = {}
@@ -609,6 +613,22 @@ func _clear_consumption_section():
         child.queue_free()
     consumption_box.visible = false
 
+# The content of a list lives in a ScrollContainer: a long recipe list must not
+# spill past the lower edge of the screen — on overflow the container shows a
+# vertical scrollbar (_fit_popup_size caps the height of the popup).
+func _wrap_popup_scroll(popup: Panel, content: Control, margin: float) -> ScrollContainer:
+    var scroll := ScrollContainer.new()
+    scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+    scroll.offset_left = margin
+    scroll.offset_top = 6
+    scroll.offset_right = -margin
+    scroll.offset_bottom = -6
+    scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    popup.add_child(scroll)
+    scroll.add_child(content)
+    return scroll
+
 # Fills the content of the popup with the list of the available recipes.
 # Returns the real minimum width of the widest recipe row — it participates in
 # fitting the width of the panel in _refresh(), so that the recipe rows fit
@@ -617,13 +637,10 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
     var result = {"max_content_width": 0.0}
 
     var popup_vbox = VBoxContainer.new()
-    popup_vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
-    popup_vbox.offset_left = 6
-    popup_vbox.offset_top = 6
-    popup_vbox.offset_right = -6
-    popup_vbox.offset_bottom = -6
+    popup_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     popup_vbox.add_theme_constant_override("separation", 2)
-    popup.add_child(popup_vbox)
+    var scroll = _wrap_popup_scroll(popup, popup_vbox, 6)
+    popup.set_meta("popup_scroll", scroll)
 
     for craft_id in available:
         var recipe := GameData.get_craft(craft_id)
@@ -1167,30 +1184,43 @@ func _on_slot_button_pressed(_b_index: int, _slot_idx: int, popup, button):
     for p in popups_list:
         if is_instance_valid(p) and p != popup and p.visible:
             _close_popup(p)
-    _fit_popup_size(popup)
-    # We position the list right under the button
-    popup.global_position = button.global_position + Vector2(0, button.size.y)
+    _fit_popup_size(popup, button.global_position + Vector2(0, button.size.y))
     popup.set_meta("opener", button)
     popup.show()
     open_popup = popup
 
-# The size of a list follows its content. A Control does not derive its minimum
-# from an anchored child the way a popup window does, so the content is measured
-# here and written into the minimum size of the panel.
-func _fit_popup_size(popup) -> void:
+# The size of a list follows its content, capped at the space between the given
+# position and the lower edge of the screen: A Control does not derive its
+# minimum from an anchored child the way a popup window does, so the content is
+# measured here and written into the minimum size of the panel. On overflow the
+# ScrollContainer inside shows a vertical scrollbar, whose width is reserved so
+# that the recipe rows do not shrink under it.
+func _fit_popup_size(popup, pos: Vector2) -> void:
     var widest: float = popup.custom_minimum_size.x
     var tallest: float = 0.0
+    var scroll = popup.get_meta("popup_scroll") if popup.has_meta("popup_scroll") else null
     for child in popup.get_children():
         var content_node := child as Control
         if content_node == null:
             continue
         var insets := Vector2(content_node.offset_left - content_node.offset_right,
                 content_node.offset_top - content_node.offset_bottom)
-        var content: Vector2 = content_node.get_combined_minimum_size() + insets
+        # A ScrollContainer reports no minimum height of its content in the
+        # scrollable axis, so the inner list of the popup is measured instead.
+        var measured: Control = content_node
+        if scroll != null and content_node == scroll:
+            measured = content_node.get_child(0) as Control
+        var content: Vector2 = measured.get_combined_minimum_size() + insets
         widest = maxf(widest, content.x)
         tallest = maxf(tallest, content.y)
+    var available_height := maxf(0.0, get_viewport_rect().size.y - pos.y)
+    if scroll != null and tallest > available_height:
+        scroll.scroll_vertical = 0
+        widest += POPUP_SCROLLBAR_WIDTH
+        tallest = available_height
     popup.custom_minimum_size = Vector2(widest, tallest)
     popup.reset_size()
+    popup.global_position = pos
 
 # Closing a list: the recipe lists stay in popup_map and are reused by _refresh(),
 # the list of the additions is built anew on every opening and is freed on close.
@@ -1463,13 +1493,10 @@ func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_butto
     popup.set_meta("extras_slot", [b_index, slot_idx])
     add_child(popup)
     var vbox := VBoxContainer.new()
-    vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
-    vbox.offset_left = 8
-    vbox.offset_top = 6
-    vbox.offset_right = -8
-    vbox.offset_bottom = -6
+    vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     vbox.add_theme_constant_override("separation", 2)
-    popup.add_child(vbox)
+    var scroll := _wrap_popup_scroll(popup, vbox, 8)
+    popup.set_meta("popup_scroll", scroll)
 
     # One group for the whole popup: the kinds are a way to find a good, not a separate choice.
     # allow_unpress = false — a radio stays pressed once picked; the "no addition" radio is what
@@ -1505,8 +1532,7 @@ func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_butto
             grid.add_child(radio)
 
     popups_list.append(popup)
-    _fit_popup_size(popup)
-    popup.global_position = extras_button.global_position + Vector2(0, extras_button.size.y)
+    _fit_popup_size(popup, extras_button.global_position + Vector2(0, extras_button.size.y))
     popup.set_meta("opener", extras_button)
     popup.show()
     open_popup = popup
