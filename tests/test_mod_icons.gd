@@ -12,18 +12,17 @@
 #
 # Checked:
 #   1. An icon of a mod is indexed by its file name and answers with its own path.
-#   2. Its type comes from the folder under icons/ — a tileset for buildings can replace a
-#      building icon a mod adds. An icon in the root of icons/ is misc.
+#   2. Its type comes from the folder under icons/ — an icon in the root of icons/ is misc,
+#      and the names of the types of the manifest work as folders as well (products/).
 #   3. get_texture decodes a raw PNG and a raw SVG (an imported resource cannot be made of
 #      them), and puts the texture into the ResourceLoader cache: the [img=<path>] tag of the
 #      tooltips finds it there.
 #   4. A mod icon wins over a vanilla one of the same name, and the later mod wins over the
 #      earlier one.
-#   5. A tileset replacement applies to a mod icon as well as to a vanilla one.
-#   6. The set of mods is the save's: without the mod the icon is gone and the vanilla
+#   5. The set of mods is the save's: without the mod the icon is gone and the vanilla
 #      picture is back.
-#   7. A tileset that redraws an icon a mod adds is rebuilt when the mod is switched on: the
-#      table is built before the icons of the mod are known.
+#   6. A tileset draws the vanilla game only: a file that names an icon of a mod replaces
+#      nothing, and the vanilla view of the types does not move with the mods.
 extends SceneTree
 
 # Hang watchdog — see tests/watchdog.gd.
@@ -141,12 +140,12 @@ func _run() -> void:
     check(second_tex != null and second_tex.get_size() == Vector2(HOUSE_SIZE_B),
         "the texture of the winning mod is not the one loaded", state)
 
-    # --- 5. A tileset replacement reaches a mod icon ---
-    _registry.set_overrides({"probe_house": vanilla_path})
-    check(_registry.path_of("probe_house.png") == vanilla_path,
-        "a tileset cannot replace the icon of a mod: %s"
-            % _registry.path_of("probe_house.png"), state)
-    _registry.set_overrides({})
+    # --- 5. The names of the types of the manifest work as folders ---
+    # A mod lays out its icons the way its data reads: a product is a resource record, so
+    # icons/products/ is the same type as icons/resources/.
+    check(_registry.type_of("probe_glaze.png") == "resources",
+        "a folder named after a type of the manifest gives no type: \"%s\""
+            % _registry.type_of("probe_glaze.png"), state)
 
     # --- 6. The set of mods belongs to the save ---
     _registry.set_mod_dirs([])
@@ -156,22 +155,27 @@ func _run() -> void:
         "the vanilla icon did not come back: %s" % _registry.path_of(VANILLA_ICON), state)
     check(_registry.has("hand_mill.png"), "the vanilla icons are gone after the mod set", state)
 
-    # --- 7. A tileset redraws an icon a mod adds ---
-    # The table of the tilesets is built at startup, before the icons of the mods are known:
-    # a file that names a mod icon has nothing to replace then. Switching the mod on rebuilds
-    # the index, and the manager has to rebuild its table with it.
+    # --- 7. A tileset draws the vanilla game, not the mods of the player ---
+    # A mod brings its data and its pictures together; a set addresses the game itself. So a
+    # file named after an icon a mod adds replaces nothing, whether the mod is on or off, and
+    # the type of a vanilla name does not move when a mod shadows it.
     _tilesets.tilesets = [_synthetic_tileset()]
     _tilesets.choices = {}
+    _registry.set_mod_dirs([PROBE_A])
     _tilesets.apply()
     check(not _registry.overrides.has("probe_house"),
-        "a tileset replaced an icon that is not indexed yet: %s" % str(_registry.overrides), state)
-    _registry.set_mod_dirs([PROBE_A])
-    check(str(_registry.overrides.get("probe_house", "")) == TILESET_ICON,
-        "the tileset is not rebuilt when the icon of a mod appears: %s"
-            % str(_registry.overrides), state)
-    check(_registry.path_of("probe_house.png") == TILESET_ICON,
-        "the rebuilt tileset does not draw the icon of the mod: %s"
+        "a tileset replaced the icon of a mod: %s" % str(_registry.overrides), state)
+    check(_registry.path_of("probe_house.png") == house_path,
+        "the icon of the mod is not drawn by the mod: %s"
             % _registry.path_of("probe_house.png"), state)
+    # The vanilla view of the types: the mod redraws bakery.png, but for a set the name is
+    # still a building icon of the game.
+    check(_registry.vanilla_type_of(VANILLA_ICON) == "buildings",
+        "the vanilla view of a type moved with the mod: \"%s\""
+            % _registry.vanilla_type_of(VANILLA_ICON), state)
+    check(_registry.type_of(VANILLA_ICON) == "buildings",
+        "the mod icon changed the type of the vanilla name: \"%s\""
+            % _registry.type_of(VANILLA_ICON), state)
     _registry.set_mod_dirs([])
     _tilesets.tilesets = _installed
     _tilesets.apply()
@@ -200,6 +204,8 @@ func _make_probe_a() -> void:
     _save_png(PROBE_A.path_join("icons/buildings/probe_house.png"), HOUSE_SIZE, Color.RED)
     _save_png(PROBE_A.path_join("icons/buildings/" + VANILLA_ICON), Vector2i(8, 8), Color.BLUE)
     _save_png(PROBE_A.path_join("icons/probe_misc.png"), MISC_SIZE, Color.YELLOW)
+    # A product is a resource record, so the folder may say "products" as well.
+    _save_png(PROBE_A.path_join("icons/products/probe_glaze.png"), MISC_SIZE, Color.WHITE)
     var svg := '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">' \
         % [GRAIN_SIZE.x, GRAIN_SIZE.y] \
         + '<rect width="100%" height="100%" fill="#3a7"/></svg>'

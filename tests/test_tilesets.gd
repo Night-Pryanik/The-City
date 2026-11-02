@@ -11,7 +11,8 @@
 #      "misc" for the root of res://icons and for a bare name.
 #   4. The replacement table: an icon is addressed by its bare name, so an SVG replaces a
 #      PNG; a file of a type the tileset does not declare replaces nothing; a file that
-#      names no vanilla icon replaces nothing.
+#      names no vanilla icon replaces nothing. A file named after a family of variants or
+#      after an entity of the data draws every picture of it with one picture.
 #   5. One tileset per type: the folder that sorts last owns the type whole, two building
 #      sets never mix, and a broken manifest is skipped.
 #   6. The choice of the player: a chosen set draws its type whatever the folder order, the
@@ -41,7 +42,7 @@ const EXAMPLE_ICONS := {
     "bakery": "buildings",
     "market": "buildings",
     "wheel": "technologies",
-    "boreal_hill_1": "terrains",
+    "boreal_hill": "terrains",
     "farm": "improvements",
     "mine": "improvements",
     "clear_forest": "special_actions",
@@ -49,6 +50,11 @@ const EXAMPLE_ICONS := {
     "building_pause": "misc",
     "building_upgrade": "misc",
     "city": "misc"
+}
+# The files of the example that are named after a FAMILY: one picture for every variant the
+# data draws that cover or terrain with.
+const EXAMPLE_FAMILIES := {
+    "boreal_hill": ["boreal_hill_1", "boreal_hill_2", "boreal_hill_3"]
 }
 # The type of a vanilla icon: the folder it lies in, by the name the manifest uses.
 const VANILLA_TYPES := {
@@ -84,6 +90,7 @@ func _run() -> void:
     _check_reading(state)
     _check_types(state)
     _check_table(state)
+    _check_entities(state)
     _check_one_tileset_per_type(state)
     _check_choices(state)
     _check_installing(state)
@@ -163,9 +170,17 @@ func _check_types(state: Dictionary) -> void:
 func _check_table(state: Dictionary) -> void:
     var record: Dictionary = _tilesets.read_tileset(EXAMPLE)
     var table: Dictionary = _tilesets.build_overrides([record])
-    check(table.size() == EXAMPLE_ICONS.size(),
-        "the table has %d entries, expected %d" % [table.size(), EXAMPLE_ICONS.size()], state)
+    # Every file of the example draws one icon, except a file named after a family: that one
+    # draws every variant of it.
+    var expected: Array = []
     for bare_name in EXAMPLE_ICONS:
+        if EXAMPLE_FAMILIES.has(bare_name):
+            expected.append_array(EXAMPLE_FAMILIES[bare_name])
+        else:
+            expected.append(bare_name)
+    check(table.size() == expected.size(),
+        "the table has %d entries, expected %d" % [table.size(), expected.size()], state)
+    for bare_name in expected:
         var path := str(table.get(bare_name, ""))
         check(path.begins_with(EXAMPLE),
             "the table does not take \"%s\" from the example: \"%s\"" % [bare_name, path], state)
@@ -192,6 +207,139 @@ func _check_table(state: Dictionary) -> void:
         "an icon of an undeclared type was replaced", state)
     check(not narrowed.has("definitely_missing_icon"),
         "a file that names no vanilla icon got into the table", state)
+
+    # A file named after a FAMILY draws every variant of it with one picture — that is what
+    # an author of a cover wants instead of three copies of the same drawing.
+    var family_only := {
+        "id": "synthetic_family",
+        "name": "Synthetic",
+        "description": "A set for the test.",
+        "types": ["terrains"],
+        "icons": {"tundra_moss": EXAMPLE + "/icons/terrains/boreal_hill.svg"},
+        "error": ""
+    }
+    var family_table: Dictionary = _tilesets.build_overrides([family_only])
+    var moss_variants: Array = _registry.variants("tundra_moss")
+    check(not moss_variants.is_empty(), "the index knows no family \"tundra_moss\"", state)
+    check(family_table.size() == moss_variants.size(),
+        "a family file draws %d icons, expected %d: %s"
+            % [family_table.size(), moss_variants.size(), str(family_table)], state)
+    for variant in moss_variants:
+        check(family_table.has(variant),
+            "the family file does not replace \"%s\": %s" % [variant, str(family_table)], state)
+
+    # The family is expanded only inside the types the set declares.
+    var family_elsewhere := family_only.duplicate(true)
+    family_elsewhere["id"] = "synthetic_family_buildings"
+    family_elsewhere["types"] = ["buildings"]
+    check(_tilesets.build_overrides([family_elsewhere]).is_empty(),
+        "a family of an undeclared type was replaced", state)
+
+    # A file that names an icon of its own wins over the family file for that icon.
+    var mixed := {
+        "id": "synthetic_mixed",
+        "name": "Synthetic",
+        "description": "A set for the test.",
+        "types": ["terrains"],
+        "icons": {
+            "tundra_moss": EXAMPLE + "/icons/terrains/boreal_hill.svg",
+            "tundra_moss_2": EXAMPLE + "/icons/misc/city.svg"
+        },
+        "error": ""
+    }
+    var mixed_table: Dictionary = _tilesets.build_overrides([mixed])
+    check(str(mixed_table.get("tundra_moss_2", "")) == EXAMPLE + "/icons/misc/city.svg",
+        "an exact file does not win over the family file: %s"
+            % str(mixed_table.get("tundra_moss_2", "")), state)
+    check(str(mixed_table.get("tundra_moss_1", "")) == EXAMPLE + "/icons/terrains/boreal_hill.svg",
+        "the family file did not draw the remaining variants: %s" % str(mixed_table), state)
+
+# --- 4.1. A file named after an entity of the data ---
+# The data lists the pictures of a cover itself, and it does not have to name them after the
+# id — the cover art was renamed to the ids once, and it may be renamed again. A file named
+# after the id draws the whole entity whatever the pictures are called. The map of the ids
+# belongs to the data, so the test feeds a synthetic one and puts the real one back; the
+# pictures of the synthetic entity are taken from the index, not from today's file names.
+func _check_entities(state: Dictionary) -> void:
+    var probe: Array = []
+    var bases: Array = _registry.families.keys()
+    bases.sort()
+    for base in bases:
+        var variants: Array = _registry.variants(str(base))
+        if variants.size() < 2 or _registry.type_of(str(variants[0])) != "terrains":
+            continue
+        probe = [str(variants[0]) + ".png", str(variants[1]) + ".png"]
+        break
+    check(probe.size() == 2, "the index has no family of two terrain pictures to test with", state)
+    if probe.size() < 2:
+        return
+    var first_picture := str(probe[0]).get_basename()
+    var second_picture := str(probe[1]).get_basename()
+
+    var before: Dictionary = _registry.entity_pictures.duplicate(true)
+    _registry.set_entity_pictures({"synthetic_entity": probe})
+    var entity_file := EXAMPLE + "/icons/terrains/boreal_hill.svg"
+    var record := {
+        "id": "synthetic_entity_set",
+        "name": "Synthetic",
+        "description": "A set for the test.",
+        "types": ["terrains"],
+        "icons": {"synthetic_entity": entity_file},
+        "error": ""
+    }
+    var table: Dictionary = _tilesets.build_overrides([record])
+    check(table.size() == 2,
+        "a file named after an entity draws %d icons, expected 2: %s"
+            % [table.size(), str(table)], state)
+    for icon_name in [first_picture, second_picture]:
+        check(str(table.get(icon_name, "")) == entity_file,
+            "\"%s\" is not drawn by the entity file: \"%s\""
+                % [icon_name, str(table.get(icon_name, ""))], state)
+
+    # The entity is expanded only inside the types the set declares.
+    var elsewhere: Dictionary = record.duplicate(true)
+    elsewhere["types"] = ["buildings"]
+    check(_tilesets.build_overrides([elsewhere]).is_empty(),
+        "an entity of an undeclared type was replaced", state)
+
+    # A file that names one picture of the entity wins over the entity file for that picture.
+    var mixed: Dictionary = record.duplicate(true)
+    mixed["icons"] = {
+        "synthetic_entity": entity_file,
+        second_picture: EXAMPLE + "/icons/misc/city.svg"
+    }
+    var mixed_table: Dictionary = _tilesets.build_overrides([mixed])
+    check(str(mixed_table.get(second_picture, "")) == EXAMPLE + "/icons/misc/city.svg",
+        "an exact file does not win over the entity file: \"%s\""
+            % str(mixed_table.get(second_picture, "")), state)
+    check(str(mixed_table.get(first_picture, "")) == entity_file,
+        "the entity file did not draw the remaining pictures: %s" % str(mixed_table), state)
+
+    # A file named after an id no entity of the data carries replaces nothing.
+    var unknown: Dictionary = record.duplicate(true)
+    unknown["icons"] = {"synthetic_nowhere": entity_file}
+    check(_tilesets.build_overrides([unknown]).is_empty(),
+        "a file named after an unknown entity got into the table", state)
+
+    # One name may be both an icon of a type and an entity of another: a mod adds a product
+    # "bakery" drawn by bakery.png while the building "bakery" exists. The declared types are
+    # the namespace — a terrains set means the entity, a buildings set means the icon.
+    _registry.set_entity_pictures({"bakery": probe})
+    var clash_terrain: Dictionary = record.duplicate(true)
+    clash_terrain["icons"] = {"bakery": entity_file}
+    var clash_table: Dictionary = _tilesets.build_overrides([clash_terrain])
+    check(clash_table.size() == 2 and clash_table.has(first_picture)
+            and clash_table.has(second_picture),
+        "a name of an icon of another type did not draw the entity: %s" % str(clash_table), state)
+    var clash_building: Dictionary = record.duplicate(true)
+    clash_building["types"] = ["buildings"]
+    clash_building["icons"] = {"bakery": entity_file}
+    var clash_buildings_table: Dictionary = _tilesets.build_overrides([clash_building])
+    check(clash_buildings_table.size() == 1
+            and str(clash_buildings_table.get("bakery", "")) == entity_file,
+        "an icon of a declared type is not replaced: %s" % str(clash_buildings_table), state)
+
+    _registry.set_entity_pictures(before)
 
 # --- 5. One tileset per type ---
 func _check_one_tileset_per_type(state: Dictionary) -> void:
@@ -343,18 +491,28 @@ func _check_example_health(state: Dictionary) -> void:
     var record: Dictionary = _tilesets.read_tileset(EXAMPLE)
     var unknown: Array = []
     for bare_name in record.get("icons", {}):
-        if _registry.type_of(bare_name).is_empty():
+        # A file named after a family or an entity names no icon itself: the pictures it
+        # draws are what it is for.
+        if _registry.type_of(bare_name).is_empty() and _registry.variants(bare_name).is_empty() \
+                and _registry.pictures_of(bare_name).is_empty():
             unknown.append(bare_name)
     check(unknown.is_empty(),
-        "the example ships files that name no vanilla icon (a typo?): %s" % str(unknown), state)
+        "the example ships files that name no icon (a typo?): %s" % str(unknown), state)
     # Every image of the example must belong to a type the example declares.
     var declared: Array = record.get("types", [])
     for bare_name in record.get("icons", {}):
-        var type_name: String = _registry.type_of(bare_name)
-        if type_name.is_empty():
-            continue
-        check(declared.has(type_name),
-            "the example ships \"%s\" of type \"%s\" but does not declare it" % [bare_name, type_name], state)
+        var targets: Array = []
+        if _registry.type_of(bare_name).is_empty():
+            targets = _registry.variants(bare_name)
+            if targets.is_empty():
+                for picture in _registry.pictures_of(bare_name):
+                    targets.append(str(picture).get_basename())
+        else:
+            targets = [bare_name]
+        for target in targets:
+            var type_name: String = _registry.type_of(target)
+            check(declared.has(type_name),
+                "the example ships \"%s\" of type \"%s\" but does not declare it" % [bare_name, type_name], state)
 
 func _finish(state: Dictionary) -> void:
     # The real set of the installed tilesets, as the game has it.

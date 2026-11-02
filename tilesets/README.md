@@ -177,21 +177,91 @@ PNG replaces an SVG. The name must match **exactly**, including case:
 
 Two rules follow from this:
 
-- **A file that names no icon replaces nothing.** The game prints the list of such files to
+- **A file that names no icon replaces nothing** — unless it is named after an entity of the
+  data or after a family of variants, see §4.1. The game prints the list of such files to
   the log — that is the fastest way to find a typo.
 - **The set does not have to be complete.** An icon the set does not ship keeps its vanilla
   picture, so a set may re-draw three buildings and leave the rest of the game alone.
 
 Where the vanilla names come from: `icons/<type>/<name>.png`. The list of the names of a
-type is simply the contents of its folder — copy a name from there. **A mod may add names
-of its own** (`<mod folder>/icons`, see `mods/README.md` §4.5): they are indexed next to
-the vanilla ones, and a set of the same type re-draws them as well.
+type is simply the contents of its folder — copy a name from there.
 
-### 4.1. What a set cannot do
+**A set draws the vanilla game.** Its names are resolved against `res://icons` and the
+vanilla data only: what a mod adds or redraws never moves the meaning of a file of a set. A
+mod brings its own data and its own pictures together (`mods/README.md` §4.5, §4.6), so it
+needs no set for that, and a set never has to know which mods the player runs.
+
+### 4.1. One picture for a whole entity
+
+A terrain and a cover are drawn from **several pictures**, and the data lists them for the
+entity itself:
+
+```
+data/covers.json:  { "id": "temperate_rainforest", "icons": [ "temperate_rainforest_1.png",
+                                                              "temperate_rainforest_2.png",
+                                                              "temperate_rainforest_3.png" ] }
+```
+
+The game picks the picture by the hex, so three pictures are three slightly different patches
+of the same forest. An author who has **one** picture for the entity must not draw three
+copies of it: name the file after the **id of the entity** —
+
+```
+tilesets/my_set/icons/temperate_rainforest.svg   ->   replaces all three pictures of the cover
+```
+
+— and every picture the data gives that entity is drawn with that one file.
+
+The list of the pictures belongs to the data, not to a convention of the file names: today
+every record names its pictures after its id, and that is a convenience of the art, not a
+rule. The id is what the file name is matched against, so a set keeps working when the
+pictures of an entity are renamed.
+
+The rules of the expansion:
+
+- A file whose bare name matches **no** icon is read as the id of an entity: it replaces every
+  picture the data gives that entity, inside the types the set declares.
+- A file that names an icon of its own replaces exactly that icon (the usual rule), even if an
+  entity file of the same set would draw it as well. So a set may ship
+  `temperate_rainforest.svg` for the whole cover and `temperate_rainforest_2.svg` for one
+  picture it wants different.
+- The **declared types are the namespace** of a name. One name may be both an icon of one type
+  and an entity of another — the terrain `tundra_plain` and a picture `tundra_plain.png` that
+  is, say, a good of some other type. A set for `terrains` reads the name as the entity; a set
+  for the other type reads it as the icon. A set that declares both types means both with one
+  name, which is what it asked for.
+- An entity is expanded only inside the **declared types**: a `buildings` set cannot claim a
+  cover, and a `terrains` set does not touch a building icon.
+- A file named after a **family of names** works as well: `tundra_moss.svg` draws
+  `tundra_moss_1..3` whether or not `tundra_moss` is an id, and `forest.svg` draws the three
+  pictures of the forest above. The family is the name without a trailing `_<number>`.
+- A name with no trailing number is no family: `bakery` stays the icon `bakery.png`, and a
+  file `bakery` replaces exactly it.
+- A family of one picture works the same way: `beach` draws `beach_1`.
+
+What is an entity of several pictures: every record of the **vanilla** data with more than one
+name in `icons` — every cover and every terrain of `data/covers.json` and
+`data/terrains/*.json`. An entity of **one** picture needs no id: the file name is the name of
+its picture, and the usual rule covers it. An entity a mod adds is not here: a mod draws it
+with its own pictures (`mods/README.md` §4.5).
+
+A set that draws only some pictures of an entity is not an error — one picture may be meant
+to differ. The game does print a line about it, naming the entity and how many of its pictures
+the set covers: that is the case where a cover comes out patched from two drawings.
+
+```
+TilesetManager: "my_set": reeds (1 of 3 pictures) — a file named after the entity draws all
+of them at once.
+```
+
+### 4.2. What a set cannot do
 
 - It cannot **add** a new icon name: a name exists only if the data refers to it — the
   vanilla data, or the data of a mod. An icon a mod adds is a target like any other, so a
   set may redraw it; but a file naming nothing the data uses replaces nothing.
+- It cannot **group entities the data does not group**: two covers are two ids, so one picture
+  for both needs two files (or two names). The data decides what a group is, the set only
+  draws it.
 - It cannot **remove** an icon.
 - It cannot change the **proportion** the UI expects: the vanilla icons are square
   pictures of about 200–256 px, and the UI scales them to the size it needs. A set drawn
@@ -271,6 +341,9 @@ icon each picture stands for.
 - [ ] `name`, `description` and `type` are filled in; `type` uses the seven known values.
 - [ ] Every image is named after the vanilla icon it replaces, without the extension
       (`bakery.svg` for `icons/buildings/bakery.png`).
+- [ ] One picture for an entity drawn from several pictures is named after the **id of the
+      entity** (`temperate_rainforest.svg`), or after its family of names (`forest.svg`),
+      see §4.1.
 - [ ] The images are imported (the project was opened in the editor after the files were
       added).
 - [ ] No other tileset declares the same type — or this one is meant to win.

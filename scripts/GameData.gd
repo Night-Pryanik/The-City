@@ -10,6 +10,11 @@ const GENERATED_SEPARATOR := "+"
 
 var terrains: Dictionary = {}
 var covers: Dictionary = {}
+# The id of a VANILLA entity -> the icon file names it is drawn with, for the entities drawn
+# by several pictures. The mods of the running game may change the pictures of a record in
+# their own data; this map stays the one of the game itself, because it is what a tileset
+# addresses (see IconRegistry.set_entity_pictures).
+var vanilla_entities: Dictionary = {}
 var climate_zones: Dictionary = {} # id -> the climate zone (data/climate.json)
 var raw_resources: Dictionary = {}
 var products: Dictionary = {}
@@ -76,18 +81,24 @@ func load_all_data():
     _assign_from(loader)
     loader.free()
     data_loaded = true
-    _sync_mod_icons()
+    _sync_icon_registry()
 
 # The icons a mod ships live in its own folder, so the registry is told which mods are
 # running before anything asks it for a texture. The registry is looked up through the tree
 # root and not by name: an autoload declared before this one is not always resolved in this
 # script (the same reason mod_manager.gd looks GameData up this way).
-func _sync_mod_icons() -> void:
+#
+# The pictures of the VANILLA entities go with it: the table of the tilesets is built from
+# them and from res://icons, so a file named after an entity is resolved through the game's
+# own data. A mod changes the pictures of an entity in its own data record, and a set has no
+# business with that (see mods/README.md §4.5).
+func _sync_icon_registry() -> void:
     var loop := Engine.get_main_loop()
     if not (loop is SceneTree):
         return
     var registry = (loop as SceneTree).root.get_node_or_null("IconRegistry")
     if registry != null:
+        registry.set_entity_pictures(vanilla_entities)
         registry.set_mod_dirs(active_mod_dirs)
 
 # A detached copy of the data: vanilla plus the given mods. It is what the mod list
@@ -109,6 +120,7 @@ func build_probe(mod_dirs: Array):
 func _assign_from(loader) -> void:
     terrains = loader.terrains
     covers = loader.covers
+    vanilla_entities = loader.vanilla_entities
     climate_zones = loader.climate_zones
     raw_resources = loader.raw_resources
     products = loader.products

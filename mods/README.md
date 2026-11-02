@@ -273,7 +273,9 @@ The rules:
   is the type of the pictures inside it. The folders are `resources`, `buildings`, `tech`,
   `terrain`, `improvements`, `special_actions`; everything else — the root of `icons/`
   included — is **misc** (coins, buttons, marks of the interface). The nesting below the
-  first folder is free.
+  first folder is free. The names the manifest of a tileset uses work as folders too:
+  `products` is `resources` (a product is a resource record), `terrains` is `terrain`,
+  `technologies` is `tech`.
 - The `icon` field of the data names the file **exactly, extension included**:
   `"icon": "rye.png"` for `icons/resources/rye.png`, `"icon": "rye.svg"` for a drawing in
   SVG. There is no "find by bare name" here: the extension is a part of the name.
@@ -287,11 +289,41 @@ The rules:
 - Only the mods of the **running game** are indexed: a switched-off mod brings no icons and
   cannot take a name from another mod. A mod that only ships pictures (a retexture, no
   `data` at all) works the same way.
-- A tileset from `tilesets/` may redraw an icon of a mod as well: the type of the icon is
-  the folder it lies in, exactly as for a vanilla icon (see `tilesets/README.md`).
+- A tileset from `tilesets/` draws the **vanilla game**: a file of a set that names an icon
+  of a mod replaces nothing. What a mod draws is the mod's own business.
 
 Nothing else has to be done: a mod icon is an ordinary icon of the registry, so the map,
 the lists, the tooltips and the buttons find it by the same name as a vanilla one.
+
+### 4.6. Redrawing a vanilla entity with one picture
+
+A terrain and a cover are drawn from **several pictures** (`icons/terrain/tundra_plain_1.png`,
+`_2`, `_3`), and the game picks one by the hex. A mod that wants **one** picture for such an
+entity does not copy it under three names: it declares the entity again in its own data and
+names its own picture there.
+
+```json
+// mods/my_mod/data/pictures.json
+{
+  "terrains": [ { "id": "tundra_plain", "icons": [ "my_plain.png" ] } ],
+  "covers":   [ { "id": "tundra_moss",  "icons": [ "my_moss.png"  ] } ]
+}
+```
+
+The data of a mod is merged **field by field** (§4.1): the record keeps the `name`, the
+`color`, the `move_cost`, the `family` and every other field of the vanilla one, and only the
+`icons` list is replaced. The pictures themselves lie in `icons/terrain/` of the mod.
+
+The rules:
+
+- The **same id** is the whole mechanism — no separate list, no new manifest field. What the
+  mod writes is what it overrides; the rest stays vanilla.
+- The mod redraws the entity, it does not rename it: the id, the name and the yields stay.
+- A tileset keeps addressing the pictures of the **game**, so a mod's one-picture override
+  does not change what a set draws. When a mod and a set both draw one entity, the mod's data
+  wins: the entity no longer lists the pictures a set replaces.
+- One picture for **one** entity is all this does. Several entities with one picture are
+  several records — the data decides what a group is.
 
 ---
 

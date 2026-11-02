@@ -55,6 +55,15 @@ const TYPE_FOLDERS := {
 # set of icons does not name yet.
 const MISC := "misc"
 
+# Other names a folder of a type may carry: a mod lays out its icons the way its data reads,
+# and a product is a resource record. The canonical folder stays the one in TYPE_FOLDERS, so
+# the vanilla layout never depends on these.
+const FOLDER_ALIASES := {
+    "products": "resources",
+    "terrains": "terrains",
+    "technologies": "technologies"
+}
+
 # Emitted after the set of icons changed: the replacement table was installed, or the
 # icons of the mods of the running game were indexed. The textures the interface already
 # holds belong to the previous set, so a module that keeps its own copy of them reloads it
@@ -65,6 +74,10 @@ signal overrides_changed
 # mods of the running game are indexed when the data is loaded, after the autoloads are up:
 # anything that built a table of names against the vanilla index has to rebuild it.
 signal index_changed
+
+# Emitted after the entity -> pictures map of the data changed: a replacement table built
+# before the data was read does not know the ids yet (see set_entity_pictures).
+signal entity_pictures_changed
 
 # The file name (basename) -> the full path of the file: a res:// one, or a user:// one for
 # an icon of a mod installed by the player.
@@ -78,6 +91,25 @@ var types: Dictionary = {}
 # The bare name of an icon -> the res:// path of the tileset file that replaces it. Filled
 # by TilesetManager; empty when no tileset is installed.
 var overrides: Dictionary = {}
+
+# The bare name of a FAMILY -> the bare names of its variants, sorted. A terrain and a cover
+# are drawn from a list of variants ("tundra_moss_1.png", "_2", "_3" in data/covers.json),
+# so a tileset may draw the whole family with one picture (see tilesets/README.md). The
+# family is the name without its trailing number; a name with no number belongs to none.
+var families: Dictionary = {}
+
+# The ID of an entity of the data -> the icon file names the data draws it with, for the
+# entities drawn by SEVERAL pictures ("tundra_moss" -> tundra_moss_1..3.png). The data is the
+# only thing that knows this list, so GameData publishes it (set_entity_pictures); a tileset
+# file named after the id then draws the whole entity, whatever its pictures are called.
+var entity_pictures: Dictionary = {}
+
+# The same three tables, built from res://icons ONLY. A TILESET draws the game, not the mods
+# of the player: it addresses the vanilla names, so a mod that shadows a vanilla name (a mod
+# may redraw an icon, see set_mod_dirs) must not change what a file of a set means. A mod
+# draws its own entities and says so in its own manifest; a set never sees them.
+var vanilla_types: Dictionary = {}
+var vanilla_families: Dictionary = {}
 
 # The file name -> the loaded Texture2D. A common cache for the whole project.
 var _textures: Dictionary = {}
@@ -105,11 +137,19 @@ func build() -> void:
     var was_built := _built
     paths.clear()
     types.clear()
+    families.clear()
+    vanilla_types.clear()
+    vanilla_families.clear()
     var duplicates: Array = []
     _scan_folder(ROOT, duplicates)
+    # The vanilla view is taken before a mod is laid over it: the tables of the tilesets are
+    # built from it (see vanilla_type_of).
+    vanilla_types = types.duplicate()
+    _build_families(vanilla_types, vanilla_families)
     var owners := {}
     for mod_dir in _mod_dirs:
         _scan_mod(str(mod_dir), owners)
+    _build_families(types, families)
     _built = true
     if not duplicates.is_empty():
         # A single warning for all duplicates.
@@ -190,7 +230,7 @@ func _folder_type(folder_path: String, root: String = ROOT) -> String:
     for type_name in TYPE_FOLDERS:
         if TYPE_FOLDERS[type_name] == folder:
             return type_name
-    return MISC
+    return str(FOLDER_ALIASES.get(folder, MISC))
 
 # The name under which a file gets into the index; "" — the file is a service one,
 # it is not an icon.
@@ -205,6 +245,53 @@ func _index_key(file_name: String) -> String:
 # The file name without the extension: the name a tileset uses for its own files.
 func _bare_name(file_name: String) -> String:
     return file_name.get_basename()
+
+# Groups the indexed names into families: "tundra_moss_2" goes to "tundra_moss". The same walk
+# fills the vanilla families and the full ones, so a set and the game never disagree on what a
+# family is.
+func _build_families(names: Dictionary, into: Dictionary) -> void:
+    for bare_name in names:
+        var base := _family_base(str(bare_name))
+        if base.is_empty():
+            continue
+        if not into.has(base):
+            into[base] = []
+        (into[base] as Array).append(bare_name)
+    for base in into:
+        (into[base] as Array).sort()
+
+# The family of a name: "tundra_moss_2" -> "tundra_moss"; "" when the name does not end with
+# a number, so it is not a variant of anything.
+func _family_base(bare_name: String) -> String:
+    var cut := bare_name.rfind("_")
+    if cut <= 0:
+        return ""
+    var tail := bare_name.substr(cut + 1)
+    if tail.is_empty():
+        return ""
+    for i in tail.length():
+        var letter := tail[i]
+        if letter < "0" or letter > "9":
+            return ""
+    return bare_name.substr(0, cut)
+
+# The bare names of the variants of a family, sorted: "tundra_moss" ->
+# ["tundra_moss_1", "tundra_moss_2", "tundra_moss_3"]. Empty when the name is no family —
+# a tileset file that matches no icon itself may still draw a whole family this way.
+func variants(bare_name: String) -> Array:
+    _ensure_built()
+    return families.get(bare_name, [])
+
+# The type of a VANILLA icon, by its file name or by its bare name; "" if res://icons has no
+# such icon. What a tileset file means: a mod that shadows a vanilla name does not move it.
+func vanilla_type_of(icon_name: String) -> String:
+    _ensure_built()
+    return str(vanilla_types.get(_bare_name(icon_name), ""))
+
+# The variants of a VANILLA family — the same list as variants(), without the names a mod adds.
+func vanilla_variants(bare_name: String) -> Array:
+    _ensure_built()
+    return vanilla_families.get(bare_name, [])
 
 # Whether there is an icon with such a file name.
 func has(icon_name: String) -> bool:
@@ -309,6 +396,21 @@ func set_overrides(table: Dictionary) -> void:
     overrides = table.duplicate()
     _textures.clear()
     overrides_changed.emit()
+
+# The entities of the data drawn by several pictures: id -> the icon file names. Published
+# by GameData, which is the only place that reads the data. The map is compared before it
+# is installed, so a reload of the same data costs nothing; a table built before the data
+# was read has to be rebuilt, which is what the signal is for.
+func set_entity_pictures(map: Dictionary) -> void:
+    if map == entity_pictures:
+        return
+    entity_pictures = map.duplicate(true)
+    entity_pictures_changed.emit()
+
+# The icon file names the data draws this entity with; empty when no entity carries the id
+# or when one picture is enough for it.
+func pictures_of(entity_id: String) -> Array:
+    return entity_pictures.get(entity_id, [])
 
 # How many icons are in the index — for the test.
 func count() -> int:

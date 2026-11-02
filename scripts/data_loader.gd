@@ -34,6 +34,11 @@ var game_balance: Dictionary = {} # the game balance (data/game_balance.json)
 var roads: Array = []
 var roads_by_level: Dictionary = {}
 
+# The id of a vanilla entity -> the icon file names the VANILLA data draws it with, for the
+# entities drawn by several pictures. Taken before the mods are laid over: a tileset draws
+# the game itself, so a record a mod changes is not its business.
+var vanilla_entities: Dictionary = {}
+
 # Where each entity came from: "collection:id" → { "file": String, "line": int }.
 # It is filled in when reading the files (_remember_sources), because after merging
 # the files into one dictionary the origin is no longer recoverable. It is needed by the runtime validator
@@ -125,6 +130,18 @@ const SOURCE_COLLECTIONS := [
     "special_actions",
 ]
 
+# The collections of the raw data whose records may be drawn by several pictures. The names
+# are the keys of the data files, so "resources" holds both the raw goods and the products.
+const ENTITY_COLLECTIONS := [
+    "covers",
+    "terrains",
+    "improvements",
+    "resources",
+    "buildings",
+    "technologies",
+    "special_actions",
+]
+
 # Reads the vanilla data and lays the enabled mods on top of it.
 #
 # mod_dirs — the data folders of the active mods, in the order they must be applied
@@ -139,6 +156,7 @@ func load_all_data(mod_dirs: Array = []):
     # The mods are merged into the RAW tree, before the collections are assembled:
     # everything below reads the assembled dictionaries, so a record replaced here is
     # indistinguishable from a vanilla one for the rest of the game.
+    vanilla_entities = _entity_pictures(merged_data)
     _apply_mods(merged_data, mod_dirs)
 
     raw_data = merged_data
@@ -548,6 +566,29 @@ func _merge_dictionaries(target: Dictionary, source: Dictionary):
 #
 # The mods are applied in the order of mod_dirs, so a later mod overrides an earlier
 # one. ModManager orders them by dependency.
+# The id of an entity -> the icon file names the data draws it with, for the entities drawn
+# by SEVERAL pictures. Read from the raw tree before the mods are laid over it: the pictures
+# of the game itself are what a tileset draws, and a mod that changes them is the mod's
+# business, not the set's.
+func _entity_pictures(tree: Dictionary) -> Dictionary:
+    var out := {}
+    for collection_name in ENTITY_COLLECTIONS:
+        for record in tree.get(collection_name, []):
+            if not (record is Dictionary):
+                continue
+            var id := str(record.get("id", ""))
+            var icons = record.get("icons", [])
+            if id.is_empty() or not (icons is Array):
+                continue
+            var names: Array = []
+            for icon in icons:
+                var icon_name := str(icon)
+                if not icon_name.is_empty():
+                    names.append(icon_name)
+            if names.size() > 1:
+                out[id] = names
+    return out
+
 func _apply_mods(target: Dictionary, mod_dirs: Array) -> void:
     for mod_dir in mod_dirs:
         var folder := str(mod_dir).path_join("data")

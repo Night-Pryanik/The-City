@@ -8,6 +8,10 @@
 #   <tileset folder>/tileset.json     the manifest (see read_tileset below)
 #   <tileset folder>/**/*.png|svg     the icons, in any layout inside the folder
 #
+# A set draws the VANILLA game: the names it uses are the names of res://icons and of the
+# vanilla data. What a mod adds or redraws is the mod's own business — a mod brings its data
+# and its icons together (see mods/README.md §4.5), a set never sees them.
+#
 # The tilesets are searched in res://tilesets, one level deep. A folder whose name starts
 # with "_" is skipped: the shipped example lives in res://tilesets/_example and must not
 # replace the art of the game itself.
@@ -67,6 +71,9 @@ func _ready() -> void:
         # loaded: a tileset that redraws an icon a mod adds has to be rebuilt against the
         # complete index.
         registry.index_changed.connect(_on_icons_indexed)
+        # The pictures of the entities of the data come with the same load: a tileset file
+        # named after an entity draws it whole, and the entity is known only then.
+        registry.entity_pictures_changed.connect(_on_icons_indexed)
 
 # Reads the manifests and installs their replacements into IconRegistry. Called once at
 # startup: the set of tilesets is fixed by the files of the game.
@@ -171,6 +178,7 @@ func apply() -> void:
         return
     registry.set_overrides(table)
     _warn_unmatched(tilesets)
+    _warn_partial_entities(tilesets)
 
 func _on_icons_indexed() -> void:
     apply()
@@ -181,18 +189,62 @@ func _on_icons_indexed() -> void:
 # set is used as chosen; a type the player has not chosen is given to the folder rule, and
 # a file whose type the tileset does not declare, or that names no icon at all, is not a
 # replacement.
+#
+# A SET DRAWS THE VANILLA GAME. Its names are resolved against res://icons and the vanilla
+# data only (IconRegistry.vanilla_type_of), so what a mod adds or changes never moves the
+# meaning of a file of a set — the mod draws its own entities through its own data and icons.
+#
+# A file named after a FAMILY draws every variant of it with one picture: "tundra_moss.svg"
+# replaces tundra_moss_1, tundra_moss_2 and tundra_moss_3, which the data of a cover lists
+# as three variants of the same art. The author draws one picture instead of three copies.
+#
+# A file named after an ENTITY draws every picture the data gives that entity: the list of
+# the pictures belongs to the data, not to a naming convention, so the author may name the
+# file after the id and forget what the files of the entity are called. A family file and an
+# entity file say the same thing when the data names its pictures after the id; either
+# spelling is read.
+#
+# The DECLARED TYPES are the namespace of a name. An entity and an icon of another type may
+# carry one name, and the name alone says nothing: a name that is an icon of a type this set
+# does not draw is read as the id of the entity of a type it DOES draw. A set that declares
+# both types means both with one name, which is what it asked for.
 func build_overrides(records: Array, chosen: Dictionary = {}) -> Dictionary:
     var registry = _icon_registry()
     var table := {}
     if registry == null:
         return table
     var owners := resolve(records, chosen)
+    # The exact names first: a file that names an icon of its own wins over a family file or
+    # an entity file that would draw the same icon.
     for type_name in owners:
         var record: Dictionary = owners[type_name]
         for bare_name in record["icons"]:
-            if registry.type_of(bare_name) != type_name:
+            if registry.vanilla_type_of(bare_name) == type_name:
+                table[bare_name] = record["icons"][bare_name]
+    # Then the entities of the data: the whole entity, whatever its pictures are called. A
+    # name that is an icon of ANOTHER type is not skipped here: that icon belongs to a type
+    # this set does not draw, so the name is free for an entity of a type it does.
+    for type_name in owners:
+        var record: Dictionary = owners[type_name]
+        var declared: Array = record.get("types", [])
+        for bare_name in record["icons"]:
+            if declared.has(registry.vanilla_type_of(bare_name)):
                 continue
-            table[bare_name] = record["icons"][bare_name]
+            for picture in registry.pictures_of(bare_name):
+                var icon_name := str(picture).get_basename()
+                if registry.vanilla_type_of(icon_name) == type_name and not table.has(icon_name):
+                    table[icon_name] = record["icons"][bare_name]
+    # Then the families of the icon names: the same thing for the entities whose pictures
+    # are named after a family the data does not call an entity.
+    for type_name in owners:
+        var record: Dictionary = owners[type_name]
+        var declared: Array = record.get("types", [])
+        for bare_name in record["icons"]:
+            if declared.has(registry.vanilla_type_of(bare_name)):
+                continue
+            for variant in registry.vanilla_variants(bare_name):
+                if registry.vanilla_type_of(variant) == type_name and not table.has(variant):
+                    table[variant] = record["icons"][bare_name]
     return table
 
 # The type -> the record that draws it. A type resolved to the vanilla icons is absent from
@@ -337,7 +389,7 @@ func _is_image(file_name: String) -> bool:
     return false
 
 # Tells the author about the files that replace nothing: a misnamed picture is invisible in
-# the game otherwise. An icon a mod adds is a replacement target as well as a vanilla one.
+# the game otherwise. The names are the vanilla ones — an icon a mod adds is not a target.
 func _warn_unmatched(records: Array) -> void:
     var registry = _icon_registry()
     if registry == null:
@@ -347,12 +399,66 @@ func _warn_unmatched(records: Array) -> void:
             continue
         var unknown: Array = []
         for bare_name in record["icons"]:
-            if registry.type_of(bare_name).is_empty():
+            if not _draws_anything(registry, record, bare_name):
                 unknown.append(bare_name)
         if not unknown.is_empty():
             unknown.sort()
             push_warning("TilesetManager: \"%s\": no icon is named %s — the files are ignored."
                 % [record["id"], ", ".join(PackedStringArray(unknown))])
+
+# Whether a file of a set replaces at least one icon of a type the set declares: the icon it
+# is named after, the entity of the data it is named after, or the family when it is named
+# after one. A name that is an icon of ANOTHER type draws nothing here — see build_overrides.
+func _draws_anything(registry, record: Dictionary, bare_name: String) -> bool:
+    var declared: Array = record.get("types", [])
+    var own: String = registry.vanilla_type_of(bare_name)
+    if declared.has(own):
+        return true
+    for picture in registry.pictures_of(bare_name):
+        if declared.has(registry.vanilla_type_of(str(picture).get_basename())):
+            return true
+    for variant in registry.vanilla_variants(bare_name):
+        if declared.has(registry.vanilla_type_of(variant)):
+            return true
+    return false
+
+# A set that draws only some pictures of an entity is not an error — one variant may be meant
+# to differ. It is, however, the case where a cover comes out patched from two drawings, so
+# the author is told the way out: a file named after the entity (or after its family) draws
+# all of it at once.
+func _warn_partial_entities(records: Array) -> void:
+    var registry = _icon_registry()
+    if registry == null:
+        return
+    for record in records:
+        if not _usable(record):
+            continue
+        var icons: Dictionary = record["icons"]
+        var declared: Array = record.get("types", [])
+        var hints: Array = []
+        for entity_id in registry.entity_pictures:
+            var pictures: Array = registry.pictures_of(str(entity_id))
+            var targets: Array = []
+            for picture in pictures:
+                var icon_name := str(picture).get_basename()
+                if declared.has(registry.vanilla_type_of(icon_name)):
+                    targets.append(icon_name)
+            if targets.size() < 2:
+                continue
+            # A file named after the entity draws all of its pictures; the exact files draw
+            # the ones they name.
+            var drawn := targets.size() if icons.has(entity_id) else 0
+            if not icons.has(entity_id):
+                for target in targets:
+                    if icons.has(target):
+                        drawn += 1
+            if drawn > 0 and drawn < targets.size():
+                hints.append("%s (%d of %d pictures)" % [entity_id, drawn, targets.size()])
+        if not hints.is_empty():
+            hints.sort()
+            push_warning(("TilesetManager: \"%s\": %s — a file named after the entity draws "
+                + "all of them at once.") % [record["id"],
+                    ", ".join(PackedStringArray(hints))])
 
 func _subdirectories(root: String) -> Array:
     var out: Array = []

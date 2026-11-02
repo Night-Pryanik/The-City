@@ -40,7 +40,8 @@ const CHILD_MOD := "test_dep_child"
 const RIVAL_MOD := "test_dep_rival"
 const BROKEN_MOD := "test_broken"
 const BLACKLIST_MOD := "test_blacklist"
-const SYNTHETIC_MODS := [DEP_MOD, CHILD_MOD, RIVAL_MOD, BROKEN_MOD, BLACKLIST_MOD]
+const ICON_MOD := "test_icon_override"
+const SYNTHETIC_MODS := [DEP_MOD, CHILD_MOD, RIVAL_MOD, BROKEN_MOD, BLACKLIST_MOD, ICON_MOD]
 
 const VANILLA_FLOUR_PRICE := 4
 const MOD_FLOUR_PRICE := 12
@@ -65,6 +66,7 @@ func _run() -> void:
 
     _test_registry(state)
     _test_merge(state)
+    _test_icon_override(state)
     _test_blacklist(state)
     _test_save_set(state, save_manager)
     _test_dependencies(state)
@@ -134,8 +136,37 @@ func _test_merge(state: Dictionary) -> void:
             "one new building, one blacklisted", state)
     check(_count_buildings("hand_mill") == 1, "the overridden building stays single", state)
 
-# --- 3. The blacklist --------------------------------------------------------------
+# --- 3. A mod redraws a vanilla entity with one picture ---------------------------
+#
+# The data is merged field by field, so a record with the same id and its own "icons" list
+# replaces the pictures of the entity and nothing else. This is how a mod redraws a vanilla
+# terrain or a cover with ONE picture instead of the three the game lists: no second
+# mechanism is needed, and the vanilla pictures stay untouched for the tilesets.
+func _test_icon_override(state: Dictionary) -> void:
+    _mod_manager.set_active([ICON_MOD])
+    _game_data.load_all_data()
 
+    var terrain: Dictionary = _game_data.terrains.get("tundra_plain", {})
+    check(terrain.get("icons", []) == ["my_plain.png"],
+        "the mod did not replace the pictures of the terrain: %s" % str(terrain.get("icons", [])), state)
+    check(str(terrain.get("name", "")) == "Tundra, Plain",
+        "a field the mod does not write changed: \"%s\"" % str(terrain.get("name", "")), state)
+    check(not str(terrain.get("family", "")).is_empty(),
+        "the family of the terrain is gone", state)
+    var cover: Dictionary = _game_data.covers.get("tundra_moss", {})
+    check(cover.get("icons", []) == ["my_moss.png"],
+        "the mod did not replace the pictures of the cover: %s" % str(cover.get("icons", [])), state)
+
+    # A set addresses the pictures of the GAME: what a mod changes in its own record is not
+    # its business, so the vanilla map keeps the three pictures.
+    var vanilla_pictures: Array = _game_data.vanilla_entities.get("tundra_moss", [])
+    check(vanilla_pictures.size() == 3,
+        "the vanilla pictures moved with the mod: %s" % str(vanilla_pictures), state)
+
+    _mod_manager.set_active([])
+    _game_data.load_all_data()
+
+# --- 3. The blacklist --------------------------------------------------------------
 func _test_blacklist(state: Dictionary) -> void:
     _mod_manager.set_active([SHIPPED_MOD])
     _game_data.load_all_data()
@@ -512,6 +543,19 @@ func _write_synthetic_mods() -> void:
     "buildings": [ "no_such_building" ],
     "recipe": [ "papyrus" ]
   }
+}
+""")
+    # A mod that redraws a vanilla terrain and a vanilla cover with ONE picture each: its
+    # record carries the same id and its own "icons" list, and nothing else.
+    _write_mod(ICON_MOD, {
+        "id": ICON_MOD, "name": "Icons", "authors": ["Test"],
+        "description": "A mod that redraws a terrain and a cover.", "version": "1.0.0"
+    })
+    data_dir = "user://mods/%s/data" % ICON_MOD
+    DirAccess.make_dir_recursive_absolute(data_dir)
+    _write_text(data_dir.path_join("pictures.json"), """{
+  "terrains": [ { "id": "tundra_plain", "icons": [ "my_plain.png" ] } ],
+  "covers": [ { "id": "tundra_moss", "icons": [ "my_moss.png" ] } ]
 }
 """)
 

@@ -26,6 +26,12 @@
 #  6. get_texture caches: two calls for one file give ONE object
 #     (previously the caches lived as copies in six modules).
 #  7. An unknown and an empty name give "" / null, without errors.
+#  8. The families of variants are grouped by the name: "tundra_moss_2" belongs to
+#     "tundra_moss", so a tileset may draw a whole family with one picture. The
+#     truth is the same walk over the disk.
+#  9. The entities the data draws with several pictures are published by GameData,
+#     so a tileset may name a file after the id instead of after the pictures. The
+#     truth is the data: every record with more than one picture in its "icons".
 #
 # NOT checked: that an icon exists for every reference in data/*.json. The data
 # deliberately contains references to icons not drawn yet (future goods and
@@ -154,11 +160,97 @@ func _run() -> void:
     check(not registry.has("definitely_missing_icon.png"),
         "has() for a nonexistent icon returned true", state)
 
+    # --- 8. The families of variants ---
+    # The same walk gives the truth: a name ending with "_<digits>" belongs to the family of
+    # the part before the number.
+    var expected_families := {}
+    for file_name in on_disk.keys():
+        var bare: String = str(file_name).get_basename()
+        var cut := bare.rfind("_")
+        if cut <= 0:
+            continue
+        var tail := bare.substr(cut + 1)
+        var numeric := not tail.is_empty()
+        for i in tail.length():
+            if tail[i] < "0" or tail[i] > "9":
+                numeric = false
+        if not numeric:
+            continue
+        var base := bare.substr(0, cut)
+        if not expected_families.has(base):
+            expected_families[base] = []
+        expected_families[base].append(bare)
+    check(registry.families.size() == expected_families.size(),
+        "the index has %d families, the disk has %d"
+            % [registry.families.size(), expected_families.size()], state)
+    var wrong_families: Array = []
+    for base in expected_families:
+        var expected: Array = expected_families[base].duplicate()
+        expected.sort()
+        if registry.variants(base) != expected:
+            wrong_families.append("%s -> %s, expected %s"
+                % [base, str(registry.variants(base)), str(expected)])
+    check(wrong_families.is_empty(),
+        "families disagree with the disk: %s" % _fmt_list(wrong_families), state)
+    var plain_name := ""
+    for file_name in on_disk.keys():
+        var bare: String = str(file_name).get_basename()
+        if not expected_families.has(bare):
+            plain_name = bare
+            break
+    check(not plain_name.is_empty() and registry.variants(plain_name).is_empty(),
+        "an icon that is no family answers with variants: %s" % plain_name, state)
+
     # Note (not a check): how many references in the data point to icons not
     # drawn yet. Printed so the author can see the scale.
     _print_missing_references(state)
 
+    _check_entity_pictures(registry, state)
+
     _finish(state)
+
+# --- 9. The entities drawn by several pictures ---
+# The map belongs to the data, so the truth is the data itself: every record whose "icons"
+# array holds more than one picture. A tileset file named after such an id draws the whole
+# entity, whatever its pictures are called (data/covers.json draws a forest with
+# forest_1..3.png, not with temperate_rainforest_1..3.png).
+func _check_entity_pictures(registry, state: Dictionary) -> void:
+    var gdata = get_root().get_node("GameData")
+    if gdata == null:
+        return
+    if not gdata.data_loaded:
+        gdata.load_all_data()
+    var expected := {}
+    for collection in [gdata.covers, gdata.terrains]:
+        for id in collection:
+            var icons: Array = (collection[id] as Dictionary).get("icons", [])
+            if icons.size() > 1:
+                expected[str(id)] = icons
+    check(registry.entity_pictures.size() == expected.size(),
+        "the registry knows %d entities of several pictures, the data has %d"
+            % [registry.entity_pictures.size(), expected.size()], state)
+    var wrong: Array = []
+    for id in expected:
+        if registry.pictures_of(id) != expected[id]:
+            wrong.append("%s -> %s, expected %s"
+                % [id, str(registry.pictures_of(id)), str(expected[id])])
+    check(wrong.is_empty(), "the pictures of an entity disagree with the data: %s"
+        % _fmt_list(wrong), state)
+    check(registry.pictures_of("definitely_missing_entity").is_empty(),
+        "an id no entity carries answers with pictures", state)
+
+    # The same map published twice costs nothing; a changed one is announced: the table of
+    # the tilesets is built from it, and it may have been built before the data was read.
+    var fired := [0]
+    var counter := func() -> void: fired[0] += 1
+    registry.entity_pictures_changed.connect(counter)
+    registry.set_entity_pictures(registry.entity_pictures)
+    check(fired[0] == 0, "an unchanged map of pictures was published again", state)
+    registry.set_entity_pictures({})
+    check(fired[0] == 1, "a changed map of pictures is not announced", state)
+    registry.set_entity_pictures(expected)
+    check(fired[0] == 2, "the map of pictures did not come back", state)
+    registry.entity_pictures_changed.disconnect(counter)
 # Recursive directory walk with the same skip rules as the registry.
 func _scan_disk(folder_path: String, out: Dictionary) -> void:
     var dir := DirAccess.open(folder_path)

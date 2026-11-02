@@ -7,6 +7,10 @@
   // The icons are drawn in a flat placeholder style, and the colour of the badge tells the
   // type apart: green — resources, terracotta — buildings, blue — technologies, olive —
   // terrains, teal — improvements, purple — special actions, slate — misc.
+  //
+  // The terrain icon is named boreal_hill.svg — after the ENTITY "boreal_hill", whose three
+  // pictures (boreal_hill_1..3) are drawn with this one file. Named boreal_hill_1.svg it
+  // would draw one picture of the three. See §4.1 of README.md.
 
   "name": "Placeholder Set",
   "description": "A flat placeholder set for every type of icon. Shows how a tileset replaces the vanilla art of the types it declares.",
