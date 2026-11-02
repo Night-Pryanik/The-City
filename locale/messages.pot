@@ -2208,6 +2208,12 @@ msgstr ""
 msgid "Technology researched: %s"
 msgstr ""
 
+msgid "Terrain cover %s names the temperature belt \"%s\", which does not exist."
+msgstr ""
+
+msgid "Terrain cover: unknown temperature belt"
+msgstr ""
+
 msgid "Terrain: %s"
 msgstr ""
 
@@ -2239,6 +2245,9 @@ msgid "The area does not border explored territory"
 msgstr ""
 
 msgid "The area does not border your territory"
+msgstr ""
+
+msgid "The belts the generator rolls are: polar, cold, mild, subtropical, tropical. A cover is asked for its belts literally, so a misspelled belt is a belt that never happens and the cover simply does not grow there. If EVERY belt of the list is misspelled, the cover never appears on the map at all. An empty list means no restriction, not \"nowhere\"."
 msgstr ""
 
 msgid "The chunk does not border explored territory — scout the neighbouring hexes first"

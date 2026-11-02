@@ -44,6 +44,9 @@
 #   road_level         — a road level has an incorrect or duplicate number
 #   road_max_speed     — a road level has a non-positive maximum speed
 #   road_work_cost     — a road level has a negative price of a segment
+#   zone_axes          — a climate zone has an unknown temperature or humidity value
+#   zone_terrain       — a climate zone maps a family to a terrain that is not of that family
+#   cover_belt         — a cover names a temperature belt the generator never rolls
 #
 # A record of a problem:
 #     "kind":        String,  # the machine name of the check, e.g. "produced_in"
@@ -925,6 +928,8 @@ static func check_title(kind: String) -> String:
             return TranslationServer.translate("Climate zone: unknown climate axis value")
         "zone_terrain":
             return TranslationServer.translate("Climate zone: the family is not mapped to a terrain of that family")
+        "cover_belt":
+            return TranslationServer.translate("Terrain cover: unknown temperature belt")
         _:
             # An unknown kind of the check: we show the machine name — by it one can see
             # what is missing in CHECK_ORDER, and it survives any language.
@@ -1006,6 +1011,7 @@ const CHECK_ORDER := [
     "road_work_cost",
     "zone_axes",
     "zone_terrain",
+    "cover_belt",
 ]
 
 
@@ -1051,6 +1057,7 @@ func validate(gd: Object) -> Array:
     _validate_technologies(technologies, problems)
     _validate_roads(gd.roads, technologies, problems)
     _validate_climate_zones(gd.climate_zones, terrains, _climate_families(terrains, gd.map_config), problems)
+    _validate_cover_belts(gd.covers, problems)
 
     _sort_problems(problems)
     return problems
@@ -1658,6 +1665,25 @@ func _validate_climate_zones(zones, terrains: Dictionary, families: Array, probl
             if str(terrains[terrain_id].get("family", "")) != family:
                 _add(problems, "zone_terrain", "climate_zone", terrain_id, "climate_zone", zname, zone_id, family)
 
+# A cover restricts itself to the temperature belts by their spelling (data/covers.json →
+# "temperature_belts"), and the generator compares that spelling literally — exactly as it compares
+# the axes of a climate zone. A belt nobody rolls drops out of the pool, so the cover loses that
+# belt; a cover whose list holds ONLY misspelled belts loses every belt and never appears on the map
+# at all, which no other check sees: the reference to the cover itself is intact.
+func _validate_cover_belts(covers: Dictionary, problems: Array) -> void:
+    for cover_id in covers.keys():
+        var cover: Variant = covers[cover_id]
+        if not (cover is Dictionary):
+            continue
+        var belts: Array = _as_string_list(cover.get("temperature_belts", []))
+        if belts.is_empty():
+            continue
+        var cover_name := _entity_name(cover, str(cover_id))
+        for belt in belts:
+            if not ZONE_TEMPERATURES.has(str(belt)):
+                _add(problems, "cover_belt", "cover", str(belt), "cover", cover_name, str(cover_id),
+                        "temperature_belts")
+
 
 # --- THE RECIPES ---------------------------------------------------------------
 # produced_in, result / display_result, the resources (including the @-groups), unlock_tech.
@@ -2206,6 +2232,9 @@ static func build_text(problem: Dictionary) -> void:
             else:
                 headline = TranslationServer.translate("Climate zone %s maps the family \"%s\" to \"%s\", which is not a terrain of that family.") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), family, mapped]
             where = TranslationServer.translate("Every zone maps each family the generator places — plain, hill, mountain, swamp, the keys of terrain_config — to a terrain that carries the same \"family\" field. Otherwise the hexes of that family keep the raw family name on the map instead of a terrain: no icon, no yields, no vegetation.")
+        "cover_belt":
+            headline = TranslationServer.translate("Terrain cover %s names the temperature belt \"%s\", which does not exist.") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), str(problem.get("ref_id", ""))]
+            where = TranslationServer.translate("The belts the generator rolls are: polar, cold, mild, subtropical, tropical. A cover is asked for its belts literally, so a misspelled belt is a belt that never happens and the cover simply does not grow there. If EVERY belt of the list is misspelled, the cover never appears on the map at all. An empty list means no restriction, not \"nowhere\".")
         _:
             # The other checks are a broken REFERENCE: "There is no X with the identifier …
             # exists" + where exactly it was referred to.

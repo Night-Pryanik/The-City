@@ -129,6 +129,8 @@ func _test_detector(state: Dictionary):
         # For id_lookalike, ref_id is the Latin "twin" (what the author
         # thinks they are referring to), source_id is the corrupted declaration.
         "id_lookalike": [["carmine", "сarmine"]],
+        # cover_belt: ref_id is the belt as the data spells it, source_id is the cover that lists it.
+        "cover_belt": [["troppical", "bad_belt_cover"]],
     }
 
     var problems: Array = DataValidator.new().validate(gd)
@@ -928,6 +930,11 @@ func _make_data() -> Node:
     # category on a product
     gd.products["bad_category"] = {"id": "bad_category", "name": "Honey",
             "category": "ghost_category"}
+    # A cover restricted to a temperature belt the generator never rolls. Nothing refers to the
+    # cover wrongly — only the spelling of the belt is wrong, and that is what silently keeps it
+    # off the map.
+    gd.covers["bad_belt_cover"] = {"id": "bad_belt_cover", "name": "Bad Reef",
+            "temperature_belts": ["troppical"]}
     # a non-existent member of an @-group
     gd.product_groups["bad_group"] = ["wheat", "ghost_member"]
     gd.product_group_names["bad_group"] = "Bad Group"

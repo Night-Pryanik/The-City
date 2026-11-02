@@ -2208,6 +2208,12 @@ msgstr "Технология требует несуществующую тех�
 msgid "Technology researched: %s"
 msgstr "Технология изучена: %s"
 
+msgid "Terrain cover %s names the temperature belt \"%s\", which does not exist."
+msgstr "У покрова %s указан температурный пояс \"%s\", которого не существует."
+
+msgid "Terrain cover: unknown temperature belt"
+msgstr "Покров: неизвестный температурный пояс"
+
 msgid "Terrain: %s"
 msgstr "Местность: %s"
 
@@ -2240,6 +2246,9 @@ msgstr "Область не граничит с исследованной те�
 
 msgid "The area does not border your territory"
 msgstr "Область не граничит с вашими владениями"
+
+msgid "The belts the generator rolls are: polar, cold, mild, subtropical, tropical. A cover is asked for its belts literally, so a misspelled belt is a belt that never happens and the cover simply does not grow there. If EVERY belt of the list is misspelled, the cover never appears on the map at all. An empty list means no restriction, not \"nowhere\"."
+msgstr "Поясов, которые генератор задаёт, пять: polar, cold, mild, subtropical, tropical. Написание значения сравнивается буквально, поэтому пояс с ошибкой — это пояс, которого на карте не бывает, и покров там просто не вырастет. Если с ошибкой написаны ВСЕ пояса списка, покров не появится на карте вовсе. Пустой список означает «никаких ограничений», а не «нигде»."
 
 msgid "The chunk does not border explored territory — scout the neighbouring hexes first"
 msgstr "Чанк не граничит с исследованной территорией — сначала разведайте соседние гексы"
