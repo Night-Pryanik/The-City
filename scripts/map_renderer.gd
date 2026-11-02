@@ -53,6 +53,9 @@ const ROAD_MERGE_STRENGTH = 0.55
 # it: such a merge would have to turn almost in place and reads as a squiggle. It ends at the
 # junction centre, which the through road passes through, so the roads meet as a plain T.
 const ROAD_MERGE_MIN_DOT = 0.5
+# The level of a road set which has no levels: the network of a town is drawn with the default
+# style (see _collect_road_draw_sets).
+const NO_ROAD_LEVEL = -1
 # The radius of the icon markers drawn on top of the hex: a drop of fresh water by
 # an improvement and a trade icon over a connected town. It is set by ONE
 # constant, so that both markers are guaranteed to be of the same size.
@@ -1385,6 +1388,9 @@ func set_route_segments(segments: Dictionary) -> void:
     _route_segments = segments
     queue_redraw()
 
+# The sets the roads are drawn from, in the drawing order (see _collect_road_draw_sets).
+var _road_draw_sets: Array = []
+
 func _draw_all_roads():
     if main_map == null or not main_map.has_method("get"):
         return
@@ -1399,48 +1405,14 @@ func _draw_all_roads():
     _road_junction_hexes = _collect_road_junction_hexes(city_segments, town_segments,
             link_segments)
 
-    # PHASE 2a: the roads of the CITY of the player. They have no visibility gates and never had:
-    # they always lie on their own claimed territory, where there is no fog of war
-    # at all. An exception is the roads CONNECTING the city with a town (PHASE 2c):
-    # the player builds them over the scouted, but not claimed land, therefore here they
-    # are skipped and drawn only in PHASE 2c, where the fog gate applies.
-    # The roads are drawn BY LEVELS: the segments of one level get the colour and the thickness
-    # from data/roads.json, therefore an improved road is visible on the map at once, without
-    # opening the panel. Earlier all the roads were of one colour and one thickness.
-    var plain_city: Dictionary = {}
-    for key in city_segments.keys():
-        if not link_segments.has(key):
-            plain_city[key] = city_segments[key]
-    _draw_road_segments_by_level(plain_city, false)
-
-    # PHASE 2b: the roads of the TOWNS - a separate network, but it is drawn with the same style
-    # (see road_manager.rebuild_town_roads: the network of each town goes from its
-    # centre to the improvements in the influence ring and is not connected with the roads of the city).
-    # The visibility is exactly the same as that of the fill of the rings: see are_town_roads_visible()
-    # and is_town_road_segment_visible() below.
-    # The segments already covered by the player's network are skipped: where the player's road
-    # to the town runs along the town's own trail, the road of the CHOSEN level is drawn
-    # (PHASE 2a/2c), and the town's trail must not be drawn over the highway.
-    if are_town_roads_visible():
-        var town_only: Dictionary = {}
-        for key in town_segments.keys():
-            if not city_segments.has(key):
-                town_only[key] = true
-        _draw_road_segments(town_only, true)
-
-    # PHASE 2c: the roads connecting the city with the towns (the special action
-    # "Build a road", clicked on the hex of a town). These are the roads of the NETWORK of the CITY,
-    # and they go over the scouted (but not claimed) land - therefore the visibility gates of
-    # them are the same as those of the roads of the towns. Strictly speaking, it is impossible to build them through
-    # an unexplored hex (see main_map.get_road_plan), so
-    # this gate is an insurance for the future, if the rule "only over the scouted
-    # land" is ever relaxed.
-    # The level is taken from the network of the city: town_link_segments stores only the flag
-    # "this segment leads to a town", the level lives in road_segments.
-    var link_levels: Dictionary = {}
-    for key in link_segments.keys():
-        link_levels[key] = int(city_segments.get(key, road_manager.DEFAULT_ROAD_LEVEL))
-    _draw_road_segments_by_level(link_levels, true)
+    # PHASE 2a-2c: the roads of the networks of the city and of the towns, by levels
+    # (see _collect_road_draw_sets). The sets are kept: the highlighting of the route is cut out
+    # of the SAME lines - a subset of a road would be walked and paired differently than the
+    # road itself.
+    _road_draw_sets = _collect_road_draw_sets(city_segments, town_segments, link_segments,
+            road_manager)
+    for entry in _road_draw_sets:
+        _draw_road_set(entry)
 
     # PHASE 2d: the "ghost" of a going project - the remainder of the route which is not
     # built yet. It lives until the end of the build, and not until the closing of the panel, and it is drawn
@@ -1471,8 +1443,18 @@ func _draw_all_roads():
 # The highlighting of the route: its segments are already drawn as roads, therefore here
 # only a thin line on top is drawn - by the same geometry as the road.
 func _draw_route() -> void:
+    for polyline in _route_polylines():
+        draw_polyline(polyline, ROUTE_COLOR, ROUTE_WIDTH, true)
+
+# The polylines of the highlighting of the route: the pieces of the ROAD's own lines which lie
+# on the route, cut out of them by the spans they were drawn for. A line of its own would have
+# to be walked, paired and split into the chains on its own as well, and a subset of a road is
+# not walked, paired or split like the whole road: the highlight would drift aside by the
+# lateral wander of the hexes, cut the corners at the junctions and run straight through the
+# level borders the road breaks at.
+func _route_polylines() -> Array:
     if _route_segments.is_empty():
-        return
+        return []
     var visible_range: Dictionary = {}
     for segment_key in _route_segments.keys():
         var parts := str(segment_key).split("|")
@@ -1486,8 +1468,43 @@ func _draw_route() -> void:
                 int(end_parts[0]), int(end_parts[1])):
             visible_range[segment_key] = true
     if visible_range.is_empty():
-        return
-    _draw_road_segments(visible_range, false, ROUTE_COLOR, ROUTE_WIDTH)
+        return []
+    var polylines: Array = []
+    var road_manager = main_map.get_node("RoadManager")
+    for entry in _road_draw_sets:
+        for piece in _road_chain_pieces(entry["segments"], bool(entry["hide_in_fog"]),
+                main_map.HEX_RADIUS):
+            _append_route_slices(polylines, piece, visible_range, road_manager)
+    return polylines
+
+# The pieces of one drawn route which cover the segments of the highlight. The segments of the
+# route run one after another, therefore its points are taken in one range per run of them.
+func _append_route_slices(polylines: Array, piece: Dictionary, route: Dictionary,
+        road_manager) -> void:
+    var points: PackedVector2Array = piece["points"]
+    var spans: PackedInt32Array = piece["spans"]
+    var chain: Array = piece["chain"]
+    var on_route: Array = []
+    for i in range(chain.size() - 1):
+        var a: Vector2i = chain[i]
+        var b: Vector2i = chain[i + 1]
+        on_route.append(route.has(road_manager.get_road_segment_key(a.x, a.y, b.x, b.y)))
+    var start := -1
+    var finish := -1
+    for i in range(spans.size() + 1):
+        var drawn := false
+        if i < spans.size():
+            var span := int(spans[i])
+            if span >= 0 and span < on_route.size():
+                drawn = bool(on_route[span])
+        if drawn:
+            if start < 0:
+                start = i
+            finish = i
+        elif start >= 0:
+            if finish > start:
+                polylines.append(points.slice(start, finish + 1))
+            start = -1
 
 # The "ghost" of an unfinished project. A separate set of the segments, and not a common one with
 # the preview: the preview lives while the panel is open, the ghost of the project - while the build
@@ -1536,17 +1553,64 @@ func is_town_road_segment_visible(row1: int, col1: int, row2: int, col2: int) ->
 func _segment_clear_of_fog(row1: int, col1: int, row2: int, col2: int) -> bool:
     return not (main_map.is_hex_in_fog(row1, col1) or main_map.is_hex_in_fog(row2, col2))
 
-# Draws the roads, grouping the segments BY LEVEL: the colour and the thickness are taken from
-# data/roads.json (the fields color/width). Thus the level of the road is visible on the map
-# without opening the panel.
+# The sets of the segments the roads of the map consist of, in the drawing order. Each set is
+# drawn as a chain of its own, therefore the composition of the sets IS the road geometry: the
+# level border and the border between the networks split a chain, and the pairing of the roads
+# at a junction is looked for within one set. The highlighting of the route is drawn from the
+# same sets, so a subset of a road bends exactly like the road.
 #
-# The set of the segments stores the level BY VALUE (see road_manager.road_segments),
-# therefore the grouping is free - it is one pass over the dictionary.
+# PHASE 2a: the roads of the CITY of the player, by levels. They have no visibility gates: they
+# always lie on their own claimed territory, where there is no fog of war at all. An exception
+# is the roads CONNECTING the city with a town (PHASE 2c): the player builds them over the
+# scouted, but not claimed land, therefore here they are skipped and drawn only in PHASE 2c,
+# where the fog gate applies. The colour and the thickness of a level come from
+# data/roads.json (the fields color/width), so an improved road is visible on the map at once.
 #
-# hide_in_fog is the same gate as that of _draw_road_segments (for the roads of the towns).
-# A level which is not in the data is drawn with the default style ROAD_COLOR:
-# this is an error of the data, and not a reason to silently not draw the road.
-func _draw_road_segments_by_level(segments: Dictionary, hide_in_fog: bool) -> void:
+# PHASE 2b: the roads of the TOWNS - a separate network, drawn with the same style (see
+# road_manager.rebuild_town_roads: the network of each town goes from its centre to the
+# improvements in the influence ring and is not connected with the roads of the city). The
+# visibility is exactly the same as that of the fill of the rings: see are_town_roads_visible().
+# The segments already covered by the player's network are skipped: where the player's road to
+# the town runs along the town's own trail, the road of the CHOSEN level is drawn, and the
+# town's trail must not be drawn over the highway.
+#
+# PHASE 2c: the roads connecting the city with the towns (the special action "Build a road",
+# clicked on the hex of a town). These are the roads of the NETWORK of the CITY, and they go
+# over the scouted (but not claimed) land - therefore their visibility gates are the same as
+# those of the roads of the towns. The level is taken from the network of the city:
+# town_link_segments stores only the flag "this segment leads to a town", the level lives in
+# road_segments.
+func _collect_road_draw_sets(city_segments: Dictionary, town_segments: Dictionary,
+        link_segments: Dictionary, road_manager) -> Array:
+    var sets: Array = []
+
+    var plain_city: Dictionary = {}
+    for key in city_segments.keys():
+        if not link_segments.has(key):
+            plain_city[key] = city_segments[key]
+    _append_road_level_sets(sets, plain_city, false)
+
+    if are_town_roads_visible():
+        var town_only: Dictionary = {}
+        for key in town_segments.keys():
+            if not city_segments.has(key):
+                town_only[key] = true
+        if not town_only.is_empty():
+            sets.append({"segments": town_only, "hide_in_fog": true,
+                    "level": NO_ROAD_LEVEL})
+
+    var link_levels: Dictionary = {}
+    for key in link_segments.keys():
+        link_levels[key] = int(city_segments.get(key, road_manager.DEFAULT_ROAD_LEVEL))
+    _append_road_level_sets(sets, link_levels, true)
+
+    return sets
+
+# The segments of one network split by level, in the order of the levels. The set of the
+# segments stores the level BY VALUE (see road_manager.road_segments), therefore the grouping
+# is one pass over the dictionary. A level which is not in the data is drawn with the default
+# style: this is an error of the data, and not a reason to silently not draw the road.
+func _append_road_level_sets(sets: Array, segments: Dictionary, hide_in_fog: bool) -> void:
     if segments.is_empty():
         return
     var by_level: Dictionary = {}
@@ -1558,17 +1622,21 @@ func _draw_road_segments_by_level(segments: Dictionary, hide_in_fog: bool) -> vo
     var levels: Array = by_level.keys()
     levels.sort()
     for level in levels:
-        var road: Dictionary = GameData.get_road_by_level(int(level))
-        if road.is_empty():
-            _draw_road_segments(by_level[level], hide_in_fog)
-            continue
+        sets.append({"segments": by_level[level], "hide_in_fog": hide_in_fog, "level": int(level)})
+
+# Draws one set of the roads with the style of its level.
+func _draw_road_set(entry: Dictionary) -> void:
+    var color := ROAD_COLOR
+    var width := ROAD_WIDTH
+    var level := int(entry.get("level", NO_ROAD_LEVEL))
+    if level != NO_ROAD_LEVEL:
+        var road: Dictionary = GameData.get_road_by_level(level)
         var rgb: Array = road.get("color", [])
-        var color := ROAD_COLOR
         if rgb is Array and rgb.size() == 3:
             color = Color(float(rgb[0]) / 255.0, float(rgb[1]) / 255.0,
                     float(rgb[2]) / 255.0)
-        _draw_road_segments(by_level[level], hide_in_fog, color,
-                int(road.get("width", ROAD_WIDTH)))
+        width = int(road.get("width", ROAD_WIDTH))
+    _draw_road_segments(entry["segments"], bool(entry["hide_in_fog"]), color, width)
 
 # Draws a set of the segments of the roads.
 # hide_in_fog is the gate for a segment at least one of whose ends lies in the fog
@@ -1589,6 +1657,17 @@ func _draw_road_segments(segments: Dictionary, hide_in_fog: bool,
 # and ends at the hex centre otherwise, which is what keeps the pieces of the different levels,
 # networks and plans joined.
 func _road_chain_polylines(segments: Dictionary, hide_in_fog: bool, radius: float) -> Array:
+    var polylines: Array = []
+    for piece in _road_chain_pieces(segments, hide_in_fog, radius):
+        polylines.append(piece["points"])
+    return polylines
+
+# The drawn polylines of a set together with the hexes of each route and with the span of the
+# route every point belongs to: a point carries the index of the pair (chain[i], chain[i + 1])
+# it was drawn for, and the points of a turn between two spans are split between them at the
+# hex centre. The highlighting of the route is cut out of these points (see _route_polylines),
+# so it has to know which span every point comes from.
+func _road_chain_pieces(segments: Dictionary, hide_in_fog: bool, radius: float) -> Array:
     var kept: Array = []
     var links: Dictionary = {}
     for segment_key in segments.keys():
@@ -1630,12 +1709,13 @@ func _road_chain_polylines(segments: Dictionary, hide_in_fog: bool, radius: floa
         if not used.has(index):
             chains.append(_walk_road_chain(kept, pairs, used, kept[index][0], index))
 
-    var polylines: Array = []
+    var pieces: Array = []
     for chain in chains:
         if chain.size() < 2:
             continue
-        polylines.append(_road_chain_points(chain, radius, merges))
-    return polylines
+        var drawn := _road_chain_points(chain, radius, merges)
+        pieces.append({"points": drawn["points"], "spans": drawn["spans"], "chain": chain})
+    return pieces
 
 func _road_segment_ends(segment_key) -> Array:
     var parts := str(segment_key).split("|")
@@ -1651,7 +1731,9 @@ func _road_segment_ends(segment_key) -> Array:
 # The continuations of the roads through the hexes of one set. At a hex with two segments the
 # road simply goes on. At a junction the segments are paired by their directions, the most
 # opposite pair first: the remaining segment of a junction of an odd degree has no continuation
-# and the route ends at the hex centre.
+# and the route ends at the hex centre. The pairing is greedy, so the segments of the junction
+# are ordered by their hexes: the order of the dictionary of the segments says nothing about the
+# geometry, and the same junction has to be paired alike in every order.
 func _road_junction_pairs(kept: Array, links: Dictionary, radius: float) -> Dictionary:
     var pairs: Dictionary = {}
     for hex in links.keys():
@@ -1661,10 +1743,13 @@ func _road_junction_pairs(kept: Array, links: Dictionary, radius: float) -> Dict
             continue
         if incident.size() < 3:
             continue
+        incident = incident.duplicate()
+        incident.sort_custom(func(x, y):
+            return _road_hex_is_less(_road_other_end(kept[int(x)], hex),
+                    _road_other_end(kept[int(y)], hex)))
         var directions: Array = []
         for index in incident:
-            var ends: Array = kept[int(index)]
-            var other: Vector2i = ends[1] if ends[0] == hex else ends[0]
+            var other := _road_other_end(kept[int(index)], hex)
             directions.append((HexUtils.hex_center(other.x, other.y, radius)
                     - HexUtils.hex_center(hex.x, hex.y, radius)).normalized())
         var free: Array = range(incident.size())
@@ -1786,7 +1871,10 @@ func _walk_road_chain(kept: Array, pairs: Dictionary, used: Dictionary,
 # the pieces of the other networks have to meet the road there. A route that ends at a junction
 # bends and joins the road it meets along that road, unless it arrives at a wide angle — then it
 # ends at the centre, and the junction reads as a plain T.
-func _road_chain_points(chain: Array, radius: float, merges: Dictionary) -> PackedVector2Array:
+#
+# The points come with the span of the route each of them was drawn for, so that a part of the
+# line can be cut out of it by the segments it covers (see _append_route_slices).
+func _road_chain_points(chain: Array, radius: float, merges: Dictionary) -> Dictionary:
     var last := chain.size() - 1
     var guide := PackedVector2Array()
     guide.resize(chain.size())
@@ -1798,7 +1886,7 @@ func _road_chain_points(chain: Array, radius: float, merges: Dictionary) -> Pack
             var next_hex: Vector2i = chain[i + 1]
             var direction := (HexUtils.hex_center(next_hex.x, next_hex.y, radius)
                     - HexUtils.hex_center(prev.x, prev.y, radius)).normalized()
-            point += Vector2(-direction.y, direction.x) * (
+            point += _road_lateral(direction) * (
                     _road_hex_shift(hex.x, hex.y) * radius * ROAD_WANDER)
         guide[i] = point
 
@@ -1834,19 +1922,61 @@ func _road_chain_points(chain: Array, radius: float, merges: Dictionary) -> Pack
                 radius * ROAD_TURN_RADIUS)
 
     var points := PackedVector2Array()
+    var spans := PackedInt32Array()
     if start_tangent != Vector2.ZERO:
         _append_road_blend(points, guide[0], start_tangent, runs[0][0], start_dir)
+        _append_span_marks(spans, points.size(), 0)
     for i in range(runs.size()):
         _append_road_run(points, runs[i][0], runs[i][1], radius,
                 _road_span_shift(chain[i], chain[i + 1]))
+        _append_span_marks(spans, points.size(), i)
         if i + 1 < runs.size():
+            var connector := points.size()
             if _road_junction_hexes.has(chain[i + 1]):
                 _append_road_join(points, runs[i][1], guide[i + 1], runs[i + 1][0])
             else:
                 _append_road_turn(points, runs[i][1], guide[i + 1], runs[i + 1][0])
+            _append_connector_marks(spans, points, connector, i, guide[i + 1])
     if end_tangent != Vector2.ZERO:
         _append_road_blend(points, runs[runs.size() - 1][1], end_dir, guide[last], end_tangent)
-    return points
+        _append_span_marks(spans, points.size(), runs.size() - 1)
+    return {"points": points, "spans": spans}
+
+# The span of every point appended since the last call.
+func _append_span_marks(spans: PackedInt32Array, size: int, span: int) -> void:
+    while spans.size() < size:
+        spans.append(span)
+
+# A turn between two spans belongs to both: its points up to the hex centre are the tail of the
+# incoming span, the rest is the head of the outgoing one. Thus a cut of the route at a hex
+# reaches the centre from either side.
+func _append_connector_marks(spans: PackedInt32Array, points: PackedVector2Array,
+        from: int, span: int, corner: Vector2) -> void:
+    var split := from
+    var nearest := INF
+    for i in range(from, points.size()):
+        var distance := points[i].distance_to(corner)
+        if distance < nearest:
+            nearest = distance
+            split = i
+    while spans.size() < points.size():
+        spans.append(span if spans.size() <= split else span + 1)
+
+# The side of the road a wander is measured to. The direction is taken in a canonical
+# orientation, so that the shape of a span does not depend on the end its chain was walked from:
+# the order of the dictionary of the segments decides where a walk starts, and one road is drawn
+# in more than one set - the level border and the border between the networks cut it, and the
+# preview of an improvement repeats a part of it. All of them must bend alike.
+func _road_lateral(direction: Vector2) -> Vector2:
+    if direction.x < 0.0 or (direction.x == 0.0 and direction.y < 0.0):
+        direction = -direction
+    return Vector2(-direction.y, direction.x)
+
+func _road_hex_is_less(a: Vector2i, b: Vector2i) -> bool:
+    return a.x < b.x or (a.x == b.x and a.y < b.y)
+
+func _road_other_end(ends: Array, hex: Vector2i) -> Vector2i:
+    return ends[1] if ends[0] == hex else ends[0]
 
 func _append_road_run(points: PackedVector2Array, from: Vector2, to: Vector2,
         radius: float, shift: float) -> void:
@@ -1854,7 +1984,7 @@ func _append_road_run(points: PackedVector2Array, from: Vector2, to: Vector2,
     if span <= 0.01:
         return
     var direction := (to - from) / span
-    var normal := Vector2(-direction.y, direction.x)
+    var normal := _road_lateral(direction)
     # A short run (the turns have eaten most of the span) must not bulge into a bubble.
     var amplitude := shift * minf(radius * ROAD_RUN_WAVE, span * 0.25)
     var steps := maxi(1, int(ceil(span / ROAD_SAMPLE_STEP)))
@@ -1929,15 +2059,21 @@ func _append_road_cubic(points: PackedVector2Array, from: Vector2, control_a: Ve
         if points.is_empty() or points[-1].distance_to(point) > 0.5:
             points.append(point)
 
-# A stable shift in [-1, 1] per hex and per segment: the wander must not change between
-# the frames, and the same cell must be bent alike in every network drawn over it.
+# A stable shift in [-1, 1] per hex and per span: the wander must not change between the
+# frames, and the same cell must be bent alike in every network drawn over it. The span is
+# hashed in the order of its two hexes, so the two ends of it give the same value.
 func _road_hex_shift(row: int, col: int) -> float:
     var raw := (row * 73856093 + col * 19349663) & 0x7fffffff
     return float(raw) / float(0x7fffffff) * 2.0 - 1.0
 
 func _road_span_shift(a: Vector2i, b: Vector2i) -> float:
-    var raw := (a.x * 73856093 + a.y * 19349663
-            + b.x * 83492791 + b.y * 2971215073) & 0x7fffffff
+    var low: Vector2i = a
+    var high: Vector2i = b
+    if _road_hex_is_less(high, low):
+        low = b
+        high = a
+    var raw := (low.x * 73856093 + low.y * 19349663
+            + high.x * 83492791 + high.y * 2971215073) & 0x7fffffff
     return float(raw) / float(0x7fffffff) * 2.0 - 1.0
 
 # The "ghost" road: the segments of the plan which is open in the preview. Two passes - a wide

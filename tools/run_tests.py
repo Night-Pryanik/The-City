@@ -120,6 +120,7 @@ SLOW = {
     "test_road_building",
     "test_road_levels",
     "test_road_capacity",
+    "test_route_highlight",
     "test_delivery_logistics",
     "test_edge_scrolling",
     "test_keyboard_scrolling",
