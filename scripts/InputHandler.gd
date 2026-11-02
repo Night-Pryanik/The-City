@@ -115,6 +115,13 @@ func handle_input(event: InputEvent):
             town_ui.close_town()
             get_viewport().set_input_as_handled()
             return
+        # ESC: a list of recipes or additions is open in the building panel — the key
+        # closes that list and leaves the interface under it open. A Control list has
+        # no close-on-escape of its own, and this node receives the key before the
+        # panel does.
+        if city_ui.building_panel != null and city_ui.building_panel.close_open_popup():
+            get_viewport().set_input_as_handled()
+            return
         # ESC: if the city interface is open — we close exactly it, even if
         # a hex is selected on the map or an action preview is active (the city interface
         # is over the map). Otherwise we reset the action preview in the control panel,

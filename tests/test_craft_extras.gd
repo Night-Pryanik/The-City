@@ -59,6 +59,8 @@ func _run() -> void:
         _test_extra_options_stock(gd, city, state)
     if WATCHDOG.wants_case("popup_stock_refresh"):
         _test_popup_stock_refresh(city, state)
+    if WATCHDOG.wants_case("close_open_popup"):
+        _test_close_open_popup(state)
     if WATCHDOG.wants_case("quality_rule"):
         _test_quality_rule(gd, city, state)
 
@@ -385,8 +387,8 @@ func _options_by_product(gd, recipe_id: String) -> Dictionary:
 
 
 # --- 9. The stock row of an open popup ---
-# The window of the additions is built once and is not rebuilt on a tick (a rebuild would close
-# it under the cursor), so the amounts of its radios are refreshed in place.
+# The list of the additions is built once and is not rebuilt on a tick (a rebuild would
+# close it under the cursor), so the amounts of its radios are refreshed in place.
 func _test_popup_stock_refresh(city, state: Dictionary) -> void:
     var panel = (load("res://scripts/building_panel.gd") as Script).new()
     # The radios of the panel are the ones the technology has opened.
@@ -396,7 +398,7 @@ func _test_popup_stock_refresh(city, state: Dictionary) -> void:
     city.city_built_buildings = [ {"id": "weaver_house", "slots": ["wool_clothes"],
             "quality_priority": "best"}]
 
-    var popup := PopupPanel.new()
+    var popup := Panel.new()
     popup.set_meta("extras_slot", [0, 0])
     var radio = (load("res://scripts/extras_radio.gd") as Script).new()
     radio.set_meta("extra_product", "woad")
@@ -427,3 +429,35 @@ func _test_popup_stock_refresh(city, state: Dictionary) -> void:
     panel.open_popup = null
     panel.free()
     popup.free()
+
+
+# --- 10. Escape closes an open list ---
+# The lists are Controls, so the key is taken from the interface underneath by
+# InputHandler, which asks the panel whether a list is open.
+func _test_close_open_popup(state: Dictionary) -> void:
+    var panel = (load("res://scripts/building_panel.gd") as Script).new()
+
+    check(not panel.close_open_popup(), "with no list open the key is not used", state)
+
+    var recipe_popup := Panel.new()
+    recipe_popup.set_meta("popup_key", "0:0")
+    recipe_popup.show()
+    panel.open_popup = recipe_popup
+    check(panel.close_open_popup(), "an open list uses the key", state)
+    check(not recipe_popup.visible, "the list is hidden by the key", state)
+    check(panel.open_popup == null, "the panel forgets the list it closed", state)
+    check(not recipe_popup.is_queued_for_deletion(),
+        "the list of recipes is kept for the next opening", state)
+
+    var extras_popup := Panel.new()
+    extras_popup.set_meta("extras_popup", true)
+    extras_popup.show()
+    panel.open_popup = extras_popup
+    check(panel.close_open_popup(), "the list of the additions uses the key too", state)
+    check(extras_popup.is_queued_for_deletion(),
+        "the list of the additions is freed on close, as it is rebuilt on every opening",
+        state)
+
+    panel.open_popup = null
+    panel.free()
+    recipe_popup.free()

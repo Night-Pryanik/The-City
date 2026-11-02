@@ -7,6 +7,13 @@ extends Control
 const UI_THEME = preload("res://scripts/ui_theme.gd")
 const EXTRAS_RADIO = preload("res://scripts/extras_radio.gd")
 
+# The layer of the recipe and addition lists. They are Controls, not Windows: a
+# Window is composited over every Control of the canvas, and the tooltip of a
+# group resource would be cut off by the very list it describes. Below the
+# tooltips of the panel (the upgrade one is 1050, the group one is 1100) and
+# above the plate of the window.
+const LISTS_Z_INDEX := 900
+
 var building_id: String = ""
 var products: Dictionary = {}
 var raw_resources: Dictionary = {}
@@ -246,7 +253,7 @@ func _refresh():
     # radio buttons point at the buttons of that row.
     for p in popups_list:
         if is_instance_valid(p) and p.visible and p.has_meta("extras_popup"):
-            p.hide()
+            _close_popup(p)
 
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -392,11 +399,11 @@ func _refresh():
                     popup.remove_child(child)
                     child.free()
             else:
-                # A custom popup with the list of the recipes (it supports several
-                # result icons)
-                # IMPORTANT: the popup (Window) has to be added to the tree BEFORE
-                # the content is added, otherwise the layout is not recalculated.
-                popup = PopupPanel.new()
+                # The list of the recipes (it supports several result icons).
+                # IMPORTANT: the list has to be in the tree BEFORE the content is
+                # added, otherwise the layout is not recalculated.
+                popup = Panel.new()
+                popup.z_index = LISTS_Z_INDEX
                 popup.add_theme_stylebox_override("panel", UI_THEME.panel_inset())
                 popup.set_meta("popup_key", popup_key)
                 add_child(popup)
@@ -492,7 +499,7 @@ func _refresh():
     # We bring the width of the popups in line with the width of the panel
     var popup_width = panel.custom_minimum_size.x - 70 - 40
     for popup in popups:
-        popup.min_size.x = popup_width
+        popup.custom_minimum_size.x = popup_width
 
     # We update popup_map and remove the popups that are no longer needed
     for key in popup_map.keys():
@@ -781,7 +788,7 @@ func _on_toggle_pressed(b_index: int, enable: bool):
     # refer to the elements being removed and do not stay hanging.
     for p in popups_list:
         if is_instance_valid(p) and p.visible:
-            p.hide()
+            _close_popup(p)
     _refresh()
 
 # Switches the quality priority of the building and updates the button.
@@ -1152,20 +1159,59 @@ func _on_upgrade_pressed(b_index: int):
     # refer to the elements being removed.
     for p in popups_list:
         if is_instance_valid(p) and p.visible:
-            p.hide()
+            _close_popup(p)
     _refresh()
 
 func _on_slot_button_pressed(_b_index: int, _slot_idx: int, popup, button):
     # We close the other open popups
     for p in popups_list:
         if is_instance_valid(p) and p != popup and p.visible:
-            p.hide()
-    # We recalculate the size of the window for the content
-    popup.reset_size()
-    # We position the popup right under the button
-    popup.position = button.global_position + Vector2(0, button.size.y)
-    popup.popup()
+            _close_popup(p)
+    _fit_popup_size(popup)
+    # We position the list right under the button
+    popup.global_position = button.global_position + Vector2(0, button.size.y)
+    popup.set_meta("opener", button)
+    popup.show()
     open_popup = popup
+
+# The size of a list follows its content. A Control does not derive its minimum
+# from an anchored child the way a popup window does, so the content is measured
+# here and written into the minimum size of the panel.
+func _fit_popup_size(popup) -> void:
+    var widest: float = popup.custom_minimum_size.x
+    var tallest: float = 0.0
+    for child in popup.get_children():
+        var content_node := child as Control
+        if content_node == null:
+            continue
+        var insets := Vector2(content_node.offset_left - content_node.offset_right,
+                content_node.offset_top - content_node.offset_bottom)
+        var content: Vector2 = content_node.get_combined_minimum_size() + insets
+        widest = maxf(widest, content.x)
+        tallest = maxf(tallest, content.y)
+    popup.custom_minimum_size = Vector2(widest, tallest)
+    popup.reset_size()
+
+# Closing a list: the recipe lists stay in popup_map and are reused by _refresh(),
+# the list of the additions is built anew on every opening and is freed on close.
+func _close_popup(popup):
+    if not is_instance_valid(popup):
+        return
+    popup.hide()
+    if open_popup == popup:
+        open_popup = null
+    if popup.has_meta("extras_popup"):
+        popup.queue_free()
+
+# Escape belongs to an open list rather than to the interface under it. Returns whether
+# the key was used. InputHandler asks the panel before its own rules: its node receives
+# the key first, so a handler here would never run.
+func close_open_popup() -> bool:
+    var popup = open_popup
+    if popup == null or not is_instance_valid(popup) or not popup.visible:
+        return false
+    _close_popup(popup)
+    return true
 
 func _on_craft_item_selected(b_index: int, slot_idx: int, craft_id: String, popup, button):
     if b_index < 0 or b_index >= CityData.city_built_buildings.size():
@@ -1180,8 +1226,7 @@ func _on_craft_item_selected(b_index: int, slot_idx: int, craft_id: String, popu
         # "finished off".
         CityData.reset_slot_progress(b_index, slot_idx)
         _update_slot_button(button, craft_id)
-    popup.hide()
-    open_popup = null
+    _close_popup(popup)
     if ui_helpers:
         ui_helpers.hide_group_tooltip()
     CityData.emit_signal("city_updated")
@@ -1332,16 +1377,23 @@ func _input(event: InputEvent):
     if not visible:
         return
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-        # If any popup is open, a click outside the panel closes only the popup
         open_popup = null
         for p in popups_list:
             if is_instance_valid(p) and p.visible:
                 open_popup = p
                 break
         if open_popup != null:
-            var popup_rect = Rect2(open_popup.position, open_popup.size)
-            if not panel.get_global_rect().has_point(event.global_position) and not popup_rect.has_point(event.global_position):
-                open_popup.hide()
+            # A click anywhere but on the list closes the list and leaves the panel open.
+            # The button that opened the list is left out: its handler shows the list again
+            # on the same click, so closing it here would only make the list blink.
+            var click: Vector2 = event.global_position
+            var opener = null
+            if open_popup.has_meta("opener"):
+                opener = open_popup.get_meta("opener")
+            var on_opener: bool = opener != null and is_instance_valid(opener) \
+                    and opener.get_global_rect().has_point(click)
+            if not open_popup.get_global_rect().has_point(click) and not on_opener:
+                _close_popup(open_popup)
                 get_viewport().set_input_as_handled()
             return
         # A click outside the panel (on the dimming) closes it
@@ -1400,13 +1452,14 @@ func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_butto
 
     for p in popups_list:
         if is_instance_valid(p) and p.visible:
-            p.hide()
+            _close_popup(p)
 
-    var popup := PopupPanel.new()
+    var popup := Panel.new()
+    popup.z_index = LISTS_Z_INDEX
     popup.add_theme_stylebox_override("panel", UI_THEME.panel_inset())
     popup.set_meta("extras_popup", true)
-    # The slot the window was opened for: the amounts of the goods are refreshed from it on
-    # every tick of the simulation without rebuilding the window.
+    # The slot the list was opened for: the amounts of the goods are refreshed from it on
+    # every tick of the simulation without rebuilding the list.
     popup.set_meta("extras_slot", [b_index, slot_idx])
     add_child(popup)
     var vbox := VBoxContainer.new()
@@ -1452,10 +1505,10 @@ func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_butto
             grid.add_child(radio)
 
     popups_list.append(popup)
-    popup.popup_hide.connect(_on_extras_popup_hidden.bind(popup))
-    popup.reset_size()
-    popup.position = extras_button.global_position + Vector2(0, extras_button.size.y)
-    popup.popup()
+    _fit_popup_size(popup)
+    popup.global_position = extras_button.global_position + Vector2(0, extras_button.size.y)
+    popup.set_meta("opener", extras_button)
+    popup.show()
     open_popup = popup
 
 # One radio of the addition list. The state is set BEFORE the connection: assigning
@@ -1507,14 +1560,6 @@ func _refresh_extras_popup():
         var item: Dictionary = fresh[product_id]
         radio.disabled = not bool(item.get("selectable", true))
         radio.set_tooltip_amount(_extra_stock_tooltip(int(item.get("in_stock", 0))))
-
-# A closed popup is freed: the panel of the building rebuilds its rows on every change of the
-# state, and a hidden window left behind would be a leak of one per opening.
-func _on_extras_popup_hidden(popup):
-    if open_popup == popup:
-        open_popup = null
-    if is_instance_valid(popup):
-        popup.queue_free()
 
 # Only the radio that has just been pressed writes the slot: the one that loses the choice emits
 # toggled(false) in the same click, and it says nothing about what the slot should hold.
