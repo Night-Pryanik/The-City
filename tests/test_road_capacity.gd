@@ -177,10 +177,10 @@ func _test_live_scene(state: Dictionary) -> void:
             "after the road upgrade there must be no overload (got %s)"
                     % str(short_after.keys()), state)
 
-    # A flag change must request a map redraw: the map is drawn on demand,
-    # and without a request the "!" triangle would hang on screen until the mouse moved.
-    # We turn off edge auto-scrolling — with it the map redraws every frame, and
-    # the draw counter would prove nothing.
+    # A flag change must request a redraw: the layer of the improvement states is drawn on
+    # demand, and without a request the "!" triangle would hang on screen until the next
+    # assignment change. We turn off edge auto-scrolling — with it the map redraws every
+    # frame, the layer follows it, and the draw counter would prove nothing.
     main_map.use_edge_scrolling = false
     # Drain deferred redraws from previous actions (hex selection, etc.):
     # the counter must count only the redraw caused by the flag change.
@@ -188,21 +188,21 @@ func _test_live_scene(state: Dictionary) -> void:
     await process_frame
 
     # The tick on which the road is already upgraded resets the flag — and must request a redraw.
-    var draws_before: int = main_map.map_renderer.draw_calls
+    var draws_before: int = main_map.improvement_state_layer.draw_calls
     _run_production_tick(main_map)
     await process_frame
     check(not bool(tile.get("road_capacity_short", false)),
             "after the road upgrade the overload flag must be reset", state)
-    check(main_map.map_renderer.draw_calls > draws_before,
-            "resetting the overload flag must request a map redraw", state)
+    check(main_map.improvement_state_layer.draw_calls > draws_before,
+            "resetting the overload flag must request a redraw of the state layer", state)
 
-    # Control: a tick without a flag change does not redraw the map — otherwise the check
-    # above would prove nothing (the map could redraw on its own).
-    var draws_steady: int = main_map.map_renderer.draw_calls
+    # Control: a tick without a flag change does not redraw the layer — otherwise the check
+    # above would prove nothing (the layer could redraw on its own).
+    var draws_steady: int = main_map.improvement_state_layer.draw_calls
     _run_production_tick(main_map)
     await process_frame
-    check(main_map.map_renderer.draw_calls == draws_steady,
-            "a tick without an overload flag change must not redraw the map", state)
+    check(main_map.improvement_state_layer.draw_calls == draws_steady,
+            "a tick without an overload flag change must not redraw the state layer", state)
 
     # Output is no longer cut and no longer disappears: with a route the products enter the
     # delivery queue IN FULL, rather than appearing in the storage instantly.

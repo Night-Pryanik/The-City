@@ -21,12 +21,16 @@
 [ext_resource type="Script" uid="uid://1b62pk8bfd16" path="res://scripts/unread_dot.gd" id="18_unread"]
 [ext_resource type="Script" path="res://scripts/fps_counter.gd" id="19_fpscnt"]
 [ext_resource type="Script" path="res://scripts/map_highlight_layer.gd" id="20_hilayer"]
+[ext_resource type="Script" path="res://scripts/improvement_state_layer.gd" id="21_implayer"]
 
 [node name="MainMap" type="Node2D" unique_id=1469125025]
 script = ExtResource("1_5hgy3")
 
 [node name="MapRenderer" type="Node2D" parent="." unique_id=1095572482]
 script = ExtResource("6_82ayj")
+
+[node name="ImprovementStateLayer" type="Node2D" parent="MapRenderer"]
+script = ExtResource("21_implayer")
 
 [node name="HighlightLayer" type="Node2D" parent="MapRenderer" unique_id=1095572484]
 script = ExtResource("20_hilayer")

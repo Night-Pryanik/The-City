@@ -284,6 +284,7 @@ const MAP_TOOLTIP_LEAVE_GRACE: float = 0.35
 @onready var map_renderer = $MapRenderer
 @onready var highlight_layer = $MapRenderer/HighlightLayer
 @onready var progress_bar_layer = $MapRenderer/ProgressBarLayer
+@onready var improvement_state_layer = $MapRenderer/ImprovementStateLayer
 @onready var road_manager = $RoadManager
 @onready var project_manager = $ProjectManager
 @onready var expansion_manager = $ExpansionManager
@@ -342,6 +343,7 @@ func _ready():
         map_renderer.initialize(tile_data, self)
         highlight_layer.initialize(self)
         progress_bar_layer.initialize(tile_data, self)
+        improvement_state_layer.initialize(tile_data, self, map_renderer)
         map_renderer.queue_redraw()
         return
 
@@ -575,6 +577,7 @@ func _ready():
         map_renderer.initialize(tile_data, self)
         highlight_layer.initialize(self)
         progress_bar_layer.initialize(tile_data, self)
+        improvement_state_layer.initialize(tile_data, self, map_renderer)
     else:
         randomize()
         # The world is built in stages with a frame between them (see _initialize_map):
@@ -594,6 +597,7 @@ func _ready():
         map_renderer.initialize(tile_data, self)
         highlight_layer.initialize(self)
         progress_bar_layer.initialize(tile_data, self)
+        improvement_state_layer.initialize(tile_data, self, map_renderer)
 
     _load_settings()
 
@@ -967,10 +971,10 @@ func _process(delta):
         _has_growing_pastures = false
         CityData.reset_counters()
         # The warning triangle over an improvement is drawn from tile.road_capacity_short,
-        # the badge of a cut-off improvement from tile.road_missing. The map redraws on
-        # demand (see InputHandler), so a flag that flips here must ask for a redraw itself:
-        # otherwise an upgraded road would leave the triangle on the screen until the next
-        # mouse move.
+        # the badge of a cut-off improvement from tile.road_missing. Both live in the state
+        # layer, which redraws on demand, so a flag that flips here must ask for a redraw
+        # itself: otherwise an upgraded road would leave the triangle on the screen until
+        # the next assignment change.
         var overlay_flag_changed := false
         # The whole map, and not only the Region: an outpost — an improvement outside the
         # Region, opened by "Emporia" — produces on this very tick. The scan of the empty
@@ -1169,7 +1173,7 @@ func _process(delta):
             # production as "waiting to ship" even on a road that carries everything.
             delivery_manager.ship()
         if overlay_flag_changed:
-            map_renderer.queue_redraw()
+            improvement_state_layer.queue_redraw()
         CityData.do_tick()
         # The consumption of the city of the pseudo-profession "all" (all the citizens of the city,
         # including the employed ones): it writes off the resources per head by total_population
@@ -4297,7 +4301,9 @@ func _on_city_data_updated():
             _show_treasury_tooltip(get_viewport().get_mouse_position(), true)
 
 func _on_assignment_changed():
-    map_renderer.queue_redraw()
+    # An assignment only lights the icon of the improvement up or down: the map itself does
+    # not change, so only the light state layer is re-recorded.
+    improvement_state_layer.queue_redraw()
     if city_ui.visible:
         city_ui.refresh_light()
 

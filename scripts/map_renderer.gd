@@ -102,6 +102,47 @@ var _river_frame_rebuilds: int = 0
 # the test of the road-capacity warning relies on this counter.
 var draw_calls: int = 0
 
+# The accumulators of the current row of the hex pass (see _draw). The fog fill is a
+# triangle list and the hex borders are a segment list; both are flushed once per row.
+var _row_fog_triangles := PackedVector2Array()
+var _row_fog_indices := PackedInt32Array()
+var _row_fog_colors := PackedColorArray()
+var _row_border_points := PackedVector2Array()
+
+const FOG_COLOR := Color(0, 0, 0, 0.5)
+
+func _begin_hex_row() -> void:
+    _row_fog_triangles.clear()
+    _row_fog_indices.clear()
+    _row_fog_colors.clear()
+    _row_border_points.clear()
+
+func _flush_hex_row() -> void:
+    if not _row_fog_triangles.is_empty():
+        RenderingServer.canvas_item_add_triangle_array(
+            get_canvas_item(), _row_fog_indices, _row_fog_triangles, _row_fog_colors)
+    if not _row_border_points.is_empty():
+        draw_multiline(_row_border_points, Color.WHITE, 2.0, true)
+
+# The fill of a hexagon as a triangle fan. The fan is appended to the row batch instead of
+# being drawn on its own: one draw_colored_polygon per fogged hex costs ~30 us to record,
+# while the batched triangle list of a whole row costs about the same.
+func _append_hex_fill(vertices: PackedVector2Array, color: Color) -> void:
+    var base := _row_fog_triangles.size()
+    for k in range(1, vertices.size() - 1):
+        _row_fog_indices.append(base)
+        _row_fog_indices.append(base + k)
+        _row_fog_indices.append(base + k + 1)
+    _row_fog_triangles.append_array(vertices)
+    for _i in vertices.size():
+        _row_fog_colors.append(color)
+
+func _append_hex_outline(vertices: PackedVector2Array) -> void:
+    var count := vertices.size()
+    for k in count:
+        _row_border_points.append(vertices[k])
+        _row_border_points.append(vertices[(k + 1) % count])
+
 # --- The render cache of the influence rings of the towns (PHASE 1.7 / 1.7.1) ---
 # The rings of the towns are static between the spawn/load/change of the epoch, but earlier
 # they were recalculated AND drawn on every frame: hundreds of semi-transparent
@@ -263,9 +304,17 @@ func _draw():
     # unexplored hexes beyond its limits (the fog of war) are not drawn at all (see
     # _draw_hex). The scouted hexes outside the Region are drawn darkened: they can be
     # selected and scouts sent there - but only after the study of Cartography.
+    #
+    # The fog fill and the hex borders are uniform in colour and hex-shaped, so they are
+    # batched PER ROW: the screen order stays row-major (a later row still covers the
+    # overflow of the icons of the previous one), while the number of draw commands drops
+    # from one per hex to two per row. This matters twice: the commands are replayed every
+    # frame, and the whole map is re-recorded on structural changes.
     for row in range(visible_range.row_start, visible_range.row_end + 1):
+        _begin_hex_row()
         for col in range(visible_range.col_start, visible_range.col_end + 1):
             _draw_hex(row, col)
+        _flush_hex_row()
 
     # NOTE: the hexes outside the Region (the fog of war) are drawn by the same pass
     # of PHASE 1 - they are darkened in _draw_hex, and their contents (the resources,
@@ -366,10 +415,6 @@ func _draw_hex(row: int, col: int):
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
     var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
 
-    var closed_vertices = PackedVector2Array()
-    closed_vertices.append_array(vertices)
-    closed_vertices.append(vertices[0])
-
     var terrain_color = Color.BLACK
     var terrain = tile.terrain
     var terrain_icon_name = tile.get("terrain_icon", "")
@@ -379,7 +424,8 @@ func _draw_hex(row: int, col: int):
             var c = t.get("color", [0, 0, 0])
             terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
         draw_colored_polygon(vertices, terrain_color)
-        draw_polyline(closed_vertices, Color.WHITE, 2, true)
+        if main_map.show_hex_borders:
+            _append_hex_outline(vertices)
         return
 
     if terrain_icon_name != "" and icon_textures.has(terrain_icon_name):
@@ -402,10 +448,10 @@ func _draw_hex(row: int, col: int):
     _draw_cover_overlay(row, col, center, vertices)
 
     if not in_influence:
-        draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
+        _append_hex_fill(vertices, FOG_COLOR)
 
     if main_map.show_hex_borders:
-        draw_polyline(closed_vertices, Color.WHITE, 2, true)
+        _append_hex_outline(vertices)
 
     # --- The render cache of the influence rings of the towns (PHASE 1.7 / 1.7.1) ---
     # Earlier the rings were recalculated and drawn EVERY frame: for each hex
@@ -893,97 +939,58 @@ func _draw_hex_overlays(row: int, col: int):
 
     # An improvement is drawn inside the Influence Ring and on an outpost hex outside the
     # Region (the technology "Emporia") — the building itself looks the same, its flag below
-    # tells them apart.
-    if tile.improvement != null and (in_influence or _is_outpost_hex(row, col)):
-        var has_worker = main_map.worker_manager.has_worker(row, col)
-        var imp_data = GameData.improvements.get(tile.improvement, {})
-        var imp_icon = imp_data.get("icon", "")
-        # The infrastructure improvements (no_worker, for example a pier or a canal)
-        # are not tied to a worker: we always draw them in the full colour, without the grey
-        # darkening, even when has_worker == false.
-        var is_infra = GameData.is_no_worker_improvement(tile.improvement)
-        # The decorative improvements of the towns are always drawn in the full colour,
-        # although they intentionally have no worker.
-        var draw_active = has_worker or is_infra or bool(tile.get("decorative", false))
-        # If there is no resource on the hex (neither natural nor bred) - the improvement
-        # is the only "item" on the hex (an irrigation canal, a forest
-        # plot on an empty forest hex, the decorative improvements of the towns on
-        # empty hexes). We draw it in the centre of the hex LARGE - of the size of
-        # the icon of the resource (RESOURCE_ICON_SIZE): in fact it replaces
-        # the missing icon of the resource itself. If there is a resource - the icon of the improvement
-        # remains a small marker (IMPROVEMENT_ICON_SIZE) above the top
-        # edge, above the icon of the resource.
-        var imp_icon_size: float = IMPROVEMENT_ICON_SIZE
-        # The radius of the stub circle, if the texture of the icon is not found. For the large
-        # icon we take the same formula as for the resource (RESOURCE_ICON_SIZE/3),
-        # so that it looks like an ordinary stub icon of the resource.
-        var imp_fallback_radius: float = IMPROVEMENT_ICON_SIZE / 2.5
-        var icon_pos = Vector2(center.x, center.y)
-        if eff_res != "":
-            icon_pos = Vector2(center.x, center.y - main_map.HEX_RADIUS * 0.75)
-        else:
-            imp_icon_size = RESOURCE_ICON_SIZE
-            imp_fallback_radius = RESOURCE_ICON_SIZE / 3.0
-        if imp_icon != "" and icon_textures.has(imp_icon):
-            var tex = icon_textures[imp_icon]
-            var icon_rect = Rect2(icon_pos.x - imp_icon_size / 2.0, icon_pos.y - imp_icon_size / 2.0, imp_icon_size, imp_icon_size)
-            if not draw_active:
-                draw_texture_rect(tex, icon_rect, false, Color(0.5, 0.5, 0.5))
-            else:
-                draw_texture_rect(tex, icon_rect, false)
-        else:
-            if imp_data.has("color"):
-                var c = imp_data["color"]
-                var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
-                if not draw_active:
-                    fallback_color = Color(0.5, 0.5, 0.5)
-                draw_circle(icon_pos, imp_fallback_radius, fallback_color)
+    # tells them apart. The icon drawn here is always the inactive one: a worker on the hex
+    # lights it up from improvement_state_layer.gd, so that an assignment repaints a handful
+    # of icons instead of re-recording the whole map.
+    var imp_icon: Dictionary = get_improvement_icon_geometry(row, col)
+    if not imp_icon.is_empty():
+        var imp_icon_size: float = imp_icon["size"]
+        var icon_pos: Vector2 = imp_icon["pos"]
+        # The infrastructure improvements (no_worker, for example a harbor or a canal)
+        # are not tied to a worker, and the decorative improvements of the towns
+        # intentionally have none: both are always drawn in the full colour.
+        var draw_active: bool = GameData.is_no_worker_improvement(tile.improvement) \
+                or bool(tile.get("decorative", false))
+        draw_improvement_icon(self, imp_icon, draw_active)
 
         # A drop of fresh water next to the icon of the improvement. We show it for
         # any improvement which has access to the water (direct or chain).
         # The types differ visually:
         #   direct - a filled blue drop (as it was before for the farms);
         #   chain  - a contour (an outline) of a muted colour, the water by the chain.
-        var water_access := ""
-        if tile.improvement != null:
-            water_access = MapHelpers.get_hex_water_access(row, col, tile_data, main_map.map_rows, main_map.map_cols)
-            if water_access != "":
-                # The position of the drop depends on the size of the icon of the improvement:
-                #   small (32) - as before, to the right of the icon;
-                #   large (RESOURCE_ICON_SIZE, a hex without a resource) - to the right
-                #   the drop rests against the face of the hex (the half width of the hex is ~47.6px
-                #   at HEX_RADIUS = 55), and below it the progress bars interfere, therefore
-                #   we place it in the centre ABOVE the icon, in the upper part of the hex.
-                var drop_offset := Vector2(imp_icon_size * 0.5 + 6, 0)
-                if imp_icon_size > IMPROVEMENT_ICON_SIZE:
-                    drop_offset = Vector2(0, - (imp_icon_size * 0.5 + 6))
-                var drop_center = icon_pos + drop_offset
-                var drop_radius = MARKER_ICON_RADIUS
-                var drop_points = [
-                    Vector2(0, -drop_radius),
-                    Vector2(-drop_radius * 0.7, -drop_radius * 0.2),
-                    Vector2(-drop_radius * 0.35, drop_radius * 0.8),
-                    Vector2(0, drop_radius),
-                    Vector2(drop_radius * 0.35, drop_radius * 0.8),
-                    Vector2(drop_radius * 0.7, -drop_radius * 0.2)
-                ]
-                for i in range(drop_points.size()):
-                    drop_points[i] += drop_center
-                if water_access == "direct":
-                    draw_polygon(drop_points, [MARKER_ICON_COLOR])
-                else:
-                    # chain: a contour drop of a muted colour.
-                    var closed_points = PackedVector2Array()
-                    closed_points.append_array(drop_points)
-                    closed_points.append(drop_points[0])
-                    draw_polyline(closed_points, Color(0.5, 0.7, 0.95, 0.9), 1.5)
+        var water_access := MapHelpers.get_hex_water_access(row, col, tile_data, main_map.map_rows, main_map.map_cols)
+        if water_access != "":
+            # The position of the drop depends on the size of the icon of the improvement:
+            #   small (IMPROVEMENT_ICON_SIZE) - to the right of the icon;
+            #   large (RESOURCE_ICON_SIZE, a hex without a resource) - above the icon:
+            #   to the right the drop rests against the face of the hex (the half width of the hex
+            #   is ~47.6px at HEX_RADIUS = 55), and below it the progress bars interfere.
+            var drop_offset := Vector2(imp_icon_size * 0.5 + 6, 0)
+            if imp_icon_size > IMPROVEMENT_ICON_SIZE:
+                drop_offset = Vector2(0, - (imp_icon_size * 0.5 + 6))
+            var drop_center = icon_pos + drop_offset
+            var drop_radius = MARKER_ICON_RADIUS
+            var drop_points = [
+                Vector2(0, -drop_radius),
+                Vector2(-drop_radius * 0.7, -drop_radius * 0.2),
+                Vector2(-drop_radius * 0.35, drop_radius * 0.8),
+                Vector2(0, drop_radius),
+                Vector2(drop_radius * 0.35, drop_radius * 0.8),
+                Vector2(drop_radius * 0.7, -drop_radius * 0.2)
+            ]
+            for i in range(drop_points.size()):
+                drop_points[i] += drop_center
+            if water_access == "direct":
+                draw_polygon(drop_points, [MARKER_ICON_COLOR])
+            else:
+                # chain: a contour drop of a muted colour.
+                var closed_points = PackedVector2Array()
+                closed_points.append_array(drop_points)
+                closed_points.append(drop_points[0])
+                draw_polyline(closed_points, Color(0.5, 0.7, 0.95, 0.9), 1.5)
 
-        # The road to the city cannot carry everything the improvement produces, or there is
-        # no road at all, so the goods do not reach the city. The same triangle in both
-        # cases: one meaning. The flags are set by main_map during the production tick.
-        if bool(tile.get("road_capacity_short", false)) \
-                or bool(tile.get("road_missing", false)):
-            _draw_road_capacity_warning(icon_pos, imp_icon_size)
+        # The road-capacity warning triangle is drawn by improvement_state_layer.gd too:
+        # its flags flip in the production tick, far more often than the map itself changes.
 
         # The flag of an outpost: an improvement of the city on foreign land. It stands in the
         # upper LEFT corner of the hex — the upper right one is occupied by the warning
@@ -1041,6 +1048,86 @@ func _draw_hex_overlays(row: int, col: int):
     var conflict = MapHelpers.get_tech_reveal_conflict(tile)
     if not conflict.is_empty() and is_resource_visible:
         _draw_tech_reveal_warning(center)
+
+# The geometry of the icon of the improvement on the hex: the centre of the hex, the centre and
+# the size of the icon, its texture or fallback colour. The gates that hide the icon entirely
+# (no improvement, the city hex, the fog of war, a foreign hex) are applied here too, so the
+# base pass and the state layer cannot disagree about what stands on the hex.
+# Without a resource the improvement is the only "item" on the hex (an irrigation canal, a
+# forest plot, a decorative improvement of a town): it takes the place and the size of the
+# icon of the resource. With a resource it stays a small marker above the resource icon.
+func get_improvement_icon_geometry(row: int, col: int) -> Dictionary:
+    var tile = tile_data[row][col]
+    if tile.improvement == null:
+        return {}
+    if row == main_map.city_row and col == main_map.city_col:
+        return {}
+    var in_influence: bool = tile.get("in_influence", false)
+    if not in_influence and not _is_outpost_hex(row, col):
+        return {}
+    if not in_influence and not bool(tile.get("is_explored", false)) and not main_map.is_valid_hex(row, col):
+        return {}
+    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
+    var has_resource: bool = MapHelpers.get_effective_resource(tile) != ""
+    var icon_pos = center
+    var icon_size: float = IMPROVEMENT_ICON_SIZE
+    # The radius of the stub circle, if the texture of the icon is not found. The large icon
+    # takes the same formula as the stub of the resource, so the two look alike.
+    var fallback_radius: float = IMPROVEMENT_ICON_SIZE / 2.5
+    if has_resource:
+        icon_pos = Vector2(center.x, center.y - main_map.HEX_RADIUS * 0.75)
+    else:
+        icon_size = RESOURCE_ICON_SIZE
+        fallback_radius = RESOURCE_ICON_SIZE / 3.0
+    var imp_data: Dictionary = GameData.improvements.get(tile.improvement, {})
+    var texture: Texture2D = null
+    var icon_name: String = imp_data.get("icon", "")
+    if icon_name != "" and icon_textures.has(icon_name):
+        texture = icon_textures[icon_name]
+    var color := Color.WHITE
+    var has_color := false
+    if imp_data.has("color"):
+        var c = imp_data["color"]
+        color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
+        has_color = true
+    return {
+        "center": center,
+        "pos": icon_pos,
+        "size": icon_size,
+        "radius": fallback_radius,
+        "texture": texture,
+        "color": color,
+        "has_color": has_color,
+    }
+
+# Draws the icon of an improvement by the geometry above into `target`: the base renderer or the
+# state layer. An inactive icon (no worker on the hex) is dimmed; the active one keeps its colour.
+static func draw_improvement_icon(target: CanvasItem, icon: Dictionary, active: bool) -> void:
+    var pos: Vector2 = icon["pos"]
+    var icon_size: float = icon["size"]
+    var texture: Texture2D = icon["texture"]
+    if texture != null:
+        var modulate := Color.WHITE if active else Color(0.5, 0.5, 0.5)
+        target.draw_texture_rect(
+                texture,
+                Rect2(pos.x - icon_size / 2.0, pos.y - icon_size / 2.0, icon_size, icon_size),
+                false, modulate)
+    elif icon["has_color"]:
+        var color: Color = icon["color"] if active else Color(0.5, 0.5, 0.5)
+        target.draw_circle(pos, icon["radius"], color)
+
+# A small "!" triangle over an improvement whose road cannot carry everything it produces, or
+# which has no road at all: in both cases the goods do not reach the city. It is drawn to the
+# right of the drop of water (or of where the drop would be), so the two marks are read
+# together. The layer draws it, because the flags behind it flip in the production tick.
+static func draw_road_warning(target: CanvasItem, icon: Dictionary) -> void:
+    var icon_pos: Vector2 = icon["pos"]
+    var icon_size: float = icon["size"]
+    var drop_offset := Vector2(icon_size * 0.5 + 6, 0)
+    if icon_size > IMPROVEMENT_ICON_SIZE:
+        drop_offset = Vector2(0, -(icon_size * 0.5 + 6))
+    var pos := icon_pos + drop_offset + Vector2(MARKER_ICON_RADIUS * 2.0 + 4.0, 0)
+    draw_warning_triangle_on(target, pos, 13.0)
 
 # Is the city connected to this town by roads. The single source of truth is
 # road_manager: the networks of the city and the town have intersected (see is_town_linked_to_city).
@@ -1161,33 +1248,22 @@ func _draw_tech_reveal_warning(center: Vector2):
                     center.y - main_map.HEX_RADIUS * 0.55),
             18.0)
 
-# A small "!" triangle over an improvement whose road cannot carry everything it produces:
-# the surplus queues on the route and arrives later. It is placed to the right of the
-# droplet (or of where the droplet would be), so the two marks are read together. The same
-# triangle marks an improvement with no road at all — in both cases the goods do not reach
-# the city.
-func _draw_road_capacity_warning(icon_pos: Vector2, imp_icon_size: float) -> void:
-    var drop_offset := Vector2(imp_icon_size * 0.5 + 6, 0)
-    if imp_icon_size > IMPROVEMENT_ICON_SIZE:
-        drop_offset = Vector2(0, -(imp_icon_size * 0.5 + 6))
-    var pos := icon_pos + drop_offset + Vector2(MARKER_ICON_RADIUS * 2.0 + 4.0, 0)
-    _draw_warning_triangle(pos, 13.0)
-
 # A filled red triangle with a white outline and a "!" in the middle. It is shared by the
-# tech_reveal conflict and by the road-capacity warning, so both badges look the same and
-# cannot drift apart. Without external resources and fonts (draw_string on the fallback font).
-func _draw_warning_triangle(pos: Vector2, tri_size: float) -> void:
+# tech_reveal conflict, the road-capacity warning and the state layer, so all badges look the
+# same and cannot drift apart. Without external resources and fonts (draw_string on the
+# fallback font).
+static func draw_warning_triangle_on(target: CanvasItem, pos: Vector2, tri_size: float) -> void:
     # The vertices of an equilateral triangle directed up.
     var pts = PackedVector2Array()
     pts.append(Vector2(pos.x, pos.y - tri_size * 0.6))
     pts.append(Vector2(pos.x - tri_size * 0.55, pos.y + tri_size * 0.45))
     pts.append(Vector2(pos.x + tri_size * 0.55, pos.y + tri_size * 0.45))
-    draw_colored_polygon(pts, Color(0.85, 0.15, 0.15, 0.95))
+    target.draw_colored_polygon(pts, Color(0.85, 0.15, 0.15, 0.95))
     # A white outline by the same contour.
     var border = PackedVector2Array()
     border.append_array(pts)
     border.append(pts[0])
-    draw_polyline(border, Color.WHITE, 1.5, true)
+    target.draw_polyline(border, Color.WHITE, 1.5, true)
     # The "!" - we draw it as a short column and a dot under it. We use
     # the standard font through draw_string, so as not to depend on the assets.
     var font = ThemeDB.fallback_font
@@ -1197,7 +1273,10 @@ func _draw_warning_triangle(pos: Vector2, tri_size: float) -> void:
     var text := "!"
     var text_size = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
     var text_pos = Vector2(pos.x - text_size.x / 2.0, pos.y + text_size.y / 2.0 - 1)
-    draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
+    target.draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
+
+func _draw_warning_triangle(pos: Vector2, tri_size: float) -> void:
+    draw_warning_triangle_on(self, pos, tri_size)
 
 # An improvement outside the Region — an outpost of the city (the technology "Emporia").
 # The status is derived from the tile by main_map, so that the renderer, the tooltip and the
