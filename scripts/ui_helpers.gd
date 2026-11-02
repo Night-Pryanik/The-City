@@ -637,6 +637,8 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
                     var yield_icon_rect = TextureRect.new()
                     yield_icon_rect.texture = yield_tex
                     yield_icon_rect.custom_minimum_size = Vector2(20, 20)
+                    yield_icon_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+                    yield_icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
                     yield_icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
                     yield_icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
                     yield_icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -817,6 +819,11 @@ func make_resource_entry(res_id: String, products_data: Dictionary, amount: int 
             var icon_rect = TextureRect.new()
             icon_rect.texture = tex
             icon_rect.custom_minimum_size = Vector2(icon_size, icon_size)
+            # A row is as tall as its text line, which is usually a pixel or two more
+            # than the icon: without SHRINK the rect fills that height and STRETCH_SCALE
+            # repaints the square texture into a non-square rect.
+            icon_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+            icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
             icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
             icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
             icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
