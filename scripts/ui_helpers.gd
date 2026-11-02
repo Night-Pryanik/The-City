@@ -528,12 +528,28 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
     var member_ids = GameData.product_groups.get(group_clean, [])
     var group_name = GameData.get_product_group_name(group_key)
     
-    # The header
+    # The header: the group icon (the same resolution as in the resource rows)
+    # and the name.
+    var header = HBoxContainer.new()
+    header.add_theme_constant_override("separation", 6)
+    header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var group_icon_name = GameData.get_product_group_icon(group_key)
+    if not group_icon_name.is_empty():
+        var tex = IconRegistry.get_texture(group_icon_name)
+        if tex:
+            var icon_rect = TextureRect.new()
+            icon_rect.texture = tex
+            icon_rect.custom_minimum_size = Vector2(24, 24)
+            icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+            icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+            icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            header.add_child(icon_rect)
     var title = Label.new()
     title.text = group_name
     title.add_theme_font_size_override("font_size", 16)
     title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    group_tooltip_content.add_child(title)
+    header.add_child(title)
+    group_tooltip_content.add_child(header)
     
     # The list of the products (by the ID, so that the data of the product can be
     # found).
@@ -787,9 +803,14 @@ func make_resource_entry(res_id: String, products_data: Dictionary, amount: int 
     entry.add_theme_constant_override("separation", 4)
     entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-    # The icon (only for the single resources, a group has no image of its own)
-    var pdata = products_data.get(res_id, {})
-    var icon_name = pdata.get("icon", "")
+    # A group takes its own icon from the product-group registry (with a fallback
+    # to the first member that has an icon); a single resource takes the icon
+    # from its product data.
+    var icon_name := ""
+    if GameData.is_group_key(res_id):
+        icon_name = GameData.get_product_group_icon(res_id)
+    else:
+        icon_name = str(products_data.get(res_id, {}).get("icon", ""))
     if not icon_name.is_empty():
         var tex = IconRegistry.get_texture(icon_name)
         if tex:

@@ -4,8 +4,10 @@
 // this one is a registry of groups used in recipes and in accounting for
 // consumption by professions
 //
-// The optional "icon" field of a group — the icon file name for the resource
-// card on the "Trade" tab. If it is NOT specified, the icon of the
+// The optional "icon" field of a group — the icon file name shown wherever the
+// group itself is drawn as a resource: the card and tooltip on the "Trade" tab
+// and the group rows and composition-list headers in the UI lists.
+// If it is NOT specified, the icon of the
 // FIRST member of the group that has its own icon set is taken (the old order).
 // A separate icon is needed where the first member is not representative of
 // the group: for "Alcohol" it is beer, although the group is primarily grain
