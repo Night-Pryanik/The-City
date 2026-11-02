@@ -3161,6 +3161,10 @@ msgid "building"
 msgstr "здание"
 
 msgctxt "covers.name"
+msgid "Coral Reef"
+msgstr "Коралловый риф"
+
+msgctxt "covers.name"
 msgid "Forest"
 msgstr "Лес"
 

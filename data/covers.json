@@ -11,6 +11,10 @@
   // (data/climate.json) — the pools are never listed here. A terrain that carries a pool of its own
   // keeps it: that is how the swamp of every belt and the deserts get their vegetation from
   // data/terrains/terrains.json instead of the zone.
+  //
+  // A cover is not always a plant: what lies on top of the shallow sea is a reef of it. Such a
+  // cover names the temperature belts it grows in ("temperature_belts"), because the belt of a
+  // water hex is its latitude and nothing else — a water hex has no climate zone.
   "covers": [
     { "id": "none", "name": "None", "color": [ 0, 0, 0 ], "alpha": 0.0, "move_cost_bonus": 0, "icons": [  ] },
 
@@ -172,6 +176,26 @@
       // no code change is required.
       "fresh_water_source": true,
       "icons": [ "oasis_1.png", "oasis_2.png" ]
+    },
+
+    // --- THE COVERS OF THE WATER -------------------------------------------------------------
+    // A coral reef is not a plant and not a relief: it is what lies on top of the shallow sea, so
+    // it is a cover of the water (its pool is the "cover_chance" of "shallow_sea"). The polyps
+    // build where the light reaches the bottom and the water stays warm, which is the tropical and
+    // the subtropical belt — the same latitudes the reefs occupy in reality. It is salt water, so
+    // the reef carries no "fresh_water_source".
+    {
+      "id": "coral_reef",
+      "name": "Coral Reef",
+      "color": [ 245, 140, 150 ],
+      "alpha": 0.5,
+      "move_cost_bonus": 0,
+      "temperature_belts": [ "tropical", "subtropical" ],
+      // The rolled covers of a terrain read as scattered single hexes; this one is a reef, so the
+      // smoothing pass clears its lone hexes and takes over the holes inside it (map_config.json →
+      // climate.cover_smoothing). A cover without this flag is smoothed only when it yields timber.
+      "clusters": true,
+      "icons": [  ]
     }
   ]
 }

@@ -347,7 +347,10 @@
       "expansion_cost": 0,
       "work_cost_mult": 1.0,
       "icons": [ "shallow_sea_1.png", "shallow_sea_2.png", "shallow_sea_3.png" ],
-      "cover_chance": { "none": 100 }
+      // The light reaches the bottom here, so the floor of a warm belt may grow a reef; the pool
+      // holds the reef for every belt and the cover of the water rules its own belts out
+      // ("temperature_belts" in data/covers.json). The deep sea stays bare: no reef builds there.
+      "cover_chance": { "none": 65, "coral_reef": 35 }
     },
     {
       "id": "beach",

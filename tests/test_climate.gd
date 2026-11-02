@@ -58,6 +58,10 @@ func _run() -> void:
         _test_swamp_reeds_warm(state)
     if WATCHDOG.wants_case("marsh_reeds_warm"):
         _test_marsh_reeds_warm(state)
+    if WATCHDOG.wants_case("reef_warm_shallows"):
+        _test_reef_warm_shallows(state)
+    if WATCHDOG.wants_case("corals_from_reef"):
+        _test_corals_from_reef(state)
 
     WATCHDOG.report_skipped()
     if state["failed"]:
@@ -107,8 +111,16 @@ func _family(row: int, col: int) -> String:
 func _temperature_index(row: int, col: int) -> int:
     return TEMPERATURES.find(str(_zone(row, col).get("temperature", "")))
 
+# The belts a warm-water cover (a coral reef) grows in.
+const WARM_BELTS := ["tropical", "subtropical"]
+
 func _has_zone(row: int, col: int) -> bool:
     return _zone_id(row, col) != "" and _gdata.climate_zones.has(_zone_id(row, col))
+
+# The temperature belt of a hex, the sea included: the generator records the latitude of every hex,
+# while the climate zone stays empty on the water.
+func _belt(row: int, col: int) -> String:
+    return str(_tiles[row][col].get("temperature", ""))
 
 # Whether a patch of hexes reaches the pole row of the map.
 func _touches_pole(cells: Array) -> bool:
@@ -413,6 +425,44 @@ func _test_marsh_reeds_warm(state: Dictionary) -> void:
                     "a reed bed grows in the cold marsh at (%d,%d), zone %s" %
                     [r, c, _zone_id(r, c)], state)
     check(checked > 0, "the map under test has no cold marsh to check", state)
+
+# A reef is a patch of the warm shallows: it grows on shallow water of the tropical or the
+# subtropical belt and nowhere else — not in the deep sea, not on the beach, not under the ice. The
+# bare shallows must stay with it too: a pool that only ever returns the reef is not a reef belt, it
+# is a painted ocean.
+func _test_reef_warm_shallows(state: Dictionary) -> void:
+    _generate()
+    var warm_shallow := 0
+    var reef := 0
+    for r in range(ROWS):
+        for c in range(COLS):
+            if _terrain_id(r, c) == "shallow_sea" and WARM_BELTS.has(_belt(r, c)):
+                warm_shallow += 1
+            if str(_tiles[r][c].get("cover", "none")) != "coral_reef":
+                continue
+            reef += 1
+            check(_terrain_id(r, c) == "shallow_sea",
+                    "a reef grows on %s at (%d,%d)" % [_terrain_id(r, c), r, c], state)
+            check(WARM_BELTS.has(_belt(r, c)),
+                    "a reef grows in the %s belt at (%d,%d)" % [_belt(r, c), r, c], state)
+    check(warm_shallow > 0, "the map under test has no warm shallow water", state)
+    check(reef > 0, "the warm shallows of the map under test grew no reef at all", state)
+    check(reef < warm_shallow, "every warm shallow hex turned into a reef: %d of %d" %
+            [reef, warm_shallow], state)
+
+# Corals come out of a reef: no specimen may lie on bare water, whatever the belt around it is.
+func _test_corals_from_reef(state: Dictionary) -> void:
+    _generate()
+    var checked := 0
+    for r in range(ROWS):
+        for c in range(COLS):
+            if str(_tiles[r][c].get("resource", "")) != "corals":
+                continue
+            checked += 1
+            check(str(_tiles[r][c].get("cover", "none")) == "coral_reef",
+                    "corals lie on a %s cover at (%d,%d)" %
+                    [str(_tiles[r][c].get("cover", "none")), r, c], state)
+    check(checked > 0, "the map under test has no corals to check", state)
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if not condition:

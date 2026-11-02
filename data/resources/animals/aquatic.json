@@ -152,15 +152,18 @@
       "subgroup": "misc_fish",
       "strategic": true,
       "tech_required": "fishing",
+      // The reef of the warm shallows (data/covers.json) is the only place corals grow, so a world
+      // whose coasts lie in the cold belts has no corals at all.
       "allowed_terrain": [ "shallow_sea" ],
-      "allowed_cover": [ "none" ],
+      "allowed_cover": [ "coral_reef" ],
       "improved_by": "fishing_boats",
       "produces": { "coral": 10 },
       "feed_consumption": 0,
       "time_to_mature": 0,
       "icon": "coral.png",
       "color": [ 255, 100, 100 ],
-      "breedable": false
+      "breedable": false,
+      "spawn_count": [ 4, 10 ]
     }
   ]
 }

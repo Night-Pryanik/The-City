@@ -466,6 +466,13 @@ const COVER_FIELDS := {
     "move_cost_bonus": LEAF,
     "wood_yield": LEAF,
     "fresh_water_source": LEAF,
+    # The temperature belts the cover grows in (the values of ZONE_TEMPERATURES). A cover of the
+    # water has no climate zone to bind it to a latitude, so it names the belts itself; a belt the
+    # generator never rolls would silently keep the cover off the map.
+    "temperature_belts": LEAF,
+    # true — the smoothing pass gathers the hexes of this cover into patches instead of leaving a
+    # scatter of single cells (a coral reef, not a lone bush).
+    "clusters": LEAF,
 }
 
 # A climate zone is a pair of the climate axes plus what the relief of its region becomes. The two

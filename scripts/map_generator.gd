@@ -312,9 +312,7 @@ func apply_climate_and_covers(tile_data: Array, rows: int, cols: int) -> void:
     var t_cover = Time.get_ticks_msec()
     for row in range(rows):
         for col in range(cols):
-            var terrain_id = tile_data[row][col]["terrain"]
-            var zone_id := str(tile_data[row][col].get("climate", ""))
-            tile_data[row][col]["cover"] = _roll_cover(terrain_id, zone_id)
+            tile_data[row][col]["cover"] = _roll_cover(tile_data[row][col])
     if bool(climate_cfg.get("cover_smoothing", true)):
         _smooth_covers(tile_data, rows, cols)
     print("cover stage: ", Time.get_ticks_msec() - t_cover, " ms")
@@ -437,7 +435,7 @@ func place_unique_terrains(tile_data: Array, rows: int, cols: int, city_row: int
             var tile = tile_data[hex.row][hex.col]
             if tile.get("improvement", null) == null:
                 tile["terrain"] = terrain_type
-                tile["cover"] = _roll_cover(terrain_type)
+                tile["cover"] = _roll_cover(tile)
 
         print("The unique terrain type %s is placed: %d hexes" % [terrain_type, cluster.size()])
 
@@ -711,7 +709,7 @@ func _punch_hex(tile_data: Array, key: String) -> void:
     var terrain_id := GameData.zone_terrain(zone_id, "plain")
     tile["terrain"] = terrain_id if terrain_id != "" else "plain"
     # The cover is generated as that of an ordinary plain for a natural look.
-    tile["cover"] = _roll_cover(tile["terrain"], zone_id)
+    tile["cover"] = _roll_cover(tile)
     tile["_is_marsh"] = false
     tile["_is_sea"] = false
     tile["_is_shallow_sea"] = false
@@ -798,7 +796,8 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
 # which variety every family becomes and what grows on it. The zone id is stored in the
 # tile ("climate"): the runtime asks it whenever it has to turn a family into a terrain after the
 # generation (a drained swamp, a corridor). The player never sees the zone — only the terrain and
-# the cover.
+# the cover. The temperature belt of every hex, water included, is stored next to it
+# ("temperature") for the covers that live only in the warm belts.
 
 const TEMPERATURE_POLAR := "polar"
 const TEMPERATURE_COLD := "cold"
@@ -859,12 +858,15 @@ static func _fbm(x: float, y: float, salt: int, octaves: int, persistence: float
     return total / weight if weight > 0.0 else 0.0
 
 # Builds the climate of the map: the zone of every land hex and the terrain of its relief.
-# The water (the sea, the shallow sea and the lakes) gets no zone: it has no vegetation and no
-# climate of its own, and it breaks the climate regions at the coasts.
+# The water (the sea, the shallow sea and the lakes) gets no zone: it has no relief of its own and
+# it breaks the climate regions at the coasts. Its temperature belt is still recorded — the belt is
+# the latitude, and the sea does not cancel it — and that is what the water covers of the warm
+# belts (data/covers.json → "temperature_belts") are rolled with.
 func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
     for r in range(rows):
         for c in range(cols):
             tile_data[r][c]["climate"] = ""
+            tile_data[r][c]["temperature"] = ""
 
     if GameData.climate_zones.is_empty():
         return
@@ -897,24 +899,33 @@ func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
     var lookup := _zone_lookup()
     for r in range(rows):
         for c in range(cols):
+            var temperature := _temperature_of(r, c, temperature_rows, polar_bounds, equator,
+                    tropical_half, subtropical, belt)
+            tile_data[r][c]["temperature"] = temperature
             if _is_impassable_terrain_id(tile_data[r][c].get("terrain", "")):
                 continue
-            var temperature_row := float(temperature_rows[r][c])
-            var distance: float = absf(temperature_row - equator)
-            var temperature := TEMPERATURE_TROPICAL
-            if distance > tropical_half:
-                if distance <= tropical_half + subtropical:
-                    temperature = TEMPERATURE_SUBTROPICAL
-                elif distance <= belt:
-                    temperature = TEMPERATURE_MILD
-                else:
-                    temperature = TEMPERATURE_COLD
-            var polar: Array = polar_bounds[c]
-            if temperature_row <= float(polar[0]) or temperature_row >= float(polar[1]):
-                temperature = TEMPERATURE_POLAR
             var moisture := _fbm(float(r) / moisture_scale, float(c) / moisture_scale, moisture_salt, 2, 0.35)
             var humidity := HUMIDITY_WET if moisture >= moisture_threshold else HUMIDITY_DRY
             tile_data[r][c]["climate"] = _pick_zone(lookup, temperature, humidity)
+
+# The temperature belt of a hex: how far its (meandered) row lies from the equator, with the polar
+# belt carved out of the cold region by the bounds of its own column.
+func _temperature_of(row: int, col: int, temperature_rows: Array, polar_bounds: Array,
+        equator: float, tropical_half: float, subtropical: float, belt: float) -> String:
+    var temperature_row := float(temperature_rows[row][col])
+    var distance := absf(temperature_row - equator)
+    var temperature := TEMPERATURE_TROPICAL
+    if distance > tropical_half:
+        if distance <= tropical_half + subtropical:
+            temperature = TEMPERATURE_SUBTROPICAL
+        elif distance <= belt:
+            temperature = TEMPERATURE_MILD
+        else:
+            temperature = TEMPERATURE_COLD
+    var polar: Array = polar_bounds[col]
+    if temperature_row <= float(polar[0]) or temperature_row >= float(polar[1]):
+        temperature = TEMPERATURE_POLAR
+    return temperature
 
 # Turns the families the Voronoi placed into the varieties of their climate zone: every plain
 # becomes the plain of its belt (a tundra plain, a boreal plain, a steppe, a prairie, a savanna, a
@@ -1174,11 +1185,16 @@ func _most_frequent(counts: Dictionary) -> String:
 # yields timber. An empty string means the zone has no woods at all.
 func _wooded_cover_of_zone(zone_id: String) -> String:
     var chances: Dictionary = GameData.get_climate_zone(zone_id).get("cover_chance", {})
+    return _heaviest_cover_of_pool(chances, func(cover: Dictionary) -> bool:
+            return float(cover.get("wood_yield", 0)) > 0.0)
+
+# The heaviest cover of a pool that the predicate accepts; "" when none of them does.
+func _heaviest_cover_of_pool(chances: Dictionary, accepts: Callable) -> String:
     var best := ""
     var best_weight := 0.0
     for cover_id in chances.keys():
         var cover: Dictionary = GameData.covers.get(cover_id, {})
-        if float(cover.get("wood_yield", 0)) <= 0.0:
+        if not accepts.call(cover):
             continue
         var weight := float(chances[cover_id])
         if weight > best_weight:
@@ -1186,48 +1202,101 @@ func _wooded_cover_of_zone(zone_id: String) -> String:
             best_weight = weight
     return best
 
-# Clears the lone wooded hexes and fills the lone holes in the woods of the plains and hills.
-# The cover of every hex is rolled on its own, which gives a scatter of cells; this pass makes the
-# woods read as groves. Both changes are computed from the same snapshot and applied afterwards,
-# so the result does not depend on the traversal order.
+# Clears the lone hexes of a cover and fills the lone holes inside it: the cover of every hex is
+# rolled on its own, which gives a scatter of cells, and this pass makes the covers read as patches
+# — the woods as groves, a reef as a reef. Both changes are computed from the same snapshot and
+# applied afterwards, so the result does not depend on the traversal order.
+#
+# Two kinds of patches are smoothed: the woods of the plains and the hills, whose vegetation comes
+# from the pool of the climate zone, and the covers that mark themselves "clusters" (a coral reef),
+# whose vegetation comes from the pool of the terrain they grow on.
 func _smooth_covers(tile_data: Array, rows: int, cols: int) -> void:
-    var wooded: Array = []
+    _smooth_cover_patches(tile_data, rows, cols, _is_grove_hex, _is_grove_neighbour,
+            _is_wooded_hex, func(tile: Dictionary) -> String:
+                return _wooded_cover_of_zone(str(tile.get("climate", ""))))
+    _smooth_cover_patches(tile_data, rows, cols, _is_clumping_field_hex, _is_clumping_field_hex,
+            _has_clumping_cover, func(tile: Dictionary) -> String:
+                return _clumping_cover_of_terrain(str(tile.get("terrain", "")),
+                        str(tile.get("temperature", ""))))
+
+# The one smoothing rule, applied to one kind of patch. `applies` marks the hexes the rule may
+# change, `counts` marks the neighbours that take part in the counting, `member` marks the hexes
+# that already carry the patch cover and `filler` answers what cover fills a hole in the patch.
+func _smooth_cover_patches(tile_data: Array, rows: int, cols: int, applies: Callable,
+        counts: Callable, member: Callable, filler: Callable) -> void:
+    var mask: Array = []
+    var field: Array = []
     for r in range(rows):
-        var line: Array = []
+        var marked_line: Array = []
+        var field_line: Array = []
         for c in range(cols):
-            line.append(_is_wooded_hex(tile_data[r][c]))
-        wooded.append(line)
+            var tile = tile_data[r][c]
+            marked_line.append(member.call(tile))
+            field_line.append(counts.call(tile))
+        mask.append(marked_line)
+        field.append(field_line)
 
     var changes: Array = []
     for r in range(rows):
         for c in range(cols):
             var tile = tile_data[r][c]
-            var family := GameData.terrain_family(str(tile.get("terrain", "")))
-            if family != "plain" and family != "hill":
+            if not applies.call(tile):
                 continue
-            var wooded_neighbours := 0
-            var land_neighbours := 0
+            var patch_neighbours := 0
+            var counted_neighbours := 0
             for neighbour in HexUtils.get_neighbors_odd_r(r, c, rows, cols):
-                if _is_impassable_terrain_id(tile_data[neighbour.row][neighbour.col].get("terrain", "")):
+                if not field[neighbour.row][neighbour.col]:
                     continue
-                land_neighbours += 1
-                if wooded[neighbour.row][neighbour.col]:
-                    wooded_neighbours += 1
-            if land_neighbours == 0:
+                counted_neighbours += 1
+                if mask[neighbour.row][neighbour.col]:
+                    patch_neighbours += 1
+            if counted_neighbours == 0:
                 continue
-            if wooded[r][c] and wooded_neighbours == 0:
+            if mask[r][c] and patch_neighbours == 0:
                 changes.append({"row": r, "col": c, "cover": "none"})
-            elif not wooded[r][c] and wooded_neighbours >= land_neighbours - 1 and land_neighbours >= 5:
-                var filler := _wooded_cover_of_zone(str(tile.get("climate", "")))
-                if filler != "":
-                    changes.append({"row": r, "col": c, "cover": filler})
+            elif not mask[r][c] and patch_neighbours >= counted_neighbours - 1 and counted_neighbours >= 5:
+                var cover := str(filler.call(tile))
+                if cover != "":
+                    changes.append({"row": r, "col": c, "cover": cover})
 
     for change in changes:
         tile_data[change.row][change.col]["cover"] = change.cover
 
+# The woods are smoothed on the relief the climate covers: the plain and the hill of any belt. The
+# mountains, the wetlands and the water are left alone, but every land neighbour still counts
+# towards the hole a wood has to fill.
+func _is_grove_hex(tile: Dictionary) -> bool:
+    var family := GameData.terrain_family(str(tile.get("terrain", "")))
+    return family == "plain" or family == "hill"
+
+func _is_grove_neighbour(tile: Dictionary) -> bool:
+    return not _is_impassable_terrain_id(str(tile.get("terrain", "")))
+
 func _is_wooded_hex(tile: Dictionary) -> bool:
-    var cover: Dictionary = GameData.covers.get(tile.get("cover", "none"), {})
-    return float(cover.get("wood_yield", 0)) > 0.0
+    return float(_cover_of(tile).get("wood_yield", 0)) > 0.0
+
+# The reef field: a hex whose terrain grows a cover that reads as a patch (data/terrains/terrains.json
+# → the pool of "shallow_sea"). Its neighbours are counted inside the same field, so a beach or the
+# deep sea beyond it never breaks a reef apart.
+func _is_clumping_field_hex(tile: Dictionary) -> bool:
+    return _clumping_cover_of_terrain(str(tile.get("terrain", "")),
+            str(tile.get("temperature", ""))) != ""
+
+func _has_clumping_cover(tile: Dictionary) -> bool:
+    return bool(_cover_of(tile).get("clusters", false))
+
+func _cover_of(tile: Dictionary) -> Dictionary:
+    return GameData.covers.get(str(tile.get("cover", "none")), {})
+
+# The clumping cover a terrain fills the holes of its patches with: the heaviest cover of the
+# terrain's own pool that clusters and grows in the temperature belt of the hex.
+func _clumping_cover_of_terrain(terrain_id: String, temperature: String) -> String:
+    var chances: Dictionary = GameData.terrains.get(terrain_id, {}).get("cover_chance", {})
+    return _heaviest_cover_of_pool(chances, func(cover: Dictionary) -> bool:
+            if not bool(cover.get("clusters", false)):
+                return false
+            var belts: Array = cover.get("temperature_belts", [])
+            return belts.is_empty() or temperature in belts)
 
 # Rolls the cover of a hex. A terrain that carries a cover_chance of its own rolls on it — the
 # wetlands and the deserts keep their own vegetation, so a swamp of the tropics is a reed bed and a
@@ -1235,24 +1304,41 @@ func _is_wooded_hex(tile: Dictionary) -> bool:
 # family, and the varieties of a family share the vegetation of their climate zone, so a whole
 # region gets one coherent character (a prairie region is mostly grass with groves, a tropical one
 # is mostly forest with clearings).
-func _roll_cover(terrain_id: String, zone_id: String = "") -> String:
-    var chances: Dictionary = GameData.terrains.get(terrain_id, {}).get("cover_chance", {})
+# A cover of the pool that names "temperature_belts" (data/covers.json) grows only in the belts
+# listed there — the reef of the warm shallows, nothing else; it leaves the pool wherever the hex
+# stands in another belt, and a hex whose belt is unknown is no belt at all.
+func _roll_cover(tile: Dictionary) -> String:
+    var chances: Dictionary = GameData.terrains.get(str(tile.get("terrain", "")), {}) \
+            .get("cover_chance", {})
+    var zone_id := str(tile.get("climate", ""))
     if chances.is_empty() and zone_id != "":
         chances = GameData.get_climate_zone(zone_id).get("cover_chance", {})
     if chances.is_empty():
         return "none"
+    var temperature := str(tile.get("temperature", ""))
     var total := 0.0
     for cid in chances.keys():
-        total += float(chances[cid])
+        if _cover_allowed_in_belt(str(cid), temperature):
+            total += float(chances[cid])
     if total <= 0.0:
         return "none"
     var roll = randf() * total
     var accum := 0.0
     for cid in chances.keys():
+        if not _cover_allowed_in_belt(str(cid), temperature):
+            continue
         accum += float(chances[cid])
         if roll < accum:
-            return cid
+            return str(cid)
     return "none"
+
+# Whether a cover may grow in the temperature belt of a hex. A cover without "temperature_belts"
+# is not restricted by the latitude; a cover that names them belongs to those belts only.
+func _cover_allowed_in_belt(cover_id: String, temperature: String) -> bool:
+    var belts: Array = GameData.covers.get(cover_id, {}).get("temperature_belts", [])
+    if belts.is_empty():
+        return true
+    return temperature in belts
 
 # Builds a multi-index of the free hexes by (terrain, cover).
 # The key: "terrain|cover" -> Array of dictionaries {"row", "col"}.
@@ -1581,7 +1667,7 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
             continue
         var target := _terrain_for_key(terrain_id, tile)
         tile["terrain"] = target
-        tile["cover"] = _roll_cover(target, str(tile.get("climate", "")))
+        tile["cover"] = _roll_cover(tile)
         if free_count.has(old_bucket):
             free_count[old_bucket] = max(0, free_count[old_bucket] - 1)
         free_count[terrain_id] = free_count.get(terrain_id, 0) + 1
