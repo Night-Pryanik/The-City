@@ -177,18 +177,21 @@ PNG replaces an SVG. The name must match **exactly**, including case:
 
 Two rules follow from this:
 
-- **A file that names no vanilla icon replaces nothing.** The game prints the list of such
-  files to the log — that is the fastest way to find a typo.
+- **A file that names no icon replaces nothing.** The game prints the list of such files to
+  the log — that is the fastest way to find a typo.
 - **The set does not have to be complete.** An icon the set does not ship keeps its vanilla
   picture, so a set may re-draw three buildings and leave the rest of the game alone.
 
 Where the vanilla names come from: `icons/<type>/<name>.png`. The list of the names of a
-type is simply the contents of its folder — copy a name from there.
+type is simply the contents of its folder — copy a name from there. **A mod may add names
+of its own** (`<mod folder>/icons`, see `mods/README.md` §4.5): they are indexed next to
+the vanilla ones, and a set of the same type re-draws them as well.
 
 ### 4.1. What a set cannot do
 
-- It cannot **add** a new icon name: the data has to refer to it, and the data names only
-  the vanilla icons. (A mod changes the data; a tileset changes the pictures.)
+- It cannot **add** a new icon name: a name exists only if the data refers to it — the
+  vanilla data, or the data of a mod. An icon a mod adds is a target like any other, so a
+  set may redraw it; but a file naming nothing the data uses replaces nothing.
 - It cannot **remove** an icon.
 - It cannot change the **proportion** the UI expects: the vanilla icons are square
   pictures of about 200–256 px, and the UI scales them to the size it needs. A set drawn

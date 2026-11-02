@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- A glazed tile: a square slab with a bevel and a highlight. Flat art with an outline,
+       the same spirit as the vanilla icons (one object in the centre, a dark contour). -->
+  <g stroke="#1d2733" stroke-width="6" stroke-linejoin="round">
+    <rect x="42" y="42" width="172" height="172" rx="10" fill="#2f7f86"/>
+    <rect x="58" y="58" width="140" height="140" rx="6" fill="#3f9aa3"/>
+    <path d="M74 74 L182 74 L74 182 Z" fill="#6fc3c9" stroke="none"/>
+  </g>
+</svg>

@@ -1,7 +1,6 @@
 {
   // A NEW product: "glazed_tile" is not in the vanilla data, so it is added next to the
-  // vanilla products. Its icon is an existing file — a mod ships its own pictures in its
-  // folder, but this one only demonstrates the merge.
+  // vanilla products. Its picture is the mod's own — icons/resources/glazed_tile.svg.
   "resources": [
     {
       "id": "glazed_tile",
@@ -9,7 +8,7 @@
       "name": "Glazed Tile",
       "type": "product",
       "category": "construction_material",
-      "icon": "bricks.png"
+      "icon": "glazed_tile.svg"
     },
     // An EXISTING product: only "price" and "name" are written here, every other field
     // of the vanilla "flour" (category, type, icon) keeps its value.

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- A tile kiln: a brick dome with a firing opening. The picture the mod adds for its own
+       building — it lives in the icons folder of the mod and the data names it. -->
+  <g stroke="#1d2733" stroke-width="6" stroke-linejoin="round">
+    <path d="M28 208 L28 132 A100 100 0 0 1 228 132 L228 208 Z" fill="#9a5b3f"/>
+    <path d="M28 176 L228 176" stroke="#1d2733" stroke-width="5"/>
+    <path d="M76 208 L76 132" stroke="#7c4630" stroke-width="5"/>
+    <path d="M128 208 L128 96" stroke="#7c4630" stroke-width="5"/>
+    <path d="M180 208 L180 132" stroke="#7c4630" stroke-width="5"/>
+    <path d="M96 208 L96 168 A32 32 0 0 1 160 168 L160 208 Z" fill="#241a14"/>
+    <path d="M112 200 L128 182 L144 200 Z" fill="#e8a33c" stroke="none"/>
+  </g>
+</svg>

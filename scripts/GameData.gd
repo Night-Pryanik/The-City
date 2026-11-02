@@ -76,6 +76,19 @@ func load_all_data():
     _assign_from(loader)
     loader.free()
     data_loaded = true
+    _sync_mod_icons()
+
+# The icons a mod ships live in its own folder, so the registry is told which mods are
+# running before anything asks it for a texture. The registry is looked up through the tree
+# root and not by name: an autoload declared before this one is not always resolved in this
+# script (the same reason mod_manager.gd looks GameData up this way).
+func _sync_mod_icons() -> void:
+    var loop := Engine.get_main_loop()
+    if not (loop is SceneTree):
+        return
+    var registry = (loop as SceneTree).root.get_node_or_null("IconRegistry")
+    if registry != null:
+        registry.set_mod_dirs(active_mod_dirs)
 
 # A detached copy of the data: vanilla plus the given mods. It is what the mod list
 # validates when a checkbox is switched on — the check must see the game exactly

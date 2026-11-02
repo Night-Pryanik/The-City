@@ -1,5 +1,6 @@
 {
   // A NEW building: it exists only in this mod, so it is added to the vanilla buildings.
+  // Its picture is the mod's own — icons/buildings/tile_kiln.svg, named by the "icon" field.
   "buildings": [
     {
       "id": "tile_kiln",
@@ -7,7 +8,7 @@
       "description": "A kiln that fires bricks into glazed tiles.",
       "work_cost": 20,
       "additional_cost": [ { "bricks": 20 } ],
-      "icon": "pottery_workshop.png",
+      "icon": "tile_kiln.svg",
       "production_slots": 1.0,
       "default_recipes": [ "fire_glazed_tile" ]
     },

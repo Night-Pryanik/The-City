@@ -10,7 +10,8 @@ Two ready-made examples live next to this file:
 
 ## 1. What a mod is
 
-A mod is a **folder** with a required `mod.json` manifest and an optional `data` folder:
+A mod is a **folder** with a required `mod.json` manifest, an optional `data` folder and an
+optional `icons` folder:
 
 ```
 mods/
@@ -19,6 +20,10 @@ mods/
     data/                  <- the game data (an optional folder)
       buildings.json
       crafts.json
+      ...
+    icons/                 <- the pictures of the entities it adds (an optional folder)
+      buildings/
+        windmill.png
       ...
 ```
 
@@ -59,6 +64,9 @@ The game opens `<mod folder>/data` and reads **all** `.json` files inside it.
 `data`, the game will NOT find it.** A file outside `data` is simply not read — the mod
 counts as "empty". The `data` folder is optional: a mod without it is valid, it just
 changes nothing.
+
+The only other folder the game opens is `<mod folder>/icons` — the pictures for the
+entities the mod adds (§4.5). Everything else in the mod folder is ignored.
 
 ### 2.3. Inside `data` the folder structure is free
 
@@ -237,6 +245,56 @@ fields — that text is also the translation key (the same as in the vanilla fil
 
 ---
 
+### 4.5. Icons for the entities you add
+
+A new resource, building or technology needs a picture. The game takes it from the **icons
+folder of the mod**, so the mod carries its own art and the data only names the file:
+
+```
+mods/tile_industry/
+  icons/
+    resources/
+      rye.png
+    buildings/
+      windmill.png
+    tech/
+      windmills.png
+    misc/
+      windmill_token.png
+```
+
+```json
+{ "id": "windmill", "name": "Windmill", "icon": "windmill.png", ... }
+```
+
+The rules:
+
+- The layout is the one of the game's own `res://icons`: the **first folder** under `icons/`
+  is the type of the pictures inside it. The folders are `resources`, `buildings`, `tech`,
+  `terrain`, `improvements`, `special_actions`; everything else — the root of `icons/`
+  included — is **misc** (coins, buttons, marks of the interface). The nesting below the
+  first folder is free.
+- The `icon` field of the data names the file **exactly, extension included**:
+  `"icon": "rye.png"` for `icons/resources/rye.png`, `"icon": "rye.svg"` for a drawing in
+  SVG. There is no "find by bare name" here: the extension is a part of the name.
+- PNG, SVG, WEBP, JPG, BMP and TGA are read. A mod in `%APPDATA%\The City\mods` is a set of
+  **raw files** the engine has never imported, so the game decodes them itself: the picture
+  is taken as it lies on disk, with no import step and no `.import` file of any kind. An
+  SVG is rasterised at the size it declares.
+- An icon with the name of a vanilla one **replaces** it. That is how a mod redraws the art
+  of the game without a tileset. When two mods ship one name, the mod **lower in the list**
+  wins, and the game prints a warning naming both.
+- Only the mods of the **running game** are indexed: a switched-off mod brings no icons and
+  cannot take a name from another mod. A mod that only ships pictures (a retexture, no
+  `data` at all) works the same way.
+- A tileset from `tilesets/` may redraw an icon of a mod as well: the type of the icon is
+  the folder it lies in, exactly as for a vanilla icon (see `tilesets/README.md`).
+
+Nothing else has to be done: a mod icon is an ordinary icon of the registry, so the map,
+the lists, the tooltips and the buttons find it by the same name as a vanilla one.
+
+---
+
 ## 5. A mod skeleton
 
 ```
@@ -247,10 +305,17 @@ mods/tile_industry/
     crafts.json         <- new and changed recipes
     resources.json      <- new and changed resources
     blacklist.json      <- the entities to remove from the game (an optional file)
+  icons/                <- the pictures for the entities it adds (§4.5)
+    buildings/
+      windmill.svg
+    resources/
+      rye.png
 ```
 
 A ready-made specimen exercising all three rules — adding, overriding and removing — is
-`mods/test_mod`. A specimen that only removes is `mods/blacklist_example`:
+`mods/test_mod`. It also ships its own icons: the building `tile_kiln` and the good
+`glazed_tile` are drawn by `mods/test_mod/icons/`, and their `icon` fields name those files.
+A specimen that only removes is `mods/blacklist_example`:
 
 ```
 mods/blacklist_example/
@@ -289,4 +354,6 @@ identifiers.
 - [ ] A new `id` is added; an existing one is overridden field by field.
 - [ ] A blacklisted entity has no references left: the groups, recipes and rules that
       named it are removed or overridden too.
+- [ ] Every new entity has a picture in the `icons` folder of the mod, and its `icon` field
+      names the file with the extension (`"icon": "rye.png"`).
 - [ ] The mod passes the data validator with no new errors.

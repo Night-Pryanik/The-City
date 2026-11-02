@@ -61,6 +61,12 @@ var choices: Dictionary = {}
 
 func _ready() -> void:
     scan()
+    var registry = _icon_registry()
+    if registry != null:
+        # The icons of the mods of the running game are indexed later, when the data is
+        # loaded: a tileset that redraws an icon a mod adds has to be rebuilt against the
+        # complete index.
+        registry.index_changed.connect(_on_icons_indexed)
 
 # Reads the manifests and installs their replacements into IconRegistry. Called once at
 # startup: the set of tilesets is fixed by the files of the game.
@@ -70,6 +76,12 @@ func scan() -> Array:
         var record := read_tileset(str(ROOT).path_join(dir_name))
         if not record.is_empty():
             tilesets.append(record)
+    # A set that cannot be used is reported once, when it is read: apply() runs again
+    # whenever the index of the icons changes, and a repeated warning says nothing new.
+    for record in tilesets:
+        if not str(record.get("error", "")).is_empty():
+            push_warning("TilesetManager: \"%s\" is not applied: %s"
+                % [record["id"], record["error"]])
     choices = _load_choices()
     apply()
     return tilesets
@@ -146,23 +158,29 @@ func _save_choices() -> void:
 
 # The replacement table of the installed tilesets: the bare name of an icon -> the res://
 # path of the file that replaces it.
+#
+# A table identical to the installed one is left alone: the icons of the mods of the running
+# game are indexed after the first apply, and a rebuild that changes nothing must not reload
+# every texture of the interface.
 func apply() -> void:
     var registry = _icon_registry()
     if registry == null:
         return
-    for record in tilesets:
-        if not str(record.get("error", "")).is_empty():
-            push_warning("TilesetManager: \"%s\" is not applied: %s"
-                % [record["id"], record["error"]])
-    registry.set_overrides(build_overrides(tilesets, choices))
+    var table := build_overrides(tilesets, choices)
+    if table == registry.overrides:
+        return
+    registry.set_overrides(table)
     _warn_unmatched(tilesets)
+
+func _on_icons_indexed() -> void:
+    apply()
 
 # The replacement table of a set of tileset records under a set of choices.
 #
 # A type is drawn by ONE tileset: two building sets would mix two drawing styles. A chosen
 # set is used as chosen; a type the player has not chosen is given to the folder rule, and
-# a file whose type the tileset does not declare, or that names no vanilla icon at all, is
-# not a replacement.
+# a file whose type the tileset does not declare, or that names no icon at all, is not a
+# replacement.
 func build_overrides(records: Array, chosen: Dictionary = {}) -> Dictionary:
     var registry = _icon_registry()
     var table := {}
@@ -319,7 +337,7 @@ func _is_image(file_name: String) -> bool:
     return false
 
 # Tells the author about the files that replace nothing: a misnamed picture is invisible in
-# the game otherwise.
+# the game otherwise. An icon a mod adds is a replacement target as well as a vanilla one.
 func _warn_unmatched(records: Array) -> void:
     var registry = _icon_registry()
     if registry == null:
@@ -333,7 +351,7 @@ func _warn_unmatched(records: Array) -> void:
                 unknown.append(bare_name)
         if not unknown.is_empty():
             unknown.sort()
-            push_warning("TilesetManager: \"%s\": no vanilla icon is named %s — the files are ignored."
+            push_warning("TilesetManager: \"%s\": no icon is named %s — the files are ignored."
                 % [record["id"], ", ".join(PackedStringArray(unknown))])
 
 func _subdirectories(root: String) -> Array:

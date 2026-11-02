@@ -92,17 +92,24 @@ func _run() -> void:
     _finish(state)
 
 # --- 1. A folder whose name starts with "_" is not a tileset ---
+# The author may keep real sets in res://tilesets (the game ships the folder for them), so
+# the check is about the example alone and not about the folder being empty.
 func _check_disabled_folders(state: Dictionary) -> void:
     var found: Array = _tilesets.scan()
-    check(found.is_empty(),
-        "a folder starting with \"_\" was taken for a tileset: %s" % str(found), state)
+    var ids: Array = []
+    for record in found:
+        ids.append(str(record["id"]))
+    check(not ids.has("_example"),
+        "a folder starting with \"_\" was taken for a tileset: %s" % str(ids), state)
     check(_tilesets.get_tileset("_example").is_empty(),
         "the disabled example is in the registry of the tilesets", state)
-    # The game itself keeps its own art.
-    check(_registry.overrides.is_empty(),
-        "the overrides are not empty with no tileset installed: %s" % str(_registry.overrides), state)
-    check(_registry.icon_path("bakery.png") == str(_registry.paths["bakery.png"]),
-        "a vanilla icon does not point at its own file with no tileset installed", state)
+    # Whatever is installed, nothing of it may come from the disabled example.
+    var from_example: Array = []
+    for bare_name in _registry.overrides:
+        if str(_registry.overrides[bare_name]).begins_with(EXAMPLE):
+            from_example.append(bare_name)
+    check(from_example.is_empty(),
+        "the disabled example replaces icons: %s" % str(from_example), state)
 
 # --- 2. Reading a manifest ---
 func _check_reading(state: Dictionary) -> void:
@@ -296,6 +303,8 @@ func _check_choices(state: Dictionary) -> void:
 
 # --- 7. Installing a table ---
 func _check_installing(state: Dictionary) -> void:
+    # The check starts from the vanilla icons, whatever set the author keeps in res://tilesets.
+    _registry.set_overrides({})
     var vanilla_path = _registry.icon_path("bakery.png")
     var vanilla_texture = _registry.get_texture("bakery.png")
     var replacement := EXAMPLE + "/icons/buildings/bakery.svg"
