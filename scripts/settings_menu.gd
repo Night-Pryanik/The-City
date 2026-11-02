@@ -10,6 +10,8 @@ extends Control
 @onready var language_option_button: OptionButton = find_child("LanguageOptionButton", true, false)
 @onready var font_option_button: OptionButton = find_child("FontOptionButton", true, false)
 @onready var theme_option_button: OptionButton = find_child("ThemeOptionButton", true, false)
+@onready var tileset_hint: Label = find_child("TilesetHint", true, false)
+@onready var tileset_grid: GridContainer = find_child("TilesetGrid", true, false)
 @onready var tab_container: TabContainer = find_child("TabContainer", true, false)
 @onready var tooltip_delay_slider: HSlider = find_child("TooltipDelaySlider", true, false)
 @onready var tooltip_delay_value_label: Label = find_child("TooltipDelayValueLabel", true, false)
@@ -32,6 +34,14 @@ extends Control
 
 var config = ConfigFile.new()
 
+# The type of icons -> the dropdown that chooses its set. Built in _setup_tileset_options().
+var _tileset_options: Dictionary = {}
+
+# The hint of the tilesets as the scene words it, for the case a set is installed. It is a
+# catalog key rather than a finished line: the label translates it for display, so the same
+# key stays right in every language.
+var _tileset_hint_with_sets := ""
+
 func _ready():
     # The window is reached from the pause menu, that is, over a paused tree: a
     # pausable node would stop receiving ESC while the game is stopped (the same
@@ -53,7 +63,9 @@ func _ready():
             or not fps_checkbox \
             or not language_option_button \
             or not font_option_button \
-            or not theme_option_button
+            or not theme_option_button \
+            or not tileset_hint \
+            or not tileset_grid
     if missing_controls:
         print("Error: not all elements found in the settings scene!")
         return
@@ -63,6 +75,10 @@ func _ready():
     _setup_language_option()
     _setup_font_option()
     _setup_theme_option()
+    # Read before the rows are built: the text of the scene is the hint of the case a set is
+    # installed, and _setup_tileset_options() may replace it with the hint of an empty folder.
+    _tileset_hint_with_sets = tileset_hint.text
+    _setup_tileset_options()
     back_button.pressed.connect(_on_back_pressed)
     hex_borders_checkbox.toggled.connect(_on_hex_borders_toggled)
     edge_scrolling_checkbox.toggled.connect(_on_edge_scrolling_toggled)
@@ -91,6 +107,7 @@ func _apply_tab_titles():
         tr("Video"),
         tr("Audio"),
         tr("Interface"),
+        tr("Appearance"),
     ]
     for i in min(titles.size(), tab_container.get_tab_count()):
         tab_container.set_tab_title(i, titles[i])
@@ -127,6 +144,9 @@ func _on_language_selected(index: int):
         # The names of the themes are catalog strings too, so the list is rebuilt
         # for the new language.
         _setup_theme_option()
+        # The names of the types of icons and the "Original icons" item are catalog
+        # strings: the rows of the tilesets are rebuilt in the new language as well.
+        _setup_tileset_options()
 
 # Fills in the font dropdown and sets the applied font in it. The value of an item is
 # the family name — the name the font itself declares, therefore it is not translated.
@@ -185,6 +205,98 @@ func _on_theme_selected(index: int):
     if not ThemeManager.set_preset(id):
         # The file disappeared between the scan and the click: the list is stale.
         _setup_theme_option()
+
+# Fills in the rows of the tilesets: one row per type of icons, "Icon sets" being one
+# section of the settings rather than seven. Every type keeps its row even when no set is
+# drawn for it — the rows are what tells the player which kinds of pictures a set can
+# replace, and an empty folder is no reason to hide the whole section.
+#
+# The value of an item is the id of the set, "" for the vanilla icons. A type starts on the
+# set the folder rule gave it (TilesetManager.get_choice), so an installed set is already
+# applied when the window is opened for the first time.
+func _setup_tileset_options():
+    if tileset_grid == null:
+        return
+    for child in tileset_grid.get_children():
+        # Removed at once and freed later: a queued child still counts for the grid, and the
+        # rebuilt rows would land next to the old ones.
+        tileset_grid.remove_child(child)
+        child.queue_free()
+    _tileset_options.clear()
+    for type_name in TilesetManager.TYPES:
+        tileset_grid.add_child(_make_tileset_label(type_name))
+        tileset_grid.add_child(_make_tileset_option(type_name))
+    if tileset_hint != null:
+        # The hint of the scene assumes a set is installed; with an empty folder it would
+        # describe a choice that is not there to make.
+        if TilesetManager.available_tilesets().is_empty():
+            # One literal, however long the line: the catalog is built from the arguments of
+            # tr(), and a string glued from pieces would land there in pieces.
+            tileset_hint.text = tr("No icon sets found: the tilesets folder is empty, so every type keeps the original pictures. A set put in that folder appears in these lists.")
+        else:
+            tileset_hint.text = _tileset_hint_with_sets
+
+func _make_tileset_label(type_name: String) -> Label:
+    var label := Label.new()
+    label.text = _tileset_type_label(type_name)
+    label.custom_minimum_size = Vector2(150, 0)
+    label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    return label
+
+func _make_tileset_option(type_name: String) -> OptionButton:
+    var option := OptionButton.new()
+    option.custom_minimum_size = Vector2(260, 0)
+    option.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+    option.add_item(tr("Original icons"))
+    option.set_item_metadata(0, "")
+    var current := TilesetManager.get_choice(type_name)
+    var selected := 0
+    for record in TilesetManager.available_tilesets():
+        if not (record["types"] as Array).has(type_name):
+            continue
+        var index := option.item_count
+        option.add_item(str(record["name"]))
+        option.set_item_metadata(index, str(record["id"]))
+        if str(record["id"]) == current:
+            selected = index
+    option.select(selected)
+    # A type no set is drawn for has one item only: the row still says which pictures are
+    # used, but there is nothing to choose, and a list of one item would pretend otherwise.
+    option.disabled = option.item_count == 1
+    # select() does not send item_selected: opening the window shows the applied set instead
+    # of choosing it again.
+    option.item_selected.connect(_on_tileset_selected.bind(type_name))
+    _tileset_options[type_name] = option
+    return option
+
+# The name of a type of icons in the interface language. Every label is a tr() call with a
+# literal: the catalog is built from the literal arguments, and a table of untranslated
+# strings would never reach it.
+func _tileset_type_label(type_name: String) -> String:
+    match type_name:
+        "resources":
+            return tr("Resources")
+        "buildings":
+            return tr("Buildings")
+        "technologies":
+            return tr("Technologies")
+        "terrains":
+            return tr("Terrains")
+        "improvements":
+            return tr("Improvements")
+        "special_actions":
+            return tr("Special actions")
+        "misc":
+            return tr("Miscellaneous")
+    return type_name
+
+func _on_tileset_selected(index: int, type_name: String):
+    var option: OptionButton = _tileset_options.get(type_name)
+    if option == null:
+        return
+    if not TilesetManager.set_choice(type_name, str(option.get_item_metadata(index))):
+        # The set disappeared between the scan and the click: the list is stale.
+        _setup_tileset_options()
 
 func load_settings():
     var err = config.load("user://settings.cfg")

@@ -392,6 +392,12 @@ func _style_popups(theme: Theme) -> void:
 
 func _style_text(theme: Theme) -> void:
     theme.set_color("font_color", "Label", color("text"))
+    # The title of a group of settings sits above the headings of the settings themselves.
+    # It is told apart by the bold face and the larger size of GroupHeading
+    # (theme/tooltips_theme.tres), not by a colour: the accent of a palette may be dimmer
+    # than the text, and a heading that reads as a footnote is worse than none.
+    theme.set_type_variation("GroupHeading", "Label")
+    theme.set_color("font_color", "GroupHeading", color("text"))
     theme.set_color("default_color", "RichTextLabel", color("text"))
     theme.set_color("font_color", "TooltipLabel", color("text"))
     theme.set_stylebox("panel", "TooltipPanel", UI_THEME.tooltip())

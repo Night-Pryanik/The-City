@@ -276,7 +276,7 @@ func _build_city_tab() -> Control:
     random_button.custom_minimum_size = Vector2(SETTING_CONTROL_HEIGHT, SETTING_CONTROL_HEIGHT)
     random_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     random_button.expand_icon = true
-    random_button.icon = load("res://icons/dice.svg")
+    random_button.icon = IconRegistry.get_texture("dice.svg")
     random_button.tooltip_text = tr("Suggest another name")
     random_button.pressed.connect(func():
         _ensure_game_data()

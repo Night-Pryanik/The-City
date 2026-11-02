@@ -11,4 +11,7 @@ BoldLabel/fonts/font = ExtResource("3_inter_bold")
 Button/fonts/font = ExtResource("2_inter_medium")
 SectionHeading/base_type = &"Label"
 SectionHeading/fonts/font = ExtResource("2_inter_medium")
+GroupHeading/base_type = &"Label"
+GroupHeading/fonts/font = ExtResource("3_inter_bold")
+GroupHeading/font_sizes/font_size = 20
 TabBar/fonts/font = ExtResource("2_inter_medium")

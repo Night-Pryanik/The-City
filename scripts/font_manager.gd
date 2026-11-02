@@ -63,8 +63,9 @@ const EMPHASIS_TYPES: Array[String] = ["Button", "TabBar", "SectionHeading"]
 # The theme types drawn in the bold weight — the strongest face of the family. The
 # journal puts BoldLabel on the unread messages (see journal_ui.gd): the hierarchy
 # "unread / read" has to survive a change of the interface font, so it is answered by
-# the theme and not by a font override on the label.
-const BOLD_TYPES: Array[String] = ["BoldLabel"]
+# the theme and not by a font override on the label. GroupHeading is the title of a group
+# of settings, one level above SectionHeading.
+const BOLD_TYPES: Array[String] = ["BoldLabel", "GroupHeading"]
 
 # The words a vendor glues to the family name of a single-weight file: Lato-Medium.ttf
 # calls its family "Lato Medium" and not "Lato", and a dropdown of families would show

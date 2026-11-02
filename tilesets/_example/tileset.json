@@ -1,0 +1,19 @@
+{
+  // The specimen tileset: it declares EVERY type and carries a few icons of each, so the
+  // whole mechanism can be seen at once. The folder is named "_example" on purpose — the
+  // game skips a folder that starts with "_", so this set does not replace the art of the
+  // game itself. Rename the folder to "example" and restart to switch it on.
+  //
+  // The icons are drawn in a flat placeholder style, and the colour of the badge tells the
+  // type apart: green — resources, terracotta — buildings, blue — technologies, olive —
+  // terrains, teal — improvements, purple — special actions, slate — misc.
+
+  "name": "Placeholder Set",
+  "description": "A flat placeholder set for every type of icon. Shows how a tileset replaces the vanilla art of the types it declares.",
+  "author": "The City",
+  "version": "1.0.0",
+
+  // A single type may be written as a string: "type": "buildings".
+  "type": ["resources", "buildings", "technologies", "terrains", "improvements",
+    "special_actions", "misc"]
+}

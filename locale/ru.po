@@ -540,6 +540,9 @@ msgstr "Здесь стоит чужой городок — нельзя стр�
 msgid "Any product from the group"
 msgstr "Любой товар из группы"
 
+msgid "Appearance"
+msgstr "Внешний вид"
+
 msgid "Applying climate..."
 msgstr "Применение климата..."
 
@@ -1236,6 +1239,9 @@ msgstr "Выращивать острова внутри морей."
 msgid "Guaranteed land radius"
 msgstr "Радиус гарантированной земли"
 
+msgid "HUD"
+msgstr "Индикаторы"
+
 msgid "HUD message display time"
 msgstr "Время показа сообщений в верхней панели карты"
 
@@ -1293,6 +1299,9 @@ msgstr "Иконка группы «%s» взята у товара «%s»"
 msgid "Icon of group \"%s\": %s (set in data/product_groups.json)"
 msgstr "Иконка группы «%s»: %s (задана в data/product_groups.json)"
 
+msgid "Icon sets"
+msgstr "Наборы иконок"
+
 msgid "Icon: %s"
 msgstr "Иконка: %s"
 
@@ -1316,6 +1325,9 @@ msgstr "Улучшение: "
 
 msgid "Improvement: %d work"
 msgstr "Улучшение: %d труда"
+
+msgid "Improvements"
+msgstr "Улучшения"
 
 msgid "In storage: %d"
 msgstr "На складе: %d"
@@ -1413,6 +1425,9 @@ msgstr "Порядок загрузки"
 msgid "Main rivers"
 msgstr "Главные реки"
 
+msgid "Map"
+msgstr "Карта"
+
 msgid "Map actions"
 msgstr "Действия на карте"
 
@@ -1451,6 +1466,9 @@ msgstr "Средняя (60×60)"
 
 msgid "Menu"
 msgstr "Меню"
+
+msgid "Miscellaneous"
+msgstr "Прочее"
 
 msgid "Missing: "
 msgstr "Не хватает: "
@@ -1520,6 +1538,9 @@ msgstr "Нет свободных рабочих"
 
 msgid "No free workers!"
 msgstr "Нет свободных рабочих!"
+
+msgid "No icon sets found: the tilesets folder is empty, so every type keeps the original pictures. A set put in that folder appears in these lists."
+msgstr "Наборы иконок не найдены: папка tilesets пуста, поэтому все типы сохраняют исходные рисунки. Набор, положенный в эту папку, появится в этих списках."
 
 msgid "No messages yet."
 msgstr "Сообщений пока нет."
@@ -1640,6 +1661,9 @@ msgstr "Перейти в интерфейс городка «%s»"
 
 msgid "Open town"
 msgstr "Открыть городок"
+
+msgid "Original icons"
+msgstr "Исходные иконки"
 
 msgid "Outposts"
 msgstr "Фактории"
@@ -2091,6 +2115,9 @@ msgstr "Продано %d ед. %s в городок %s."
 msgid "Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file."
 msgstr "Источник не найден: продукт «%s» (%s) не встречается ни в produces ни одного ресурса карты, ни в result/display_result ни одного рецепта, ни в additional_yield ни одного здания. Добавьте источник данных или удалите продукт из файла."
 
+msgid "Special actions"
+msgstr "Особые действия"
+
 msgid "Spent work (%.0f/%d) will be lost."
 msgstr "Потраченный труд (%.0f/%d) будет потерян."
 
@@ -2186,6 +2213,9 @@ msgstr "Местность: %s"
 
 msgid "Terrain: %s. Resources: %s"
 msgstr "Ландшафт: %s. Ресурсы: %s"
+
+msgid "Terrains"
+msgstr "Местность"
 
 msgid "Territory expanded! (%d work spent)"
 msgstr "Территория расширена! (затрачено %d труда)"
@@ -2312,6 +2342,9 @@ msgstr "Число главных рек. Главная река начинае
 
 msgid "The number of tributaries. A tributary starts in the mountains or on the hills and flows into a river."
 msgstr "Число притоков. Приток начинается в горах или на холмах и впадает в реку."
+
+msgid "The pictures of the game. A set from the tilesets folder replaces only the types of icons it declares; every other type keeps the original pictures. The choice is remembered, and the interface is redrawn at once."
+msgstr "Рисунки игры. Набор из папки tilesets заменяет только те типы иконок, которые он объявляет; остальные типы сохраняют исходные рисунки. Выбор запоминается, и интерфейс перерисовывается сразу."
 
 msgid "The radius around the city that is always land, in hexes."
 msgstr "Радиус вокруг города, который всегда остаётся землёй, в гексах."

@@ -540,6 +540,9 @@ msgstr ""
 msgid "Any product from the group"
 msgstr ""
 
+msgid "Appearance"
+msgstr ""
+
 msgid "Applying climate..."
 msgstr ""
 
@@ -1236,6 +1239,9 @@ msgstr ""
 msgid "Guaranteed land radius"
 msgstr ""
 
+msgid "HUD"
+msgstr ""
+
 msgid "HUD message display time"
 msgstr ""
 
@@ -1293,6 +1299,9 @@ msgstr ""
 msgid "Icon of group \"%s\": %s (set in data/product_groups.json)"
 msgstr ""
 
+msgid "Icon sets"
+msgstr ""
+
 msgid "Icon: %s"
 msgstr ""
 
@@ -1315,6 +1324,9 @@ msgid "Improvement: "
 msgstr ""
 
 msgid "Improvement: %d work"
+msgstr ""
+
+msgid "Improvements"
 msgstr ""
 
 msgid "In storage: %d"
@@ -1413,6 +1425,9 @@ msgstr ""
 msgid "Main rivers"
 msgstr ""
 
+msgid "Map"
+msgstr ""
+
 msgid "Map actions"
 msgstr ""
 
@@ -1450,6 +1465,9 @@ msgid "Medium (60×60)"
 msgstr ""
 
 msgid "Menu"
+msgstr ""
+
+msgid "Miscellaneous"
 msgstr ""
 
 msgid "Missing: "
@@ -1519,6 +1537,9 @@ msgid "No free workers"
 msgstr ""
 
 msgid "No free workers!"
+msgstr ""
+
+msgid "No icon sets found: the tilesets folder is empty, so every type keeps the original pictures. A set put in that folder appears in these lists."
 msgstr ""
 
 msgid "No messages yet."
@@ -1639,6 +1660,9 @@ msgid "Open the town interface \"%s\""
 msgstr ""
 
 msgid "Open town"
+msgstr ""
+
+msgid "Original icons"
 msgstr ""
 
 msgid "Outposts"
@@ -2091,6 +2115,9 @@ msgstr ""
 msgid "Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file."
 msgstr ""
 
+msgid "Special actions"
+msgstr ""
+
 msgid "Spent work (%.0f/%d) will be lost."
 msgstr ""
 
@@ -2185,6 +2212,9 @@ msgid "Terrain: %s"
 msgstr ""
 
 msgid "Terrain: %s. Resources: %s"
+msgstr ""
+
+msgid "Terrains"
 msgstr ""
 
 msgid "Territory expanded! (%d work spent)"
@@ -2311,6 +2341,9 @@ msgid "The number of main rivers. A main river starts in the mountains and mouth
 msgstr ""
 
 msgid "The number of tributaries. A tributary starts in the mountains or on the hills and flows into a river."
+msgstr ""
+
+msgid "The pictures of the game. A set from the tilesets folder replaces only the types of icons it declares; every other type keeps the original pictures. The choice is remembered, and the interface is redrawn at once."
 msgstr ""
 
 msgid "The radius around the city that is always land, in hexes."

@@ -155,6 +155,7 @@ func _ready():
     _setup_tab_bar_icons()
     _layout_ui()
     get_viewport().size_changed.connect(_layout_ui)
+    IconRegistry.overrides_changed.connect(_on_icons_changed)
 
     resources_tab = load("res://scripts/resources_tab.gd").new()
     resources_tab.setup($ContentPanel/ResourcesPanel, ui_helpers)
@@ -869,21 +870,22 @@ func _position_close_button_top() -> void:
     close_button_top.position = Vector2(w - 37, 0)
 
 func _setup_tab_bar_icons() -> void:
-    # The icons for the small tab buttons in the top left corner.
+    # The icons for the small tab buttons in the top left corner. They are taken from the
+    # common registry, so a tileset replaces them together with the icons of their type.
     var icons = {
-        resources_tab_button: "res://icons/resources/products/bread.png",
-        buildings_tab_button: "res://icons/buildings/market.png",
-        trade_tab_button: "res://icons/resources/products/pottery.png",
-        technologies_tab_button: "res://icons/tech/wheel.png",
-        effects_tab_button: "res://icons/city.png",
-        era_challenges_button: "res://icons/era_challenges.svg",
-        reputation_specialization_button: "res://icons/reputation_specialization.svg",
-        encyclopedia_button: "res://icons/encyclopedia.svg"
+        resources_tab_button: "bread.png",
+        buildings_tab_button: "market.png",
+        trade_tab_button: "pottery.png",
+        technologies_tab_button: "wheel.png",
+        effects_tab_button: "city.png",
+        era_challenges_button: "era_challenges.svg",
+        reputation_specialization_button: "reputation_specialization.svg",
+        encyclopedia_button: "encyclopedia.svg"
     }
     for btn in icons:
         if btn == null:
             continue
-        var tex = load(icons[btn])
+        var tex = IconRegistry.get_texture(icons[btn])
         if tex:
             btn.icon = tex
             btn.expand_icon = true
@@ -891,11 +893,17 @@ func _setup_tab_bar_icons() -> void:
             btn.add_theme_constant_override("icon_max_width", 32)
             btn.add_theme_constant_override("icon_max_height", 32)
 
+# A tileset replaced some icons: the tab buttons and the open tab are built from the old
+# pictures, so both are rebuilt.
+func _on_icons_changed() -> void:
+    _setup_tab_bar_icons()
+    if visible:
+        _refresh_all()
+
 func _layout_ui() -> void:
     # The layout of the panels of the city interface over the whole width of the window.
     var w: float = get_viewport_rect().size.x
     var h: float = get_viewport_rect().size.y
-
     # The tabs — at the top left in the top bar over the whole width of the window.
     var tab_bar_panel = $TabBarPanel
     if tab_bar_panel:

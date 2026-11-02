@@ -6,15 +6,16 @@
 # window: everything below the fold is drawn outside the panel and cannot be
 # reached. Each populated page therefore keeps its settings in a ScrollContainer.
 #
-# Checks, in a frame short enough that both populated pages overflow:
+# Checks, in a frame short enough that every populated page overflows:
 #   1) every populated page keeps its settings inside a ScrollContainer that
 #      stays within the page, and the page itself stays within the window;
 #   2) the settings take the width of the scroll area and never widen it, so a
 #      wrapped hint cannot push the page sideways;
 #   3) the content is taller than the scroll area, a vertical scrollbar appears,
 #      and the wheel over the page moves it;
-#   4) scrolled to the end, the last control of the page is inside the visible
-#      area — it used to hang below the window bottom;
+#   4) scrolled to the end, the last control of the page ends inside the visible
+#      area — it used to hang below the window bottom; a control taller than the
+#      scroll area (the rows of the icon sets) is only expected to end in view;
 #   5) the "Edge scrolling speed" block finds its controls through the new
 #      NodePaths (they point inside the scroll area now).
 extends SceneTree
@@ -26,7 +27,8 @@ const SETTINGS_SCENE := "res://scenes/settings_menu.tscn"
 # Short enough for both populated pages to overflow, wide enough for the sliders:
 # a window this short is what a small screen gives.
 const FRAME_SIZE := Vector2(900, 230)
-const POPULATED_PAGES := ["Игра", "Интерфейс"]
+# Every page that holds settings. The empty pages (Video, Audio) have nothing to scroll.
+const POPULATED_PAGES := ["Игра", "Интерфейс", "Внешний вид"]
 
 func _initialize():
     WATCHDOG.arm(self)
@@ -68,7 +70,7 @@ func _run() -> void:
         await _check_page(settings, page, scroll, state)
 
     check(populated == POPULATED_PAGES.size(),
-        "both populated pages scroll (%d found)" % populated, state)
+        "every populated page scrolls (%d found)" % populated, state)
 
     # --- 5. The setting block still reaches its controls ---
     var slider: HSlider = settings.find_child("EdgeScrollSpeedSlider", true, false)
@@ -121,11 +123,25 @@ func _check_page(settings: Control, page: Control, scroll: ScrollContainer,
     scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
     await process_frame
     await process_frame
-    var last: Control = box.get_child(box.get_child_count() - 1)
+    # The last VISIBLE control: a hidden container keeps the rect it was last laid out with,
+    # which says nothing about the end of the page.
+    var last: Control = null
+    for i in range(box.get_child_count() - 1, -1, -1):
+        var child: Control = box.get_child(i)
+        if child.visible:
+            last = child
+            break
+    check(last != null, where + ": the page has a visible setting", state)
+    if last == null:
+        return
     var last_rect := last.get_global_rect()
     var visible_rect := scroll.get_global_rect()
-    check(last_rect.end.y <= visible_rect.end.y + 1.0 and last_rect.position.y >= visible_rect.position.y - 1.0,
-        where + ": the last setting (%.0f..%.0f) is inside the visible area (%.0f..%.0f)"
+    # A section taller than the scroll area can never be seen whole on a short screen: its
+    # end has to come into view, the top of it is reached by scrolling up.
+    var fits := last_rect.size.y <= visible_rect.size.y
+    check(last_rect.end.y <= visible_rect.end.y + 1.0
+            and (not fits or last_rect.position.y >= visible_rect.position.y - 1.0),
+        where + ": the last setting (%.0f..%.0f) does not end inside the visible area (%.0f..%.0f)"
             % [last_rect.position.y, last_rect.end.y,
                 visible_rect.position.y, visible_rect.end.y], state)
 

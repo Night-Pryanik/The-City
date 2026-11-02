@@ -349,6 +349,10 @@ func _ready():
 
     _load_map_config()
 
+    # A tileset changes the pictures of the whole interface, and the map keeps its own copy
+    # of the textures: the icons are reloaded when the table of replacements changes.
+    IconRegistry.overrides_changed.connect(_on_icons_changed)
+
     # The active pause is created before everything else: the execution points of
     # the actions reach it as early as the _ready of the managers, and it owns the
     # flag of the pause of the tree.
@@ -3114,6 +3118,13 @@ func _on_active_pause_changed(_active: bool):
             hud.show_message(tr("The simulation resumed."), GameData.HUD_MESSAGE_NORMAL)
         else:
             hud.show_message(tr("The simulation resumed. Starting: %s") % ", ".join(queued), GameData.HUD_MESSAGE_NORMAL)
+
+# The tilesets replaced some icons: the map draws from its own copy of the textures, and the
+# pause button is the one icon of the HUD that is set by hand.
+func _on_icons_changed() -> void:
+    map_renderer.load_icons()
+    map_renderer.queue_redraw()
+    _refresh_pause_button()
 
 func _refresh_pause_button():
     # The button states the mode by its own name: the same button stops and resumes

@@ -121,37 +121,10 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="FontLabel" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
+[node name="MapHeading" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
-theme_type_variation = &"SectionHeading"
-text = "Font"
-
-[node name="FontHint" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
-autowrap_mode = 3
-
-[node name="FontOptionButton" type="OptionButton" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
-custom_minimum_size = Vector2(420, 0)
-layout_mode = 2
-size_flags_horizontal = 0
-
-[node name="ThemeLabel" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
-layout_mode = 2
-theme_type_variation = &"SectionHeading"
-text = "Interface theme"
-
-[node name="ThemeHint" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "The colours of every window, panel and control. The choice applies at once and is remembered; a theme file put into the presets folder appears here without restarting the game."
-autowrap_mode = 3
-
-[node name="ThemeOptionButton" type="OptionButton" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
-custom_minimum_size = Vector2(420, 0)
-layout_mode = 2
-size_flags_horizontal = 0
+theme_type_variation = &"GroupHeading"
+text = "Map"
 
 [node name="Label" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer" unique_id=1054639215]
 layout_mode = 2
@@ -255,6 +228,11 @@ custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 text = "0.50 sec"
 
+[node name="HudHeading" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
+layout_mode = 2
+theme_type_variation = &"GroupHeading"
+text = "HUD"
+
 [node name="Label6" type="Label" parent="TabContainer/Интерфейс/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"
@@ -315,3 +293,77 @@ text = "Back"
 script = ExtResource("2_blk01")
 gate = NodePath("../TabContainer/Интерфейс/Scroll/VBoxContainer/EdgeScrollingCheckBox")
 dependents = [NodePath("../TabContainer/Интерфейс/Scroll/VBoxContainer/Label7"), NodePath("../TabContainer/Интерфейс/Scroll/VBoxContainer/HBoxContainer5")]
+
+[node name="Внешний вид" type="Control" parent="TabContainer"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 4
+
+[node name="Scroll" type="ScrollContainer" parent="TabContainer/Внешний вид"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/Внешний вид/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="FontLabel" type="Label" parent="TabContainer/Внешний вид/Scroll/VBoxContainer"]
+layout_mode = 2
+theme_type_variation = &"SectionHeading"
+text = "Font"
+
+[node name="FontHint" type="Label" parent="TabContainer/Внешний вид/Scroll/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
+autowrap_mode = 3
+
+[node name="FontOptionButton" type="OptionButton" parent="TabContainer/Внешний вид/Scroll/VBoxContainer"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="ThemeLabel" type="Label" parent="TabContainer/Внешний вид/Scroll/VBoxContainer"]
+layout_mode = 2
+theme_type_variation = &"SectionHeading"
+text = "Interface theme"
+
+[node name="ThemeHint" type="Label" parent="TabContainer/Внешний вид/Scroll/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "The colours of every window, panel and control. The choice applies at once and is remembered; a theme file put into the presets folder appears here without restarting the game."
+autowrap_mode = 3
+
+[node name="ThemeOptionButton" type="OptionButton" parent="TabContainer/Внешний вид/Scroll/VBoxContainer"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="TilesetSection" type="VBoxContainer" parent="TabContainer/Внешний вид/Scroll/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TilesetLabel" type="Label" parent="TabContainer/Внешний вид/Scroll/VBoxContainer/TilesetSection"]
+layout_mode = 2
+theme_type_variation = &"SectionHeading"
+text = "Icon sets"
+
+[node name="TilesetHint" type="Label" parent="TabContainer/Внешний вид/Scroll/VBoxContainer/TilesetSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "The pictures of the game. A set from the tilesets folder replaces only the types of icons it declares; every other type keeps the original pictures. The choice is remembered, and the interface is redrawn at once."
+autowrap_mode = 3
+
+[node name="TilesetGrid" type="GridContainer" parent="TabContainer/Внешний вид/Scroll/VBoxContainer/TilesetSection"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 6
+columns = 2
