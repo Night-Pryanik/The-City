@@ -154,6 +154,7 @@ func _make_row(id: String, title: String, details: String, group: ButtonGroup) -
     button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     button.text = title if details.is_empty() else "%s\n%s" % [title, details]
     button.pressed.connect(_on_row_pressed.bind(id))
+    button.gui_input.connect(_on_row_input.bind(id))
     row.add_child(button)
     _row_buttons[id] = button
 
@@ -212,6 +213,19 @@ func _on_row_pressed(slot_id: String) -> void:
     if mode == Mode.SAVE:
         name_edit.text = _name_for(slot_id)
     accept_button.disabled = mode == Mode.LOAD and slot_id == NEW_SLOT_ID
+
+# A double click on a row is the shortcut for "take this place, then press the button".
+# The first click of the pair has already selected the row and brought its name into the
+# field, so only the action is left. An overwrite of an existing slot destroys a game
+# either way, so the click goes through the same confirmation the button asks for.
+func _on_row_input(event: InputEvent, slot_id: String) -> void:
+    if not (event is InputEventMouseButton) or not event.pressed \
+            or event.button_index != MOUSE_BUTTON_LEFT or not event.double_click:
+        return
+    if mode == Mode.LOAD:
+        load_requested.emit(slot_id)
+        return
+    _on_accept_pressed()
 
 # The name is what identifies a save, not the row that happens to be highlighted: a
 # name that no slot carries is a new save, and only a name that matches an existing slot
