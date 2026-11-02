@@ -85,7 +85,8 @@
         "flax",
         "soybean",
         "olives",
-        "kenaf"
+        "kenaf",
+        "beech_nuts"
       ]
     },
     {
@@ -238,7 +239,7 @@
     {
       "id": "barrel_wood",
       "name": "Wood for Barrels",
-      "products": [ "oak_wood" ]
+      "products": [ "oak_wood", "beech_wood", "chestnut_wood", "pine_wood" ]
     },
     {
       "id": "tare",

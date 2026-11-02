@@ -3318,6 +3318,10 @@ msgid "Cuts stone into plates, bowls, and cups."
 msgstr "Вырезает из камня тарелки, миски и чашки."
 
 msgctxt "crafts.description"
+msgid "Distils tar out of resin."
+msgstr "Выгоняет смолу из живицы."
+
+msgctxt "crafts.description"
 msgid "Dries and roasts coffee beans."
 msgstr "Сушит и обжаривает кофейные зерна"
 
@@ -4022,6 +4026,10 @@ msgid "Woad"
 msgstr "Вайда"
 
 msgctxt "crafts.name"
+msgid "Wood Tar"
+msgstr "Древесная смола"
+
+msgctxt "crafts.name"
 msgid "Wooden Barrel"
 msgstr "Деревянная бочка"
 
@@ -4594,6 +4602,18 @@ msgid "Beans"
 msgstr "Фасоль"
 
 msgctxt "resources.name"
+msgid "Beech Nuts"
+msgstr "Буковые орехи"
+
+msgctxt "resources.name"
+msgid "Beech Tree"
+msgstr "Бук"
+
+msgctxt "resources.name"
+msgid "Beech Wood"
+msgstr "Древесина бука"
+
+msgctxt "resources.name"
 msgid "Beef"
 msgstr "Говядина"
 
@@ -4696,6 +4716,18 @@ msgstr "Древесный уголь"
 msgctxt "resources.name"
 msgid "Cheese"
 msgstr "Сыр"
+
+msgctxt "resources.name"
+msgid "Chestnut Bark"
+msgstr "Каштановая кора"
+
+msgctxt "resources.name"
+msgid "Chestnut Tree"
+msgstr "Каштан"
+
+msgctxt "resources.name"
+msgid "Chestnut Wood"
+msgstr "Древесина каштана"
 
 msgctxt "resources.name"
 msgid "Chicken"
@@ -5202,6 +5234,14 @@ msgid "Pigs"
 msgstr "Свиньи"
 
 msgctxt "resources.name"
+msgid "Pine Tree"
+msgstr "Сосна"
+
+msgctxt "resources.name"
+msgid "Pine Wood"
+msgstr "Древесина сосны"
+
+msgctxt "resources.name"
 msgid "Pistachio"
 msgstr "Фисташки"
 
@@ -5288,6 +5328,10 @@ msgstr "Сырое молоко"
 msgctxt "resources.name"
 msgid "Reed Boat"
 msgstr "Тростниковая лодка"
+
+msgctxt "resources.name"
+msgid "Resin"
+msgstr "Живица"
 
 msgctxt "resources.name"
 msgid "Rice"
@@ -5738,8 +5782,8 @@ msgid "Allows you to build the tanner's house: hides → leather."
 msgstr "Даёт возможность строить дом кожевника: шкуры → кожа."
 
 msgctxt "technologies.description"
-msgid "Allows you to build the tar pit and the tar distillery: bitumen → tar."
-msgstr "Даёт возможность строить смоляную яму, а также смолокурню: битум → смола."
+msgid "Allows you to build the tar pit and the tar distillery: resin or bitumen → tar."
+msgstr "Даёт возможность строить смоляную яму и смолокурню: живица или битум → смола."
 
 msgctxt "technologies.description"
 msgid "Allows you to build the vineyard."
@@ -5824,10 +5868,6 @@ msgstr "Эмпорий не был ни колонией, ни городом: �
 msgctxt "technologies.flavor"
 msgid "Ancient civilizations could count, but only now has knowledge moved from simple recipes to strict proofs. Geometry and abstract calculation let people not just watch the world but compute it: from the shape of a wheel's teeth to the motion of the stars."
 msgstr "Древние цивилизации умели считать, но именно сейчас знания перешли от простых рецептов к строгим доказательствам. Геометрия и абстрактные вычисления позволили не просто наблюдать за миром, а рассчитывать его: от формы зубьев колеса до движения звёзд."
-
-msgctxt "technologies.flavor"
-msgid "Bitumen became an important material for waterproofing, and for making glue and fuel."
-msgstr "Битум стал важным материалом для водонепроницаемого покрытия, а также для производства клея и топлива."
 
 msgctxt "technologies.flavor"
 msgid "Burning limestone in kilns made lime possible, a key building material and an ingredient for making cement."
@@ -5942,6 +5982,10 @@ msgid "Tanning gave people a tough, flexible material for clothing, footwear and
 msgstr "Выделка кожи дала людям прочный и гибкий материал для одежды, обуви и снаряжения."
 
 msgctxt "technologies.flavor"
+msgid "Tar sealed ships, ropes and leather, and it came both from a burning pine heap and from the bituminous ground."
+msgstr "Смолой пропитывали корабли, канаты и кожу, и получали её и из горящей сосновой кучи, и из битуминозной земли."
+
+msgctxt "technologies.flavor"
 msgid "The art of exploring the land and drawing maps of it."
 msgstr "Наука об исследовании местности и рисовании карт."
 
@@ -6008,10 +6052,6 @@ msgstr "Животноводство"
 msgctxt "technologies.name"
 msgid "Beekeeping"
 msgstr "Пчеловодство"
-
-msgctxt "technologies.name"
-msgid "Bitumen Extraction"
-msgstr "Добыча битума"
 
 msgctxt "technologies.name"
 msgid "Bronze"
@@ -6160,6 +6200,10 @@ msgstr "Мыловарение"
 msgctxt "technologies.name"
 msgid "Soda Extraction"
 msgstr "Добыча соды"
+
+msgctxt "technologies.name"
+msgid "Tar Burning"
+msgstr "Смолокурение"
 
 msgctxt "technologies.name"
 msgid "Water Wheel"

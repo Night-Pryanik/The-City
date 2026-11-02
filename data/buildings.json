@@ -221,7 +221,7 @@
       "additional_cost": [ { "planks": 120 }, { "@processed_construction_materials": 80 } ],
       "icon": "tar_distillery.png",
       "production_slots": 1.0,
-      "unlock_tech": "bitumen_extraction",
+      "unlock_tech": "tar_burning",
       "default_recipes": [  ]
     },
     {

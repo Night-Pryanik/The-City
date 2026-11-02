@@ -360,6 +360,69 @@
       "color": [ 200, 255, 200 ]
     },
     {
+      // The camp is the harvest point of the hex: the beech gives its timber as
+      // well as its nuts, no felling implied (docs.md, "Improvement types are a
+      // convention").
+      "id": "beech_tree", "price": 7,
+      "name": "Beech Tree",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "oil_plants",
+      "tech_required": "wood_processing",
+      "allowed_terrain": [ "plain", "hill", "mountain" ],
+      "allowed_cover": [
+        "temperate_rainforest", "temperate_dry_forest",
+        "temperate_rainforest_sparse", "temperate_dry_forest_sparse"
+      ],
+      "improved_by": "lumberjack_hut",
+      "produces": { "beech_nuts": 10, "wood": 10, "beech_wood": 10 },
+      "icon": "beech_tree.png",
+      "color": [ 200, 235, 170 ]
+    },
+    {
+      // The camp is the harvest point of the hex: the pine gives its timber as
+      // well as its resin, no felling implied (docs.md, "Improvement types are
+      // a convention").
+      "id": "pine_tree", "price": 4,
+      "name": "Pine Tree",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "aromatic_plants",
+      "tech_required": "wood_processing",
+      "allowed_terrain": [ "plain", "hill", "mountain" ],
+      "allowed_cover": [
+        "taiga", "taiga_sparse",
+        "temperate_rainforest_sparse", "temperate_dry_forest_sparse"
+      ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
+      "improved_by": "lumberjack_hut",
+      "produces": { "resin": 10, "wood": 10, "pine_wood": 10 },
+      "icon": "pine_tree.png",
+      "color": [ 120, 200, 160 ]
+    },
+    {
+      // The camp is the harvest point of the hex: the chestnut gives its timber
+      // as well as its bark, no felling implied (docs.md, "Improvement types
+      // are a convention").
+      "id": "chestnut_tree", "price": 6,
+      "name": "Chestnut Tree",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "dye_plants",
+      "tech_required": "wood_processing",
+      "allowed_terrain": [ "plain", "hill", "mountain" ],
+      "allowed_cover": [
+        "temperate_dry_forest", "temperate_dry_forest_sparse"
+      ],
+      "improved_by": "lumberjack_hut",
+      "produces": { "chestnut_bark": 10, "wood": 10, "chestnut_wood": 10 },
+      "icon": "chestnut_tree.png",
+      "color": [ 220, 200, 150 ]
+    },
+    {
       "id": "velvetleaf_field", "price": 6,
       "name": "Velvetleaf",
       "type": "raw",

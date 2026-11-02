@@ -164,8 +164,18 @@
       "resources": { "bitumen": 20 },
       "result": { "tar": 10 },
       "time": 5.0,
-      "unlock_tech": "bitumen_extraction",
+      "unlock_tech": "tar_burning",
       "description": "Turns bitumen into tar."
+    },
+    {
+      "id": "wood_tar",
+      "name": "Wood Tar",
+      "produced_in": [ "tar_distillery" ],
+      "resources": { "resin": 20 },
+      "result": { "tar": 10 },
+      "time": 5.0,
+      "unlock_tech": "tar_burning",
+      "description": "Distils tar out of resin."
     },
     {
       "id": "tarred_ropes",
@@ -174,7 +184,7 @@
       "resources": { "ropes": 10, "tar": 10 },
       "result": { "tarred_ropes": 10 },
       "time": 5.0,
-      "unlock_tech": "bitumen_extraction",
+      "unlock_tech": "tar_burning",
       "description": "Soaks ropes in tar to make them waterproof."
     },
     {

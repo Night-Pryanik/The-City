@@ -3318,6 +3318,10 @@ msgid "Cuts stone into plates, bowls, and cups."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Distils tar out of resin."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Dries and roasts coffee beans."
 msgstr ""
 
@@ -4022,6 +4026,10 @@ msgid "Woad"
 msgstr ""
 
 msgctxt "crafts.name"
+msgid "Wood Tar"
+msgstr ""
+
+msgctxt "crafts.name"
 msgid "Wooden Barrel"
 msgstr ""
 
@@ -4594,6 +4602,18 @@ msgid "Beans"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Beech Nuts"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Beech Tree"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Beech Wood"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Beef"
 msgstr ""
 
@@ -4695,6 +4715,18 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Cheese"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Chestnut Bark"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Chestnut Tree"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Chestnut Wood"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5202,6 +5234,14 @@ msgid "Pigs"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Pine Tree"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Pine Wood"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Pistachio"
 msgstr ""
 
@@ -5287,6 +5327,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Reed Boat"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Resin"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5738,7 +5782,15 @@ msgid "Allows you to build the tanner's house: hides → leather."
 msgstr ""
 
 msgctxt "technologies.description"
-msgid "Allows you to build the tar pit and the tar distillery: bitumen → tar."
+msgid "Allows you to build the tar distillery and to burn pine resin into tar."
+msgstr ""
+
+msgctxt "technologies.description"
+msgid "Allows you to build the tar pit and the tar distillery: resin or bitumen → tar."
+msgstr ""
+
+msgctxt "technologies.description"
+msgid "Allows you to build the tar pit and to render bitumen into tar."
 msgstr ""
 
 msgctxt "technologies.description"
@@ -5874,6 +5926,10 @@ msgid "For centuries potters watched sand and alkali turn in their kilns into a 
 msgstr ""
 
 msgctxt "technologies.flavor"
+msgid "Heap-burning of resinous pine gave a waterproofing pitch long before anyone learned to dig bitumen."
+msgstr ""
+
+msgctxt "technologies.flavor"
 msgid "In scriptoriums scribes copied, translated, rewrote and recensioned texts on administration, the worship of the gods, magic and the curing of disease."
 msgstr ""
 
@@ -5939,6 +5995,10 @@ msgstr ""
 
 msgctxt "technologies.flavor"
 msgid "Tanning gave people a tough, flexible material for clothing, footwear and gear."
+msgstr ""
+
+msgctxt "technologies.flavor"
+msgid "Tar sealed ships, ropes and leather, and it came both from a burning pine heap and from the bituminous ground."
 msgstr ""
 
 msgctxt "technologies.flavor"
@@ -6159,6 +6219,10 @@ msgstr ""
 
 msgctxt "technologies.name"
 msgid "Soda Extraction"
+msgstr ""
+
+msgctxt "technologies.name"
+msgid "Tar Burning"
 msgstr ""
 
 msgctxt "technologies.name"

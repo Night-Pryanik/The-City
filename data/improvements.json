@@ -138,7 +138,7 @@
       "icon": "tar_pit.png",
       "color": [ 139, 69, 19 ],
       "work_cost": 30,
-      "unlock_tech": "bitumen_extraction",
+      "unlock_tech": "tar_burning",
       "profession": "tar_collector"
     },
     {

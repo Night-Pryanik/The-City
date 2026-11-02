@@ -88,7 +88,7 @@
       "name": "Tar",
       "type": "product",
       "category": "material",
-      "unlock_tech": "bitumen_extraction",
+      "unlock_tech": "tar_burning",
       "icon": "tar.png"
     },
     {
@@ -97,7 +97,7 @@
       "name": "Tarred Ropes",
       "type": "product",
       "category": "material",
-      "unlock_tech": "bitumen_extraction",
+      "unlock_tech": "tar_burning",
       "icon": "tarred_ropes.png"
     },
     {

@@ -351,6 +351,58 @@
       "unlock_tech": "wood_processing",
       "icon": "oak_wood.png"
     },
+    {
+      // Species timbers are the cooperage stock (the "@barrel_wood" group): the
+      // barrel carries no properties of its timber, so the cooper's house takes
+      // whichever species the surroundings yield.
+      "id": "beech_wood", "price": 7,
+      "name": "Beech Wood",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "beech_wood.png"
+    },
+    {
+      "id": "chestnut_wood", "price": 6,
+      "name": "Chestnut Wood",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "chestnut_wood.png"
+    },
+    {
+      "id": "pine_wood", "price": 4,
+      "name": "Pine Wood",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "pine_wood.png"
+    },
+    {
+      "id": "beech_nuts", "price": 4,
+      "name": "Beech Nuts",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "beech_nuts.png"
+    },
+    {
+      "id": "resin", "price": 4,
+      "name": "Resin",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "resin.png"
+    },
+    {
+      // A tannin source; no consumer in the data yet.
+      "id": "chestnut_bark", "price": 5,
+      "name": "Chestnut Bark",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "chestnut_bark.png"
+    },
     { "id": "sunflower", "price": 5, "name": "Sunflower Seeds", "type": "product", "category": "material", "unlock_tech": "oil_making", "icon": "sunflower.png" },
     { "id": "rapeseed", "price": 5, "name": "Rapeseed", "type": "product", "category": "material", "unlock_tech": "oil_making", "icon": "rapeseed.png" },
     { "id": "hops", "price": 6, "name": "Hops", "type": "product", "category": "material", "icon": "hops.png" },

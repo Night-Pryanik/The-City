@@ -296,14 +296,17 @@
       "flavor": "Ropes became an important material for building, sailing and farming, letting people bind, haul and hoist loads."
     },
     {
-      "id": "bitumen_extraction",
-      "name": "Bitumen Extraction",
+      // One technology covers both feedstocks of the trade. The alternatives in
+      // "prerequisites" say that neither side of the craft presupposes the other:
+      // a town reaches tar through whichever of its own resources it has.
+      "id": "tar_burning",
+      "name": "Tar Burning",
       "era": "ancient",
       "science_cost": 3.0,
-      "icon": "bitumen_extraction.png",
-      "prerequisites": [ [ "mining" ] ],
-      "description": "Allows you to build the tar pit and the tar distillery: bitumen → tar.",
-      "flavor": "Bitumen became an important material for waterproofing, and for making glue and fuel."
+      "icon": "tar_burning.png",
+      "prerequisites": [ [ "wood_processing" ], [ "mining" ] ],
+      "description": "Allows you to build the tar pit and the tar distillery: resin or bitumen → tar.",
+      "flavor": "Tar sealed ships, ropes and leather, and it came both from a burning pine heap and from the bituminous ground."
     },
     {
       "id": "salt_extraction",
