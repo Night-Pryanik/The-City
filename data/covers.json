@@ -40,7 +40,7 @@
       // new forest covers only need this field, no code change is required.
       // A missing field = yield of 0.
       "wood_yield": 20,
-      "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
+      "icons": [ "temperate_rainforest_1.png", "temperate_rainforest_2.png", "temperate_rainforest_3.png" ]
     },
     {
       "id": "temperate_rainforest_sparse",
@@ -49,7 +49,7 @@
       "alpha": 0.55,
       "move_cost_bonus": 0,
       "wood_yield": 10,
-      "icons": [ "forest_sparse_1.png", "forest_sparse_2.png", "forest_sparse_3.png" ]
+      "icons": [ "temperate_rainforest_sparse_1.png", "temperate_rainforest_sparse_2.png", "temperate_rainforest_sparse_3.png" ]
     },
     {
       "id": "temperate_dry_forest",
@@ -58,7 +58,7 @@
       "alpha": 0.8,
       "move_cost_bonus": 0,
       "wood_yield": 16,
-      "icons": [ "dry_forest_1.png", "dry_forest_2.png", "dry_forest_3.png" ]
+      "icons": [ "temperate_dry_forest_1.png", "temperate_dry_forest_2.png", "temperate_dry_forest_3.png" ]
     },
     {
       "id": "temperate_dry_forest_sparse",
@@ -67,7 +67,7 @@
       "alpha": 0.5,
       "move_cost_bonus": 0,
       "wood_yield": 8,
-      "icons": [ "dry_forest_sparse_1.png", "dry_forest_sparse_2.png", "dry_forest_sparse_3.png" ]
+      "icons": [ "temperate_dry_forest_sparse_1.png", "temperate_dry_forest_sparse_2.png", "temperate_dry_forest_sparse_3.png" ]
     },
 
     // --- THE BOREAL FOREST ---------------------------------------------------------------
