@@ -312,9 +312,6 @@ msgstr "%s\n\nНаука: %d"
 msgid "%s\nScience: %d%s"
 msgstr "%s\nНаука: %d%s"
 
-msgid "%s (Specialization)"
-msgstr "%s (специализация)"
-
 msgid "%s (base %d):"
 msgstr "%s (база %d):"
 
@@ -326,9 +323,6 @@ msgstr "%s (бесплатно)"
 
 msgid "%s (level %d, up to %d units/sec per section)"
 msgstr "%s (уровень %d, до %d ед./сек на участок)"
-
-msgid "%s (rank %d)"
-msgstr "%s (ранг %d)"
 
 msgid "%s [%s] (science: %d)"
 msgstr "%s [%s] (наука: %d)"
@@ -378,9 +372,6 @@ msgstr "%s — плата за факторию требует %d монет и�
 msgid "%s%s/sec"
 msgstr "%s%s/сек"
 
-msgid "%s/sec"
-msgstr "%s/сек"
-
 msgid "%s: %.1f/sec"
 msgstr "%s: %.1f/сек"
 
@@ -389,9 +380,6 @@ msgstr "%s: участков %d, строится по одному"
 
 msgid "%s: %d units every %s per person × %d = %d per cycle"
 msgstr "%s: %d ед. раз в %s на человека × %d = %d за цикл"
-
-msgid "%s: %s"
-msgstr ""
 
 msgid "%s: %s / sec"
 msgstr "%s: %s / сек"
@@ -609,15 +597,6 @@ msgstr "Бухты"
 msgid "Beaches"
 msgstr "Пляжи"
 
-msgid "Biome %s has an unknown %s \"%s\"."
-msgstr "Биом %s: неизвестное значение %s «%s»."
-
-msgid "Biome: %s"
-msgstr "Биом: %s"
-
-msgid "Biome: unknown climate axis value"
-msgstr "Биом: неизвестное значение оси климата"
-
 msgid "Blacklist names a nonexistent entity"
 msgstr "Чёрный список называет несуществующую сущность"
 
@@ -695,9 +674,6 @@ msgstr "Покупателей:"
 
 msgid "Buying"
 msgstr "Покупка"
-
-msgid "Buying from towns: %s"
-msgstr "Покупка у городков: %s"
 
 msgid "Buying from towns: %s to the price"
 msgstr "Покупка у городков: %s к цене"
@@ -792,26 +768,17 @@ msgstr "Отметьте модификацию, чтобы добавить е�
 msgid "Choose"
 msgstr "Выбрать"
 
-msgid "Choose a city name"
-msgstr "Выберите название города"
-
 msgid "Choose the mods for this game. Each save keeps its own set."
 msgstr "Выберите модификации для этой игры. У каждого сохранения свой набор."
 
 msgid "Chosen"
 msgstr "Выбрано"
 
-msgid "Chosen branches"
-msgstr "Выбранные ветки"
-
 msgid "City"
 msgstr "Город"
 
 msgid "City %s"
 msgstr "Город %s"
-
-msgid "City buildings: %s"
-msgstr "Городские здания: %s"
 
 msgid "City buildings: %s to production"
 msgstr "Городские здания: %s к производству"
@@ -1043,12 +1010,6 @@ msgstr "Скопировать список"
 
 msgid "Cost:"
 msgstr "Стоимость:"
-
-msgid "Cost: %d"
-msgstr "Стоимость: %d"
-
-msgid "Cost: %d/sec"
-msgstr "Стоимость: %d/сек"
 
 msgid "Cost: %s"
 msgstr "Стоимость: %s"
@@ -1371,9 +1332,6 @@ msgstr "Улучшение: %d труда"
 msgid "Improvements"
 msgstr "Улучшения"
 
-msgid "Improvements on the map: %s"
-msgstr "Улучшения на карте: %s"
-
 msgid "Improvements on the map: %s to production"
 msgstr "Улучшения на карте: %s к производству"
 
@@ -1385,12 +1343,6 @@ msgstr "Доход в казну за %s сек: %s монет/сек"
 
 msgid "Income:"
 msgstr "Доход:"
-
-msgid "Income: %d"
-msgstr "Доход: %d"
-
-msgid "Income: %d/sec"
-msgstr "Доход: %d/сек"
 
 msgid "Income: %s"
 msgstr "Доход: %s"
@@ -1656,9 +1608,6 @@ msgstr "Нет"
 msgid "Nonexistent product in a goods group"
 msgstr "В группе продуктов несуществующий продукт"
 
-msgid "Not available yet"
-msgstr "Пока недоступно"
-
 msgid "Not enough coins for the contract: %d per second."
 msgstr "Недостаточно монет для контракта: %d в секунду."
 
@@ -1821,9 +1770,6 @@ msgstr "Цена за единицу: наличие на складе её не
 msgid "Price:"
 msgstr "Цена:"
 
-msgid "Price: "
-msgstr "Цена: "
-
 msgid "Produces:"
 msgstr "Производит:"
 
@@ -1929,9 +1875,6 @@ msgstr "Убрать «%s» из очереди. Действие ещё не н
 msgid "Remove the worker from the improvement"
 msgstr "Снять рабочего с улучшения"
 
-msgid "Reputation and specialization"
-msgstr "Репутация и специализация"
-
 msgid "Requirement:"
 msgstr "Условие:"
 
@@ -1971,9 +1914,6 @@ msgstr "Уже идёт исследование: "
 msgid "Research complete: "
 msgstr "Исследование завершено: "
 
-msgid "Research speed: %s"
-msgstr "Скорость исследований: %s"
-
 msgid "Research the technology that unlocks \"%s\" first"
 msgstr "Сначала изучите технологию, открывающую «%s»"
 
@@ -2009,9 +1949,6 @@ msgstr "Уровни качества ресурса: %s"
 
 msgid "Resources"
 msgstr "Ресурсы"
-
-msgid "Resume"
-msgstr "Продолжить"
 
 msgid "Resume "
 msgstr "Возобновить "
@@ -2139,12 +2076,6 @@ msgstr "Выберите технологию для изучения"
 msgid "Selling"
 msgstr "Продажа"
 
-msgid "Selling goods to the towns is not implemented yet — the order was not placed."
-msgstr "Продажа товаров городкам ещё не реализована — заказ не размещён."
-
-msgid "Selling to towns: %s"
-msgstr "Продажа городкам: %s"
-
 msgid "Selling to towns: %s to the price"
 msgstr "Продажа городкам: %s к цене"
 
@@ -2225,9 +2156,6 @@ msgstr "Начать"
 
 msgid "Start operation (%s)"
 msgstr "Запустить работу (%s)"
-
-msgid "Start the game"
-msgstr "Начать игру"
 
 msgid "Stop \"%s\""
 msgstr "Прервать «%s»"
@@ -2361,9 +2289,6 @@ msgstr "В городе нет %d ед. %s для постоянного кон�
 msgid "The city does not have %d units of %s."
 msgstr "В городе нет %d ед. %s."
 
-msgid "The city has none of these goods: there is nothing to deliver"
-msgstr "На складе города нет этих товаров: поставлять нечего"
-
 msgid "The city needs access to fresh water"
 msgstr "Нужен доступ города к пресной воде"
 
@@ -2472,12 +2397,6 @@ msgstr "Симуляция продолжена. Запуск: %s"
 msgid "The smallest and the largest island, in hexes."
 msgstr "Самый маленький и самый большой остров, в гексах."
 
-msgid "The temperature is one of: cold, mild, hot; the humidity — one of: wet, dry. The generator compares the values literally, so a biome with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another biome."
-msgstr "Температура — одно из значений: cold, mild, hot; влажность — одно из: wet, dry. Генератор сравнивает значения буквально, поэтому биом с любым другим написанием никогда не появится на карте: его пара осей останется пустой, и климат возьмёт другой биом той же температуры."
-
-msgid "The temperature is one of: cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature."
-msgstr "Температура — одна из: cold, mild, subtropical, tropical; влажность — одна из: wet, dry. Генератор сравнивает значения буквально, поэтому зона с любым другим написанием никогда не появится на карте: её пара осей останется пустой, и климат возьмёт другую зону той же температуры."
-
 msgid "The temperature is one of: polar, cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature."
 msgstr "Температура — одна из: polar, cold, mild, subtropical, tropical; влажность — одна из: wet, dry. Генератор сравнивает значения буквально, поэтому зона с любым другим написанием никогда не появится на карте: её пара осей останется пустой, и климат возьмёт другую зону той же температуры."
 
@@ -2574,9 +2493,6 @@ msgstr "Задержка появления всплывающих подска�
 msgid "Total"
 msgstr "Итого"
 
-msgid "Total effect"
-msgstr "Суммарный эффект"
-
 msgid "Total: %.1f/sec"
 msgstr "Итого: %.1f/сек"
 
@@ -2585,9 +2501,6 @@ msgstr "Городок"
 
 msgid "Town %d"
 msgstr "Городок %d"
-
-msgid "Towns"
-msgstr "Городки"
 
 msgid "Trade"
 msgstr "Торговля"
@@ -2603,12 +2516,6 @@ msgstr "Торговля недоступна: от города нет доро
 
 msgid "Trade with towns"
 msgstr "Торговля с городками"
-
-msgid "Treasury: %d"
-msgstr "Казна: %d"
-
-msgid "Treasury: %d %s"
-msgstr "Казна: %d %s"
 
 msgid "Treasury: %s"
 msgstr "Казна: %s"
@@ -2724,9 +2631,6 @@ msgstr "Работа мастера"
 msgid "World"
 msgstr "Мир"
 
-msgid "World settings"
-msgstr "Настройки мира"
-
 msgid "X"
 msgstr "X"
 
@@ -2796,9 +2700,6 @@ msgstr "простаивает"
 msgid "impassable"
 msgstr "непроходимо"
 
-msgid "new branch"
-msgstr "новая ветка"
-
 msgid "no path"
 msgstr "нет пути"
 
@@ -2820,9 +2721,6 @@ msgstr "позиция %d: «%s» (U+%04X"
 msgid "produces goods '%s' from resource '%s'"
 msgstr "produces продукта '%s' ресурса '%s'"
 
-msgid "rank %d → %d"
-msgstr "ранг %d → %d"
-
 msgid "sec"
 msgstr "сек"
 
@@ -2843,9 +2741,6 @@ msgstr "маршрут уже этого уровня"
 
 msgid "the town"
 msgstr "городка"
-
-msgid "the warehouse will run dry"
-msgstr "склад опустеет"
 
 msgid "units/sec"
 msgstr "ед./сек"
@@ -2879,30 +2774,6 @@ msgstr "≈ в динамике — плановое значение в пер�
 
 msgid "★"
 msgstr "★"
-
-msgctxt "biomes.name"
-msgid "Jungle"
-msgstr "Джунгли"
-
-msgctxt "biomes.name"
-msgid "Savanna"
-msgstr "Саванна"
-
-msgctxt "biomes.name"
-msgid "Steppe"
-msgstr "Степь"
-
-msgctxt "biomes.name"
-msgid "Taiga"
-msgstr "Тайга"
-
-msgctxt "biomes.name"
-msgid "Temperate Forest"
-msgstr "Умеренный лес"
-
-msgctxt "biomes.name"
-msgid "Tundra"
-msgstr "Тундра"
 
 msgctxt "buildings.description"
 msgid "A building where alchemists run all kinds of chemical reactions."
@@ -2958,10 +2829,6 @@ msgstr "Кузнецы куют здесь металлические инстр
 
 msgctxt "buildings.description"
 msgid "Boils a sweet juice down to sugar."
-msgstr "Уваривает сладкий сок до сахара."
-
-msgctxt "buildings.description"
-msgid "Boils a sweet sap down to sugar."
 msgstr "Уваривает сладкий сок до сахара."
 
 msgctxt "buildings.description"
@@ -3169,10 +3036,6 @@ msgid "Slaughterhouse"
 msgstr "Бойня"
 
 msgctxt "buildings.name"
-msgid "Small (30×30)"
-msgstr "Маленькая (30×30)"
-
-msgctxt "buildings.name"
 msgid "Smelter"
 msgstr "Плавильня"
 
@@ -3321,10 +3184,6 @@ msgid "Forest"
 msgstr "Лес"
 
 msgctxt "covers.name"
-msgid "Jungle"
-msgstr "Джунгли"
-
-msgctxt "covers.name"
 msgid "Moss and Lichen"
 msgstr "Мхи и лишайники"
 
@@ -3345,10 +3204,6 @@ msgid "Sparse Forest"
 msgstr "Редколесье"
 
 msgctxt "covers.name"
-msgid "Sparse Jungle"
-msgstr "Редкие джунгли"
-
-msgctxt "covers.name"
 msgid "Sparse Taiga"
 msgstr "Редкая тайга"
 
@@ -3363,10 +3218,6 @@ msgstr "Редкий умеренный дождевой лес"
 msgctxt "covers.name"
 msgid "Sparse Tropical Dry Forest"
 msgstr "Редкий сухой тропический лес"
-
-msgctxt "covers.name"
-msgid "Sparse Tropical Forest"
-msgstr "Редкий тропический лес"
 
 msgctxt "covers.name"
 msgid "Sparse Tropical Rainforest"
@@ -3387,10 +3238,6 @@ msgstr "Умеренный дождевой лес"
 msgctxt "covers.name"
 msgid "Tropical Dry Forest"
 msgstr "Сухой тропический лес"
-
-msgctxt "covers.name"
-msgid "Tropical Forest"
-msgstr "Тропический лес"
 
 msgctxt "covers.name"
 msgid "Tropical Rainforest"
@@ -3419,10 +3266,6 @@ msgstr "Выдувает бутылки из расплавленного сте
 msgctxt "crafts.description"
 msgid "Boils a sweet juice down to sugar."
 msgstr "Уваривает сладкий сок до сахара"
-
-msgctxt "crafts.description"
-msgid "Boils a sweet sap down to sugar: cane juice or maple sap."
-msgstr "Уваривает сладкий сок до сахара: тростниковый или кленовый"
 
 msgctxt "crafts.description"
 msgid "Brews beer bittered and preserved with hops."
@@ -5893,24 +5736,12 @@ msgid "Requires: %s"
 msgstr "Требуется: %s"
 
 msgctxt "specializations.description"
-msgid "A library turns the city into a seat of learning, and every study in it goes faster."
-msgstr "Библиотека превращает город в средоточие знаний, и любые исследования идут в нём быстрее."
-
-msgctxt "specializations.description"
 msgid "The city digs deeper. The mines, the quarries and the pits of the city yield far more than before."
 msgstr "Город копает глубже. Шахты, карьеры и ямы города дают значительно больше, чем прежде."
 
 msgctxt "specializations.description"
-msgid "The city is a place of merchants. Towns pay more for the goods of the city and ask less for their own per rank."
-msgstr "Город — место торговцев. Городки платят больше за товары города и просят меньше за свои за каждый ранг."
-
-msgctxt "specializations.description"
 msgid "The city is a place of merchants. Towns pay more for the goods of the city and ask less for their own."
 msgstr "Город — место торговцев. Городки платят больше за товары города и просят меньше за свои."
-
-msgctxt "specializations.description"
-msgid "The city is a place of scholars. The science of every building and the studies of the city advance faster per rank."
-msgstr "Город — место учёных. Наука каждого здания и исследования города идут быстрее за каждый ранг."
 
 msgctxt "specializations.description"
 msgid "The city is a place of scholars. The science of every building and the studies of the city advance faster."
@@ -5921,24 +5752,12 @@ msgid "The city lives by its own market. The citizens pay more for the goods of 
 msgstr "Город живёт своим рынком. Горожане платят больше за товары города, и каждая продажа на внутреннем рынке приносит казне больше."
 
 msgctxt "specializations.description"
-msgid "The city lives off the land. Every improvement on the map — a farm, a mine, a quarry, a woodcutter's camp — yields more per rank."
-msgstr "Город живёт за счёт земли. Каждое улучшение на карте — ферма, шахта, каменоломня, лесопилка — даёт больше за каждый ранг."
-
-msgctxt "specializations.description"
 msgid "The city lives off the land. Every improvement on the map — a farm, a mine, a quarry, a woodcutter's camp — yields more."
 msgstr "Город живёт за счёт земли. Каждое улучшение на карте — ферма, шахта, карьер, хижина лесоруба — даёт больше."
 
 msgctxt "specializations.description"
-msgid "The craftsmen of the city have banded together. Their workshops produce more, and their merchants know the worth of a good."
-msgstr "Ремесленники города объединились в гильдии. Их мастерские производят больше, а купцы знают цену товару."
-
-msgctxt "specializations.description"
 msgid "The land feeds the city. The farms, the plantations and the pastures of the city yield far more than before."
 msgstr "Земля кормит город. Фермы, плантации и пастбища города дают значительно больше, чем прежде."
-
-msgctxt "specializations.description"
-msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more per rank."
-msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше за каждый ранг."
 
 msgctxt "specializations.description"
 msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
@@ -5965,10 +5784,6 @@ msgid "Foreign Trade"
 msgstr "Внешняя торговля"
 
 msgctxt "specializations.name"
-msgid "Guilds"
-msgstr "Гильдейская"
-
-msgctxt "specializations.name"
 msgid "Industry"
 msgstr "Промышленная"
 
@@ -5981,16 +5796,8 @@ msgid "Raw Materials"
 msgstr "Сырьевая"
 
 msgctxt "specializations.name"
-msgid "Scholarship"
-msgstr "Учёность"
-
-msgctxt "specializations.name"
 msgid "Science"
 msgstr "Научная"
-
-msgctxt "specializations.name"
-msgid "Trade"
-msgstr "Торговля"
 
 msgctxt "technologies.description"
 msgid "+30% to resource production on plantations."
@@ -6107,10 +5914,6 @@ msgstr "Даёт возможность строить плавильную пе
 msgctxt "technologies.description"
 msgid "Allows you to build the soapmaker's house: vegetable oil and soda → soap."
 msgstr "Даёт возможность строить дом мыловара: растительное масло и сода → мыло."
-
-msgctxt "technologies.description"
-msgid "Allows you to build the sugar boiler: sugar cane or maple sap → sugar."
-msgstr "Даёт возможность строить сахароварню: сахарный тростник или кленовый сок → сахар."
 
 msgctxt "technologies.description"
 msgid "Allows you to build the sugar boiler: sweet juice → sugar."
@@ -6641,32 +6444,12 @@ msgid "Freshwater Lake"
 msgstr "Пресноводное озеро"
 
 msgctxt "terrains.name"
-msgid "Hills"
-msgstr "Холмы"
-
-msgctxt "terrains.name"
 msgid "Marsh"
 msgstr "Марши"
 
 msgctxt "terrains.name"
 msgid "Mountains"
 msgstr "Горы"
-
-msgctxt "terrains.name"
-msgid "Plain"
-msgstr "Равнина"
-
-msgctxt "terrains.name"
-msgid "Prairie"
-msgstr "Прерия"
-
-msgctxt "terrains.name"
-msgid "Prairie Hills"
-msgstr "Прерийные холмы"
-
-msgctxt "terrains.name"
-msgid "Prairie Mountains"
-msgstr "Прерийные горы"
 
 msgctxt "terrains.name"
 msgid "Prairie, Hills"
@@ -6689,18 +6472,6 @@ msgid "Sandy Desert"
 msgstr "Песчаная пустыня"
 
 msgctxt "terrains.name"
-msgid "Savanna"
-msgstr "Саванна"
-
-msgctxt "terrains.name"
-msgid "Savanna Hills"
-msgstr "Саванные холмы"
-
-msgctxt "terrains.name"
-msgid "Savanna Mountains"
-msgstr "Саванные горы"
-
-msgctxt "terrains.name"
 msgid "Savanna, Hills"
 msgstr "Саванна, холмы"
 
@@ -6721,18 +6492,6 @@ msgid "Soda Lake"
 msgstr "Содовое озеро"
 
 msgctxt "terrains.name"
-msgid "Steppe"
-msgstr "Степь"
-
-msgctxt "terrains.name"
-msgid "Steppe Hills"
-msgstr "Степные холмы"
-
-msgctxt "terrains.name"
-msgid "Steppe Mountains"
-msgstr "Степные горы"
-
-msgctxt "terrains.name"
 msgid "Steppe, Hills"
 msgstr "Степь, холмы"
 
@@ -6745,18 +6504,6 @@ msgid "Swamps"
 msgstr "Болота"
 
 msgctxt "terrains.name"
-msgid "Tropical Hills"
-msgstr "Тропические холмы"
-
-msgctxt "terrains.name"
-msgid "Tropical Mountains"
-msgstr "Тропические горы"
-
-msgctxt "terrains.name"
-msgid "Tropical Plain"
-msgstr "Тропическая равнина"
-
-msgctxt "terrains.name"
 msgid "Tropical, Hills"
 msgstr "Тропики, холмы"
 
@@ -6765,28 +6512,12 @@ msgid "Tropical, Plain"
 msgstr "Тропики, равнина"
 
 msgctxt "terrains.name"
-msgid "Tundra"
-msgstr "Тундра"
-
-msgctxt "terrains.name"
-msgid "Tundra Hills"
-msgstr "Тундровые холмы"
-
-msgctxt "terrains.name"
-msgid "Tundra Mountains"
-msgstr "Тундровые горы"
-
-msgctxt "terrains.name"
 msgid "Tundra, Hills"
 msgstr "Тундра, холмы"
 
 msgctxt "terrains.name"
 msgid "Tundra, Plain"
 msgstr "Тундра, равнина"
-
-msgctxt "validator_entity_ref_biome"
-msgid "this biome"
-msgstr "этот биом"
 
 msgctxt "validator_entity_ref_building"
 msgid "this building"
@@ -6872,10 +6603,6 @@ msgctxt "validator_entity_ref_terrain_family"
 msgid "this terrain family"
 msgstr "это семейство местности"
 
-msgctxt "validator_entity_source_biome"
-msgid "biome"
-msgstr "биоме"
-
 msgctxt "validator_entity_source_building"
 msgid "building"
 msgstr "здании"
@@ -6959,10 +6686,6 @@ msgstr "местности"
 msgctxt "validator_entity_source_terrain_family"
 msgid "terrain family"
 msgstr "семейство местности"
-
-msgctxt "validator_entity_title_biome"
-msgid "Biome"
-msgstr "Биома"
 
 msgctxt "validator_entity_title_building"
 msgid "Building"

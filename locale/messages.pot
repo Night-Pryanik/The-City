@@ -312,9 +312,6 @@ msgstr ""
 msgid "%s\nScience: %d%s"
 msgstr ""
 
-msgid "%s (Specialization)"
-msgstr ""
-
 msgid "%s (base %d):"
 msgstr ""
 
@@ -325,9 +322,6 @@ msgid "%s (free)"
 msgstr ""
 
 msgid "%s (level %d, up to %d units/sec per section)"
-msgstr ""
-
-msgid "%s (rank %d)"
 msgstr ""
 
 msgid "%s [%s] (science: %d)"
@@ -378,9 +372,6 @@ msgstr ""
 msgid "%s%s/sec"
 msgstr ""
 
-msgid "%s/sec"
-msgstr ""
-
 msgid "%s: %.1f/sec"
 msgstr ""
 
@@ -388,9 +379,6 @@ msgid "%s: %d sections, built one at a time"
 msgstr ""
 
 msgid "%s: %d units every %s per person × %d = %d per cycle"
-msgstr ""
-
-msgid "%s: %s"
 msgstr ""
 
 msgid "%s: %s / sec"
@@ -609,15 +597,6 @@ msgstr ""
 msgid "Beaches"
 msgstr ""
 
-msgid "Biome %s has an unknown %s \"%s\"."
-msgstr ""
-
-msgid "Biome: %s"
-msgstr ""
-
-msgid "Biome: unknown climate axis value"
-msgstr ""
-
 msgid "Blacklist names a nonexistent entity"
 msgstr ""
 
@@ -694,9 +673,6 @@ msgid "Buyers:"
 msgstr ""
 
 msgid "Buying"
-msgstr ""
-
-msgid "Buying from towns: %s"
 msgstr ""
 
 msgid "Buying from towns: %s to the price"
@@ -792,25 +768,16 @@ msgstr ""
 msgid "Choose"
 msgstr ""
 
-msgid "Choose a city name"
-msgstr ""
-
 msgid "Choose the mods for this game. Each save keeps its own set."
 msgstr ""
 
 msgid "Chosen"
 msgstr ""
 
-msgid "Chosen branches"
-msgstr ""
-
 msgid "City"
 msgstr ""
 
 msgid "City %s"
-msgstr ""
-
-msgid "City buildings: %s"
 msgstr ""
 
 msgid "City buildings: %s to production"
@@ -1042,12 +1009,6 @@ msgid "Copy the list"
 msgstr ""
 
 msgid "Cost:"
-msgstr ""
-
-msgid "Cost: %d"
-msgstr ""
-
-msgid "Cost: %d/sec"
 msgstr ""
 
 msgid "Cost: %s"
@@ -1371,9 +1332,6 @@ msgstr ""
 msgid "Improvements"
 msgstr ""
 
-msgid "Improvements on the map: %s"
-msgstr ""
-
 msgid "Improvements on the map: %s to production"
 msgstr ""
 
@@ -1384,12 +1342,6 @@ msgid "Income to the treasury over %s sec: %s coins/sec"
 msgstr ""
 
 msgid "Income:"
-msgstr ""
-
-msgid "Income: %d"
-msgstr ""
-
-msgid "Income: %d/sec"
 msgstr ""
 
 msgid "Income: %s"
@@ -1656,9 +1608,6 @@ msgstr ""
 msgid "Nonexistent product in a goods group"
 msgstr ""
 
-msgid "Not available yet"
-msgstr ""
-
 msgid "Not enough coins for the contract: %d per second."
 msgstr ""
 
@@ -1821,9 +1770,6 @@ msgstr ""
 msgid "Price:"
 msgstr ""
 
-msgid "Price: "
-msgstr ""
-
 msgid "Produces:"
 msgstr ""
 
@@ -1929,9 +1875,6 @@ msgstr ""
 msgid "Remove the worker from the improvement"
 msgstr ""
 
-msgid "Reputation and specialization"
-msgstr ""
-
 msgid "Requirement:"
 msgstr ""
 
@@ -1971,9 +1914,6 @@ msgstr ""
 msgid "Research complete: "
 msgstr ""
 
-msgid "Research speed: %s"
-msgstr ""
-
 msgid "Research the technology that unlocks \"%s\" first"
 msgstr ""
 
@@ -2008,9 +1948,6 @@ msgid "Resource quality levels: %s"
 msgstr ""
 
 msgid "Resources"
-msgstr ""
-
-msgid "Resume"
 msgstr ""
 
 msgid "Resume "
@@ -2139,12 +2076,6 @@ msgstr ""
 msgid "Selling"
 msgstr ""
 
-msgid "Selling goods to the towns is not implemented yet — the order was not placed."
-msgstr ""
-
-msgid "Selling to towns: %s"
-msgstr ""
-
 msgid "Selling to towns: %s to the price"
 msgstr ""
 
@@ -2224,9 +2155,6 @@ msgid "Start"
 msgstr ""
 
 msgid "Start operation (%s)"
-msgstr ""
-
-msgid "Start the game"
 msgstr ""
 
 msgid "Stop \"%s\""
@@ -2361,9 +2289,6 @@ msgstr ""
 msgid "The city does not have %d units of %s."
 msgstr ""
 
-msgid "The city has none of these goods: there is nothing to deliver"
-msgstr ""
-
 msgid "The city needs access to fresh water"
 msgstr ""
 
@@ -2472,12 +2397,6 @@ msgstr ""
 msgid "The smallest and the largest island, in hexes."
 msgstr ""
 
-msgid "The temperature is one of: cold, mild, hot; the humidity — one of: wet, dry. The generator compares the values literally, so a biome with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another biome."
-msgstr ""
-
-msgid "The temperature is one of: cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature."
-msgstr ""
-
 msgid "The temperature is one of: polar, cold, mild, subtropical, tropical; the humidity — one of: wet, dry. The generator compares the values literally, so a zone with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another zone of the same temperature."
 msgstr ""
 
@@ -2574,9 +2493,6 @@ msgstr ""
 msgid "Total"
 msgstr ""
 
-msgid "Total effect"
-msgstr ""
-
 msgid "Total: %.1f/sec"
 msgstr ""
 
@@ -2584,9 +2500,6 @@ msgid "Town"
 msgstr ""
 
 msgid "Town %d"
-msgstr ""
-
-msgid "Towns"
 msgstr ""
 
 msgid "Trade"
@@ -2602,12 +2515,6 @@ msgid "Trade unavailable: there is no road from the city to this town"
 msgstr ""
 
 msgid "Trade with towns"
-msgstr ""
-
-msgid "Treasury: %d"
-msgstr ""
-
-msgid "Treasury: %d %s"
 msgstr ""
 
 msgid "Treasury: %s"
@@ -2724,9 +2631,6 @@ msgstr ""
 msgid "World"
 msgstr ""
 
-msgid "World settings"
-msgstr ""
-
 msgid "X"
 msgstr ""
 
@@ -2796,9 +2700,6 @@ msgstr ""
 msgid "impassable"
 msgstr ""
 
-msgid "new branch"
-msgstr ""
-
 msgid "no path"
 msgstr ""
 
@@ -2820,9 +2721,6 @@ msgstr ""
 msgid "produces goods '%s' from resource '%s'"
 msgstr ""
 
-msgid "rank %d → %d"
-msgstr ""
-
 msgid "sec"
 msgstr ""
 
@@ -2842,9 +2740,6 @@ msgid "the route is already at this level"
 msgstr ""
 
 msgid "the town"
-msgstr ""
-
-msgid "the warehouse will run dry"
 msgstr ""
 
 msgid "units/sec"
@@ -2878,30 +2773,6 @@ msgid "≈ in the live view — the planned value per second"
 msgstr ""
 
 msgid "★"
-msgstr ""
-
-msgctxt "biomes.name"
-msgid "Jungle"
-msgstr ""
-
-msgctxt "biomes.name"
-msgid "Savanna"
-msgstr ""
-
-msgctxt "biomes.name"
-msgid "Steppe"
-msgstr ""
-
-msgctxt "biomes.name"
-msgid "Taiga"
-msgstr ""
-
-msgctxt "biomes.name"
-msgid "Temperate Forest"
-msgstr ""
-
-msgctxt "biomes.name"
-msgid "Tundra"
 msgstr ""
 
 msgctxt "buildings.description"
@@ -2958,10 +2829,6 @@ msgstr ""
 
 msgctxt "buildings.description"
 msgid "Boils a sweet juice down to sugar."
-msgstr ""
-
-msgctxt "buildings.description"
-msgid "Boils a sweet sap down to sugar."
 msgstr ""
 
 msgctxt "buildings.description"
@@ -3169,10 +3036,6 @@ msgid "Slaughterhouse"
 msgstr ""
 
 msgctxt "buildings.name"
-msgid "Small (30×30)"
-msgstr ""
-
-msgctxt "buildings.name"
 msgid "Smelter"
 msgstr ""
 
@@ -3321,10 +3184,6 @@ msgid "Forest"
 msgstr ""
 
 msgctxt "covers.name"
-msgid "Jungle"
-msgstr ""
-
-msgctxt "covers.name"
 msgid "Moss and Lichen"
 msgstr ""
 
@@ -3345,10 +3204,6 @@ msgid "Sparse Forest"
 msgstr ""
 
 msgctxt "covers.name"
-msgid "Sparse Jungle"
-msgstr ""
-
-msgctxt "covers.name"
 msgid "Sparse Taiga"
 msgstr ""
 
@@ -3362,10 +3217,6 @@ msgstr ""
 
 msgctxt "covers.name"
 msgid "Sparse Tropical Dry Forest"
-msgstr ""
-
-msgctxt "covers.name"
-msgid "Sparse Tropical Forest"
 msgstr ""
 
 msgctxt "covers.name"
@@ -3386,10 +3237,6 @@ msgstr ""
 
 msgctxt "covers.name"
 msgid "Tropical Dry Forest"
-msgstr ""
-
-msgctxt "covers.name"
-msgid "Tropical Forest"
 msgstr ""
 
 msgctxt "covers.name"
@@ -3418,10 +3265,6 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Boils a sweet juice down to sugar."
-msgstr ""
-
-msgctxt "crafts.description"
-msgid "Boils a sweet sap down to sugar: cane juice or maple sap."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -5893,23 +5736,11 @@ msgid "Requires: %s"
 msgstr ""
 
 msgctxt "specializations.description"
-msgid "A library turns the city into a seat of learning, and every study in it goes faster."
-msgstr ""
-
-msgctxt "specializations.description"
 msgid "The city digs deeper. The mines, the quarries and the pits of the city yield far more than before."
 msgstr ""
 
 msgctxt "specializations.description"
-msgid "The city is a place of merchants. Towns pay more for the goods of the city and ask less for their own per rank."
-msgstr ""
-
-msgctxt "specializations.description"
 msgid "The city is a place of merchants. Towns pay more for the goods of the city and ask less for their own."
-msgstr ""
-
-msgctxt "specializations.description"
-msgid "The city is a place of scholars. The science of every building and the studies of the city advance faster per rank."
 msgstr ""
 
 msgctxt "specializations.description"
@@ -5921,23 +5752,11 @@ msgid "The city lives by its own market. The citizens pay more for the goods of 
 msgstr ""
 
 msgctxt "specializations.description"
-msgid "The city lives off the land. Every improvement on the map — a farm, a mine, a quarry, a woodcutter's camp — yields more per rank."
-msgstr ""
-
-msgctxt "specializations.description"
 msgid "The city lives off the land. Every improvement on the map — a farm, a mine, a quarry, a woodcutter's camp — yields more."
 msgstr ""
 
 msgctxt "specializations.description"
-msgid "The craftsmen of the city have banded together. Their workshops produce more, and their merchants know the worth of a good."
-msgstr ""
-
-msgctxt "specializations.description"
 msgid "The land feeds the city. The farms, the plantations and the pastures of the city yield far more than before."
-msgstr ""
-
-msgctxt "specializations.description"
-msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more per rank."
 msgstr ""
 
 msgctxt "specializations.description"
@@ -5965,10 +5784,6 @@ msgid "Foreign Trade"
 msgstr ""
 
 msgctxt "specializations.name"
-msgid "Guilds"
-msgstr ""
-
-msgctxt "specializations.name"
 msgid "Industry"
 msgstr ""
 
@@ -5981,15 +5796,7 @@ msgid "Raw Materials"
 msgstr ""
 
 msgctxt "specializations.name"
-msgid "Scholarship"
-msgstr ""
-
-msgctxt "specializations.name"
 msgid "Science"
-msgstr ""
-
-msgctxt "specializations.name"
-msgid "Trade"
 msgstr ""
 
 msgctxt "technologies.description"
@@ -6106,10 +5913,6 @@ msgstr ""
 
 msgctxt "technologies.description"
 msgid "Allows you to build the soapmaker's house: vegetable oil and soda → soap."
-msgstr ""
-
-msgctxt "technologies.description"
-msgid "Allows you to build the sugar boiler: sugar cane or maple sap → sugar."
 msgstr ""
 
 msgctxt "technologies.description"
@@ -6641,31 +6444,11 @@ msgid "Freshwater Lake"
 msgstr ""
 
 msgctxt "terrains.name"
-msgid "Hills"
-msgstr ""
-
-msgctxt "terrains.name"
 msgid "Marsh"
 msgstr ""
 
 msgctxt "terrains.name"
 msgid "Mountains"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Plain"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Prairie"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Prairie Hills"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Prairie Mountains"
 msgstr ""
 
 msgctxt "terrains.name"
@@ -6689,18 +6472,6 @@ msgid "Sandy Desert"
 msgstr ""
 
 msgctxt "terrains.name"
-msgid "Savanna"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Savanna Hills"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Savanna Mountains"
-msgstr ""
-
-msgctxt "terrains.name"
 msgid "Savanna, Hills"
 msgstr ""
 
@@ -6721,18 +6492,6 @@ msgid "Soda Lake"
 msgstr ""
 
 msgctxt "terrains.name"
-msgid "Steppe"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Steppe Hills"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Steppe Mountains"
-msgstr ""
-
-msgctxt "terrains.name"
 msgid "Steppe, Hills"
 msgstr ""
 
@@ -6745,18 +6504,6 @@ msgid "Swamps"
 msgstr ""
 
 msgctxt "terrains.name"
-msgid "Tropical Hills"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Tropical Mountains"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Tropical Plain"
-msgstr ""
-
-msgctxt "terrains.name"
 msgid "Tropical, Hills"
 msgstr ""
 
@@ -6765,27 +6512,11 @@ msgid "Tropical, Plain"
 msgstr ""
 
 msgctxt "terrains.name"
-msgid "Tundra"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Tundra Hills"
-msgstr ""
-
-msgctxt "terrains.name"
-msgid "Tundra Mountains"
-msgstr ""
-
-msgctxt "terrains.name"
 msgid "Tundra, Hills"
 msgstr ""
 
 msgctxt "terrains.name"
 msgid "Tundra, Plain"
-msgstr ""
-
-msgctxt "validator_entity_ref_biome"
-msgid "this biome"
 msgstr ""
 
 msgctxt "validator_entity_ref_building"
@@ -6872,10 +6603,6 @@ msgctxt "validator_entity_ref_terrain_family"
 msgid "this terrain family"
 msgstr ""
 
-msgctxt "validator_entity_source_biome"
-msgid "biome"
-msgstr ""
-
 msgctxt "validator_entity_source_building"
 msgid "building"
 msgstr ""
@@ -6958,10 +6685,6 @@ msgstr ""
 
 msgctxt "validator_entity_source_terrain_family"
 msgid "terrain family"
-msgstr ""
-
-msgctxt "validator_entity_title_biome"
-msgid "Biome"
 msgstr ""
 
 msgctxt "validator_entity_title_building"
