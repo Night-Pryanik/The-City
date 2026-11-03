@@ -111,6 +111,16 @@
       "prerequisites": [ [ "glassmaking" ] ],
       "description": "Unlocks recipe for glass bottles.",
       "flavor": "The first step towards the modern glass industry."
+    },
+    {
+      "id": "hopping",
+      "name": "Hopping",
+      "era": "antiquity",
+      "science_cost": 3.0,
+      "icon": "hopping.png",
+      "prerequisites": [ [ "fermentation" ], [ "plantations" ] ],
+      "description": "Unlocks the recipe for hopped beer.",
+      "flavor": "Hops made beer keep. Grain alone gave a drink that soured within days; a bittering charge of hops held it back, and beer became a good that could be stored and shipped."
     }
   ]
 }

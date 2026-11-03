@@ -10,6 +10,16 @@
       "icon": "beer.png"
     },
     {
+      // Drawn with the icon of plain beer until it gets its own.
+      "id": "hopped_beer",
+      "price": 14,
+      "name": "Hopped Beer",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "hopping",
+      "icon": "beer.png"
+    },
+    {
       "id": "mead",
       "price": 12,
       "name": "Mead",

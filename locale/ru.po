@@ -3302,6 +3302,10 @@ msgid "Boils a sweet sap down to sugar: cane juice or maple sap."
 msgstr "Уваривает сладкий сок до сахара: тростниковый или кленовый"
 
 msgctxt "crafts.description"
+msgid "Brews beer bittered and preserved with hops."
+msgstr "Варит пиво с хмелем: горечь и долгий срок хранения"
+
+msgctxt "crafts.description"
 msgid "Brews beer from grain."
 msgstr "Варит пиво из зерновых культур"
 
@@ -3828,6 +3832,10 @@ msgstr "Цесарка"
 msgctxt "crafts.name"
 msgid "Henna"
 msgstr "Хна"
+
+msgctxt "crafts.name"
+msgid "Hopped Beer"
+msgstr "Хмелевое пиво"
 
 msgctxt "crafts.name"
 msgid "Horsemeat"
@@ -5038,6 +5046,10 @@ msgid "Honey"
 msgstr "Мёд"
 
 msgctxt "resources.name"
+msgid "Hopped Beer"
+msgstr "Хмелевое пиво"
+
+msgctxt "resources.name"
 msgid "Hops"
 msgstr "Хмель"
 
@@ -5942,6 +5954,10 @@ msgid "Unlocks the ability to grow water-loving crops: rice and taro.\nAllows fa
 msgstr "Открывает возможность возделывать влаголюбивые культуры: рис и таро.\nПозволяет фермам и плантациям передавать пресную воду по цепочке (до 3 гексов).\nПозволяет осушать болота."
 
 msgctxt "technologies.description"
+msgid "Unlocks the recipe for hopped beer."
+msgstr "Открывает рецепт хмелевого пива."
+
+msgctxt "technologies.description"
 msgid "Unlocks the use of draft animals to turn millstones."
 msgstr "Открывает использование тягловых животных для вращения мельничных жерновов."
 
@@ -6008,6 +6024,10 @@ msgstr "Рыболовство — одно из древнейших занят
 msgctxt "technologies.flavor"
 msgid "For centuries potters watched sand and alkali turn in their kilns into a shining crust of glass. Then one day someone had the idea of doing it on purpose. Glassmaking became more than an accident: it became a deliberate craft. The new material changed the world: beads, amulets, and later tableware and windows. Transparency became a symbol of enlightenment."
 msgstr "Веками гончары наблюдали, как песок и щелочь в их печах превращаются в блестящую стеклянную корку. Однажды кому-то пришло в голову сделать это намеренно. Стеклоделие стало не просто случайностью, а осознанным ремеслом. Новый материал изменил мир: бусы, амулеты, а позже — посуда и окна. Прозрачность стала символом просвещения."
+
+msgctxt "technologies.flavor"
+msgid "Hops made beer keep. Grain alone gave a drink that soured within days; a bittering charge of hops held it back, and beer became a good that could be stored and shipped."
+msgstr "Хмель научил пиво храниться. Зерновой напиток без горечи скисал за несколько дней; хмель отодвигал порчу, и пиво стало товаром, который можно хранить и вывозить."
 
 msgctxt "technologies.flavor"
 msgid "In scriptoriums scribes copied, translated, rewrote and recensioned texts on administration, the worship of the gods, magic and the curing of disease."
@@ -6208,6 +6228,10 @@ msgstr "Выдувание стекла"
 msgctxt "technologies.name"
 msgid "Glassmaking"
 msgstr "Стеклоделие"
+
+msgctxt "technologies.name"
+msgid "Hopping"
+msgstr "Хмелеварение"
 
 msgctxt "technologies.name"
 msgid "Iron Processing"

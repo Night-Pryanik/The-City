@@ -178,6 +178,19 @@
       "description": "Brews beer from grain."
     },
     {
+      // Hops is a preservative, not a decoration, so it is a recipe of its own and not a
+      // variant of the plain one: grain beer keeps brewing, and both recipes compete for the
+      // brewhouse and for the grain.
+      "id": "hopped_beer",
+      "name": "Hopped Beer",
+      "produced_in": [ "brewer_house" ],
+      "resources": { "@millable_grains": 20, "hops": 10 },
+      "result": { "hopped_beer": 10 },
+      "time": 6.0,
+      "unlock_tech": "hopping",
+      "description": "Brews beer bittered and preserved with hops."
+    },
+    {
       "id": "mead",
       "name": "Mead",
       "produced_in": [ "brewer_house" ],

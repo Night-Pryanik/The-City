@@ -174,7 +174,7 @@
     {
       "id": "alcohol",
       "name": "Alcohol",
-      "products": [ "beer", "mead", "sake", "pulque", "toddy", "wine", "fruit_wine" ]
+      "products": [ "beer", "mead", "sake", "pulque", "toddy", "wine", "fruit_wine", "hopped_beer" ]
     },
     {
       "id": "tableware",
