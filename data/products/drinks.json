@@ -46,6 +46,15 @@
       "icon": "pulque.png"
     },
     {
+      "id": "toddy",
+      "price": 6,
+      "name": "Toddy",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "fermentation",
+      "icon": "toddy.png"
+    },
+    {
       "id": "tea",
       "price": 15,
       "name": "Tea",

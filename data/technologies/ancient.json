@@ -212,7 +212,7 @@
       "science_cost": 3.0,
       "icon": "fermentation.png",
       "prerequisites": [ [ "farming" ] ],
-      "description": "Allows you to build the brewer's house. Unlocks recipes for brewing beer, pulque and sake.",
+      "description": "Allows you to build the brewer's house. Unlocks recipes for brewing beer, pulque, sake and toddy.",
       "flavor": "Fermentation let people turn grain and fruit into alcohol, drunk in rituals and in daily life."
     },
     {

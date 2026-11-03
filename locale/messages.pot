@@ -3318,6 +3318,10 @@ msgid "Brews sake from rice."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Brews toddy from palm sap."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Builds a boat from reeds."
 msgstr ""
 
@@ -4027,6 +4031,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Tin"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Toddy"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4826,11 +4834,23 @@ msgid "Cocoa Beans"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Coconut Palm"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Coconuts"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Coffee"
 msgstr ""
 
 msgctxt "resources.name"
 msgid "Coffee Beans"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Coir"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5250,6 +5270,10 @@ msgid "Oysters"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Palm Sap"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Paper"
 msgstr ""
 
@@ -5574,6 +5598,10 @@ msgid "Tobacco"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Toddy"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Tuff"
 msgstr ""
 
@@ -5790,6 +5818,10 @@ msgid "Allows you to build the brewer's house. Unlocks recipes for brewing beer,
 msgstr ""
 
 msgctxt "technologies.description"
+msgid "Allows you to build the brewer's house. Unlocks recipes for brewing beer, pulque, sake and toddy."
+msgstr ""
+
+msgctxt "technologies.description"
 msgid "Allows you to build the clay pit and the pottery workshop."
 msgstr ""
 
@@ -5835,10 +5867,6 @@ msgstr ""
 
 msgctxt "technologies.description"
 msgid "Allows you to build the soapmaker's house: vegetable oil and soda → soap."
-msgstr ""
-
-msgctxt "technologies.description"
-msgid "Allows you to build the sugar boiler, which boils a sweet juice down to sugar."
 msgstr ""
 
 msgctxt "technologies.description"

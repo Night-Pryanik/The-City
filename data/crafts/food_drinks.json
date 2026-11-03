@@ -208,6 +208,18 @@
       "description": "Brews pulque from agave."
     },
     {
+      // The same palm sap that the boiler boils to sugar: left to work it sours
+      // into a drink within hours, so the two workshops compete for one harvest.
+      "id": "toddy",
+      "name": "Toddy",
+      "produced_in": [ "brewer_house" ],
+      "resources": { "palm_sap": 20 },
+      "result": { "toddy": 10 },
+      "time": 5.0,
+      "unlock_tech": "fermentation",
+      "description": "Brews toddy from palm sap."
+    },
+    {
       "id": "wine",
       "name": "Grape Wine",
       "produced_in": [ "winemaker_house" ],
@@ -314,7 +326,7 @@
       "id": "sugar",
       "name": "Sugar",
       "produced_in": [ "sugar_boiler" ],
-      "resources": [ [ { "sugar_cane": 20 }, { "maple_sap": 20 } ] ],
+      "resources": [ [ { "sugar_cane": 20 }, { "maple_sap": 20 }, { "palm_sap": 20 } ] ],
       "result": { "sugar": 10 },
       "time": 5.0,
       "unlock_tech": "sugar_making",

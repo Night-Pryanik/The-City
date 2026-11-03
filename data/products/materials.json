@@ -102,6 +102,16 @@
       "icon": "agave.png"
     },
     {
+      // The fibre of the coconut husk: too coarse for cloth, so it goes to
+      // cordage.
+      "id": "coir", "price": 5,
+      "name": "Coir",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "plantations",
+      "icon": "coir.png"
+    },
+    {
       "id": "kenaf", "price": 6,
       "name": "Kenaf",
       "type": "product",
@@ -418,14 +428,25 @@
     { "id": "sugar_cane", "price": 7, "name": "Sugar Cane", "type": "product", "category": "material", "icon": "sugar_cane.png" },
     {
       // The cold belt's sugar feedstock. A batch of sugar asks the same amount
-      // of sap as of cane, so the cheaper sap makes the northern route the
-      // cheaper of the two; climate, not price, is what limits it.
+      // of sap as of cane, so the saps are the cheaper route to sugar; climate,
+      // not price, is what limits each of them.
       "id": "maple_sap", "price": 3,
       "name": "Maple Sap",
       "type": "product",
       "category": "material",
       "unlock_tech": "wood_processing",
       "icon": "maple_sap.png"
+    },
+    {
+      // The sweet juice tapped from the inflorescence of a palm — the third
+      // sugar feedstock and the only one of a warm shore. Nothing is boiled
+      // from the nut itself: its sugars are not in the meat.
+      "id": "palm_sap", "price": 3,
+      "name": "Palm Sap",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "plantations",
+      "icon": "palm_sap.png"
     }
   ]
 }

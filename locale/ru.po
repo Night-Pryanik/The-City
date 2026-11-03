@@ -3318,6 +3318,10 @@ msgid "Brews sake from rice."
 msgstr "Варит саке из риса"
 
 msgctxt "crafts.description"
+msgid "Brews toddy from palm sap."
+msgstr "Варит тодди из пальмового сока"
+
+msgctxt "crafts.description"
 msgid "Builds a boat from reeds."
 msgstr "Создает лодку из тростника"
 
@@ -4028,6 +4032,10 @@ msgstr "Чай"
 msgctxt "crafts.name"
 msgid "Tin"
 msgstr "Олово"
+
+msgctxt "crafts.name"
+msgid "Toddy"
+msgstr "Тодди"
 
 msgctxt "crafts.name"
 msgid "Turkey"
@@ -4826,12 +4834,24 @@ msgid "Cocoa Beans"
 msgstr "Какао-бобы"
 
 msgctxt "resources.name"
+msgid "Coconut Palm"
+msgstr "Кокосовая пальма"
+
+msgctxt "resources.name"
+msgid "Coconuts"
+msgstr "Кокосы"
+
+msgctxt "resources.name"
 msgid "Coffee"
 msgstr "Кофе"
 
 msgctxt "resources.name"
 msgid "Coffee Beans"
 msgstr "Кофейные зёрна"
+
+msgctxt "resources.name"
+msgid "Coir"
+msgstr "Койр"
 
 msgctxt "resources.name"
 msgid "Copper"
@@ -5250,6 +5270,10 @@ msgid "Oysters"
 msgstr "Устрицы"
 
 msgctxt "resources.name"
+msgid "Palm Sap"
+msgstr "Пальмовый сок"
+
+msgctxt "resources.name"
 msgid "Paper"
 msgstr "Бумага"
 
@@ -5574,6 +5598,10 @@ msgid "Tobacco"
 msgstr "Табак"
 
 msgctxt "resources.name"
+msgid "Toddy"
+msgstr "Тодди"
+
+msgctxt "resources.name"
 msgid "Tuff"
 msgstr "Туф"
 
@@ -5786,8 +5814,8 @@ msgid "Allows you to build the apiary."
 msgstr "Даёт возможность строить пасеку."
 
 msgctxt "technologies.description"
-msgid "Allows you to build the brewer's house. Unlocks recipes for brewing beer, pulque and sake."
-msgstr "Даёт возможность строить дом варщика. Открывает рецепты варки пива, пульке и саке."
+msgid "Allows you to build the brewer's house. Unlocks recipes for brewing beer, pulque, sake and toddy."
+msgstr "Даёт возможность строить дом варщика. Открывает рецепты варки пива, пульке, саке и тодди."
 
 msgctxt "technologies.description"
 msgid "Allows you to build the clay pit and the pottery workshop."

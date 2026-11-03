@@ -12,6 +12,14 @@
     },
     { "id": "figs", "price": 8, "name": "Figs", "type": "product", "category": "fruits", "icon": "figs.png" },
     { "id": "dates", "price": 10, "name": "Dates", "type": "product", "category": "fruits", "icon": "dates.png" },
+    {
+      "id": "coconuts",
+      "price": 8,
+      "name": "Coconuts",
+      "type": "product",
+      "category": "fruits",
+      "icon": "coconuts.png"
+    },
     { "id": "agave", "price": 4, "name": "Agave", "type": "product", "category": "fruits", "icon": "agave.png" },
     {
       "id": "cactus_fruit",

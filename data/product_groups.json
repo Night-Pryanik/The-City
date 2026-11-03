@@ -86,7 +86,8 @@
         "soybean",
         "olives",
         "kenaf",
-        "beech_nuts"
+        "beech_nuts",
+        "coconuts"
       ]
     },
     {
@@ -97,7 +98,7 @@
     {
       "id": "rope_fibers",
       "name": "Rope Fibers",
-      "products": [ "hemp", "jute", "ramie", "sisal", "papyrus", "kenaf", "yucca", "velvetleaf" ]
+      "products": [ "hemp", "jute", "ramie", "sisal", "papyrus", "kenaf", "yucca", "velvetleaf", "coir" ]
     },
     { "id": "boats", "name": "Boats", "products": [ "reed_boat" ] },
     {
@@ -109,6 +110,7 @@
         "mulberries",
         "figs",
         "dates",
+        "coconuts",
         "cactus_fruit",
         "agave",
         "pomegranates",
@@ -172,7 +174,7 @@
     {
       "id": "alcohol",
       "name": "Alcohol",
-      "products": [ "beer", "mead", "sake", "pulque", "wine", "fruit_wine" ]
+      "products": [ "beer", "mead", "sake", "pulque", "toddy", "wine", "fruit_wine" ]
     },
     {
       "id": "tableware",
