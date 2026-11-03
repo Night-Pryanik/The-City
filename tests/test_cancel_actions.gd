@@ -434,7 +434,10 @@ func _find_hex_with_special_action(main_map) -> Dictionary:
                 var tile = main_map.get_tile_data(row, col)
                 if tile == null or not bool(tile.get("in_influence", false)):
                     continue
-                # build_manager does not allow touching the hexes of a town and its influence ring.
+                # build_manager does not allow touching the city hex, the hexes of a town
+                # and its influence ring.
+                if row == main_map.city_row and col == main_map.city_col:
+                    continue
                 if bool(tile.get("has_town", false)) or bool(tile.get("in_town_influence", false)):
                         continue
                 if bool(tile.get("decorative", false)):
