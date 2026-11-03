@@ -519,11 +519,13 @@ func parse_additional_cost(raw) -> Array:
 # wrapper for the places where the OR-logic has to be applied manually (the container of
 # the craft, the planned demand, the trade pools of the towns).
 #
-# The amounts within an OR-group are deliberately NOT required to be equal: the chosen
-# variant is consumed in full, and which one — is decided by the availability in the storage.
-# Within a tick the variants are consumed greedily in the order of the list: if the
-# first variant has less than the tick asks, the remainder is taken from the next one,
-# so a partial stock is never wasted.
+# The amount of an OR-group is the FIRST variant's amount: the craft container asks
+# that many units and takes them from any variant of the group, so a variant cannot
+# carry a dose of its own — the variants of one group have to be written with EQUAL
+# amounts (all the OR-groups in the data are). Which variant is spent is decided by
+# the storage: within a tick they are consumed greedily in the order of the list,
+# and if the first one holds less than the tick asks, the remainder is taken from the
+# next, so a partial stock is never wasted — one batch may mix the variants.
 #
 # The normalization is deliberately in GameData and not in CraftContainer: besides the
 # container the alternatives are read by the planned demand, the trade pools of the

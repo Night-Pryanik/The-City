@@ -379,6 +379,14 @@
       "icon": "pine_wood.png"
     },
     {
+      "id": "maple_wood", "price": 6,
+      "name": "Maple Wood",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "maple_wood.png"
+    },
+    {
       "id": "beech_nuts", "price": 4,
       "name": "Beech Nuts",
       "type": "product",
@@ -407,6 +415,17 @@
     { "id": "rapeseed", "price": 5, "name": "Rapeseed", "type": "product", "category": "material", "unlock_tech": "oil_making", "icon": "rapeseed.png" },
     { "id": "hops", "price": 6, "name": "Hops", "type": "product", "category": "material", "icon": "hops.png" },
     { "id": "tobacco", "price": 10, "name": "Tobacco", "type": "product", "category": "material", "icon": "tobacco.png" },
-    { "id": "sugar_cane", "price": 7, "name": "Sugar Cane", "type": "product", "category": "material", "icon": "sugar_cane.png" }
+    { "id": "sugar_cane", "price": 7, "name": "Sugar Cane", "type": "product", "category": "material", "icon": "sugar_cane.png" },
+    {
+      // The cold belt's sugar feedstock. A batch of sugar asks the same amount
+      // of sap as of cane, so the cheaper sap makes the northern route the
+      // cheaper of the two; climate, not price, is what limits it.
+      "id": "maple_sap", "price": 3,
+      "name": "Maple Sap",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "maple_sap.png"
+    }
   ]
 }

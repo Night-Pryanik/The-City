@@ -2834,6 +2834,14 @@ msgid "Blacksmiths forge metal tools and goods here."
 msgstr "Кузнецы куют здесь металлические инструменты и изделия."
 
 msgctxt "buildings.description"
+msgid "Boils a sweet juice down to sugar."
+msgstr "Уваривает сладкий сок до сахара."
+
+msgctxt "buildings.description"
+msgid "Boils a sweet sap down to sugar."
+msgstr "Уваривает сладкий сок до сахара."
+
+msgctxt "buildings.description"
 msgid "Brews various low-alcohol drinks by fermentation."
 msgstr "Варка различных слабоалкогольных напитков путём ферментации."
 
@@ -2844,10 +2852,6 @@ msgstr "Обжиг древесины в закрытой печи для пол
 msgctxt "buildings.description"
 msgid "Butchers livestock for meat, hides and bones to feed the city's crafts."
 msgstr "Разделка скота: мясо, шкуры и кости для городских ремёсел."
-
-msgctxt "buildings.description"
-msgid "Crushes sugar cane and boils its juice down to sugar."
-msgstr "Давит сахарный тростник и уваривает его сок в сахар."
 
 msgctxt "buildings.description"
 msgid "Dries and cures various goods."
@@ -3290,6 +3294,14 @@ msgid "Blows bottles from molten glass."
 msgstr "Выдувает бутылки из расплавленного стекла."
 
 msgctxt "crafts.description"
+msgid "Boils a sweet juice down to sugar."
+msgstr "Уваривает сладкий сок до сахара"
+
+msgctxt "crafts.description"
+msgid "Boils a sweet sap down to sugar: cane juice or maple sap."
+msgstr "Уваривает сладкий сок до сахара: тростниковый или кленовый"
+
+msgctxt "crafts.description"
 msgid "Brews beer from grain."
 msgstr "Варит пиво из зерновых культур"
 
@@ -3328,10 +3340,6 @@ msgstr "Создаёт глиняную посуду для хранения"
 msgctxt "crafts.description"
 msgid "Creates clay tablets for writing."
 msgstr "Создаёт глиняные таблички для записей"
-
-msgctxt "crafts.description"
-msgid "Crushes sugar cane and boils its juice down to sugar."
-msgstr "Давит сахарный тростник и уваривает его сок в сахар"
 
 msgctxt "crafts.description"
 msgid "Cuts stone into plates, bowls, and cups."
@@ -5138,6 +5146,18 @@ msgid "Malachite Jewelry"
 msgstr "Украшения из малахита"
 
 msgctxt "resources.name"
+msgid "Maple Sap"
+msgstr "Кленовый сок"
+
+msgctxt "resources.name"
+msgid "Maple Tree"
+msgstr "Клён"
+
+msgctxt "resources.name"
+msgid "Maple Wood"
+msgstr "Кленовая древесина"
+
+msgctxt "resources.name"
 msgid "Marble"
 msgstr "Мрамор"
 
@@ -5818,8 +5838,12 @@ msgid "Allows you to build the soapmaker's house: vegetable oil and soda → soa
 msgstr "Даёт возможность строить дом мыловара: растительное масло и сода → мыло."
 
 msgctxt "technologies.description"
-msgid "Allows you to build the sugar boiler: sugar cane → sugar."
-msgstr "Даёт возможность строить сахароварню: сахарный тростник → сахар."
+msgid "Allows you to build the sugar boiler: sugar cane or maple sap → sugar."
+msgstr "Даёт возможность строить сахароварню: сахарный тростник или кленовый сок → сахар."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the sugar boiler: sweet juice → sugar."
+msgstr "Даёт возможность строить сахароварню: сладкий сок → сахар."
 
 msgctxt "technologies.description"
 msgid "Allows you to build the tanner's house: hides → leather."

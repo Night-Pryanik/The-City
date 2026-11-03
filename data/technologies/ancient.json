@@ -375,7 +375,7 @@
       "science_cost": 3.0,
       "icon": "sugar_making.png",
       "prerequisites": [ [ "plantations" ] ],
-      "description": "Allows you to build the sugar boiler: sugar cane → sugar.",
+      "description": "Allows you to build the sugar boiler: sweet juice → sugar.",
       "flavor": "India first boiled cane juice down to crystals that kept well, and the craft travelled with Arab growers to the warm edges of the Mediterranean."
     }
   ]

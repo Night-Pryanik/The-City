@@ -403,6 +403,29 @@
       "color": [ 120, 200, 160 ]
     },
     {
+      // The maple is the cold belt's answer to sugar cane, which needs wet
+      // savanna or jungle: its sap boils to the same sugar, so a northern town
+      // is not cut off from sweetening. The camp gathers the sap without
+      // felling (docs.md, "Improvement types are a convention").
+      "id": "maple_tree", "price": 5,
+      "name": "Maple Tree",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "technical_plants",
+      "tech_required": "wood_processing",
+      "allowed_terrain": [ "plain", "hill", "mountain" ],
+      "allowed_cover": [
+        "temperate_rainforest", "temperate_rainforest_sparse",
+        "temperate_dry_forest_sparse", "taiga_sparse"
+      ],
+      "allowed_climate_zones": [ "boreal_dry", "boreal_wet", "steppe", "prairie" ],
+      "improved_by": "lumberjack_hut",
+      "produces": { "maple_sap": 10, "wood": 10, "maple_wood": 10 },
+      "icon": "maple_tree.png",
+      "color": [ 210, 130, 90 ]
+    },
+    {
       // The camp is the harvest point of the hex: the chestnut gives its timber
       // as well as its bark, no felling implied (docs.md, "Improvement types
       // are a convention").

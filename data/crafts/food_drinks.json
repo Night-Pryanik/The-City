@@ -307,16 +307,20 @@
       "description": "Dries rosella flower sepals."
     },
     {
-      // Crushing and boiling are one operation here: the boiler owns the whole
-      // cane → sugar chain, so no intermediate juice good exists.
+      // Crushing and boiling are one operation here, so no intermediate juice
+      // good exists. An alternatives slot spends units of any variant at the
+      // rate of the first one, so all variants of the OR-term must ask the same
+      // amount — the iron/meteorite recipes are written the same way.
       "id": "sugar",
       "name": "Sugar",
       "produced_in": [ "sugar_boiler" ],
-      "resources": { "sugar_cane": 20 },
+      "resources": [ [ { "sugar_cane": 20 }, { "maple_sap": 20 } ] ],
       "result": { "sugar": 10 },
       "time": 5.0,
       "unlock_tech": "sugar_making",
-      "description": "Crushes sugar cane and boils its juice down to sugar."
+      // The copy is neutral on purpose: the boiler takes any sweet juice, so
+      // naming one of them would tie this text to a single plant.
+      "description": "Boils a sweet juice down to sugar."
     }
   ]
 }

@@ -407,7 +407,7 @@
     {
       "id": "sugar_boiler",
       "name": "Sugar Boiler",
-      "description": "Crushes sugar cane and boils its juice down to sugar.",
+      "description": "Boils a sweet juice down to sugar.",
       "work_cost": 35,
       "additional_cost": [ { "planks": 100 }, { "@processed_construction_materials": 50 } ],
       "icon": "sugar_boiler.png",

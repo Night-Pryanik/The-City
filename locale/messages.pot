@@ -2834,6 +2834,14 @@ msgid "Blacksmiths forge metal tools and goods here."
 msgstr ""
 
 msgctxt "buildings.description"
+msgid "Boils a sweet juice down to sugar."
+msgstr ""
+
+msgctxt "buildings.description"
+msgid "Boils a sweet sap down to sugar."
+msgstr ""
+
+msgctxt "buildings.description"
 msgid "Brews various low-alcohol drinks by fermentation."
 msgstr ""
 
@@ -2843,10 +2851,6 @@ msgstr ""
 
 msgctxt "buildings.description"
 msgid "Butchers livestock for meat, hides and bones to feed the city's crafts."
-msgstr ""
-
-msgctxt "buildings.description"
-msgid "Crushes sugar cane and boils its juice down to sugar."
 msgstr ""
 
 msgctxt "buildings.description"
@@ -3290,6 +3294,14 @@ msgid "Blows bottles from molten glass."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Boils a sweet juice down to sugar."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Boils a sweet sap down to sugar: cane juice or maple sap."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Brews beer from grain."
 msgstr ""
 
@@ -3327,10 +3339,6 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Creates clay tablets for writing."
-msgstr ""
-
-msgctxt "crafts.description"
-msgid "Crushes sugar cane and boils its juice down to sugar."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -5138,6 +5146,18 @@ msgid "Malachite Jewelry"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Maple Sap"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Maple Tree"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Maple Wood"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Marble"
 msgstr ""
 
@@ -5818,7 +5838,15 @@ msgid "Allows you to build the soapmaker's house: vegetable oil and soda → soa
 msgstr ""
 
 msgctxt "technologies.description"
-msgid "Allows you to build the sugar boiler: sugar cane → sugar."
+msgid "Allows you to build the sugar boiler, which boils a sweet juice down to sugar."
+msgstr ""
+
+msgctxt "technologies.description"
+msgid "Allows you to build the sugar boiler: sugar cane or maple sap → sugar."
+msgstr ""
+
+msgctxt "technologies.description"
+msgid "Allows you to build the sugar boiler: sweet juice → sugar."
 msgstr ""
 
 msgctxt "technologies.description"

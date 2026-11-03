@@ -239,7 +239,9 @@
     {
       "id": "barrel_wood",
       "name": "Wood for Barrels",
-      "products": [ "oak_wood", "beech_wood", "chestnut_wood", "pine_wood" ]
+      // The group is cooperage wood in general, not tight-cask oak only: beech,
+      // pine and maple went to slack staves and to headings.
+      "products": [ "oak_wood", "beech_wood", "chestnut_wood", "pine_wood", "maple_wood" ]
     },
     {
       "id": "tare",
