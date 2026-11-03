@@ -245,6 +245,21 @@
       "id": "tare",
       "name": "Tare",
       "products": [ "amphora", "glass_bottle", "wooden_barrel" ]
+    },
+    {
+      "id": "sweeteners",
+      "name": "Sweeteners",
+      "products": [ "sugar", "honey" ]
+    },
+    {
+      "id": "aux_food",
+      "name": "Additional Food",
+      "products": [ "eggs", "oyster" ]
+    },
+    {
+      "id": "consumer_goods",
+      "name": "Consumer Goods",
+      "products": [ "salt", "soap", "vegetable_oil", "sponge" ]
     }
   ]
 }

@@ -2846,6 +2846,10 @@ msgid "Butchers livestock for meat, hides and bones to feed the city's crafts."
 msgstr ""
 
 msgctxt "buildings.description"
+msgid "Crushes sugar cane and boils its juice down to sugar."
+msgstr ""
+
+msgctxt "buildings.description"
 msgid "Dries and cures various goods."
 msgstr ""
 
@@ -3054,6 +3058,10 @@ msgid "Soapmaker's House"
 msgstr ""
 
 msgctxt "buildings.name"
+msgid "Sugar Boiler"
+msgstr ""
+
+msgctxt "buildings.name"
 msgid "Tanner's House"
 msgstr ""
 
@@ -3071,6 +3079,10 @@ msgstr ""
 
 msgctxt "buildings.name"
 msgid "Winemaker's House"
+msgstr ""
+
+msgctxt "categories.name"
+msgid "Additional Food"
 msgstr ""
 
 msgctxt "categories.name"
@@ -3139,6 +3151,10 @@ msgstr ""
 
 msgctxt "categories.name"
 msgid "Spices"
+msgstr ""
+
+msgctxt "categories.name"
+msgid "Sweeteners"
 msgstr ""
 
 msgctxt "categories.name"
@@ -3311,6 +3327,10 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Creates clay tablets for writing."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Crushes sugar cane and boils its juice down to sugar."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -3982,6 +4002,10 @@ msgid "Stone Tableware"
 msgstr ""
 
 msgctxt "crafts.name"
+msgid "Sugar"
+msgstr ""
+
+msgctxt "crafts.name"
 msgid "Tar"
 msgstr ""
 
@@ -4254,6 +4278,10 @@ msgid "Worst quality"
 msgstr ""
 
 msgctxt "product_groups.name"
+msgid "Additional Food"
+msgstr ""
+
+msgctxt "product_groups.name"
 msgid "Alcohol"
 msgstr ""
 
@@ -4279,6 +4307,10 @@ msgstr ""
 
 msgctxt "product_groups.name"
 msgid "Clothes"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Consumer Goods"
 msgstr ""
 
 msgctxt "product_groups.name"
@@ -4315,6 +4347,10 @@ msgstr ""
 
 msgctxt "product_groups.name"
 msgid "Spices"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Sweeteners"
 msgstr ""
 
 msgctxt "product_groups.name"
@@ -5466,6 +5502,10 @@ msgid "Stone Tableware"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Sugar"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Sugar Cane"
 msgstr ""
 
@@ -5778,19 +5818,15 @@ msgid "Allows you to build the soapmaker's house: vegetable oil and soda → soa
 msgstr ""
 
 msgctxt "technologies.description"
+msgid "Allows you to build the sugar boiler: sugar cane → sugar."
+msgstr ""
+
+msgctxt "technologies.description"
 msgid "Allows you to build the tanner's house: hides → leather."
 msgstr ""
 
 msgctxt "technologies.description"
-msgid "Allows you to build the tar distillery and to burn pine resin into tar."
-msgstr ""
-
-msgctxt "technologies.description"
 msgid "Allows you to build the tar pit and the tar distillery: resin or bitumen → tar."
-msgstr ""
-
-msgctxt "technologies.description"
-msgid "Allows you to build the tar pit and to render bitumen into tar."
 msgstr ""
 
 msgctxt "technologies.description"
@@ -5878,10 +5914,6 @@ msgid "Ancient civilizations could count, but only now has knowledge moved from 
 msgstr ""
 
 msgctxt "technologies.flavor"
-msgid "Bitumen became an important material for waterproofing, and for making glue and fuel."
-msgstr ""
-
-msgctxt "technologies.flavor"
 msgid "Burning limestone in kilns made lime possible, a key building material and an ingredient for making cement."
 msgstr ""
 
@@ -5926,11 +5958,11 @@ msgid "For centuries potters watched sand and alkali turn in their kilns into a 
 msgstr ""
 
 msgctxt "technologies.flavor"
-msgid "Heap-burning of resinous pine gave a waterproofing pitch long before anyone learned to dig bitumen."
+msgid "In scriptoriums scribes copied, translated, rewrote and recensioned texts on administration, the worship of the gods, magic and the curing of disease."
 msgstr ""
 
 msgctxt "technologies.flavor"
-msgid "In scriptoriums scribes copied, translated, rewrote and recensioned texts on administration, the worship of the gods, magic and the curing of disease."
+msgid "India first boiled cane juice down to crystals that kept well, and the craft travelled with Arab growers to the warm edges of the Mediterranean."
 msgstr ""
 
 msgctxt "technologies.flavor"
@@ -6067,10 +6099,6 @@ msgstr ""
 
 msgctxt "technologies.name"
 msgid "Beekeeping"
-msgstr ""
-
-msgctxt "technologies.name"
-msgid "Bitumen Extraction"
 msgstr ""
 
 msgctxt "technologies.name"
@@ -6219,6 +6247,10 @@ msgstr ""
 
 msgctxt "technologies.name"
 msgid "Soda Extraction"
+msgstr ""
+
+msgctxt "technologies.name"
+msgid "Sugar Making"
 msgstr ""
 
 msgctxt "technologies.name"

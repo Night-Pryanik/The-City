@@ -100,6 +100,27 @@
       "amount": 10,
       "interval": 1,
       "production_bonus": 0.0
+    },
+    {
+      "resource": "@sweeteners",
+      "profession": [ "all" ],
+      "amount": 10,
+      "interval": 1,
+      "production_bonus": 0.0
+    },
+    {
+      "resource": "@aux_food",
+      "profession": [ "all" ],
+      "amount": 10,
+      "interval": 1,
+      "production_bonus": 0.0
+    },
+    {
+      "resource": "@consumer_goods",
+      "profession": [ "all" ],
+      "amount": 10,
+      "interval": 1,
+      "production_bonus": 0.0
     }
   ]
 }

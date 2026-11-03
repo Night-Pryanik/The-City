@@ -598,7 +598,8 @@
       "allowed_climate_zones": [ "savanna_wet", "tropical_wet" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "sugar_cane": 10 },
+      // Cane tops and crushed stalks go to the cattle.
+      "produces": { "sugar_cane": 10, "feed": 40 },
       "icon": "sugar_cane.png",
       "color": [ 150, 200, 100 ]
     },

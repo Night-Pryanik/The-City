@@ -2846,6 +2846,10 @@ msgid "Butchers livestock for meat, hides and bones to feed the city's crafts."
 msgstr "Разделка скота: мясо, шкуры и кости для городских ремёсел."
 
 msgctxt "buildings.description"
+msgid "Crushes sugar cane and boils its juice down to sugar."
+msgstr "Давит сахарный тростник и уваривает его сок в сахар."
+
+msgctxt "buildings.description"
 msgid "Dries and cures various goods."
 msgstr "Сушка и завяливание различных продуктов."
 
@@ -3054,6 +3058,10 @@ msgid "Soapmaker's House"
 msgstr "Дом мыловара"
 
 msgctxt "buildings.name"
+msgid "Sugar Boiler"
+msgstr "Сахароварня"
+
+msgctxt "buildings.name"
 msgid "Tanner's House"
 msgstr "Дом кожевника"
 
@@ -3072,6 +3080,10 @@ msgstr "Дом ткача"
 msgctxt "buildings.name"
 msgid "Winemaker's House"
 msgstr "Дом винодела"
+
+msgctxt "categories.name"
+msgid "Additional Food"
+msgstr "Дополнительная еда"
 
 msgctxt "categories.name"
 msgid "Auxiliary Crops"
@@ -3140,6 +3152,10 @@ msgstr "Прочее"
 msgctxt "categories.name"
 msgid "Spices"
 msgstr "Пряности"
+
+msgctxt "categories.name"
+msgid "Sweeteners"
+msgstr "Подсластители"
 
 msgctxt "categories.name"
 msgid "Technical Crops"
@@ -3312,6 +3328,10 @@ msgstr "Создаёт глиняную посуду для хранения"
 msgctxt "crafts.description"
 msgid "Creates clay tablets for writing."
 msgstr "Создаёт глиняные таблички для записей"
+
+msgctxt "crafts.description"
+msgid "Crushes sugar cane and boils its juice down to sugar."
+msgstr "Давит сахарный тростник и уваривает его сок в сахар"
 
 msgctxt "crafts.description"
 msgid "Cuts stone into plates, bowls, and cups."
@@ -3982,6 +4002,10 @@ msgid "Stone Tableware"
 msgstr "Каменная посуда"
 
 msgctxt "crafts.name"
+msgid "Sugar"
+msgstr "Сахар"
+
+msgctxt "crafts.name"
 msgid "Tar"
 msgstr "Смола"
 
@@ -4254,6 +4278,10 @@ msgid "Worst quality"
 msgstr "Худшее качество"
 
 msgctxt "product_groups.name"
+msgid "Additional Food"
+msgstr "Дополнительная еда"
+
+msgctxt "product_groups.name"
 msgid "Alcohol"
 msgstr "Алкоголь"
 
@@ -4280,6 +4308,10 @@ msgstr "Строительный камень"
 msgctxt "product_groups.name"
 msgid "Clothes"
 msgstr "Одежда"
+
+msgctxt "product_groups.name"
+msgid "Consumer Goods"
+msgstr "Потребительские товары"
 
 msgctxt "product_groups.name"
 msgid "Dyes"
@@ -4316,6 +4348,10 @@ msgstr "Волокна для канатов"
 msgctxt "product_groups.name"
 msgid "Spices"
 msgstr "Специи"
+
+msgctxt "product_groups.name"
+msgid "Sweeteners"
+msgstr "Подсластители"
 
 msgctxt "product_groups.name"
 msgid "Tableware"
@@ -5466,6 +5502,10 @@ msgid "Stone Tableware"
 msgstr "Каменная посуда"
 
 msgctxt "resources.name"
+msgid "Sugar"
+msgstr "Сахар"
+
+msgctxt "resources.name"
 msgid "Sugar Cane"
 msgstr "Сахарный тростник"
 
@@ -5778,6 +5818,10 @@ msgid "Allows you to build the soapmaker's house: vegetable oil and soda → soa
 msgstr "Даёт возможность строить дом мыловара: растительное масло и сода → мыло."
 
 msgctxt "technologies.description"
+msgid "Allows you to build the sugar boiler: sugar cane → sugar."
+msgstr "Даёт возможность строить сахароварню: сахарный тростник → сахар."
+
+msgctxt "technologies.description"
 msgid "Allows you to build the tanner's house: hides → leather."
 msgstr "Даёт возможность строить дом кожевника: шкуры → кожа."
 
@@ -5916,6 +5960,10 @@ msgstr "Веками гончары наблюдали, как песок и щ�
 msgctxt "technologies.flavor"
 msgid "In scriptoriums scribes copied, translated, rewrote and recensioned texts on administration, the worship of the gods, magic and the curing of disease."
 msgstr "В скрипториях писцы копировали, переводили, переписывали и перекомпилировали тексты, связанные с управлением, культом божеств, магией и лечением болезней."
+
+msgctxt "technologies.flavor"
+msgid "India first boiled cane juice down to crystals that kept well, and the craft travelled with Arab growers to the warm edges of the Mediterranean."
+msgstr "Индия первой научилась уваривать сок тростника в кристаллы, которые долго хранились; с арабскими земледельцами ремесло пришло к тёплым берегам Средиземноморья."
 
 msgctxt "technologies.flavor"
 msgid "Managing water flows became the key to claiming new lands: irrigation did more than water the fields, it drained waterlogged ground and turned marshes into fertile plains."
@@ -6200,6 +6248,10 @@ msgstr "Мыловарение"
 msgctxt "technologies.name"
 msgid "Soda Extraction"
 msgstr "Добыча соды"
+
+msgctxt "technologies.name"
+msgid "Sugar Making"
+msgstr "Сахароварение"
 
 msgctxt "technologies.name"
 msgid "Tar Burning"

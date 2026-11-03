@@ -1,0 +1,10 @@
+{
+  // Sweeteners are eaten but they are not the city's food supply: only the
+  // "food" category is pooled as Food in storage (data/categories.json), so a
+  // sweetener keeps its own shelf and is consumed through the @sweeteners rule
+  // (data/consumption/consumption_all.json).
+  "resources": [
+    { "id": "honey", "price": 16, "name": "Honey", "type": "product", "category": "sweeteners", "icon": "honey.png" },
+    { "id": "sugar", "price": 14, "name": "Sugar", "type": "product", "category": "sweeteners", "icon": "sugar.png" }
+  ]
+}

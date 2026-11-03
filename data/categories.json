@@ -10,6 +10,8 @@
     { "id": "fruits", "name": "Fruits" },
     { "id": "drinks", "name": "Drinks" },
     { "id": "spices", "name": "Spices" },
+    { "id": "aux_food", "name": "Additional Food" },
+    { "id": "sweeteners", "name": "Sweeteners" },
     { "id": "technical_plants", "name": "Technical Crops" },
     { "id": "aux_plants", "name": "Auxiliary Crops" },
     { "id": "luxury", "name": "Luxury" },

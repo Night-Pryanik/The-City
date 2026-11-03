@@ -367,6 +367,16 @@
       "prerequisites": [ [ "weaving" ], [ "pottery" ] ],
       "description": "Allows you to extract various dyes from organic and inorganic materials.",
       "flavor": "Dyeing cloth and pottery with various dyes is one of the oldest crafts."
+    },
+    {
+      "id": "sugar_making",
+      "name": "Sugar Making",
+      "era": "ancient",
+      "science_cost": 3.0,
+      "icon": "sugar_making.png",
+      "prerequisites": [ [ "plantations" ] ],
+      "description": "Allows you to build the sugar boiler: sugar cane → sugar.",
+      "flavor": "India first boiled cane juice down to crystals that kept well, and the craft travelled with Arab growers to the warm edges of the Mediterranean."
     }
   ]
 }

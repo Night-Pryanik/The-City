@@ -1,0 +1,6 @@
+{
+  "resources": [
+    { "id": "eggs", "price": 5, "name": "Eggs", "type": "product", "category": "aux_food", "icon": "eggs.png" },
+    { "id": "oyster", "price": 15, "name": "Oyster", "type": "product", "category": "aux_food", "icon": "oyster.png" }
+  ]
+}
