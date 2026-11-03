@@ -695,7 +695,15 @@ func _price_tooltip_text(row: Dictionary) -> String:
         return ""
     var lines: Array = []
     var market_mult := float(GameData.game_balance.get("internal_market_price_multiplier", 1.0))
-    lines.append(tr("Price = base price of the goods ×%.2f (market) × quality multiplier") % market_mult)
+    # The domestic market specialization is a factor of the same price: without it in the formula
+    # the tooltip would explain a number the card does not show.
+    var spec_mult: float = CityData.get_specialization_multiplier(
+            CityData.SPEC_INTERNAL_MARKET_PRICE)
+    if is_equal_approx(spec_mult, 1.0):
+        lines.append(tr("Price = base price of the goods ×%.2f (market) × quality multiplier") % market_mult)
+    else:
+        lines.append(tr("Price = base price of the goods ×%.2f (market) ×%.2f (specialization) × quality multiplier")
+                % [market_mult, spec_mult])
     lines.append("")
     for pid in row.get("members", []):
         var member := str(pid)

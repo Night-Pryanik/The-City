@@ -324,6 +324,10 @@ var journal: Node = null
 @onready var save_load_window = SAVE_LOAD_WINDOW_SCENE.instantiate()
 
 var tech_popup: Control
+# The window of the specialization: it is offered when the population reaches a milestone of
+# data/specializations.json and holds the simulation stopped until the pick is made (see
+# specialization_popup.gd).
+var specialization_popup: Control
 var research_hbox: HBoxContainer
 var research_button: Button
 var research_icon: TextureRect # the child TextureRect inside research_button

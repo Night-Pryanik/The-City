@@ -689,6 +689,46 @@ const BLACKLIST_FIELDS := {
     "consumption": BLACKLIST_ENTRY,
 }
 
+# The condition that keeps a specialization unavailable (data/specializations.json). One record is
+# one condition; the fields it may use are the union of the types — which fields a type needs is
+# decided by CityData._specialization_condition_met.
+const SPECIALIZATION_CONDITION_FIELDS := {
+    "type": LEAF,
+    "id": LEAF,
+    "value": LEAF,
+    "amount": LEAF,
+}
+
+const SPECIALIZATION_BONUS_FIELDS := {
+    "type": LEAF,
+    "value": LEAF,
+    # The improvements the bonus acts on; an absent field means every improvement.
+    "improvements": {"array": LEAF},
+}
+
+const SPECIALIZATION_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "description": LEAF,
+    "icon": LEAF,
+    # The name of the branch as a phrase, when "<name> specialization" is not one.
+    "full_name": LEAF,
+    # The predecessors, in the format of the technologies: [["a", "b"], ["c"]] is (a AND b) OR c.
+    "prerequisites": LEAF,
+    # One condition or a list of them: the list means "all of them must hold".
+    "unlock": {"any": [
+        {"array": SPECIALIZATION_CONDITION_FIELDS},
+        SPECIALIZATION_CONDITION_FIELDS,
+    ]},
+    "bonuses": {"array": SPECIALIZATION_BONUS_FIELDS},
+    # The non-numeric consequences of the branch: a building, a recipe, a mechanic.
+    "effects": {"array": LEAF},
+}
+
+const SPECIALIZATION_CONFIG_FIELDS := {
+    "thresholds": {"array": LEAF},
+}
+
 # The kind of the entity a blacklisted identifier names — for the text of the problem of
 # _validate_blacklist. The whitelist reports an unknown COLLECTION, that check an unknown
 # ENTITY inside a known one, and the author has to read which of the two it is.
@@ -739,6 +779,8 @@ const SCHEMA := {
     "modifiers": MODIFIER_FIELDS,
     "map_config": MAP_CONFIG_FIELDS,
     "game_balance": {"blocks": GAME_BALANCE_BLOCKS},
+    "specializations": {"array": SPECIALIZATION_FIELDS},
+    "specialization_config": SPECIALIZATION_CONFIG_FIELDS,
     "city_names": {"array": LEAF},
     "priority_default": LEAF,
     "priority_options": LEAF,
@@ -757,7 +799,7 @@ const ENTITIES := [
     "building", "product", "improvement", "technology", "profession",
     "category", "group", "recipe", "road", "terrain", "terrain_family", "cover", "climate_zone", "era",
     "quality_level", "priority_option", "special_action", "consumption_rule",
-    "craft_extra", "craft_extra_kind",
+    "craft_extra", "craft_extra_kind", "specialization",
 ]
 
 
@@ -861,6 +903,10 @@ static func entity_forms(kind: String, fallback: String = "product") -> Dictiona
             return {"title": TranslationServer.translate("Quality priority option", "validator_entity_title_priority_option"),
                 "ref": TranslationServer.translate("this quality priority option", "validator_entity_ref_priority_option"),
                 "source": TranslationServer.translate("quality priority option", "validator_entity_source_priority_option")}
+        "specialization":
+            return {"title": TranslationServer.translate("Specialization", "validator_entity_title_specialization"),
+                "ref": TranslationServer.translate("this specialization", "validator_entity_ref_specialization"),
+                "source": TranslationServer.translate("specialization", "validator_entity_source_specialization")}
         _:
             # A special action closes the list: an unknown kind substitutes
             # the fallback above, one can only get here with a typo in the code.
@@ -918,6 +964,10 @@ static func check_title(kind: String) -> String:
             return TranslationServer.translate("Reference to a nonexistent additional ingredient kind")
         "prerequisite":
             return TranslationServer.translate("Technology requires a nonexistent technology")
+        "specialization_prerequisite":
+            return TranslationServer.translate("Specialization requires a nonexistent specialization")
+        "specialization_improvement":
+            return TranslationServer.translate("Specialization bonus names a nonexistent improvement")
         "road_level":
             return TranslationServer.translate("Road level: wrong or duplicate number")
         "road_max_speed":
@@ -1006,6 +1056,8 @@ const CHECK_ORDER := [
     "craft_extra",
     "craft_extra_kind",
     "prerequisite",
+    "specialization_prerequisite",
+    "specialization_improvement",
     "road_level",
     "road_max_speed",
     "road_work_cost",
@@ -1055,6 +1107,7 @@ func validate(gd: Object) -> Array:
     _validate_product_groups(product_groups, group_names, products, problems)
     _validate_consumption(gd.consumption_rules, products, product_groups, professions, problems)
     _validate_technologies(technologies, problems)
+    _validate_specializations(gd.specializations, improvements, problems)
     _validate_roads(gd.roads, technologies, problems)
     _validate_climate_zones(gd.climate_zones, terrains, _climate_families(terrains, gd.map_config), problems)
     _validate_cover_belts(gd.covers, problems)
@@ -2046,9 +2099,38 @@ func _validate_technologies(technologies: Dictionary, problems: Array) -> void:
                         "technology", tname, tid, "prerequisites")
 
 
+# --- THE SPECIALIZATIONS OF THE CITY ----------------------------------------------
+#
+# A prerequisite names another specialization, and a bonus may name the improvements it acts on. Both
+# are references by identifier: a typo gives nothing at all in silence (the branch is never offered,
+# the bonus acts on nothing), so the author has to hear about it here.
+func _validate_specializations(specializations: Array, improvements: Dictionary,
+        problems: Array) -> void:
+    var by_id := {}
+    for spec in specializations:
+        if spec is Dictionary and not str(spec.get("id", "")).is_empty():
+            by_id[str(spec.get("id", ""))] = spec
+    for spec_id in by_id:
+        var spec: Dictionary = by_id[spec_id]
+        var name := _entity_name(spec, spec_id)
+        for required in _flatten_prerequisites(spec.get("prerequisites", null)):
+            if not by_id.has(required):
+                _add(problems, "specialization_prerequisite", "specialization", required,
+                        "specialization", name, spec_id, "prerequisites")
+        for bonus in spec.get("bonuses", []):
+            if not (bonus is Dictionary):
+                continue
+            var targets = bonus.get("improvements", [])
+            if not (targets is Array):
+                continue
+            for imp_id in targets:
+                if not improvements.has(str(imp_id)):
+                    _add(problems, "specialization_improvement", "improvement", str(imp_id),
+                            "specialization", name, spec_id, "bonuses")
+
+
 # prerequisites → a technology. The format accepts both a flat list and a list
 # of OR-groups: [[ "a", "b" ], [ "c" ]] — any one of the groups has to be researched.
-
 func _check_tech_ref(value, technologies: Dictionary, problems: Array,
         source_kind: String, source_name: String, source_id: String, field: String) -> void:
     var tech_id := _as_id(value)

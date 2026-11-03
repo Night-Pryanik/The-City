@@ -299,8 +299,12 @@ func _test_route_gated_production(state: Dictionary) -> void:
     var main_map = await _new_map()
     _explore_all(main_map)
 
-    var hex = _make_target_hex(main_map)
-    check(not hex.is_empty(), "no hex outside the Region found for the production case", state)
+    # The hex must be reachable by a road AND still unconnected: the case lays the route by
+    # hand, and a target the plan cannot reach (behind water) would leave the improvement
+    # without a route for a reason the case does not check.
+    var hex = _pick_unconnected_reachable_hex(main_map)
+    check(not hex.is_empty(),
+            "no unconnected hex reachable by a road found for the production case", state)
     if hex.is_empty():
         _free(main_map)
         return
@@ -484,6 +488,24 @@ func _pick_buildable_target(main_map):
         var row := int(hex.row)
         var col := int(hex.col)
         tried.append(hex)
+        var level: int = _gdata.get_max_unlocked_road_level()
+        var breakdown: Dictionary = main_map.get_road_cost_breakdown_for_improvement(row, col, level)
+        if bool(breakdown.get("ok", false)):
+            return {"row": row, "col": col}
+
+# The first target hex that a road plan can reach and that has no route yet: the production
+# case lays the route itself, so the hex must be reachable but still disconnected.
+func _pick_unconnected_reachable_hex(main_map):
+    var tried: Array = []
+    while true:
+        var hex = _make_target_hex(main_map, tried)
+        if hex.is_empty():
+            return {}
+        var row := int(hex.row)
+        var col := int(hex.col)
+        tried.append(hex)
+        if main_map.has_road_route(row, col):
+            continue
         var level: int = _gdata.get_max_unlocked_road_level()
         var breakdown: Dictionary = main_map.get_road_cost_breakdown_for_improvement(row, col, level)
         if bool(breakdown.get("ok", false)):

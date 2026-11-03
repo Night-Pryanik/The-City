@@ -168,6 +168,12 @@ func _rebuild_science_tooltip():
             var bonus_str := "+%d%%" % int(round((bonus - 1.0) * 100.0))
             var bonus_names_str := _join_unique_names(bld_entry.get("bonus_names", []))
             science_tooltip_vbox.add_child(_make_bullet_sub_row(tr("Consumption bonus: %s%s") % [bonus_str, bonus_names_str]))
+    # The specialization of the city multiplies the whole rate, so it stands as a line of its own
+    # between the sources and the total.
+    var spec_mult: float = float(bd.get("specialization", 1.0))
+    if absf(spec_mult - 1.0) > 0.001:
+        science_tooltip_vbox.add_child(_make_bullet_row("•",
+                tr("Specialization: %s") % CityData.format_signed_percent(spec_mult - 1.0)))
     science_tooltip_vbox.add_child(_make_bullet_row("•", tr("Total: %.1f/sec") % total))
 
 # Reassembles the contents of the tooltip from the cache CityData.science_breakdown:

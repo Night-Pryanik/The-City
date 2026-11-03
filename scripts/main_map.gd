@@ -14,6 +14,13 @@ func _make_tech_popup() -> Control:
     popup.set_script(popup_script)
     return popup
 
+func _make_specialization_popup() -> Control:
+    var popup_script = load("res://scripts/specialization_popup.gd")
+    var popup = Control.new()
+    popup.name = "SpecializationPopup"
+    popup.set_script(popup_script)
+    return popup
+
 func _ready():
     if Engine.is_editor_hint():
         _initialize_map()
@@ -394,6 +401,14 @@ func _ready():
     if tech_popup.has_signal("go_to_technologies"):
         tech_popup.go_to_technologies.connect(_on_tech_popup_go_to_techs)
 
+    # The choice of a specialization: the window is added after the technology popup, so it is
+    # drawn above everything the map owns — a milestone may be reached while the city window is
+    # open, and the choice belongs over it.
+    specialization_popup = _make_specialization_popup()
+    add_child(specialization_popup)
+    specialization_popup.hide()
+    CityData.specialization_choice_offered.connect(_on_specialization_choice_offered)
+
     if pause_menu:
         if not pause_menu.save_pressed.is_connected(_on_pause_save):
             pause_menu.save_pressed.connect(_on_pause_save)
@@ -451,6 +466,10 @@ func _ready():
 
     _update_loading_progress(1.0)
     _remove_loading_overlay()
+
+    # A loaded save may carry a milestone the player has not spent yet: the choice is offered at
+    # once, before the first tick of the session. A new game has one citizen, so nothing happens.
+    CityData.check_specialization_choice()
 
 func _input(event):
     # Only the debug menu is handled here. The input of the MAP belongs to

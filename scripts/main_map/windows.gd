@@ -195,6 +195,15 @@ func _on_research_completed(tech_id: String):
     # The messages are passed into the popup — we clear them.
     CityData.last_research_messages = []
 
+# The city has earned a pick of a specialization (CityData.specialization_choice_offered): the
+# window of the choice opens over everything and the simulation stops until the player picks. The
+# window closes itself on the last pick of the queue and resumes the world through
+# apply_pause_state.
+func _on_specialization_choice_offered() -> void:
+    if specialization_popup == null or specialization_popup.visible:
+        return
+    specialization_popup.open()
+
 func _on_tech_popup_go_to_techs():
     # We unpause and open the interface of the city on the tab "Technologies"
     city_ui.refresh()
@@ -225,13 +234,14 @@ func _on_pause_menu_visibility_changed():
     if active_pause != null and settings_menu and settings_menu.visible:
         pause_button.visible = false
 
-# THE OWNER of the flag of the pause of the tree. Three independent things stop the
-# simulation: the pause menu, the active pause and the journal window, and any of them
-# may be on while the others are not. The menu therefore must not switch the flag off
-# on its own — closing it over a stopped world has to leave the world stopped.
+# THE OWNER of the flag of the pause of the tree. Four independent things stop the
+# simulation: the pause menu, the active pause, the journal window and the choice of a
+# specialization, and any of them may be on while the others are not. The menu therefore must not
+# switch the flag off on its own — closing it over a stopped world has to leave the world stopped.
 func apply_pause_state():
     get_tree().paused = (active_pause != null and active_pause.is_active()) \
-            or pause_menu.visible or journal_ui.visible
+            or pause_menu.visible or journal_ui.visible \
+            or (specialization_popup != null and specialization_popup.visible)
 
 # The journal is a window over the map: opening it stops the simulation, because the
 # player is reading, not playing. The pause flag itself is recomputed, not written: the

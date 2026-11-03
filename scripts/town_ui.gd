@@ -563,11 +563,26 @@ func _can_trade() -> bool:
 #
 # A GROUP row has no single product and no quality: it is priced as the average of its
 # members (TownEconomy.get_group_price), which is the one number a group can carry.
+#
+# The trade specialization of the city scales the result: a branch that pays better for the goods
+# of the city raises the price of the purchase column, one that makes a purchase cheaper lowers
+# the price of the sale column. The row shows the number the deal will be settled at.
 func _unit_price(resource_id: String, side: String) -> int:
+    var price: float
     if _is_group_id(resource_id):
-        return TownEconomy.get_group_price(resource_id)
-    var quality_id := _town_quality_of(resource_id) if side == SIDE_SELL else ""
-    return int(round(GameData.get_price_for_quality(resource_id, quality_id)))
+        price = float(TownEconomy.get_group_price(resource_id))
+    else:
+        var quality_id := _town_quality_of(resource_id) if side == SIDE_SELL else ""
+        price = GameData.get_price_for_quality(resource_id, quality_id)
+    return int(round(price * CityData.get_specialization_multiplier(_price_bonus_kind(side))))
+
+# The specialization bonus that acts on a column. The side is the side of the TOWN: in the sale
+# column the town sells and the city pays, so it is the purchase of the city that the trade branch
+# makes cheaper, and the purchase column is where the city sells.
+func _price_bonus_kind(side: String) -> String:
+    if side == SIDE_SELL:
+        return CityData.SPEC_TRADE_BUY_PRICE
+    return CityData.SPEC_TRADE_SELL_PRICE
 
 # The price of ONE unit the open panel works with. While the panel edits an existing
 # contract, the price is the one frozen at the signing of that deal: an edit changes the

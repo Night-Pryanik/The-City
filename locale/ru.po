@@ -312,6 +312,9 @@ msgstr "%s\n\nНаука: %d"
 msgid "%s\nScience: %d%s"
 msgstr "%s\nНаука: %d%s"
 
+msgid "%s (Specialization)"
+msgstr "%s (специализация)"
+
 msgid "%s (base %d):"
 msgstr "%s (база %d):"
 
@@ -323,6 +326,9 @@ msgstr "%s (бесплатно)"
 
 msgid "%s (level %d, up to %d units/sec per section)"
 msgstr "%s (уровень %d, до %d ед./сек на участок)"
+
+msgid "%s (rank %d)"
+msgstr "%s (ранг %d)"
 
 msgid "%s [%s] (science: %d)"
 msgstr "%s [%s] (наука: %d)"
@@ -384,11 +390,17 @@ msgstr "%s: участков %d, строится по одному"
 msgid "%s: %d units every %s per person × %d = %d per cycle"
 msgstr "%s: %d ед. раз в %s на человека × %d = %d за цикл"
 
+msgid "%s: %s"
+msgstr ""
+
 msgid "%s: %s / sec"
 msgstr "%s: %s / сек"
 
 msgid "%s: %s coins/sec"
 msgstr "%s: %s монет/сек"
+
+msgid "%s: %s to production"
+msgstr "%s: %s к производству"
 
 msgid "%s: consumption priority — %s"
 msgstr "%s: приоритет потребления — %s"
@@ -564,6 +576,9 @@ msgstr "Аудио"
 msgid "Authors: %s"
 msgstr "Авторы: %s"
 
+msgid "Available"
+msgstr "Доступно"
+
 msgid "Available buildings:"
 msgstr "Доступные постройки:"
 
@@ -681,6 +696,12 @@ msgstr "Покупателей:"
 msgid "Buying"
 msgstr "Покупка"
 
+msgid "Buying from towns: %s"
+msgstr "Покупка у городков: %s"
+
+msgid "Buying from towns: %s to the price"
+msgstr "Покупка у городков: %s к цене"
+
 msgid "By buyers (actual):"
 msgstr "По покупателям (факт):"
 
@@ -768,17 +789,32 @@ msgstr "Проведение рек..."
 msgid "Check a mod to add it to the game."
 msgstr "Отметьте модификацию, чтобы добавить её в игру."
 
+msgid "Choose"
+msgstr "Выбрать"
+
 msgid "Choose a city name"
 msgstr "Выберите название города"
 
 msgid "Choose the mods for this game. Each save keeps its own set."
 msgstr "Выберите модификации для этой игры. У каждого сохранения свой набор."
 
+msgid "Chosen"
+msgstr "Выбрано"
+
+msgid "Chosen branches"
+msgstr "Выбранные ветки"
+
 msgid "City"
 msgstr "Город"
 
 msgid "City %s"
 msgstr "Город %s"
+
+msgid "City buildings: %s"
+msgstr "Городские здания: %s"
+
+msgid "City buildings: %s to production"
+msgstr "Городские здания: %s к производству"
 
 msgid "City effects"
 msgstr "Эффекты города"
@@ -1083,6 +1119,9 @@ msgstr "Разнообразие"
 msgid "Diversity: %d subgroups"
 msgstr "Разнообразие: %d подгрупп"
 
+msgid "Domestic market: %s to the price"
+msgstr "Внутренний рынок: %s к цене"
+
 msgid "Domestic trade"
 msgstr "Внутренняя торговля"
 
@@ -1112,6 +1151,9 @@ msgstr "Эпоха: %s"
 
 msgid "Errors in the game data"
 msgstr "Ошибки в игровых данных"
+
+msgid "Every milestone has been reached."
+msgstr "Все вехи достигнуты."
 
 msgid "Every zone maps each family the generator places — plain, hill, mountain, swamp, the keys of terrain_config — to a terrain that carries the same \"family\" field. Otherwise the hexes of that family keep the raw family name on the map instead of a terrain: no icon, no yields, no vegetation."
 msgstr "Каждая зона сопоставляет каждое семейство, которое размещает генератор (равнина, холмы, горы, болота — ключи terrain_config), местности с тем же значением поля \"family\". Иначе гексы этого семейства остаются на карте с именем семейства вместо местности: без значка, без добычи и без растительности."
@@ -1329,6 +1371,12 @@ msgstr "Улучшение: %d труда"
 msgid "Improvements"
 msgstr "Улучшения"
 
+msgid "Improvements on the map: %s"
+msgstr "Улучшения на карте: %s"
+
+msgid "Improvements on the map: %s to production"
+msgstr "Улучшения на карте: %s к производству"
+
 msgid "In storage: %d"
 msgstr "На складе: %d"
 
@@ -1503,6 +1551,9 @@ msgstr "Новая игра"
 msgid "New save"
 msgstr "Новое сохранение"
 
+msgid "Next choice at %d citizens (population: %d)"
+msgstr "Следующий выбор — при %d жителях (население: %d)"
+
 msgid "No"
 msgstr "Нет"
 
@@ -1572,6 +1623,12 @@ msgstr "Нет разведанного пути от города до горо
 msgid "No sea"
 msgstr "Моря нет"
 
+msgid "No specialization can be taken right now."
+msgstr "Сейчас нельзя выбрать ни одну специализацию."
+
+msgid "No specialization chosen yet."
+msgstr "Специализация ещё не выбрана."
+
 msgid "No technology is being researched. Click to select a technology"
 msgstr "Никакая технология не изучается. Нажмите, чтобы выбрать технологию"
 
@@ -1598,6 +1655,9 @@ msgstr "Нет"
 
 msgid "Nonexistent product in a goods group"
 msgstr "В группе продуктов несуществующий продукт"
+
+msgid "Not available yet"
+msgstr "Пока недоступно"
 
 msgid "Not enough coins for the contract: %d per second."
 msgstr "Недостаточно монет для контракта: %d в секунду."
@@ -1701,6 +1761,9 @@ msgstr "Производительность"
 msgid "Permanent"
 msgstr "Постоянно"
 
+msgid "Pick a specialization to continue."
+msgstr "Выберите специализацию, чтобы продолжить."
+
 msgid "Placing resources..."
 msgstr "Размещение ресурсов..."
 
@@ -1722,11 +1785,17 @@ msgstr "Население: %d"
 msgid "Population: %d (free: %d)"
 msgstr "Население: %d (свободных: %d)"
 
+msgid "Population: %d. Choose a specialization — the choice is permanent."
+msgstr "Население: %d. Выберите специализацию — выбор окончательный."
+
 msgid "Population: 1"
 msgstr "Население: 1"
 
 msgid "Population: 50"
 msgstr "Население: 50"
+
+msgid "Postpone"
+msgstr "Отложить выбор"
 
 msgid "Preparing starting area..."
 msgstr "Подготовка стартовой области..."
@@ -1739,6 +1808,9 @@ msgstr "Подготовка..."
 
 msgid "Price = base price of the goods ×%.2f (market) × quality multiplier"
 msgstr "Цена = базовая цена товара ×%.2f (рынок) × множитель качества"
+
+msgid "Price = base price of the goods ×%.2f (market) ×%.2f (specialization) × quality multiplier"
+msgstr "Цена = базовая цена товара ×%.2f (рынок) ×%.2f (специализация) × множитель качества"
 
 msgid "Price per unit: %d coins"
 msgstr "Цена за единицу: %d монет"
@@ -1899,8 +1971,14 @@ msgstr "Уже идёт исследование: "
 msgid "Research complete: "
 msgstr "Исследование завершено: "
 
+msgid "Research speed: %s"
+msgstr "Скорость исследований: %s"
+
 msgid "Research the technology that unlocks \"%s\" first"
 msgstr "Сначала изучите технологию, открывающую «%s»"
+
+msgid "Research: %s to the speed"
+msgstr "Исследования: %s к скорости"
 
 msgid "Researching: %s"
 msgstr "Изучается: %s"
@@ -2064,6 +2142,12 @@ msgstr "Продажа"
 msgid "Selling goods to the towns is not implemented yet — the order was not placed."
 msgstr "Продажа товаров городкам ещё не реализована — заказ не размещён."
 
+msgid "Selling to towns: %s"
+msgstr "Продажа городкам: %s"
+
+msgid "Selling to towns: %s to the price"
+msgstr "Продажа городкам: %s к цене"
+
 msgid "Send scouts"
 msgstr "Отправить разведчиков"
 
@@ -2117,6 +2201,21 @@ msgstr "Источник не найден: продукт «%s» (%s) не вс
 
 msgid "Special actions"
 msgstr "Особые действия"
+
+msgid "Specialization"
+msgstr "Специализация"
+
+msgid "Specialization bonus names a nonexistent improvement"
+msgstr "Бонус специализации ссылается на несуществующее улучшение"
+
+msgid "Specialization requires a nonexistent specialization"
+msgstr "Специализация требует несуществующую специализацию"
+
+msgid "Specialization: %s"
+msgstr "Специализация: %s"
+
+msgid "Specializations"
+msgstr "Специализации"
 
 msgid "Spent work (%.0f/%d) will be lost."
 msgstr "Потраченный труд (%.0f/%d) будет потерян."
@@ -2475,6 +2574,9 @@ msgstr "Задержка появления всплывающих подска�
 msgid "Total"
 msgstr "Итого"
 
+msgid "Total effect"
+msgstr "Суммарный эффект"
+
 msgid "Total: %.1f/sec"
 msgstr "Итого: %.1f/сек"
 
@@ -2526,6 +2628,9 @@ msgstr "Превращает разовую сделку в долговреме
 msgid "Unavailable goods"
 msgstr "Недоступные товары"
 
+msgid "Unavailable specializations"
+msgstr "Недоступные специализации"
+
 msgid "Under construction"
 msgstr "Строится"
 
@@ -2543,6 +2648,12 @@ msgstr "Неизвестное поле \"%s\" в %s."
 
 msgid "Unknown trade direction — the order was not placed."
 msgstr "Неизвестное направление сделки — заказ не размещён."
+
+msgid "Unspent choices: %d"
+msgstr "Нераспределённых выборов: %d"
+
+msgid "Unspent choices: %d."
+msgstr "Нераспределённых выборов: %d."
 
 msgid "Up"
 msgstr "Вверх"
@@ -2625,6 +2736,9 @@ msgstr "Да"
 msgid "You can build or upgrade no more than %d buildings at once (limit = number of citizens)"
 msgstr "Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)"
 
+msgid "Your city has reached a significant milestone!"
+msgstr "Ваш город достиг значимых успехов!"
+
 msgid "[0] Close (F9)"
 msgstr "[0] Закрыть (F9)"
 
@@ -2682,6 +2796,9 @@ msgstr "простаивает"
 msgid "impassable"
 msgstr "непроходимо"
 
+msgid "new branch"
+msgstr "новая ветка"
+
 msgid "no path"
 msgstr "нет пути"
 
@@ -2703,11 +2820,17 @@ msgstr "позиция %d: «%s» (U+%04X"
 msgid "produces goods '%s' from resource '%s'"
 msgstr "produces продукта '%s' ресурса '%s'"
 
+msgid "rank %d → %d"
+msgstr "ранг %d → %d"
+
 msgid "sec"
 msgstr "сек"
 
 msgid "spawn_count of resource '%s'"
 msgstr "spawn_count ресурса '%s'"
+
+msgid "specialization"
+msgstr "специализация"
 
 msgid "the action"
 msgstr "действие"
@@ -5761,6 +5884,114 @@ msgctxt "special_actions.name"
 msgid "Forage Resource"
 msgstr "Собрать ресурс"
 
+msgctxt "specialization_popup_confirm"
+msgid "Confirm"
+msgstr "Подтвердить"
+
+msgctxt "specialization_requires"
+msgid "Requires: %s"
+msgstr "Требуется: %s"
+
+msgctxt "specializations.description"
+msgid "A library turns the city into a seat of learning, and every study in it goes faster."
+msgstr "Библиотека превращает город в средоточие знаний, и любые исследования идут в нём быстрее."
+
+msgctxt "specializations.description"
+msgid "The city digs deeper. The mines, the quarries and the pits of the city yield far more than before."
+msgstr "Город копает глубже. Шахты, карьеры и ямы города дают значительно больше, чем прежде."
+
+msgctxt "specializations.description"
+msgid "The city is a place of merchants. Towns pay more for the goods of the city and ask less for their own per rank."
+msgstr "Город — место торговцев. Городки платят больше за товары города и просят меньше за свои за каждый ранг."
+
+msgctxt "specializations.description"
+msgid "The city is a place of merchants. Towns pay more for the goods of the city and ask less for their own."
+msgstr "Город — место торговцев. Городки платят больше за товары города и просят меньше за свои."
+
+msgctxt "specializations.description"
+msgid "The city is a place of scholars. The science of every building and the studies of the city advance faster per rank."
+msgstr "Город — место учёных. Наука каждого здания и исследования города идут быстрее за каждый ранг."
+
+msgctxt "specializations.description"
+msgid "The city is a place of scholars. The science of every building and the studies of the city advance faster."
+msgstr "Город — место учёных. Наука каждого здания и исследования города продвигаются быстрее."
+
+msgctxt "specializations.description"
+msgid "The city lives by its own market. The citizens pay more for the goods of the city, and every sale on the internal market brings the treasury more."
+msgstr "Город живёт своим рынком. Горожане платят больше за товары города, и каждая продажа на внутреннем рынке приносит казне больше."
+
+msgctxt "specializations.description"
+msgid "The city lives off the land. Every improvement on the map — a farm, a mine, a quarry, a woodcutter's camp — yields more per rank."
+msgstr "Город живёт за счёт земли. Каждое улучшение на карте — ферма, шахта, каменоломня, лесопилка — даёт больше за каждый ранг."
+
+msgctxt "specializations.description"
+msgid "The city lives off the land. Every improvement on the map — a farm, a mine, a quarry, a woodcutter's camp — yields more."
+msgstr "Город живёт за счёт земли. Каждое улучшение на карте — ферма, шахта, карьер, хижина лесоруба — даёт больше."
+
+msgctxt "specializations.description"
+msgid "The craftsmen of the city have banded together. Their workshops produce more, and their merchants know the worth of a good."
+msgstr "Ремесленники города объединились в гильдии. Их мастерские производят больше, а купцы знают цену товару."
+
+msgctxt "specializations.description"
+msgid "The land feeds the city. The farms, the plantations and the pastures of the city yield far more than before."
+msgstr "Земля кормит город. Фермы, плантации и пастбища города дают значительно больше, чем прежде."
+
+msgctxt "specializations.description"
+msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more per rank."
+msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше за каждый ранг."
+
+msgctxt "specializations.description"
+msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
+msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше."
+
+msgctxt "specializations.full_name"
+msgid "Specialization of foreign trade"
+msgstr "Специализация внешней торговли"
+
+msgctxt "specializations.full_name"
+msgid "Specialization of the domestic market"
+msgstr "Специализация внутреннего рынка"
+
+msgctxt "specializations.name"
+msgid "Agrarian"
+msgstr "Аграрная"
+
+msgctxt "specializations.name"
+msgid "Domestic Market"
+msgstr "Внутренний рынок"
+
+msgctxt "specializations.name"
+msgid "Foreign Trade"
+msgstr "Внешняя торговля"
+
+msgctxt "specializations.name"
+msgid "Guilds"
+msgstr "Гильдейская"
+
+msgctxt "specializations.name"
+msgid "Industry"
+msgstr "Промышленная"
+
+msgctxt "specializations.name"
+msgid "Mining"
+msgstr "Горнодобывающая"
+
+msgctxt "specializations.name"
+msgid "Raw Materials"
+msgstr "Сырьевая"
+
+msgctxt "specializations.name"
+msgid "Scholarship"
+msgstr "Учёность"
+
+msgctxt "specializations.name"
+msgid "Science"
+msgstr "Научная"
+
+msgctxt "specializations.name"
+msgid "Trade"
+msgstr "Торговля"
+
 msgctxt "technologies.description"
 msgid "+30% to resource production on plantations."
 msgstr "+30% к производству ресурсов на плантациях."
@@ -6625,6 +6856,10 @@ msgctxt "validator_entity_ref_special_action"
 msgid "this special action"
 msgstr "это спецдействие"
 
+msgctxt "validator_entity_ref_specialization"
+msgid "this specialization"
+msgstr "эту специализацию"
+
 msgctxt "validator_entity_ref_technology"
 msgid "this technology"
 msgstr "эту технологию"
@@ -6709,6 +6944,10 @@ msgctxt "validator_entity_source_special_action"
 msgid "special action"
 msgstr "спецдействии"
 
+msgctxt "validator_entity_source_specialization"
+msgid "specialization"
+msgstr "специализации"
+
 msgctxt "validator_entity_source_technology"
 msgid "technology"
 msgstr "технологии"
@@ -6792,6 +7031,10 @@ msgstr "Уровня дороги"
 msgctxt "validator_entity_title_special_action"
 msgid "Special action"
 msgstr "Спецдействия"
+
+msgctxt "validator_entity_title_specialization"
+msgid "Specialization"
+msgstr "Специализация"
 
 msgctxt "validator_entity_title_technology"
 msgid "Technology"

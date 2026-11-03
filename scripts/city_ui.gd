@@ -11,6 +11,7 @@ const UiHelpers = preload("res://scripts/ui_helpers.gd")
 @onready var trade_panel = $ContentPanel/TradePanel
 @onready var technologies_panel = $ContentPanel/TechnologiesPanel
 @onready var effects_panel = $ContentPanel/EffectsPanel
+@onready var specialization_panel = $ContentPanel/SpecializationPanel
 
 # The tab buttons
 @onready var resources_tab_button = $TabBarPanel/TabBar/ResourcesTabButton
@@ -18,6 +19,7 @@ const UiHelpers = preload("res://scripts/ui_helpers.gd")
 @onready var trade_tab_button = $TabBarPanel/TabBar/TradeTabButton
 @onready var technologies_tab_button = $TabBarPanel/TabBar/TechnologiesTabButton
 @onready var effects_tab_button = $TabBarPanel/TabBar/EffectsTabButton
+@onready var specialization_tab_button = $TabBarPanel/TabBar/ReputationSpecializationButton
 # The section buttons next to the tabs. The sections are not implemented yet, therefore a
 # click only reports that in the bottom strip; the buttons share the look of the tab bar.
 @onready var era_challenges_button = $TabBarPanel/TabBar/EraChallengesButton
@@ -67,6 +69,8 @@ var trade_tab: Node
 var external_trade_tab: Node
 # The tab "Effects" — what acts on the city right now (see effects_tab.gd).
 var effects_tab: Node
+# The tab "Specialization" — the branches of the city and their bonuses (see specialization_tab.gd).
+var specialization_tab: Node
 # The map itself: the foreign trade column reads the towns discovered by the player
 # from it (see set_map).
 var main_map: Node = null
@@ -209,11 +213,16 @@ func _ready():
     effects_tab.setup($ContentPanel/EffectsPanel)
     add_child(effects_tab)
 
+    # The tab "Specialization": the branches the city has taken and what they give.
+    specialization_tab = load("res://scripts/specialization_tab.gd").new()
+    specialization_tab.setup($ContentPanel/SpecializationPanel)
+    add_child(specialization_tab)
+
     # The signals of the buttons
-    for btn in [resources_tab_button, buildings_tab_button, trade_tab_button, technologies_tab_button, effects_tab_button]:
+    for btn in [resources_tab_button, buildings_tab_button, trade_tab_button, technologies_tab_button, effects_tab_button, specialization_tab_button]:
         if not btn.pressed.is_connected(_on_tab_button_pressed):
             btn.pressed.connect(_on_tab_button_pressed.bind(btn))
-    stub_buttons = [era_challenges_button, reputation_specialization_button, encyclopedia_button]
+    stub_buttons = [era_challenges_button, encyclopedia_button]
     for btn in stub_buttons:
         if not btn.pressed.is_connected(_on_stub_button_pressed):
             btn.pressed.connect(_on_stub_button_pressed.bind(btn))
@@ -233,7 +242,8 @@ func _ready():
         {"button": buildings_tab_button, "id": "buildings"},
         {"button": trade_tab_button, "id": "trade"},
         {"button": technologies_tab_button, "id": "technologies"},
-        {"button": effects_tab_button, "id": "effects"}
+        {"button": effects_tab_button, "id": "effects"},
+        {"button": specialization_tab_button, "id": "specialization"}
     ]
     _highlight_active_tab_button()
 
@@ -262,6 +272,15 @@ func _ready():
     # the event (growth/death), without waiting for the resource display interval.
     if not CityData.population_changed.is_connected(_on_population_changed_label):
         CityData.population_changed.connect(_on_population_changed_label)
+
+    # A branch was picked in the choice window: an open tab of the specialization is rebuilt at
+    # once, so the city window never shows a rank the player has already raised.
+    if not CityData.specialization_changed.is_connected(_on_specialization_changed):
+        CityData.specialization_changed.connect(_on_specialization_changed)
+    # A pick has been earned and is not spent yet: the dot on the tab button says so. The signal is
+    # emitted on the growth of the population, which is exactly when the dot may have to appear.
+    if not CityData.specialization_choice_offered.is_connected(_refresh_specialization_dot):
+        CityData.specialization_choice_offered.connect(_refresh_specialization_dot)
 
     # We connect the signal of the completion of the building construction to show the message
     # in the bottom panel of CityUI (the build_message signal goes to the map HUD,
@@ -426,6 +445,8 @@ func _refresh_all():
     trade_tab.refresh()
     external_trade_tab.refresh()
     effects_tab.refresh()
+    specialization_tab.refresh()
+    _refresh_specialization_dot()
     _update_food_label()
 
 func _switch_tab(tab_id: String):
@@ -435,6 +456,7 @@ func _switch_tab(tab_id: String):
     trade_panel.visible = (tab_id == "trade")
     technologies_panel.visible = (tab_id == "technologies")
     effects_panel.visible = (tab_id == "effects")
+    specialization_panel.visible = (tab_id == "specialization")
 
     # The right panel "Built buildings" is shown only on the tabs
     # "Resources" and "Buildings" (when the window is divided in half); on "Trade" and
@@ -462,6 +484,10 @@ func _switch_tab(tab_id: String):
         # The effects are derived from the state of the city (the hex, the researched
         # technologies), so the list is rebuilt on every opening — it is short and cheap.
         effects_tab.refresh()
+    elif tab_id == "specialization":
+        # The branches and the milestones of the population: the list is short and is rebuilt on
+        # every opening, so a pick made in the choice window is never shown stale.
+        specialization_tab.refresh()
 
     ui_helpers.set_message("")
     _highlight_active_tab_button()
@@ -634,6 +660,23 @@ func update_food_label():
 # next to the food and the treasury; we update it at once, bypassing the resource display interval.
 func _on_population_changed_label(_new_pop: int):
     _update_food_label()
+
+func _on_specialization_changed():
+    # The dot follows the picks: a spent pick may leave another one unspent, and the tab must say so
+    # whether it is open or not.
+    _refresh_specialization_dot()
+    if visible and active_tab == "specialization":
+        specialization_tab.refresh()
+
+# The dot on the tab button of the specialization: the city has earned a pick it has not spent yet.
+# The same idiom and the same rule as the dot of the journal button of the HUD
+# (scripts/unread_dot.gd): the node is looked up by name, because a test may build the window by
+# hand, and a missing dot is not an error.
+func _refresh_specialization_dot() -> void:
+    var dot := get_node_or_null("TabBarPanel/TabBar/ReputationSpecializationButton/PickDot")
+    if dot == null:
+        return
+    dot.visible = CityData.get_pending_specialization_picks() > 0
 
 func refresh_buildings_tab():
     if buildings_tab and buildings_tab.has_method("refresh_built"):

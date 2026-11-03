@@ -312,6 +312,9 @@ msgstr ""
 msgid "%s\nScience: %d%s"
 msgstr ""
 
+msgid "%s (Specialization)"
+msgstr ""
+
 msgid "%s (base %d):"
 msgstr ""
 
@@ -322,6 +325,9 @@ msgid "%s (free)"
 msgstr ""
 
 msgid "%s (level %d, up to %d units/sec per section)"
+msgstr ""
+
+msgid "%s (rank %d)"
 msgstr ""
 
 msgid "%s [%s] (science: %d)"
@@ -384,10 +390,16 @@ msgstr ""
 msgid "%s: %d units every %s per person × %d = %d per cycle"
 msgstr ""
 
+msgid "%s: %s"
+msgstr ""
+
 msgid "%s: %s / sec"
 msgstr ""
 
 msgid "%s: %s coins/sec"
+msgstr ""
+
+msgid "%s: %s to production"
 msgstr ""
 
 msgid "%s: consumption priority — %s"
@@ -564,6 +576,9 @@ msgstr ""
 msgid "Authors: %s"
 msgstr ""
 
+msgid "Available"
+msgstr ""
+
 msgid "Available buildings:"
 msgstr ""
 
@@ -681,6 +696,12 @@ msgstr ""
 msgid "Buying"
 msgstr ""
 
+msgid "Buying from towns: %s"
+msgstr ""
+
+msgid "Buying from towns: %s to the price"
+msgstr ""
+
 msgid "By buyers (actual):"
 msgstr ""
 
@@ -768,16 +789,31 @@ msgstr ""
 msgid "Check a mod to add it to the game."
 msgstr ""
 
+msgid "Choose"
+msgstr ""
+
 msgid "Choose a city name"
 msgstr ""
 
 msgid "Choose the mods for this game. Each save keeps its own set."
 msgstr ""
 
+msgid "Chosen"
+msgstr ""
+
+msgid "Chosen branches"
+msgstr ""
+
 msgid "City"
 msgstr ""
 
 msgid "City %s"
+msgstr ""
+
+msgid "City buildings: %s"
+msgstr ""
+
+msgid "City buildings: %s to production"
 msgstr ""
 
 msgid "City effects"
@@ -1083,6 +1119,9 @@ msgstr ""
 msgid "Diversity: %d subgroups"
 msgstr ""
 
+msgid "Domestic market: %s to the price"
+msgstr ""
+
 msgid "Domestic trade"
 msgstr ""
 
@@ -1111,6 +1150,9 @@ msgid "Era: %s"
 msgstr ""
 
 msgid "Errors in the game data"
+msgstr ""
+
+msgid "Every milestone has been reached."
 msgstr ""
 
 msgid "Every zone maps each family the generator places — plain, hill, mountain, swamp, the keys of terrain_config — to a terrain that carries the same \"family\" field. Otherwise the hexes of that family keep the raw family name on the map instead of a terrain: no icon, no yields, no vegetation."
@@ -1329,6 +1371,12 @@ msgstr ""
 msgid "Improvements"
 msgstr ""
 
+msgid "Improvements on the map: %s"
+msgstr ""
+
+msgid "Improvements on the map: %s to production"
+msgstr ""
+
 msgid "In storage: %d"
 msgstr ""
 
@@ -1503,6 +1551,9 @@ msgstr ""
 msgid "New save"
 msgstr ""
 
+msgid "Next choice at %d citizens (population: %d)"
+msgstr ""
+
 msgid "No"
 msgstr ""
 
@@ -1572,6 +1623,12 @@ msgstr ""
 msgid "No sea"
 msgstr ""
 
+msgid "No specialization can be taken right now."
+msgstr ""
+
+msgid "No specialization chosen yet."
+msgstr ""
+
 msgid "No technology is being researched. Click to select a technology"
 msgstr ""
 
@@ -1597,6 +1654,9 @@ msgid "None"
 msgstr ""
 
 msgid "Nonexistent product in a goods group"
+msgstr ""
+
+msgid "Not available yet"
 msgstr ""
 
 msgid "Not enough coins for the contract: %d per second."
@@ -1701,6 +1761,9 @@ msgstr ""
 msgid "Permanent"
 msgstr ""
 
+msgid "Pick a specialization to continue."
+msgstr ""
+
 msgid "Placing resources..."
 msgstr ""
 
@@ -1722,10 +1785,16 @@ msgstr ""
 msgid "Population: %d (free: %d)"
 msgstr ""
 
+msgid "Population: %d. Choose a specialization — the choice is permanent."
+msgstr ""
+
 msgid "Population: 1"
 msgstr ""
 
 msgid "Population: 50"
+msgstr ""
+
+msgid "Postpone"
 msgstr ""
 
 msgid "Preparing starting area..."
@@ -1738,6 +1807,9 @@ msgid "Preparing..."
 msgstr ""
 
 msgid "Price = base price of the goods ×%.2f (market) × quality multiplier"
+msgstr ""
+
+msgid "Price = base price of the goods ×%.2f (market) ×%.2f (specialization) × quality multiplier"
 msgstr ""
 
 msgid "Price per unit: %d coins"
@@ -1899,7 +1971,13 @@ msgstr ""
 msgid "Research complete: "
 msgstr ""
 
+msgid "Research speed: %s"
+msgstr ""
+
 msgid "Research the technology that unlocks \"%s\" first"
+msgstr ""
+
+msgid "Research: %s to the speed"
 msgstr ""
 
 msgid "Researching: %s"
@@ -2064,6 +2142,12 @@ msgstr ""
 msgid "Selling goods to the towns is not implemented yet — the order was not placed."
 msgstr ""
 
+msgid "Selling to towns: %s"
+msgstr ""
+
+msgid "Selling to towns: %s to the price"
+msgstr ""
+
 msgid "Send scouts"
 msgstr ""
 
@@ -2116,6 +2200,21 @@ msgid "Source not found: product \"%s\" (%s) appears neither in produces of any 
 msgstr ""
 
 msgid "Special actions"
+msgstr ""
+
+msgid "Specialization"
+msgstr ""
+
+msgid "Specialization bonus names a nonexistent improvement"
+msgstr ""
+
+msgid "Specialization requires a nonexistent specialization"
+msgstr ""
+
+msgid "Specialization: %s"
+msgstr ""
+
+msgid "Specializations"
 msgstr ""
 
 msgid "Spent work (%.0f/%d) will be lost."
@@ -2475,6 +2574,9 @@ msgstr ""
 msgid "Total"
 msgstr ""
 
+msgid "Total effect"
+msgstr ""
+
 msgid "Total: %.1f/sec"
 msgstr ""
 
@@ -2526,6 +2628,9 @@ msgstr ""
 msgid "Unavailable goods"
 msgstr ""
 
+msgid "Unavailable specializations"
+msgstr ""
+
 msgid "Under construction"
 msgstr ""
 
@@ -2542,6 +2647,12 @@ msgid "Unknown field \"%s\" in %s."
 msgstr ""
 
 msgid "Unknown trade direction — the order was not placed."
+msgstr ""
+
+msgid "Unspent choices: %d"
+msgstr ""
+
+msgid "Unspent choices: %d."
 msgstr ""
 
 msgid "Up"
@@ -2625,6 +2736,9 @@ msgstr ""
 msgid "You can build or upgrade no more than %d buildings at once (limit = number of citizens)"
 msgstr ""
 
+msgid "Your city has reached a significant milestone!"
+msgstr ""
+
 msgid "[0] Close (F9)"
 msgstr ""
 
@@ -2682,6 +2796,9 @@ msgstr ""
 msgid "impassable"
 msgstr ""
 
+msgid "new branch"
+msgstr ""
+
 msgid "no path"
 msgstr ""
 
@@ -2703,10 +2820,16 @@ msgstr ""
 msgid "produces goods '%s' from resource '%s'"
 msgstr ""
 
+msgid "rank %d → %d"
+msgstr ""
+
 msgid "sec"
 msgstr ""
 
 msgid "spawn_count of resource '%s'"
+msgstr ""
+
+msgid "specialization"
 msgstr ""
 
 msgid "the action"
@@ -5761,6 +5884,114 @@ msgctxt "special_actions.name"
 msgid "Forage Resource"
 msgstr ""
 
+msgctxt "specialization_popup_confirm"
+msgid "Confirm"
+msgstr ""
+
+msgctxt "specialization_requires"
+msgid "Requires: %s"
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "A library turns the city into a seat of learning, and every study in it goes faster."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The city digs deeper. The mines, the quarries and the pits of the city yield far more than before."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The city is a place of merchants. Towns pay more for the goods of the city and ask less for their own per rank."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The city is a place of merchants. Towns pay more for the goods of the city and ask less for their own."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The city is a place of scholars. The science of every building and the studies of the city advance faster per rank."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The city is a place of scholars. The science of every building and the studies of the city advance faster."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The city lives by its own market. The citizens pay more for the goods of the city, and every sale on the internal market brings the treasury more."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The city lives off the land. Every improvement on the map — a farm, a mine, a quarry, a woodcutter's camp — yields more per rank."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The city lives off the land. Every improvement on the map — a farm, a mine, a quarry, a woodcutter's camp — yields more."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The craftsmen of the city have banded together. Their workshops produce more, and their merchants know the worth of a good."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The land feeds the city. The farms, the plantations and the pastures of the city yield far more than before."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more per rank."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
+msgstr ""
+
+msgctxt "specializations.full_name"
+msgid "Specialization of foreign trade"
+msgstr ""
+
+msgctxt "specializations.full_name"
+msgid "Specialization of the domestic market"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Agrarian"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Domestic Market"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Foreign Trade"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Guilds"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Industry"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Mining"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Raw Materials"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Scholarship"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Science"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Trade"
+msgstr ""
+
 msgctxt "technologies.description"
 msgid "+30% to resource production on plantations."
 msgstr ""
@@ -6625,6 +6856,10 @@ msgctxt "validator_entity_ref_special_action"
 msgid "this special action"
 msgstr ""
 
+msgctxt "validator_entity_ref_specialization"
+msgid "this specialization"
+msgstr ""
+
 msgctxt "validator_entity_ref_technology"
 msgid "this technology"
 msgstr ""
@@ -6709,6 +6944,10 @@ msgctxt "validator_entity_source_special_action"
 msgid "special action"
 msgstr ""
 
+msgctxt "validator_entity_source_specialization"
+msgid "specialization"
+msgstr ""
+
 msgctxt "validator_entity_source_technology"
 msgid "technology"
 msgstr ""
@@ -6791,6 +7030,10 @@ msgstr ""
 
 msgctxt "validator_entity_title_special_action"
 msgid "Special action"
+msgstr ""
+
+msgctxt "validator_entity_title_specialization"
+msgid "Specialization"
 msgstr ""
 
 msgctxt "validator_entity_title_technology"

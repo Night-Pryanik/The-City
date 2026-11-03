@@ -321,7 +321,12 @@ func _collect_data(main_map: Node) -> Dictionary:
         # main_map itself, which owns the history node.
         "journal": main_map.journal.serialize() if main_map.journal else [],
         "map_state": main_map.get_map_state(),
-        "city_name": CityData.city_name
+        "city_name": CityData.city_name,
+        # The specialization of the city: the branches taken and how many of the earned picks have
+        # been spent. The milestones themselves are not saved — they are derived from the
+        # population (see CityData.get_specialization_picks_earned).
+        "chosen_specializations": CityData.chosen_specialization_ids,
+        "specialization_claimed": CityData.specialization_claimed
     }
 
 func apply_loaded_data():
@@ -374,6 +379,12 @@ func apply_loaded_data():
     # The city treasury. If the field is absent, the starting
     # amount is restored from game_balance.json (initial_treasury), just as on a new game.
     CityData.treasury = int(saved_data.get("treasury", int(GameData.game_balance.get("initial_treasury", 10))))
+    # The specialization of the city. The branches are restored as they are: a branch the data no
+    # longer declares simply gives nothing (CityData looks the bonuses up by the data), and the city
+    # does not lose the picks it has spent.
+    var saved_chosen = saved_data.get("chosen_specializations", [])
+    CityData.chosen_specialization_ids = saved_chosen if saved_chosen is Array else []
+    CityData.specialization_claimed = int(saved_data.get("specialization_claimed", 0))
     # We restore the building constructions (their construction progress is stored in build_manager)
     CityData.building_construction = saved_data.get("building_construction", {})
     # tile_data will be restored separately

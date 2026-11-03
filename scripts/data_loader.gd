@@ -33,6 +33,10 @@ var game_balance: Dictionary = {} # the game balance (data/game_balance.json)
 # a road network segment stores a level number, so exactly such an index is needed.
 var roads: Array = []
 var roads_by_level: Dictionary = {}
+# The specializations of the city (data/specializations.json): the branches in the order of the
+# file, and the config block with the thresholds of the population.
+var specializations: Array = []
+var specialization_config: Dictionary = {}
 
 # The id of a vanilla entity -> the icon file names the VANILLA data draws it with, for the
 # entities drawn by several pictures. Taken before the mods are laid over: a tileset draws
@@ -63,7 +67,10 @@ var blacklisted: Dictionary = {}
 # source text, and the translation is applied here, when reading the files: the translation key
 # is the English text itself. Thanks to this the rest of the code does
 # not need to know about localization — it still reads "name"/"description".
-const DISPLAY_FIELDS := ["name", "description", "flavor"]
+# "full_name" is the name as a phrase of its own (a specialization is "Raw Materials
+# specialization" but "Specialization of the domestic market"), see
+# CityData.get_specialization_full_name.
+const DISPLAY_FIELDS := ["name", "description", "flavor", "effects", "full_name"]
 
 # The dictionary fields where the player label is in the VALUE, and the key is a service
 # identifier (see _localize_display_fields).
@@ -128,6 +135,7 @@ const SOURCE_COLLECTIONS := [
     "groups",
     "quality_levels",
     "special_actions",
+    "specializations",
 ]
 
 # The collections of the raw data whose records may be drawn by several pictures. The names
@@ -310,6 +318,15 @@ func load_all_data(mod_dirs: Array = []):
     # through its block. See _flatten_balance_blocks.
     game_balance = _flatten_balance_blocks(merged_data.get("game_balance", {}))
 
+    # The specializations of the city (data/specializations.json). The config block is a plain
+    # dictionary of scalars and stays as it is read: the thresholds are the whole of it.
+    specializations = []
+    for spec in merged_data.get("specializations", []):
+        if spec is Dictionary and not str(spec.get("id", "")).is_empty():
+            specializations.append(spec)
+    var spec_config = merged_data.get("specialization_config", {})
+    specialization_config = spec_config if spec_config is Dictionary else {}
+
 # Flattens the named blocks of the game balance into one flat dictionary.
 #
 # A block is a nested dictionary of constants. One level is enough — the blocks group
@@ -355,6 +372,12 @@ func _localize_display_fields(node: Variant, context: String = "") -> void:
             var key_context = key if context == "" else context + "." + key
             if DISPLAY_FIELDS.has(key) and value is String:
                 node[key] = tr(str(value), key_context)
+            elif DISPLAY_FIELDS.has(key) and value is Array:
+                # A list of display lines (the "effects" of a specialization): every entry is a
+                # text of its own, translated with the context of the whole list.
+                for i in value.size():
+                    if value[i] is String:
+                        value[i] = tr(str(value[i]), key_context)
             elif VALUE_MAP_FIELDS.has(key) and value is Dictionary:
                 for option_key in value.keys():
                     if value[option_key] is String:

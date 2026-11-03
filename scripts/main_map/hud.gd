@@ -303,6 +303,8 @@ func _on_locale_changed(_locale: String) -> void:
         town_ui._refresh()
     if tech_popup and tech_popup.has_method("refresh"):
         tech_popup.refresh()
+    if specialization_popup and specialization_popup.has_method("refresh"):
+        specialization_popup.refresh()
     _update_research_progress()
     _update_population_hud()
     _update_treasury_hud()

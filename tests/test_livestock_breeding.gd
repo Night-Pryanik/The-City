@@ -46,23 +46,34 @@ func _run() -> void:
 
     var spot_a := _find_free_hex(main_map)
     var spot_b := _find_free_hex(main_map, [spot_a])
-    var spot_c := _find_free_hex(main_map, [spot_a, spot_b])
-    var spot_d := _find_free_hex(main_map, [spot_a, spot_b, spot_c])
-    var spot_e := _find_free_hex(main_map, [spot_a, spot_b, spot_c, spot_d])
+    # spot_c and spot_d get a road laid by hand, therefore the plan must be able to reach
+    # them. spot_e is picked afterwards, once those roads are already on the map.
+    var spot_c := _find_free_hex(main_map, [spot_a, spot_b], true)
+    var spot_d := _find_free_hex(main_map, [spot_a, spot_b, spot_c], true)
     check(not spot_a.is_empty() and not spot_b.is_empty()
-            and not spot_c.is_empty() and not spot_d.is_empty() and not spot_e.is_empty(),
-            "five free hexes are needed for the check", state)
-    if spot_a.is_empty() or spot_b.is_empty() or spot_c.is_empty() \
-            or spot_d.is_empty() or spot_e.is_empty():
+            and not spot_c.is_empty() and not spot_d.is_empty(),
+            "four free hexes, two of them reachable by a road, are needed for the check", state)
+    if spot_a.is_empty() or spot_b.is_empty() \
+            or spot_c.is_empty() or spot_d.is_empty():
         _finish(main_map, state)
         return
 
     # The starting hexes have no roads, so an ordinary build normally goes through the
     # "road -> improvement" project. For the checks of the ORDINARY path the road is laid
-    # right away; spot_e stays unconnected and exercises the project path.
+    # right away.
     for spot in [spot_c, spot_d]:
         main_map.road_manager.build_road_from(int(spot.row), int(spot.col),
                 main_map.tile_data, main_map.map_rows, main_map.map_cols)
+
+    # spot_e stays unconnected and exercises the project path. It is picked AFTER the roads
+    # above, and it needs a road plan of its own: without one start_build degrades to an
+    # ordinary build, and there is no project left to cancel.
+    var spot_e := _find_free_hex(main_map, [spot_a, spot_b, spot_c, spot_d], true)
+    check(not spot_e.is_empty(),
+            "an unconnected hex reachable by a road is needed for the project check", state)
+    if spot_e.is_empty():
+        _finish(main_map, state)
+        return
 
     # --- 0. The mapping: both directions are derived from the data ---
     check(_gdata.live_product_of("cows") == "live_cows",
@@ -166,7 +177,10 @@ func _run() -> void:
 
     _finish(main_map, state)
 
-func _find_free_hex(main_map, taken: Array = []) -> Dictionary:
+# The first free hex of the Region (an empty hex, no resource, no herd, no town).
+# With need_road_plan the hex must also be reachable by a road and still unconnected:
+# a valid plan means new segments, an already connected hex has none and fails here.
+func _find_free_hex(main_map, taken: Array = [], need_road_plan: bool = false) -> Dictionary:
     for r in range(main_map.influence_start_row, main_map.influence_end_row + 1):
         for c in range(main_map.influence_start_col, main_map.influence_end_col + 1):
             var skip := false
@@ -187,6 +201,12 @@ func _find_free_hex(main_map, taken: Array = []) -> Dictionary:
                 continue
             if r == main_map.city_row and c == main_map.city_col:
                 continue
+            if need_road_plan:
+                var level: int = _gdata.get_max_unlocked_road_level()
+                var breakdown: Dictionary = \
+                        main_map.get_road_cost_breakdown_for_improvement(r, c, level)
+                if not bool(breakdown.get("ok", false)):
+                    continue
             return {"row": r, "col": c}
     return {}
 

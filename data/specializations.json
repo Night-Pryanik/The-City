@@ -1,0 +1,136 @@
+{
+// The specializations of the city (see docs.md, "Specializations of the city").
+//
+// Every reached threshold of the population earns the city one pick, and a pick gives the city
+// exactly one specialization. A branch is taken once and for all: there are no ranks, and two
+// branches never give the same thing — a branch may be a development of another one (see
+// "prerequisites"), but it is a specialization of its own.
+//
+// Every branch is always listed for the player: the ones that can be taken stand in the open, the
+// ones that cannot go under the disclosure "Unavailable specializations" of the tab
+// "Specialization". Nothing is withheld: a branch the city cannot reach yet still says what it
+// will give and what it waits for.
+//
+// "prerequisites" names the specializations the city must already have, in the format of the
+// technologies: [["a", "b"], ["c"]] means (a AND b) OR c. An absent field means "nothing is
+// needed".
+//
+// "unlock" holds the other conditions of a branch, in the same format as before: one condition or
+// a list of them, the list meaning "all of them". Its types are listed in
+// CityData._specialization_condition_met.
+//
+// A bonus record is { "type": <system>, "value": <share>, "improvements": [<ids>] }:
+//   improvement_production  — the improvements of the map; with "improvements" only those, without
+//                             it every improvement;
+//   building_production     — every working building of the city;
+//   internal_market_price   — the price the internal market pays the city for its goods;
+//   trade_sell_price        — the price a town pays for the goods of the city;
+//   trade_buy_price         — the price the city pays a town (a negative value makes it cheaper);
+//   research_speed          — the rate of the science.
+//
+// "effects" are the non-numeric consequences of the branch (a new building, a recipe, a mechanic).
+// They are shown only in the tab "Specialization": the tab "Effects" carries the numbers.
+//
+// "full_name" is optional: it is the name of the branch as a phrase, used wherever the interface
+// names the branch as the source of a bonus ("Raw Materials specialization"). Without the field the
+// phrase is "<name> specialization"; a branch whose name is a noun phrase writes its own — "Domestic
+// Market specialization" is not a phrase, "Specialization of the domestic market" is.
+  "specialization_config": {
+    // The thresholds of the population, one pick each: the list is the whole progression, so a
+    // city that reaches 30 with the list below has three picks to spend.
+    "thresholds": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+  },
+  "specializations": [
+    {
+      "id": "raw_materials",
+      "name": "Raw Materials",
+      "description": "The city lives off the land. Every improvement on the map — a farm, a mine, a quarry, a woodcutter's camp — yields more.",
+      "icon": "mining.png",
+      "bonuses": [
+        { "type": "improvement_production", "value": 0.10 }
+      ]
+    },
+    {
+      "id": "industry",
+      "name": "Industry",
+      "description": "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more.",
+      "icon": "metallurgy.png",
+      "bonuses": [
+        { "type": "building_production", "value": 0.10 }
+      ]
+    },
+    {
+      // The market of the citizens: the city sells its goods to them, and the price of the
+      // internal market is what the treasury gets for every unit.
+      "id": "domestic_market",
+      "name": "Domestic Market",
+      "full_name": "Specialization of the domestic market",
+      "description": "The city lives by its own market. The citizens pay more for the goods of the city, and every sale on the internal market brings the treasury more.",
+      "icon": "currency.png",
+      "bonuses": [
+        { "type": "internal_market_price", "value": 0.10 }
+      ]
+    },
+    {
+      "id": "science",
+      "name": "Science",
+      "description": "The city is a place of scholars. The science of every building and the studies of the city advance faster.",
+      "icon": "mathematics.png",
+      "bonuses": [
+        { "type": "research_speed", "value": 0.10 }
+      ]
+    },
+    {
+      // A development of the raw materials: the land, and only the land worked by the farm trades.
+      // The mines and the quarries belong to the mining branch below.
+      "id": "agrarian",
+      "name": "Agrarian",
+      "description": "The land feeds the city. The farms, the plantations and the pastures of the city yield far more than before.",
+      "icon": "farm.png",
+      "prerequisites": [["raw_materials"]],
+      "bonuses": [
+        {
+          "type": "improvement_production",
+          "value": 0.20,
+          "improvements": [
+            "farm", "plantation", "vineyard", "pasture",
+            "beehive", "pigsty", "farmstead", "fishing_boats"
+          ]
+        }
+      ]
+    },
+    {
+      // A development of the raw materials: what is dug out of the ground and felled in the forest.
+      // The fields and the herds belong to the agrarian branch above.
+      "id": "mining",
+      "name": "Mining",
+      "description": "The city digs deeper. The mines, the quarries and the pits of the city yield far more than before.",
+      "icon": "mine.png",
+      "prerequisites": [["raw_materials"]],
+      "bonuses": [
+        {
+          "type": "improvement_production",
+          "value": 0.20,
+          "improvements": [
+            "mine", "quarry", "soda_quarry", "salt_pond",
+            "tar_pit", "lumberjack_hut", "clay_pit"
+          ]
+        }
+      ]
+    },
+    {
+      // A development of the domestic market: the city is not only a market of its own, it is a
+      // place of merchants, and the towns beyond its walls trade with it.
+      "id": "foreign_trade",
+      "name": "Foreign Trade",
+      "full_name": "Specialization of foreign trade",
+      "description": "The city is a place of merchants. Towns pay more for the goods of the city and ask less for their own.",
+      "icon": "emporia.png",
+      "prerequisites": [["domestic_market"]],
+      "bonuses": [
+        { "type": "trade_sell_price", "value": 0.10 },
+        { "type": "trade_buy_price", "value": -0.10 }
+      ]
+    }
+  ]
+}

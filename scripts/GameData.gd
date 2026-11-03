@@ -48,6 +48,11 @@ var professions: Dictionary = {} # id -> profession data (data/professions.json)
 var consumption_rules: Array = [] # consumption entries (data/consumption.json)
 var city_names: Array = [] # city name variants (data/city_names.json)
 var game_balance: Dictionary = {} # the game balance (data/game_balance.json)
+# The specializations of the city (data/specializations.json): the branches in the order of the
+# file and the config block with the thresholds of the population (see CityData, "THE
+# SPECIALIZATIONS OF THE CITY").
+var specializations: Array = []
+var specialization_config: Dictionary = {}
 # The road levels (data/roads.json). roads_by_level — level -> level data:
 # a road network segment stores a level number, therefore exactly such an index is needed.
 var roads: Array = []
@@ -145,6 +150,8 @@ func _assign_from(loader) -> void:
     consumption_rules = loader.consumption_rules
     city_names = loader.city_names
     game_balance = loader.game_balance
+    specializations = loader.specializations
+    specialization_config = loader.specialization_config
     roads = loader.roads
     roads_by_level = loader.roads_by_level
     entity_sources = loader.entity_sources

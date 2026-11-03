@@ -940,10 +940,17 @@ func _take_from_city(key: String, amount: int) -> void:
 # The price of one unit of a sale the order carries no price for: the average price of a
 # group, or the plain market price of a single good (the town pays no quality premium, so
 # the row of the purchase column carries no quality multiplier either).
+#
+# The trade specialization of the city is applied here as well as in the row of the window
+# (town_ui._unit_price): an order without a price has to be settled at the very number the player
+# would have seen, and a standing contract is signed at it.
 func _sale_unit_price(key: String) -> int:
+    var price: float
     if GameData.is_group_key(key):
-        return TownEconomy.get_group_price(key)
-    return int(round(GameData.get_price(key)))
+        price = float(TownEconomy.get_group_price(key))
+    else:
+        price = GameData.get_price(key)
+    return int(round(price * CityData.get_specialization_multiplier(CityData.SPEC_TRADE_SELL_PRICE)))
 
 
 # Whether the town wants the good at all: the purchase column is the buy pool, and a good
@@ -1032,13 +1039,15 @@ func _contract_index_by_id(contract_id: String) -> int:
 
 # The price of one unit the way the sale row of the window showed it: the current
 # market price with the quality multiplier of the level the town holds (an unknown
-# level has the multiplier 1.0, which is the plain market price).
+# level has the multiplier 1.0, which is the plain market price), scaled by the trade
+# specialization of the city — the same rule town_ui._unit_price applies to the row.
 func _unit_price_of(town: Dictionary, product_id: String) -> int:
     var quality: Dictionary = town.get("quality", {})
     var quality_id := str(quality.get(product_id, ""))
     if quality_id.is_empty() or quality_id == "<null>":
         quality_id = ""
-    return int(round(GameData.get_price_for_quality(product_id, quality_id)))
+    var price := GameData.get_price_for_quality(product_id, quality_id)
+    return int(round(price * CityData.get_specialization_multiplier(CityData.SPEC_TRADE_BUY_PRICE)))
 
 
 func _product_name(product_id: String) -> String:

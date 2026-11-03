@@ -395,6 +395,9 @@ func setup():
 
     total_population = 1
     idle_population = 1 # one citizen, while he is busy nowhere
+    # A new game starts without a branch and with no pick spent.
+    chosen_specialization_ids.clear()
+    specialization_claimed = 0
 
     # The food balance constants are persisted per save (SaveManager) and therefore
     # leak across a "load save -> main menu -> new game" in the same session: a value
@@ -669,7 +672,11 @@ func get_internal_market_price(pid: String, quality_id: String = "") -> int:
     if base_price <= 0.0:
         return 0
     var mult = float(GameData.game_balance.get("internal_market_price_multiplier", 1.0))
-    var market_base := int(round(base_price * mult))
+    # The domestic market specialization: the price the city gets for its goods on its own market.
+    # It is applied here and nowhere else, so the row "Price" of the tab "Trade", the income of the
+    # treasury and the plan of the market all read the same number.
+    var spec_mult := get_specialization_multiplier(SPEC_INTERNAL_MARKET_PRICE)
+    var market_base := int(round(base_price * mult * spec_mult))
     if not GameData.parse_generated_id(pid).is_empty():
         # The ratio of the two prices, so that the dynamic market multipliers of the parts cancel
         # out and only the share of the quality remains.
@@ -1029,6 +1036,9 @@ func get_building_planned_production() -> Dictionary:
         var prof_multiplier := 1.0
         if wm != null and not are_all_slots_empty(i):
             prof_multiplier = wm.get_building_production_bonus(i)
+        # The same specialization multiplier the tick of the production applies, so that the
+        # planned "≈" of the tab "Resources" matches what the building really gives.
+        prof_multiplier *= get_specialization_multiplier(SPEC_BUILDING_PRODUCTION)
         # The identifier of the building is the source of the output (it coincides with the source of
         # the actual production in do_tick, so that in the tooltip it is one and
         # the same subject).
@@ -1574,6 +1584,11 @@ func do_tick():
         if wm != null and not are_all_slots_empty(i):
             prof_multiplier = wm.tick_building_consumption(i, SIMULATION_TICK)
 
+        # The specialization of the city speeds up every working building. It is folded into the
+        # output of the recipe and not into prof_multiplier: the science of a library is not a
+        # good of the city, and the rate of the research has a branch of its own.
+        var output_multiplier := prof_multiplier * get_specialization_multiplier(SPEC_BUILDING_PRODUCTION)
+
         # --- THE CONTINUOUS CRAFTING (CraftContainer) ---
         # The priority of the quality of the raw material: from the building or the default. It is passed into the container
         # for the write-off and affects the choice of the quality inside the "@"-group.
@@ -1599,7 +1614,7 @@ func do_tick():
             #              remainder is caught up — exactly full_amount is released
             #              over the whole cycle.
             #   completed — true if the container is full AND craft_time has passed.
-            var tick_res: Dictionary = container.tick(SIMULATION_TICK, has_worker, priority, prof_multiplier)
+            var tick_res: Dictionary = container.tick(SIMULATION_TICK, has_worker, priority, output_multiplier)
 
             # --- THE RECORDING OF THE EXPENSE FOR THE TICK ---
             # We record the consumption source for the tooltip of the resources and the UI label
@@ -1714,6 +1729,7 @@ func do_tick():
     science_breakdown = {
         "base": BASE_SCIENCE_PER_SEC,
         "buildings": science_breakdown_buildings,
+        "specialization": get_specialization_multiplier(SPEC_RESEARCH_SPEED),
         "total": get_science_rate_per_sec()
     }
 
@@ -1826,6 +1842,8 @@ func _check_population_change():
 
         emit_signal("population_changed", total_population)
         print("The population has grown to ", total_population)
+        # A new citizen may have brought the city to the next threshold of the specialization.
+        check_specialization_choice()
 
     # --- THE FAMINE (the death from the lack of the food) ---
     elif available_food == 0 and total_cons > total_prod and total_population > 1:
@@ -1981,7 +1999,8 @@ func _complete_tech_instantly(tech_id: String) -> bool:
 # the rate of the learning of the technologies (see tick_research_science_continuous and
 # docs.md, "Science: production and research").
 func get_science_rate_per_sec() -> float:
-    return BASE_SCIENCE_PER_SEC + science_buildings_rate_per_sec
+    return (BASE_SCIENCE_PER_SEC + science_buildings_rate_per_sec) \
+            * get_specialization_multiplier(SPEC_RESEARCH_SPEED)
 
 # The breakdown of the rate of the science by the sources (see science_breakdown) — for the tooltip
 # on the tab "Technologies". The cache is filled in once per tick in do_tick().
@@ -2249,6 +2268,25 @@ func get_city_effects() -> Array:
             "value": "",
             "source": get_tech_name(tech_id),
         })
+
+    # The specializations of the city. Only the numbers come here: a branch may also give a building,
+    # a recipe or a mechanic, and those lines belong to the tab "Specialization".
+    for spec in get_chosen_specializations():
+        for bonus in spec.get("bonuses", []):
+            if not (bonus is Dictionary):
+                continue
+            var bonus_type := str(bonus.get("type", ""))
+            var share := float(bonus.get("value", 0.0))
+            if bonus_type == "" or absf(share) <= 0.0001:
+                continue
+            effects.append({
+                "group": "specializations",
+                "icon": str(spec.get("icon", "")),
+                "name": format_specialization_bonus(bonus_type, share,
+                        _bonus_improvements(bonus)),
+                "value": "",
+                "source": get_specialization_full_name(spec),
+            })
 
     return effects
 
@@ -2964,4 +3002,359 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
                 "label": "+%d%% (%s)" % [int(value), tech_name],
                 "multiplier": multiplier
             })
+
+    # The specializations of the city act on the improvements of the map, therefore they close the
+    # list: the panel and the tooltip show them beside the other multipliers, one row per branch.
+    for mod in get_improvement_specialization_modifiers(imp_id):
+        result.append(mod)
     return result
+
+# --- THE SPECIALIZATIONS OF THE CITY ---
+#
+# The specializations the player picks when the population reaches a threshold
+# (data/specializations.json). A pick gives exactly one branch, and a branch is taken once and for
+# all: there are no ranks, and every branch is a specialization of its own.
+#
+# The state is only the chosen ids plus the number of the picks already spent: how many picks the
+# city has earned is derived from the population and the thresholds of the data, so a save never has
+# to keep a milestone list of its own.
+#
+# A branch is available only when its prerequisites are chosen and its "unlock" conditions hold;
+# every other branch is unavailable, and every unavailable one is still listed for the player (the
+# tab "Specialization" keeps them under a disclosure). An unknown condition type keeps the branch
+# closed — a typo in the data must not open what the author meant to keep shut.
+
+const SPEC_IMPROVEMENT_PRODUCTION := "improvement_production"
+const SPEC_BUILDING_PRODUCTION := "building_production"
+const SPEC_INTERNAL_MARKET_PRICE := "internal_market_price"
+const SPEC_TRADE_SELL_PRICE := "trade_sell_price"
+const SPEC_TRADE_BUY_PRICE := "trade_buy_price"
+const SPEC_RESEARCH_SPEED := "research_speed"
+
+# The branches the city has taken, in the order of the choice.
+var chosen_specialization_ids: Array = []
+# How many of the earned picks have been spent.
+var specialization_claimed: int = 0
+
+# The branches are listed by the city window and the choice window.
+signal specialization_changed()
+# The city has earned a pick it has not spent yet: the owner of the windows offers the choice.
+signal specialization_choice_offered()
+
+# The thresholds of the data in ascending order. A value that is not a milestone (a negative one,
+# a repeat) is dropped: the list is the progression, and two picks on one milestone would mean the
+# city earns two of them at once.
+func get_specialization_thresholds() -> Array:
+    var out: Array = []
+    for value in GameData.specialization_config.get("thresholds", []):
+        var threshold := int(value)
+        if threshold <= 0 or out.has(threshold):
+            continue
+        out.append(threshold)
+    out.sort()
+    return out
+
+func get_specialization(id: String) -> Dictionary:
+    for spec in GameData.specializations:
+        if str(spec.get("id", "")) == id:
+            return spec
+    return {}
+
+# The name of a branch as the interface says it: "Raw Materials specialization". Everywhere the
+# branch is named — over its plate, beside a percentage, in the prerequisites — the phrase is used:
+# a bare adjective says nothing about what the city has taken, and a bare noun ("Domestic Market")
+# reads as a place rather than as a branch of the city.
+#
+# A branch may carry a "full_name" of its own: the word does not always follow the name ("Domestic
+# Market specialization" is not a phrase, "Specialization of the domestic market" is). The field is
+# localized like the name, therefore every language writes the phrase it needs.
+func get_specialization_full_name(spec: Dictionary) -> String:
+    if spec.is_empty():
+        return ""
+    var own := str(spec.get("full_name", ""))
+    if own != "":
+        return own
+    return "%s %s" % [str(spec.get("name", "")), tr("specialization")]
+
+# Whether the city has taken this branch. A branch is taken once: a second pick of it is impossible,
+# and it is never offered again.
+func is_specialization_chosen(id: String) -> bool:
+    return chosen_specialization_ids.has(id)
+
+# The picks the city has earned: one per reached threshold.
+func get_specialization_picks_earned() -> int:
+    var earned := 0
+    for threshold in get_specialization_thresholds():
+        if total_population >= int(threshold):
+            earned += 1
+    return earned
+
+# The earned picks that are still unspent.
+func get_pending_specialization_picks() -> int:
+    return maxi(0, get_specialization_picks_earned() - specialization_claimed)
+
+# The population of the next milestone, or 0 when the progression is over.
+func get_next_specialization_threshold() -> int:
+    for threshold in get_specialization_thresholds():
+        if total_population < int(threshold):
+            return int(threshold)
+    return 0
+
+# Offers the choice when there is something to spend. It is called on the growth of the population
+# and once the game is loaded, so a save made with an unspent pick offers it again.
+func check_specialization_choice() -> void:
+    if get_pending_specialization_picks() > 0:
+        emit_signal("specialization_choice_offered")
+
+# Whether the branch may be taken right now: its predecessors are chosen and its own conditions
+# hold. A branch that cannot be taken is not withheld — it is listed as unavailable, with what it
+# waits for.
+func is_specialization_available(spec: Dictionary) -> bool:
+    if is_specialization_chosen(str(spec.get("id", ""))):
+        return false
+    return are_specialization_prerequisites_met(spec) and _specialization_unlock_met(spec)
+
+# The predecessors of a branch, in the format of the technologies: [["a", "b"], ["c"]] means
+# (a AND b) OR c. An absent or empty field means "nothing is needed".
+func are_specialization_prerequisites_met(spec: Dictionary) -> bool:
+    var groups = spec.get("prerequisites", [])
+    if not (groups is Array) or groups.is_empty():
+        return true
+    for group in groups:
+        var ids: Array = group if group is Array else [group]
+        var all_chosen := true
+        for id in ids:
+            if not is_specialization_chosen(str(id)):
+                all_chosen = false
+                break
+        if all_chosen:
+            return true
+    return false
+
+# The wording of the predecessors, for a branch that is shown but cannot be taken yet. The
+# alternatives are in brackets, as in the technologies: without them "a and b or c" does not say
+# what the "or" belongs to. A predecessor is named in full ("Raw Materials specialization"): a bare
+# adjective reads as an attribute of the goods, not as a branch of the city.
+func get_specialization_prerequisites_text(spec: Dictionary) -> String:
+    var groups = spec.get("prerequisites", [])
+    if not (groups is Array) or groups.is_empty():
+        return ""
+    var alternatives: Array = []
+    for group in groups:
+        var ids: Array = group if group is Array else [group]
+        var names: Array = []
+        for id in ids:
+            var other := get_specialization(str(id))
+            names.append(get_specialization_full_name(other) if not other.is_empty() else str(id))
+        alternatives.append(tr(" and ").join(names))
+    if alternatives.size() < 2:
+        return alternatives[0] if not alternatives.is_empty() else ""
+    var bracketed: Array = []
+    for part in alternatives:
+        bracketed.append("(%s)" % part)
+    return tr(" or ").join(bracketed)
+
+func _specialization_unlock_met(spec: Dictionary) -> bool:
+    var unlock = spec.get("unlock", [])
+    if unlock is Dictionary:
+        unlock = [unlock]
+    if not (unlock is Array):
+        return true
+    for condition in unlock:
+        if not _specialization_condition_met(condition):
+            return false
+    return true
+
+# The branches the player may take right now, in the order of the data.
+func get_available_specializations() -> Array:
+    var out: Array = []
+    for spec in GameData.specializations:
+        if is_specialization_available(spec):
+            out.append(spec)
+    return out
+
+# The branches that cannot be taken yet: everything that is neither taken nor available. They are
+# all listed — the tab "Specialization" keeps them under a disclosure, so the player can read the
+# whole list of the specializations of the game at any moment.
+func get_locked_specializations() -> Array:
+    var out: Array = []
+    for spec in GameData.specializations:
+        if is_specialization_chosen(str(spec.get("id", ""))) or is_specialization_available(spec):
+            continue
+        out.append(spec)
+    return out
+
+# The branches the city has taken, in the order of the choice.
+func get_chosen_specializations() -> Array:
+    var out: Array = []
+    for id in chosen_specialization_ids:
+        var spec := get_specialization(str(id))
+        if not spec.is_empty():
+            out.append(spec)
+    return out
+
+# Spends one pick on a branch. A branch the player may not take, a branch the city already has and a
+# pick the city has not earned are all refused.
+func choose_specialization(id: String) -> bool:
+    var spec := get_specialization(id)
+    if spec.is_empty():
+        return false
+    if not is_specialization_available(spec):
+        return false
+    if get_pending_specialization_picks() <= 0:
+        return false
+    chosen_specialization_ids.append(id)
+    specialization_claimed += 1
+    emit_signal("specialization_changed")
+    return true
+
+# The share a kind of bonus gives right now over the taken branches. A bonus that names its
+# improvements is left out: it acts on those improvements only, and a total "for every improvement"
+# would claim more than the city really has (see get_specialization_improvement_share).
+func get_specialization_bonus(bonus_type: String) -> float:
+    var total := 0.0
+    for spec in get_chosen_specializations():
+        for bonus in spec.get("bonuses", []):
+            if str(bonus.get("type", "")) != bonus_type:
+                continue
+            if not _bonus_improvements(bonus).is_empty():
+                continue
+            total += float(bonus.get("value", 0.0))
+    return total
+
+# The multiplier a kind of bonus gives: 1.0 plus the share. The floor keeps a negative bonus (the
+# cheaper purchase of a trade branch) from turning a price or a rate into zero.
+func get_specialization_multiplier(bonus_type: String) -> float:
+    return maxf(0.1, 1.0 + get_specialization_bonus(bonus_type))
+
+# The share the city has of the production of ONE improvement: the branches that name no
+# improvement of their own plus the branches that name this one.
+func get_specialization_improvement_share(imp_id: String) -> float:
+    var total := 0.0
+    for spec in get_chosen_specializations():
+        for bonus in spec.get("bonuses", []):
+            if str(bonus.get("type", "")) != SPEC_IMPROVEMENT_PRODUCTION:
+                continue
+            var targets := _bonus_improvements(bonus)
+            if not targets.is_empty() and not targets.has(imp_id):
+                continue
+            total += float(bonus.get("value", 0.0))
+    return total
+
+# The rows the panels and the tooltips of an improvement add for the specializations: one per branch,
+# so the player sees which branch gives what. A branch that names its improvements gives on those
+# alone, a branch that names none gives on every improvement.
+func get_improvement_specialization_modifiers(imp_id: String) -> Array:
+    var out: Array = []
+    for spec in get_chosen_specializations():
+        var share := 0.0
+        for bonus in spec.get("bonuses", []):
+            if str(bonus.get("type", "")) != SPEC_IMPROVEMENT_PRODUCTION:
+                continue
+            var targets := _bonus_improvements(bonus)
+            if not targets.is_empty() and not targets.has(imp_id):
+                continue
+            share += float(bonus.get("value", 0.0))
+        if absf(share) <= 0.0001:
+            continue
+        out.append({
+            "label": "%s (%s)" % [format_signed_percent(share),
+                    get_specialization_full_name(spec)],
+            "multiplier": maxf(0.1, 1.0 + share),
+        })
+    return out
+
+# The improvements a bonus names, or an empty list when it acts on every improvement.
+func _bonus_improvements(bonus: Dictionary) -> Array:
+    var targets = bonus.get("improvements", [])
+    if targets is Array:
+        return targets
+    if targets is String and str(targets) != "":
+        return [str(targets)]
+    return []
+
+# The non-numeric consequences of a branch: a building, a recipe, a mechanic. They are text lines of
+# the data, the code does not act on them, and only the tab "Specialization" shows them.
+func get_specialization_effects(spec: Dictionary) -> Array:
+    var out: Array = []
+    var effects = spec.get("effects", [])
+    if not (effects is Array):
+        return out
+    for line in effects:
+        if str(line) != "":
+            out.append(str(line))
+    return out
+
+# The wording of one bonus: what it acts on and how much it gives. The amount always names the
+# quantity it scales ("+10% to production", "+10% to the price") — a bare "+10%" says nothing about
+# what grows. A branch that names its improvements lists them, since the names are the localized
+# names of the data. An unknown type is shown as it is, so a bonus a mod adds is never dropped from
+# the window in silence.
+func format_specialization_bonus(bonus_type: String, share: float,
+        improvements: Array = []) -> String:
+    var amount := format_signed_percent(share)
+    if bonus_type == SPEC_IMPROVEMENT_PRODUCTION and not improvements.is_empty():
+        return tr("%s: %s to production") % [_improvement_names_text(improvements), amount]
+    match bonus_type:
+        SPEC_IMPROVEMENT_PRODUCTION:
+            return tr("Improvements on the map: %s to production") % amount
+        SPEC_BUILDING_PRODUCTION:
+            return tr("City buildings: %s to production") % amount
+        SPEC_INTERNAL_MARKET_PRICE:
+            return tr("Domestic market: %s to the price") % amount
+        SPEC_TRADE_SELL_PRICE:
+            return tr("Selling to towns: %s to the price") % amount
+        SPEC_TRADE_BUY_PRICE:
+            return tr("Buying from towns: %s to the price") % amount
+        SPEC_RESEARCH_SPEED:
+            return tr("Research: %s to the speed") % amount
+    # A kind the code does not know (a mod): the identifier is a service key and is shown as it
+    # is, the way the group captions of the "Effects" tab are.
+    return "%s: %s" % [bonus_type, amount]
+
+# The wording of one bonus record: the improvements it names are taken from the record itself, so
+# the windows do not have to know how a bonus is stored.
+func format_specialization_bonus_record(bonus: Dictionary) -> String:
+    return format_specialization_bonus(str(bonus.get("type", "")),
+            float(bonus.get("value", 0.0)), _bonus_improvements(bonus))
+
+# The names of the improvements, joined: "Farm, Plantation, Vineyard".
+func _improvement_names_text(improvements: Array) -> String:
+    var names: Array = []
+    for id in improvements:
+        var data: Dictionary = GameData.improvements.get(str(id), {})
+        names.append(str(data.get("name", id)))
+    return ", ".join(names)
+
+# A share as a signed percentage ("+10%", "-10%"). Godot's format strings have no sign flag, and a
+# plain "%d%%" of a negative number reads as a range rather than as a deduction.
+func format_signed_percent(share: float) -> String:
+    var percent := int(round(share * 100.0))
+    if percent > 0:
+        return "+%d%%" % percent
+    if percent < 0:
+        return "-%d%%" % absi(percent)
+    return "0%"
+
+func _specialization_condition_met(condition) -> bool:
+    if not (condition is Dictionary):
+        return false
+    var id := str(condition.get("id", ""))
+    match str(condition.get("type", "")):
+        "technology":
+            return is_tech_unlocked(id)
+        "building":
+            return _has_building(id)
+        "improvement":
+            if not is_inside_tree():
+                return false
+            return _has_improvement(id)
+        "population":
+            return total_population >= int(condition.get("value", 0))
+        "treasury":
+            return treasury >= int(condition.get("value", 0))
+        "storage":
+            return get_storage_amount(id) >= int(condition.get("amount", 0))
+        "specialization":
+            return is_specialization_chosen(id)
+    return false

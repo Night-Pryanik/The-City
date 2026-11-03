@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://dwa0g8671hsh0"]
 
 [ext_resource type="Script" uid="uid://db8sfnu5rqjpf" path="res://scripts/city_ui.gd" id="1_sxg55"]
+[ext_resource type="Script" uid="uid://1b62pk8bfd16" path="res://scripts/unread_dot.gd" id="2_dot"]
 
 [node name="CityUi" type="Control" unique_id=1004795705]
 layout_mode = 3
@@ -84,7 +85,21 @@ tooltip_text = "Era challenges"
 [node name="ReputationSpecializationButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1900000402]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
-tooltip_text = "Reputation and specialization"
+tooltip_text = "Specialization"
+
+[node name="PickDot" type="Control" parent="TabBarPanel/TabBar/ReputationSpecializationButton" unique_id=1900000404]
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -11.0
+offset_top = 2.0
+offset_right = -2.0
+offset_bottom = 11.0
+grow_horizontal = 0
+mouse_filter = 2
+script = ExtResource("2_dot")
 
 [node name="EncyclopediaButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1900000403]
 custom_minimum_size = Vector2(36, 34)
@@ -520,6 +535,46 @@ size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
 [node name="DiversityList" type="VBoxContainer" parent="ContentPanel/EffectsPanel/DiversitySection/ScrollContainer" unique_id=1900000512]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="SpecializationPanel" type="Control" parent="ContentPanel" unique_id=1900000601]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLabel" type="Label" parent="ContentPanel/SpecializationPanel" unique_id=1900000602]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 6.0
+offset_right = 183.0
+offset_bottom = 29.0
+text = "Specialization"
+
+[node name="Body" type="VBoxContainer" parent="ContentPanel/SpecializationPanel" unique_id=1900000603]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 32.0
+offset_right = -8.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+
+[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/SpecializationPanel/Body" unique_id=1900000604]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="SpecializationList" type="VBoxContainer" parent="ContentPanel/SpecializationPanel/Body/ScrollContainer" unique_id=1900000605]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
