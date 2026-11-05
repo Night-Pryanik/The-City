@@ -341,19 +341,19 @@ func reward_text(reward: Dictionary, product_id: String = "") -> String:
     match str(reward.get("type", "")):
         REWARD_TRADE_PRICE:
             if product_id.is_empty():
-                return tr("The town pays %s dearer") % CityData.format_signed_percent(
+                return tr("The town pays %s more") % CityData.format_signed_percent(
                         float(reward.get("value", 0.0)))
-            return tr("The town pays %s dearer for %s") % [
+            return tr("The town pays %s more for %s") % [
                     CityData.format_signed_percent(float(reward.get("value", 0.0))),
                     GameData.get_good_display_name(product_id)]
         REWARD_BRAND_PRODUCT:
-            return tr("The recipe of %s opens") % GameData.get_good_display_name(
+            return tr("Unlock the recipe of %s") % GameData.get_good_display_name(
                     str(reward.get("product", "")))
         REWARD_SPECIALIZATION:
             var spec := CityData.get_specialization(str(reward.get("id", "")))
             if spec.is_empty():
                 return tr("A specialization of the city")
-            return tr("The specialization %s, and one choice to spend") \
+            return tr("%s, and one free specialization point to spend") \
                     % CityData.get_specialization_full_name(spec)
         REWARD_EFFECT_STUB:
             return tr("An effect still to be written (%s)") % str(reward.get("id", ""))

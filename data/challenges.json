@@ -32,7 +32,7 @@
     {
       "id": "region_of_our_own",
       "name": "All your Region are belong to us",
-      "description": "A city that grows by the plough is worth more than one that grows by the coin. Spend a whole era without claiming a single chunk of the Region: not one hex bought, not one coin spent on claiming.",
+      "description": "Spend a whole era without claiming a single chunk of the Region.",
       "icon": "era_challenges.svg",
       "condition": "buy_no_chunks_in_one_era",
       "era": 0,
@@ -42,7 +42,7 @@
     {
       "id": "no_margin_left",
       "name": "Hanc marginis exiguitas non caperet",
-      "description": "The neighbours say the strip is too narrow to hold two cities. Prove them right: buy every chunk of the Region that is open for claiming in the current era.",
+      "description": "Buy every chunk of the Region that is open for claiming in the current era.",
       "icon": "era_challenges.svg",
       "condition": "buy_all_available_chunks_in_one_era",
       "reward": { "type": "effect_stub", "id": "whole_region" }

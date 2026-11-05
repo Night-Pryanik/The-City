@@ -15,126 +15,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "%s (%s)"
-msgstr "%s (%s)"
-
-msgid "%s of %s"
-msgstr "%s %s"
-
-msgid "%s or better"
-msgstr "%s и выше"
-
-msgid "A challenge of the era is completed."
-msgstr "Вызов эпохи выполнен."
-
-msgid "A specialization of the city"
-msgstr "Специализация города"
-
-msgid "An effect still to be written (%s)"
-msgstr "Эффект ещё не написан (%s)"
-
-msgid "Challenge completed: %s"
-msgstr "Вызов выполнен: %s"
-
-msgid "Challenge names a condition the game does not check"
-msgstr "Вызов называет условие, которое игра не проверяет"
-
-msgid "Challenges of another era"
-msgstr "Вызовы другой эпохи"
-
-msgid "Challenges of this era"
-msgstr "Вызовы этой эпохи"
-
-msgid "Chunks bought this era: %d"
-msgstr "Чанков куплено в эту эпоху: %d"
-
-msgid "Chunks left to buy: %d"
-msgstr "Чанков осталось купить: %d"
-
-msgid "Completed"
-msgstr "Выполнено"
-
-msgid "Done"
-msgstr "Готово"
-
-msgid "Era %d"
-msgstr "Эпоха %d"
-
-msgid "Reputation"
-msgstr "Репутация"
-
-msgid "Produced"
-msgstr "Произведено"
-
-msgid "Reached"
-msgstr "Достигнуто"
-
-msgid "Recipe waits for a nonexistent challenge"
-msgstr "Рецепт ждёт несуществующего вызова"
-
-msgid "Sold"
-msgstr "Продано"
-
-msgid "Specialization bonus names a nonexistent product"
-msgstr "Бонус специализации ссылается на несуществующий товар"
-
-msgid "Specialization waits for a nonexistent challenge"
-msgstr "Специализация ждёт несуществующего вызова"
-
-msgid "Brand"
-msgstr "Бренд"
-
-msgid "The challenge %s"
-msgstr "Вызов %s"
-
-msgid "The challenge of %s"
-msgstr "Вызов: %s"
-
-msgid "The challenge of the era is completed: the city has a specialization to take."
-msgstr "Вызов эпохи выполнен: городу доступен ещё один выбор специализации."
-
-msgid "The city is not on the map yet."
-msgstr "Города ещё нет на карте."
-
-msgid "Reputation and specialization"
-msgstr "Репутация и специализация"
-
-msgid "The fame of a good counts an unknown trigger"
-msgstr "Слава товара считает неизвестный триггер"
-
-msgid "The fame of a good has brought the city news."
-msgstr "Слава товара принесла городу новость."
-
-msgid "The fame of a good names a nonexistent quality"
-msgstr "Слава товара ссылается на несуществующее качество"
-
-msgid "The fame of a good rewards a nonexistent entity"
-msgstr "Слава товара награждает несуществующую сущность"
-
-msgid "The prestige good is granted by no rung of the fame"
-msgstr "Именной товар не открывает ни одна ступень славы"
-
-msgid "The recipe of %s opens"
-msgstr "Открывается рецепт: %s"
-
-msgid "The specialization %s, and one choice to spend"
-msgstr "Новая ветвь — %s — и один свободный выбор"
-
-msgid "The town pays %s dearer"
-msgstr "Городки платят на %s больше"
-
-msgid "The town pays %s dearer for %s"
-msgstr "Городки платят на %s больше за %s"
-
-msgid "The towns know what the city is good at."
-msgstr "Городки знают, чем славен город."
-
-msgid "The window: %s"
-msgstr "Окно задачи: %s"
-
-msgid "The world has learned the name of the goods of the city."
-msgstr "Мир узнал названия товаров города."
-
 msgid "\n\nFound here: %s"
 msgstr "\n\nЗдесь обнаружено: %s"
 
@@ -468,6 +348,12 @@ msgstr "%s одомашнены — %d голов теперь в хранили
 msgid "%s is under development"
 msgstr "«%s» — в разработке"
 
+msgid "%s of %s"
+msgstr "%s %s"
+
+msgid "%s or better"
+msgstr "%s и выше"
+
 msgid "%s outside the Region — requires technology: %s"
 msgstr "%s вне Региона — нужна технология: %s"
 
@@ -491,6 +377,9 @@ msgstr "%s — плата за факторию требует %d монет и�
 
 msgid "%s%s/sec"
 msgstr "%s%s/сек"
+
+msgid "%s, and one free specialization point to spend"
+msgstr "%s, и одно бесплатное очко специализации на выбор"
 
 msgid "%s: %.1f/sec"
 msgstr "%s: %.1f/сек"
@@ -582,6 +471,9 @@ msgstr "3,0 сек"
 msgid "300 px/s"
 msgstr "300 пикс/с"
 
+msgid "A challenge of the era is completed."
+msgstr "Вызов эпохи выполнен."
+
 msgid "A citizen has died of starvation. Population: %d"
 msgstr "Житель погиб от голода. Население: %d"
 
@@ -599,6 +491,9 @@ msgstr "К гексу уже проложена дорога"
 
 msgid "A road to this hex is already under construction"
 msgstr "Дорога до этого гекса уже строится"
+
+msgid "A specialization of the city"
+msgstr "Специализация города"
 
 msgid "A technology is being researched"
 msgstr "Изучается технология"
@@ -647,6 +542,9 @@ msgstr "Уже прочитано"
 
 msgid "Amount:"
 msgstr "Количество:"
+
+msgid "An effect still to be written (%s)"
+msgstr "Эффект ещё не написан (%s)"
 
 msgid "An empty name gives the city a random one."
 msgstr "Пустое имя — город получит случайное название."
@@ -719,6 +617,9 @@ msgstr "Пляжи"
 
 msgid "Blacklist names a nonexistent entity"
 msgstr "Чёрный список называет несуществующую сущность"
+
+msgid "Brand"
+msgstr "Бренд"
 
 msgid "Build"
 msgstr "Построить"
@@ -882,6 +783,21 @@ msgstr "Освоить нельзя: территория чужого горо�
 msgid "Carving rivers..."
 msgstr "Проведение рек..."
 
+msgid "Challenge completed: %s"
+msgstr "Вызов выполнен: %s"
+
+msgid "Challenge names a condition the game does not check"
+msgstr "Вызов называет условие, которое игра не проверяет"
+
+msgid "Challenges"
+msgstr "Вызовы"
+
+msgid "Challenges of another era"
+msgstr "Вызовы другой эпохи"
+
+msgid "Challenges of this era"
+msgstr "Вызовы этой эпохи"
+
 msgid "Check a mod to add it to the game."
 msgstr "Отметьте модификацию, чтобы добавить её в игру."
 
@@ -893,6 +809,12 @@ msgstr "Выберите модификации для этой игры. У к�
 
 msgid "Chosen"
 msgstr "Выбрано"
+
+msgid "Chunks bought this era: %d"
+msgstr "Чанков куплено в эту эпоху: %d"
+
+msgid "Chunks left to buy: %d"
+msgstr "Чанков осталось купить: %d"
 
 msgid "City"
 msgstr "Город"
@@ -995,6 +917,9 @@ msgstr "Свернуть панель"
 
 msgid "Collected %d %s!"
 msgstr "Собрано %d %s!"
+
+msgid "Completed"
+msgstr "Выполнено"
 
 msgid "Completed: %s"
 msgstr "Завершено: %s"
@@ -1206,6 +1131,9 @@ msgstr "Внутренний рынок: %s к цене"
 msgid "Domestic trade"
 msgstr "Внутренняя торговля"
 
+msgid "Done"
+msgstr "Готово"
+
 msgid "Down"
 msgstr "Вниз"
 
@@ -1224,8 +1152,8 @@ msgstr "Эффекты"
 msgid "Encyclopedia"
 msgstr "Энциклопедия"
 
-msgid "Challenges"
-msgstr "Вызовы"
+msgid "Era %d"
+msgstr "Эпоха %d"
 
 msgid "Era: %s"
 msgstr "Эпоха: %s"
@@ -1890,6 +1818,9 @@ msgstr "Цена за единицу: наличие на складе её не
 msgid "Price:"
 msgstr "Цена:"
 
+msgid "Produced"
+msgstr "Произведено"
+
 msgid "Produces:"
 msgstr "Производит:"
 
@@ -1950,6 +1881,9 @@ msgstr "В очереди на исследование: %s — симуляци
 msgid "Quit"
 msgstr "Выйти"
 
+msgid "Reached"
+msgstr "Достигнуто"
+
 msgid "Really exit the game?\nUnsaved progress will be lost."
 msgstr "Действительно выйти из игры?\nНесохранённый прогресс будет потерян."
 
@@ -1970,6 +1904,9 @@ msgstr "Рецепт ссылается на несуществующую гру
 
 msgid "Recipe references a nonexistent resource"
 msgstr "Рецепт ссылается на несуществующий ресурс"
+
+msgid "Recipe waits for a nonexistent challenge"
+msgstr "Рецепт ждёт несуществующего вызова"
 
 msgid "Recipe yields a nonexistent resource"
 msgstr "Рецепт даёт несуществующий ресурс"
@@ -1994,6 +1931,12 @@ msgstr "Убрать «%s» из очереди. Действие ещё не н
 
 msgid "Remove the worker from the improvement"
 msgstr "Снять рабочего с улучшения"
+
+msgid "Reputation"
+msgstr "Репутация"
+
+msgid "Reputation and specialization"
+msgstr "Репутация и специализация"
 
 msgid "Requirement:"
 msgstr "Условие:"
@@ -2244,6 +2187,9 @@ msgstr "Слот %d:"
 msgid "Small (30×30)"
 msgstr "Маленькая (30×30)"
 
+msgid "Sold"
+msgstr "Продано"
+
 msgid "Sold %d units of %s to %s."
 msgstr "Продано %d ед. %s в городок %s."
 
@@ -2259,8 +2205,14 @@ msgstr "Специализация"
 msgid "Specialization bonus names a nonexistent improvement"
 msgstr "Бонус специализации ссылается на несуществующее улучшение"
 
+msgid "Specialization bonus names a nonexistent product"
+msgstr "Бонус специализации ссылается на несуществующий товар"
+
 msgid "Specialization requires a nonexistent specialization"
 msgstr "Специализация требует несуществующую специализацию"
+
+msgid "Specialization waits for a nonexistent challenge"
+msgstr "Специализация ждёт несуществующего вызова"
 
 msgid "Specialization: %s"
 msgstr "Специализация: %s"
@@ -2397,6 +2349,15 @@ msgstr "Область не граничит с вашими владениям�
 msgid "The belts the generator rolls are: polar, cold, mild, subtropical, tropical. A cover is asked for its belts literally, so a misspelled belt is a belt that never happens and the cover simply does not grow there. If EVERY belt of the list is misspelled, the cover never appears on the map at all. An empty list means no restriction, not \"nowhere\"."
 msgstr "Поясов, которые генератор задаёт, пять: polar, cold, mild, subtropical, tropical. Написание значения сравнивается буквально, поэтому пояс с ошибкой — это пояс, которого на карте не бывает, и покров там просто не вырастет. Если с ошибкой написаны ВСЕ пояса списка, покров не появится на карте вовсе. Пустой список означает «никаких ограничений», а не «нигде»."
 
+msgid "The challenge %s"
+msgstr "Вызов %s"
+
+msgid "The challenge of %s"
+msgstr "Вызов: %s"
+
+msgid "The challenge of the era is completed: the city has a specialization to take."
+msgstr "Вызов эпохи выполнен: городу доступен ещё один выбор специализации."
+
 msgid "The chunk does not border explored territory — scout the neighbouring hexes first"
 msgstr "Чанк не граничит с исследованной территорией — сначала разведайте соседние гексы"
 
@@ -2408,6 +2369,9 @@ msgstr "В городе нет %d ед. %s для постоянного кон�
 
 msgid "The city does not have %d units of %s."
 msgstr "В городе нет %d ед. %s."
+
+msgid "The city is not on the map yet."
+msgstr "Города ещё нет на карте."
 
 msgid "The city needs access to fresh water"
 msgstr "Нужен доступ города к пресной воде"
@@ -2426,6 +2390,18 @@ msgstr "Зависимость «%s» — недопустимый иденти�
 
 msgid "The elevation hill around the city: it guarantees that the city starts on a continent."
 msgstr "Возвышенность вокруг города: она гарантирует, что город начнётся на материке."
+
+msgid "The fame of a good counts an unknown trigger"
+msgstr "Слава товара считает неизвестный триггер"
+
+msgid "The fame of a good has brought the city news."
+msgstr "Слава товара принесла городу новость."
+
+msgid "The fame of a good names a nonexistent quality"
+msgstr "Слава товара ссылается на несуществующее качество"
+
+msgid "The fame of a good rewards a nonexistent entity"
+msgstr "Слава товара награждает несуществующую сущность"
 
 msgid "The game does not read this field: its value is silently lost. Fields allowed here: %s."
 msgstr "Игра не читает это поле: значение молча теряется. Здесь допустимы поля: %s."
@@ -2499,6 +2475,9 @@ msgstr "Число притоков. Приток начинается в гор
 msgid "The pictures of the game. A set from the tilesets folder replaces only the types of icons it declares; every other type keeps the original pictures. The choice is remembered, and the interface is redrawn at once."
 msgstr "Рисунки игры. Набор из папки tilesets заменяет только те типы иконок, которые он объявляет; остальные типы сохраняют исходные рисунки. Выбор запоминается, и интерфейс перерисовывается сразу."
 
+msgid "The prestige good is granted by no rung of the fame"
+msgstr "Именной товар не открывает ни одна ступень славы"
+
 msgid "The radius around the city that is always land, in hexes."
 msgstr "Радиус вокруг города, который всегда остаётся землёй, в гексах."
 
@@ -2535,8 +2514,23 @@ msgstr "Городок уже соединён дорогой"
 msgid "The town is not on the map anymore"
 msgstr "Городка больше нет на карте"
 
+msgid "The town pays %s more"
+msgstr "Городок платит на %s больше"
+
+msgid "The town pays %s more for %s"
+msgstr "Городок платит на %s больше за %s"
+
+msgid "The towns know what the city is good at."
+msgstr "Городки знают, чем славен город."
+
 msgid "The widest coastal strip, in hexes."
 msgstr "Самая широкая полоса берега, в гексах."
+
+msgid "The window: %s"
+msgstr "Окно задачи: %s"
+
+msgid "The world has learned the name of the goods of the city."
+msgstr "Мир узнал названия товаров города."
 
 msgid "Theme: Blueprint"
 msgstr "Тема: чертёж"
@@ -2675,6 +2669,9 @@ msgstr "Неизвестное поле \"%s\" в %s."
 
 msgid "Unknown trade direction — the order was not placed."
 msgstr "Неизвестное направление сделки — заказ не размещён."
+
+msgid "Unlock the recipe of %s"
+msgstr "Открывает рецепт: %s"
 
 msgid "Unlocks recipes:"
 msgstr "Открывает рецепты:"
@@ -2967,6 +2964,10 @@ msgid "Butchers livestock for meat, hides and bones to feed the city's crafts."
 msgstr "Разделка скота: мясо, шкуры и кости для городских ремёсел."
 
 msgctxt "buildings.description"
+msgid "Cures and cuts tobacco leaf."
+msgstr "Выделка и нарезка табачного листа."
+
+msgctxt "buildings.description"
 msgid "Dries and cures various goods."
 msgstr "Сушка и завяливание различных продуктов."
 
@@ -3045,10 +3046,6 @@ msgstr "Перерабатывает молоко в сыр — продукт, 
 msgctxt "buildings.description"
 msgid "Works stone into hewn blocks and stone goods for construction."
 msgstr "Обработка камня: тесаные блоки и каменные изделия для строительства."
-
-msgctxt "buildings.description"
-msgid "Cures and cuts tobacco leaf."
-msgstr "Выделка и нарезка табачного листа."
 
 msgctxt "buildings.name"
 msgid "Alchemist's House"
@@ -3187,6 +3184,10 @@ msgid "Tar Distillery"
 msgstr "Смолокурня"
 
 msgctxt "buildings.name"
+msgid "Tobacco Workshop"
+msgstr "Табачная мастерская"
+
+msgctxt "buildings.name"
 msgid "Water Mill"
 msgstr "Водяная мельница"
 
@@ -3197,10 +3198,6 @@ msgstr "Дом ткача"
 msgctxt "buildings.name"
 msgid "Winemaker's House"
 msgstr "Дом винодела"
-
-msgctxt "buildings.name"
-msgid "Tobacco Workshop"
-msgstr "Табачная мастерская"
 
 msgctxt "categories.name"
 msgid "Additional Food"
@@ -3283,6 +3280,10 @@ msgid "Technical Crops"
 msgstr "Технические культуры"
 
 msgctxt "categories.name"
+msgid "Tobacco Products"
+msgstr "Табачные изделия"
+
+msgctxt "categories.name"
 msgid "Tools"
 msgstr "Инструменты"
 
@@ -3294,9 +3295,21 @@ msgctxt "categories.name"
 msgid "Writing Materials"
 msgstr "Письменные принадлежности"
 
-msgctxt "categories.name"
-msgid "Tobacco Products"
-msgstr "Табачные изделия"
+msgctxt "challenges.description"
+msgid "Buy every chunk of the Region that is open for claiming in the current era."
+msgstr ""
+
+msgctxt "challenges.description"
+msgid "Spend a whole era without claiming a single chunk of the Region."
+msgstr ""
+
+msgctxt "challenges.name"
+msgid "All your Region are belong to us"
+msgstr "Все ваш Регион принадлежать нам"
+
+msgctxt "challenges.name"
+msgid "Hanc marginis exiguitas non caperet"
+msgstr "Поля этой книги слишком узки"
 
 msgctxt "consumption_buildings_few"
 msgid "buildings"
@@ -3395,6 +3408,10 @@ msgid "Malachite"
 msgstr "Малахит"
 
 msgctxt "crafts.description"
+msgid "Awards the milk of the city to the cheese the world asks for by the name of the city."
+msgstr "Молоко города идёт в тот сыр, о котором спрашивают по имени города."
+
+msgctxt "crafts.description"
 msgid "Blows bottles from molten glass."
 msgstr "Выдувает бутылки из расплавленного стекла."
 
@@ -3439,6 +3456,10 @@ msgid "Burns wood into charcoal."
 msgstr "Обжигает древесину в древесный уголь."
 
 msgctxt "crafts.description"
+msgid "Combles and spins the fleece of the city into the softest cloth a town will ask for."
+msgstr "Руно города вычёсывают и прядут в самую мягкую ткань, какую только попросят в городках."
+
+msgctxt "crafts.description"
 msgid "Creates amphoras for storage and transport of liquid and dry goods."
 msgstr "Создаёт амфоры для хранения и перевозки жидких и сыпучих продуктов."
 
@@ -3449,6 +3470,10 @@ msgstr "Создаёт глиняную посуду для хранения"
 msgctxt "crafts.description"
 msgid "Creates clay tablets for writing."
 msgstr "Создаёт глиняные таблички для записей"
+
+msgctxt "crafts.description"
+msgid "Cures, ages and cuts tobacco leaf."
+msgstr "Выделывает, вылёживает и нарезает табачный лист"
 
 msgctxt "crafts.description"
 msgid "Cuts stone into plates, bowls, and cups."
@@ -3479,8 +3504,24 @@ msgid "Dries, rolls, withers and ferments yerba mate leaves."
 msgstr "Сушит, скручивает, вялит и ферментирует листья йерба мате"
 
 msgctxt "crafts.description"
+msgid "Drives charcoal into a bloom of iron in the forge."
+msgstr "Вгоняет уголь в раскалённую крицу железа в кузнице"
+
+msgctxt "crafts.description"
 msgid "Fires clay into building bricks."
 msgstr "Обжигает глину в строительные кирпичи"
+
+msgctxt "crafts.description"
+msgid "Fires the clay of the city into the thin, ringing ware the towns pay a name for."
+msgstr "Глина города обжигается в тонкую звонкую посуду, за которую платят по имени."
+
+msgctxt "crafts.description"
+msgid "Foldes and quenches the watered bar into blades that keep their edge."
+msgstr "Складывает и закаляет узорчатую полосу в клинки, что держат заточку"
+
+msgctxt "crafts.description"
+msgid "Foldes the bloom of the city into the watered bar the smiths of other towns ask for."
+msgstr "Слиток города коётся в полосу с узором, которую просят кузнецы других городков."
 
 msgctxt "crafts.description"
 msgid "Makes a batch of weapons to defend the city."
@@ -3609,6 +3650,10 @@ msgstr "Изготовление украшений из порфира"
 msgctxt "crafts.description"
 msgid "Makes jewelry out of silver."
 msgstr "Создаёт украшения из серебра"
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of steel."
+msgstr "Создаёт украшения из стали"
 
 msgctxt "crafts.description"
 msgid "Makes paper from various plant fibers."
@@ -3742,37 +3787,9 @@ msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
 msgstr "Ткёт одежду из шерсти"
 
-msgctxt "crafts.description"
-msgid "Cures, ages and cuts tobacco leaf."
-msgstr "Выделывает, вылёживает и нарезает табачный лист"
-
-msgctxt "crafts.description"
-msgid "Awards the milk of the city to the cheese the world asks for by the name of the city."
-msgstr "Молоко города идёт в тот сыр, о котором спрашивают по имени города."
-
-msgctxt "crafts.description"
-msgid "Fires the clay of the city into the thin, ringing ware the towns pay a name for."
-msgstr "Глина города обжигается в тонкую звонкую посуду, за которую платят по имени."
-
-msgctxt "crafts.description"
-msgid "Combles and spins the fleece of the city into the softest cloth a town will ask for."
-msgstr "Руно города вычёсывают и прядут в самую мягкую ткань, какую только попросят в городках."
-
-msgctxt "crafts.description"
-msgid "Foldes the bloom of the city into the watered bar the smiths of other towns ask for."
-msgstr "Слиток города коётся в полосу с узором, которую просят кузнецы других городков."
-
-msgctxt "crafts.description"
-msgid "Drives charcoal into a bloom of iron in the forge."
-msgstr "Вгоняет уголь в раскалённую крицу железа в кузнице"
-
-msgctxt "crafts.description"
-msgid "Foldes and quenches the watered bar into blades that keep their edge."
-msgstr "Складывает и закаляет узорчатую полосу в клинки, что держат заточку"
-
-msgctxt "crafts.description"
-msgid "Makes jewelry out of steel."
-msgstr "Создаёт украшения из стали"
+msgctxt "crafts.name"
+msgid "Aged Cheese"
+msgstr "Выдержанный сыр"
 
 msgctxt "crafts.name"
 msgid "Alpaca Meat"
@@ -3843,6 +3860,10 @@ msgid "Carthamin"
 msgstr "Картамин"
 
 msgctxt "crafts.name"
+msgid "Cashmere"
+msgstr "Кашемир"
+
+msgctxt "crafts.name"
 msgid "Charcoal"
 msgstr "Древесный уголь"
 
@@ -3897,6 +3918,14 @@ msgstr "Медное оружие"
 msgctxt "crafts.name"
 msgid "Coral Jewelry"
 msgstr "Украшения из кораллов"
+
+msgctxt "crafts.name"
+msgid "Damascus Steel"
+msgstr "Дамасская сталь"
+
+msgctxt "crafts.name"
+msgid "Damascus Weapons"
+msgstr "Дамасское оружие"
 
 msgctxt "crafts.name"
 msgid "Duck"
@@ -4079,6 +4108,10 @@ msgid "Planks"
 msgstr "Доски"
 
 msgctxt "crafts.name"
+msgid "Porcelain"
+msgstr "Фарфор"
+
+msgctxt "crafts.name"
 msgid "Pork"
 msgstr "Свинина"
 
@@ -4151,6 +4184,22 @@ msgid "Soap"
 msgstr "Мыло"
 
 msgctxt "crafts.name"
+msgid "Steel"
+msgstr "Сталь"
+
+msgctxt "crafts.name"
+msgid "Steel Jewelry"
+msgstr "Стальные украшения"
+
+msgctxt "crafts.name"
+msgid "Steel Tools"
+msgstr "Стальные инструменты"
+
+msgctxt "crafts.name"
+msgid "Steel Weapons"
+msgstr "Стальное оружие"
+
+msgctxt "crafts.name"
 msgid "Stone Tableware"
 msgstr "Каменная посуда"
 
@@ -4173,6 +4222,10 @@ msgstr "Чай"
 msgctxt "crafts.name"
 msgid "Tin"
 msgstr "Олово"
+
+msgctxt "crafts.name"
+msgid "Tobacco"
+msgstr "Табак"
 
 msgctxt "crafts.name"
 msgid "Toddy"
@@ -4221,46 +4274,6 @@ msgstr "Шерстяная одежда"
 msgctxt "crafts.name"
 msgid "Writing Set"
 msgstr "Письменный набор"
-
-msgctxt "crafts.name"
-msgid "Tobacco"
-msgstr "Табак"
-
-msgctxt "crafts.name"
-msgid "Aged Cheese"
-msgstr "Выдержанный сыр"
-
-msgctxt "crafts.name"
-msgid "Porcelain"
-msgstr "Фарфор"
-
-msgctxt "crafts.name"
-msgid "Cashmere"
-msgstr "Кашемир"
-
-msgctxt "crafts.name"
-msgid "Damascus Steel"
-msgstr "Дамасская сталь"
-
-msgctxt "crafts.name"
-msgid "Steel"
-msgstr "Сталь"
-
-msgctxt "crafts.name"
-msgid "Steel Tools"
-msgstr "Стальные инструменты"
-
-msgctxt "crafts.name"
-msgid "Steel Weapons"
-msgstr "Стальное оружие"
-
-msgctxt "crafts.name"
-msgid "Damascus Weapons"
-msgstr "Дамасское оружие"
-
-msgctxt "crafts.name"
-msgid "Steel Jewelry"
-msgstr "Стальные украшения"
 
 msgctxt "eras.name"
 msgid "Ancient"
@@ -4778,9 +4791,45 @@ msgctxt "quality_levels.name"
 msgid "Perfect"
 msgstr "Превосходное"
 
+msgctxt "resources.challenge.description"
+msgid "A thousand units of cheese of exceptional quality sold to the towns — and cheese begins to be asked by the name of the town."
+msgstr "Тысяча единиц сыра исключительного качества, проданных городкам, — и сыр начинают спрашивать по имени города."
+
+msgctxt "resources.challenge.description"
+msgid "A thousand units of steel weapons of exceptional quality sold to the towns — and weapons begin to be asked by the name of the town."
+msgstr "Тысяча единиц стального оружия исключительного качества, проданных городкам, — и оружие начинают спрашивать по имени города."
+
+msgctxt "resources.challenge.description"
+msgid "A thousand units of wool of exceptional quality sold to the towns — and the cloth begins to be asked by the name of the town."
+msgstr "Тысяча единиц шерсти исключительного качества, проданных городкам, — и ткань начинают спрашивать по имени города."
+
+msgctxt "resources.challenge.description"
+msgid "A thousand vessels of clay of exceptional quality sold to the towns — and they are known by the mark of the town."
+msgstr "Тысяча изделий из глины исключительного качества, проданных городкам, — и их узнают по клейму города."
+
+msgctxt "resources.challenge.name"
+msgid "A Blade with the Name of the Town"
+msgstr "Клинок с именем города"
+
+msgctxt "resources.challenge.name"
+msgid "A Mark on Fired Clay"
+msgstr "Клеймо на обожженной глине"
+
+msgctxt "resources.challenge.name"
+msgid "Gouda, Cheddar and Camembert"
+msgstr "Гауда, Чеддер и Камамбер"
+
+msgctxt "resources.challenge.name"
+msgid "Wool the Towns Ask for by Name"
+msgstr "Шерсть, которую спрашивают по имени"
+
 msgctxt "resources.name"
 msgid "Agave"
 msgstr "Агава"
+
+msgctxt "resources.name"
+msgid "Aged Cheese"
+msgstr "Выдержанный сыр"
 
 msgctxt "resources.name"
 msgid "Alabaster"
@@ -4929,6 +4978,10 @@ msgstr "Кармин"
 msgctxt "resources.name"
 msgid "Carthamin"
 msgstr "Картамин"
+
+msgctxt "resources.name"
+msgid "Cashmere"
+msgstr "Кашемир"
 
 msgctxt "resources.name"
 msgid "Cassava"
@@ -5085,6 +5138,14 @@ msgstr "Вигна"
 msgctxt "resources.name"
 msgid "Cuttlefish"
 msgstr "Каракатица"
+
+msgctxt "resources.name"
+msgid "Damascus Steel"
+msgstr "Дамасская сталь"
+
+msgctxt "resources.name"
+msgid "Damascus Weapons"
+msgstr "Дамасское оружие"
 
 msgctxt "resources.name"
 msgid "Dates"
@@ -5519,6 +5580,10 @@ msgid "Pomegranates"
 msgstr "Гранаты"
 
 msgctxt "resources.name"
+msgid "Porcelain"
+msgstr "Фарфор"
+
+msgctxt "resources.name"
 msgid "Pork"
 msgstr "Свинина"
 
@@ -5727,6 +5792,22 @@ msgid "Sponges"
 msgstr "Губки"
 
 msgctxt "resources.name"
+msgid "Steel"
+msgstr "Сталь"
+
+msgctxt "resources.name"
+msgid "Steel Jewelry"
+msgstr "Стальные украшения"
+
+msgctxt "resources.name"
+msgid "Steel Tools"
+msgstr "Стальные инструменты"
+
+msgctxt "resources.name"
+msgid "Steel Weapons"
+msgstr "Стальное оружие"
+
+msgctxt "resources.name"
 msgid "Stone Tableware"
 msgstr "Каменная посуда"
 
@@ -5781,6 +5862,10 @@ msgstr "Оловянная руда"
 msgctxt "resources.name"
 msgid "Tobacco"
 msgstr "Табак"
+
+msgctxt "resources.name"
+msgid "Tobacco Leaf"
+msgstr "Табачный лист"
 
 msgctxt "resources.name"
 msgid "Toddy"
@@ -5898,78 +5983,6 @@ msgctxt "resources.name"
 msgid "Zebu"
 msgstr "Зебу"
 
-msgctxt "resources.name"
-msgid "Tobacco Leaf"
-msgstr "Табачный лист"
-
-msgctxt "resources.name"
-msgid "Aged Cheese"
-msgstr "Выдержанный сыр"
-
-msgctxt "resources.name"
-msgid "Porcelain"
-msgstr "Фарфор"
-
-msgctxt "resources.name"
-msgid "Cashmere"
-msgstr "Кашемир"
-
-msgctxt "resources.name"
-msgid "Damascus Steel"
-msgstr "Дамасская сталь"
-
-msgctxt "resources.name"
-msgid "Steel"
-msgstr "Сталь"
-
-msgctxt "resources.name"
-msgid "Steel Tools"
-msgstr "Стальные инструменты"
-
-msgctxt "resources.name"
-msgid "Steel Weapons"
-msgstr "Стальное оружие"
-
-msgctxt "resources.name"
-msgid "Damascus Weapons"
-msgstr "Дамасское оружие"
-
-msgctxt "resources.name"
-msgid "Steel Jewelry"
-msgstr "Стальные украшения"
-
-msgctxt "resources.challenge.name"
-msgid "Gouda, Cheddar and Camembert"
-msgstr "Гауда, Чеддер и Камамбер"
-
-msgctxt "resources.challenge.name"
-msgid "Wool the Towns Ask for by Name"
-msgstr "Шерсть, которую спрашивают по имени"
-
-msgctxt "resources.challenge.name"
-msgid "A Mark on Fired Clay"
-msgstr "Клеймо на обожженной глине"
-
-msgctxt "resources.challenge.name"
-msgid "A Blade with the Name of the Town"
-msgstr "Клинок с именем города"
-
-msgctxt "resources.challenge.description"
-msgid "A thousand units of cheese of exceptional quality sold to the towns — and cheese begins to be asked by the name of the town."
-msgstr "Тысяча единиц сыра исключительного качества, проданных городкам, — и сыр начинают спрашивать по имени города."
-
-msgctxt "resources.challenge.description"
-msgid "A thousand units of wool of exceptional quality sold to the towns — and the cloth begins to be asked by the name of the town."
-msgstr "Тысяча единиц шерсти исключительного качества, проданных городкам, — и ткань начинают спрашивать по имени города."
-
-msgctxt "resources.challenge.description"
-msgid "A thousand vessels of clay of exceptional quality sold to the towns — and they are known by the mark of the town."
-msgstr "Тысяча изделий из глины исключительного качества, проданных городкам, — и их узнают по клейму города."
-
-msgctxt "resources.challenge.description"
-msgid "A thousand units of steel weapons of exceptional quality sold to the towns — and weapons begin to be asked by the name of the town."
-msgstr "Тысяча единиц стального оружия исключительного качества, проданных городкам, — и оружие начинают спрашивать по имени города."
-
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
 msgstr "Ровная дорога для телег. Позволяет перевозить втрое больше, чем тропка."
@@ -6035,22 +6048,6 @@ msgid "The city lives off the land. Every improvement on the map — a farm, a m
 msgstr "Город живёт за счёт земли. Каждое улучшение на карте — ферма, шахта, карьер, хижина лесоруба — даёт больше."
 
 msgctxt "specializations.description"
-msgid "The land feeds the city. The farms, the plantations and the pastures of the city yield far more than before."
-msgstr "Земля кормит город. Фермы, плантации и пастбища города дают значительно больше, чем прежде."
-
-msgctxt "specializations.description"
-msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
-msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше."
-
-msgctxt "specializations.description"
-msgid "The world knows the cellars of the city. Cheese brings more, and the dairies of the city fill it faster."
-msgstr "Подвалы города известны миру. Сыр приносит больше, а сыроварни наполняют его быстрее."
-
-msgctxt "specializations.description"
-msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
-msgstr "Печи города знают за его стенами. Керамика приносит больше, а мастерские наполняют её быстрее."
-
-msgctxt "specializations.description"
 msgid "The fleeces of the city are asked for by name. Wool brings more, and the looms of the city work it faster."
 msgstr "Руно города спрашивают по имени. Шерсть приносит больше, а станки ткут её быстрее."
 
@@ -6058,49 +6055,53 @@ msgctxt "specializations.description"
 msgid "The forges of the city have a name among the smiths. Blades bring more, and the forges of the city strike them faster."
 msgstr "Кузницы города имеют имя среди кузнецов. Клинок приносит больше, а кузницы куют его быстрее."
 
-msgctxt "challenges.name"
-msgid "All your Region are belong to us"
-msgstr "Весь Регион принадлежит нам"
+msgctxt "specializations.description"
+msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
+msgstr "Печи города знают за его стенами. Керамика приносит больше, а мастерские наполняют её быстрее."
 
-msgctxt "challenges.name"
-msgid "Hanc marginis exiguitas non caperet"
-msgstr "Hanc marginis exiguitas non caperet"
+msgctxt "specializations.description"
+msgid "The land feeds the city. The farms, the plantations and the pastures of the city yield far more than before."
+msgstr "Земля кормит город. Фермы, плантации и пастбища города дают значительно больше, чем прежде."
 
-msgctxt "challenges.description"
-msgid "A city that grows by the plough is worth more than one that grows by the coin. Spend a whole era without claiming a single chunk of the Region: not one hex bought, not one coin spent on claiming."
-msgstr "Город, который растёт плугом, стоит больше города, который растёт монетой. Проведите целую эпоху, не присвоив ни одного чанка Региона: ни одного гекса за монеты."
+msgctxt "specializations.description"
+msgid "The world knows the cellars of the city. Cheese brings more, and the dairies of the city fill it faster."
+msgstr "Подвалы города известны миру. Сыр приносит больше, а сыроварни наполняют его быстрее."
 
-msgctxt "challenges.description"
-msgid "The neighbours say the strip is too narrow to hold two cities. Prove them right: buy every chunk of the Region that is open for claiming in the current era."
-msgstr "Соседи говорят, что полоса земли слишком узка для двух городов. Докажите, что они правы: выкупите в текущую эпоху каждый чанк Региона, который ещё можно присвоить."
-
-msgctxt "specializations.full_name"
-msgid "Specialization of foreign trade"
-msgstr "Специализация внешней торговли"
-
-msgctxt "specializations.full_name"
-msgid "Specialization of the domestic market"
-msgstr "Специализация внутреннего рынка"
+msgctxt "specializations.description"
+msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
+msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше."
 
 msgctxt "specializations.full_name"
 msgid "Specialization of cheese"
 msgstr "Специализация сыра"
 
 msgctxt "specializations.full_name"
+msgid "Specialization of foreign trade"
+msgstr "Специализация внешней торговли"
+
+msgctxt "specializations.full_name"
 msgid "Specialization of pottery"
 msgstr "Специализация керамики"
 
 msgctxt "specializations.full_name"
-msgid "Specialization of wool"
-msgstr "Специализация шерсти"
+msgid "Specialization of the domestic market"
+msgstr "Специализация внутреннего рынка"
 
 msgctxt "specializations.full_name"
 msgid "Specialization of weapons"
 msgstr "Специализация оружия"
 
+msgctxt "specializations.full_name"
+msgid "Specialization of wool"
+msgstr "Специализация шерсти"
+
 msgctxt "specializations.name"
 msgid "Agrarian"
 msgstr "Аграрная"
+
+msgctxt "specializations.name"
+msgid "Cheese"
+msgstr "Сыр"
 
 msgctxt "specializations.name"
 msgid "Domestic Market"
@@ -6119,6 +6120,10 @@ msgid "Mining"
 msgstr "Горнодобывающая"
 
 msgctxt "specializations.name"
+msgid "Pottery"
+msgstr "Глиняная посуда"
+
+msgctxt "specializations.name"
 msgid "Raw Materials"
 msgstr "Сырьевая"
 
@@ -6127,20 +6132,12 @@ msgid "Science"
 msgstr "Научная"
 
 msgctxt "specializations.name"
-msgid "Cheese"
-msgstr "Сыр"
-
-msgctxt "specializations.name"
-msgid "Pottery"
-msgstr "Глиняная посуда"
+msgid "Weapons"
+msgstr "Оружейная"
 
 msgctxt "specializations.name"
 msgid "Wool"
 msgstr "Шерсть"
-
-msgctxt "specializations.name"
-msgid "Weapons"
-msgstr "Оружейная"
 
 msgctxt "technologies.description"
 msgid "+30% to resource production on plantations."
@@ -6271,6 +6268,10 @@ msgid "Allows you to build the tar pit and the tar distillery: resin or bitumen 
 msgstr "Даёт возможность строить смоляную яму и смолокурню: живица или битум → смола."
 
 msgctxt "technologies.description"
+msgid "Allows you to build the tobacco workshop: tobacco leaf → tobacco."
+msgstr "Даёт возможность строить табачную мастерскую: табачный лист → табак."
+
+msgctxt "technologies.description"
 msgid "Allows you to build the vineyard."
 msgstr "Даёт возможность строить виноградник."
 
@@ -6323,6 +6324,10 @@ msgid "Unlocks salt extraction in salt deposits (on the surface of salt lakes an
 msgstr "Открывает возможность добычи соли в соляных месторождениях (на поверхности соляных озёр и в соляных шахтах) и соляном пруду."
 
 msgctxt "technologies.description"
+msgid "Unlocks steel in the forge and the goods forged of it."
+msgstr "Открывает в кузнице сталь и изделия из неё."
+
+msgctxt "technologies.description"
 msgid "Unlocks the ability to find and gather native metals.\nUnlocks metal ores (gold, silver, copper) and metalloids (antimony and arsenic).\nAllows you to build the forge."
 msgstr "Открывает возможность находить и собирать самородные металлы.\nОткрывает руды металлов (золото, серебро, медь) и металлоидов (сурьма и мышьяк).\nДаёт возможность строить кузницу."
 
@@ -6341,14 +6346,6 @@ msgstr "Открывает использование тягловых живо�
 msgctxt "technologies.description"
 msgid "Unlocks the use of the water wheel to set millstones in motion."
 msgstr "Открывает использование водяного колеса для приведения в движение мельничных жерновов."
-
-msgctxt "technologies.description"
-msgid "Allows you to build the tobacco workshop: tobacco leaf → tobacco."
-msgstr "Даёт возможность строить табачную мастерскую: табачный лист → табак."
-
-msgctxt "technologies.description"
-msgid "Unlocks steel in the forge and the goods forged of it."
-msgstr "Открывает в кузнице сталь и изделия из неё."
 
 msgctxt "technologies.flavor"
 msgid "A plow yoked to oxen made it possible to work heavy soils and raised yields."
@@ -6423,6 +6420,10 @@ msgid "India first boiled cane juice down to crystals that kept well, and the cr
 msgstr "Индия первой научилась уваривать сок тростника в кристаллы, которые долго хранились; с арабскими земледельцами ремесло пришло к тёплым берегам Средиземноморья."
 
 msgctxt "technologies.flavor"
+msgid "Iron with a little carbon is another metal. Charcoal driven into a hot bloom and a flux that keeps the melt clean give a smith an edge that holds and a blade that does not bend."
+msgstr "Железо с малой долей углерода — уже другой металл. Уголь, вогнанный в раскалённую крицу, и флюс, что держит плав чистым, дают кузнецу лезвие, которое держит заточку, и клинок, который не гнётся."
+
+msgctxt "technologies.flavor"
 msgid "Managing water flows became the key to claiming new lands: irrigation did more than water the fields, it drained waterlogged ground and turned marshes into fertile plains."
 msgstr "Управление водными потоками стало ключом к освоению новых земель: ирригация позволяла не только поливать поля, но и осушать переувлажнённые участки, превращая болота в плодородные равнины."
 
@@ -6465,6 +6466,10 @@ msgstr "Люди заметили, что белый налёт на берег�
 msgctxt "technologies.flavor"
 msgid "Plantations made it possible to grow olives and citrus in bulk, providing valuable goods and oils."
 msgstr "Плантации позволили выращивать оливки и цитрусовые в больших количествах, обеспечивая людей ценными продуктами и маслами."
+
+msgctxt "technologies.flavor"
+msgid "Raw leaf is harsh and spoils quickly. Cured and cut, it keeps for years, so curing is what turned a harvested leaf into a stored good."
+msgstr "Сырой лист резок и быстро портится. Выделанный и нарезанный, он хранится годами: именно выделка превращает собранный лист в лежалый товар."
 
 msgctxt "technologies.flavor"
 msgid "Ropes became an important material for building, sailing and farming, letting people bind, haul and hoist loads."
@@ -6545,14 +6550,6 @@ msgstr "Дерево — древнейший строительный мате�
 msgctxt "technologies.flavor"
 msgid "Working precious stones and metals turned the craft into art."
 msgstr "Обработка драгоценных камней и металлов превратила ремесло в искусство."
-
-msgctxt "technologies.flavor"
-msgid "Raw leaf is harsh and spoils quickly. Cured and cut, it keeps for years, so curing is what turned a harvested leaf into a stored good."
-msgstr "Сырой лист резок и быстро портится. Выделанный и нарезанный, он хранится годами: именно выделка превращает собранный лист в лежалый товар."
-
-msgctxt "technologies.flavor"
-msgid "Iron with a little carbon is another metal. Charcoal driven into a hot bloom and a flux that keeps the melt clean give a smith an edge that holds and a blade that does not bend."
-msgstr "Железо с малой долей углерода — уже другой металл. Уголь, вогнанный в раскалённую крицу, и флюс, что держит плав чистым, дают кузнецу лезвие, которое держит заточку, и клинок, который не гнётся."
 
 msgctxt "technologies.name"
 msgid "Alchemy"
@@ -6719,12 +6716,20 @@ msgid "Soda Extraction"
 msgstr "Добыча соды"
 
 msgctxt "technologies.name"
+msgid "Steel Making"
+msgstr "Сталь"
+
+msgctxt "technologies.name"
 msgid "Sugar Making"
 msgstr "Сахароварение"
 
 msgctxt "technologies.name"
 msgid "Tar Burning"
 msgstr "Смолокурение"
+
+msgctxt "technologies.name"
+msgid "Tobacco Curing"
+msgstr "Табачное дело"
 
 msgctxt "technologies.name"
 msgid "Water Wheel"
@@ -6753,14 +6758,6 @@ msgstr "Обработка дерева"
 msgctxt "technologies.name"
 msgid "Writing"
 msgstr "Письменность"
-
-msgctxt "technologies.name"
-msgid "Tobacco Curing"
-msgstr "Табачное дело"
-
-msgctxt "technologies.name"
-msgid "Steel Making"
-msgstr "Сталь"
 
 msgctxt "technologies.unlock_effects.name"
 msgid "Allows scouts to explore areas in the fog of war."

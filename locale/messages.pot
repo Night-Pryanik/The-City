@@ -15,126 +15,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "%s (%s)"
-msgstr ""
-
-msgid "%s of %s"
-msgstr ""
-
-msgid "%s or better"
-msgstr ""
-
-msgid "A challenge of the era is completed."
-msgstr ""
-
-msgid "A specialization of the city"
-msgstr ""
-
-msgid "An effect still to be written (%s)"
-msgstr ""
-
-msgid "Challenge completed: %s"
-msgstr ""
-
-msgid "Challenge names a condition the game does not check"
-msgstr ""
-
-msgid "Challenges of another era"
-msgstr ""
-
-msgid "Challenges of this era"
-msgstr ""
-
-msgid "Chunks bought this era: %d"
-msgstr ""
-
-msgid "Chunks left to buy: %d"
-msgstr ""
-
-msgid "Completed"
-msgstr ""
-
-msgid "Done"
-msgstr ""
-
-msgid "Era %d"
-msgstr ""
-
-msgid "Reputation"
-msgstr ""
-
-msgid "Produced"
-msgstr ""
-
-msgid "Reached"
-msgstr ""
-
-msgid "Recipe waits for a nonexistent challenge"
-msgstr ""
-
-msgid "Sold"
-msgstr ""
-
-msgid "Specialization bonus names a nonexistent product"
-msgstr ""
-
-msgid "Specialization waits for a nonexistent challenge"
-msgstr ""
-
-msgid "Brand"
-msgstr ""
-
-msgid "The challenge %s"
-msgstr ""
-
-msgid "The challenge of %s"
-msgstr ""
-
-msgid "The challenge of the era is completed: the city has a specialization to take."
-msgstr ""
-
-msgid "The city is not on the map yet."
-msgstr ""
-
-msgid "Reputation and specialization"
-msgstr ""
-
-msgid "The fame of a good counts an unknown trigger"
-msgstr ""
-
-msgid "The fame of a good has brought the city news."
-msgstr ""
-
-msgid "The fame of a good names a nonexistent quality"
-msgstr ""
-
-msgid "The fame of a good rewards a nonexistent entity"
-msgstr ""
-
-msgid "The prestige good is granted by no rung of the fame"
-msgstr ""
-
-msgid "The recipe of %s opens"
-msgstr ""
-
-msgid "The specialization %s, and one choice to spend"
-msgstr ""
-
-msgid "The town pays %s dearer"
-msgstr ""
-
-msgid "The town pays %s dearer for %s"
-msgstr ""
-
-msgid "The towns know what the city is good at."
-msgstr ""
-
-msgid "The window: %s"
-msgstr ""
-
-msgid "The world has learned the name of the goods of the city."
-msgstr ""
-
 msgid "\n\nFound here: %s"
 msgstr ""
 
@@ -468,6 +348,12 @@ msgstr ""
 msgid "%s is under development"
 msgstr ""
 
+msgid "%s of %s"
+msgstr ""
+
+msgid "%s or better"
+msgstr ""
+
 msgid "%s outside the Region — requires technology: %s"
 msgstr ""
 
@@ -490,6 +376,9 @@ msgid "%s — the outpost fee needs %d coins from the treasury"
 msgstr ""
 
 msgid "%s%s/sec"
+msgstr ""
+
+msgid "%s, and one free specialization point to spend"
 msgstr ""
 
 msgid "%s: %.1f/sec"
@@ -582,6 +471,9 @@ msgstr ""
 msgid "300 px/s"
 msgstr ""
 
+msgid "A challenge of the era is completed."
+msgstr ""
+
 msgid "A citizen has died of starvation. Population: %d"
 msgstr ""
 
@@ -598,6 +490,9 @@ msgid "A road to the hex already exists"
 msgstr ""
 
 msgid "A road to this hex is already under construction"
+msgstr ""
+
+msgid "A specialization of the city"
 msgstr ""
 
 msgid "A technology is being researched"
@@ -646,6 +541,9 @@ msgid "Already read"
 msgstr ""
 
 msgid "Amount:"
+msgstr ""
+
+msgid "An effect still to be written (%s)"
 msgstr ""
 
 msgid "An empty name gives the city a random one."
@@ -718,6 +616,9 @@ msgid "Beaches"
 msgstr ""
 
 msgid "Blacklist names a nonexistent entity"
+msgstr ""
+
+msgid "Brand"
 msgstr ""
 
 msgid "Build"
@@ -882,6 +783,21 @@ msgstr ""
 msgid "Carving rivers..."
 msgstr ""
 
+msgid "Challenge completed: %s"
+msgstr ""
+
+msgid "Challenge names a condition the game does not check"
+msgstr ""
+
+msgid "Challenges"
+msgstr ""
+
+msgid "Challenges of another era"
+msgstr ""
+
+msgid "Challenges of this era"
+msgstr ""
+
 msgid "Check a mod to add it to the game."
 msgstr ""
 
@@ -892,6 +808,12 @@ msgid "Choose the mods for this game. Each save keeps its own set."
 msgstr ""
 
 msgid "Chosen"
+msgstr ""
+
+msgid "Chunks bought this era: %d"
+msgstr ""
+
+msgid "Chunks left to buy: %d"
 msgstr ""
 
 msgid "City"
@@ -994,6 +916,9 @@ msgid "Collapse panel"
 msgstr ""
 
 msgid "Collected %d %s!"
+msgstr ""
+
+msgid "Completed"
 msgstr ""
 
 msgid "Completed: %s"
@@ -1206,6 +1131,9 @@ msgstr ""
 msgid "Domestic trade"
 msgstr ""
 
+msgid "Done"
+msgstr ""
+
 msgid "Down"
 msgstr ""
 
@@ -1224,7 +1152,7 @@ msgstr ""
 msgid "Encyclopedia"
 msgstr ""
 
-msgid "Challenges"
+msgid "Era %d"
 msgstr ""
 
 msgid "Era: %s"
@@ -1890,6 +1818,9 @@ msgstr ""
 msgid "Price:"
 msgstr ""
 
+msgid "Produced"
+msgstr ""
+
 msgid "Produces:"
 msgstr ""
 
@@ -1950,6 +1881,9 @@ msgstr ""
 msgid "Quit"
 msgstr ""
 
+msgid "Reached"
+msgstr ""
+
 msgid "Really exit the game?\nUnsaved progress will be lost."
 msgstr ""
 
@@ -1969,6 +1903,9 @@ msgid "Recipe references a nonexistent goods group"
 msgstr ""
 
 msgid "Recipe references a nonexistent resource"
+msgstr ""
+
+msgid "Recipe waits for a nonexistent challenge"
 msgstr ""
 
 msgid "Recipe yields a nonexistent resource"
@@ -1993,6 +1930,12 @@ msgid "Remove \"%s\" from the queue. It has not started yet and nothing has been
 msgstr ""
 
 msgid "Remove the worker from the improvement"
+msgstr ""
+
+msgid "Reputation"
+msgstr ""
+
+msgid "Reputation and specialization"
 msgstr ""
 
 msgid "Requirement:"
@@ -2244,6 +2187,9 @@ msgstr ""
 msgid "Small (30×30)"
 msgstr ""
 
+msgid "Sold"
+msgstr ""
+
 msgid "Sold %d units of %s to %s."
 msgstr ""
 
@@ -2259,7 +2205,13 @@ msgstr ""
 msgid "Specialization bonus names a nonexistent improvement"
 msgstr ""
 
+msgid "Specialization bonus names a nonexistent product"
+msgstr ""
+
 msgid "Specialization requires a nonexistent specialization"
+msgstr ""
+
+msgid "Specialization waits for a nonexistent challenge"
 msgstr ""
 
 msgid "Specialization: %s"
@@ -2397,6 +2349,15 @@ msgstr ""
 msgid "The belts the generator rolls are: polar, cold, mild, subtropical, tropical. A cover is asked for its belts literally, so a misspelled belt is a belt that never happens and the cover simply does not grow there. If EVERY belt of the list is misspelled, the cover never appears on the map at all. An empty list means no restriction, not \"nowhere\"."
 msgstr ""
 
+msgid "The challenge %s"
+msgstr ""
+
+msgid "The challenge of %s"
+msgstr ""
+
+msgid "The challenge of the era is completed: the city has a specialization to take."
+msgstr ""
+
 msgid "The chunk does not border explored territory — scout the neighbouring hexes first"
 msgstr ""
 
@@ -2407,6 +2368,9 @@ msgid "The city does not have %d units of %s for a standing contract."
 msgstr ""
 
 msgid "The city does not have %d units of %s."
+msgstr ""
+
+msgid "The city is not on the map yet."
 msgstr ""
 
 msgid "The city needs access to fresh water"
@@ -2425,6 +2389,18 @@ msgid "The dependency \"%s\" is not a valid identifier."
 msgstr ""
 
 msgid "The elevation hill around the city: it guarantees that the city starts on a continent."
+msgstr ""
+
+msgid "The fame of a good counts an unknown trigger"
+msgstr ""
+
+msgid "The fame of a good has brought the city news."
+msgstr ""
+
+msgid "The fame of a good names a nonexistent quality"
+msgstr ""
+
+msgid "The fame of a good rewards a nonexistent entity"
 msgstr ""
 
 msgid "The game does not read this field: its value is silently lost. Fields allowed here: %s."
@@ -2499,6 +2475,9 @@ msgstr ""
 msgid "The pictures of the game. A set from the tilesets folder replaces only the types of icons it declares; every other type keeps the original pictures. The choice is remembered, and the interface is redrawn at once."
 msgstr ""
 
+msgid "The prestige good is granted by no rung of the fame"
+msgstr ""
+
 msgid "The radius around the city that is always land, in hexes."
 msgstr ""
 
@@ -2535,7 +2514,22 @@ msgstr ""
 msgid "The town is not on the map anymore"
 msgstr ""
 
+msgid "The town pays %s more"
+msgstr ""
+
+msgid "The town pays %s more for %s"
+msgstr ""
+
+msgid "The towns know what the city is good at."
+msgstr ""
+
 msgid "The widest coastal strip, in hexes."
+msgstr ""
+
+msgid "The window: %s"
+msgstr ""
+
+msgid "The world has learned the name of the goods of the city."
 msgstr ""
 
 msgid "Theme: Blueprint"
@@ -2674,6 +2668,9 @@ msgid "Unknown field \"%s\" in %s."
 msgstr ""
 
 msgid "Unknown trade direction — the order was not placed."
+msgstr ""
+
+msgid "Unlock the recipe of %s"
 msgstr ""
 
 msgid "Unlocks recipes:"
@@ -2967,6 +2964,10 @@ msgid "Butchers livestock for meat, hides and bones to feed the city's crafts."
 msgstr ""
 
 msgctxt "buildings.description"
+msgid "Cures and cuts tobacco leaf."
+msgstr ""
+
+msgctxt "buildings.description"
 msgid "Dries and cures various goods."
 msgstr ""
 
@@ -3044,10 +3045,6 @@ msgstr ""
 
 msgctxt "buildings.description"
 msgid "Works stone into hewn blocks and stone goods for construction."
-msgstr ""
-
-msgctxt "buildings.description"
-msgid "Cures and cuts tobacco leaf."
 msgstr ""
 
 msgctxt "buildings.name"
@@ -3187,6 +3184,10 @@ msgid "Tar Distillery"
 msgstr ""
 
 msgctxt "buildings.name"
+msgid "Tobacco Workshop"
+msgstr ""
+
+msgctxt "buildings.name"
 msgid "Water Mill"
 msgstr ""
 
@@ -3196,10 +3197,6 @@ msgstr ""
 
 msgctxt "buildings.name"
 msgid "Winemaker's House"
-msgstr ""
-
-msgctxt "buildings.name"
-msgid "Tobacco Workshop"
 msgstr ""
 
 msgctxt "categories.name"
@@ -3283,6 +3280,10 @@ msgid "Technical Crops"
 msgstr ""
 
 msgctxt "categories.name"
+msgid "Tobacco Products"
+msgstr ""
+
+msgctxt "categories.name"
 msgid "Tools"
 msgstr ""
 
@@ -3294,8 +3295,20 @@ msgctxt "categories.name"
 msgid "Writing Materials"
 msgstr ""
 
-msgctxt "categories.name"
-msgid "Tobacco Products"
+msgctxt "challenges.description"
+msgid "Buy every chunk of the Region that is open for claiming in the current era."
+msgstr ""
+
+msgctxt "challenges.description"
+msgid "Spend a whole era without claiming a single chunk of the Region."
+msgstr ""
+
+msgctxt "challenges.name"
+msgid "All your Region are belong to us"
+msgstr ""
+
+msgctxt "challenges.name"
+msgid "Hanc marginis exiguitas non caperet"
 msgstr ""
 
 msgctxt "consumption_buildings_few"
@@ -3395,6 +3408,10 @@ msgid "Malachite"
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Awards the milk of the city to the cheese the world asks for by the name of the city."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Blows bottles from molten glass."
 msgstr ""
 
@@ -3439,6 +3456,10 @@ msgid "Burns wood into charcoal."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Combles and spins the fleece of the city into the softest cloth a town will ask for."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Creates amphoras for storage and transport of liquid and dry goods."
 msgstr ""
 
@@ -3448,6 +3469,10 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Creates clay tablets for writing."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Cures, ages and cuts tobacco leaf."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -3479,7 +3504,23 @@ msgid "Dries, rolls, withers and ferments yerba mate leaves."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Drives charcoal into a bloom of iron in the forge."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Fires clay into building bricks."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Fires the clay of the city into the thin, ringing ware the towns pay a name for."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Foldes and quenches the watered bar into blades that keep their edge."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Foldes the bloom of the city into the watered bar the smiths of other towns ask for."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -3608,6 +3649,10 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Makes jewelry out of silver."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of steel."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -3742,36 +3787,8 @@ msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
 msgstr ""
 
-msgctxt "crafts.description"
-msgid "Cures, ages and cuts tobacco leaf."
-msgstr ""
-
-msgctxt "crafts.description"
-msgid "Awards the milk of the city to the cheese the world asks for by the name of the city."
-msgstr ""
-
-msgctxt "crafts.description"
-msgid "Fires the clay of the city into the thin, ringing ware the towns pay a name for."
-msgstr ""
-
-msgctxt "crafts.description"
-msgid "Combles and spins the fleece of the city into the softest cloth a town will ask for."
-msgstr ""
-
-msgctxt "crafts.description"
-msgid "Foldes the bloom of the city into the watered bar the smiths of other towns ask for."
-msgstr ""
-
-msgctxt "crafts.description"
-msgid "Drives charcoal into a bloom of iron in the forge."
-msgstr ""
-
-msgctxt "crafts.description"
-msgid "Foldes and quenches the watered bar into blades that keep their edge."
-msgstr ""
-
-msgctxt "crafts.description"
-msgid "Makes jewelry out of steel."
+msgctxt "crafts.name"
+msgid "Aged Cheese"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -3843,6 +3860,10 @@ msgid "Carthamin"
 msgstr ""
 
 msgctxt "crafts.name"
+msgid "Cashmere"
+msgstr ""
+
+msgctxt "crafts.name"
 msgid "Charcoal"
 msgstr ""
 
@@ -3896,6 +3917,14 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Coral Jewelry"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Damascus Steel"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Damascus Weapons"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4079,6 +4108,10 @@ msgid "Planks"
 msgstr ""
 
 msgctxt "crafts.name"
+msgid "Porcelain"
+msgstr ""
+
+msgctxt "crafts.name"
 msgid "Pork"
 msgstr ""
 
@@ -4151,6 +4184,22 @@ msgid "Soap"
 msgstr ""
 
 msgctxt "crafts.name"
+msgid "Steel"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Steel Jewelry"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Steel Tools"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Steel Weapons"
+msgstr ""
+
+msgctxt "crafts.name"
 msgid "Stone Tableware"
 msgstr ""
 
@@ -4172,6 +4221,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Tin"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Tobacco"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4220,46 +4273,6 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Writing Set"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Tobacco"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Aged Cheese"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Porcelain"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Cashmere"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Damascus Steel"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Steel"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Steel Tools"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Steel Weapons"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Damascus Weapons"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Steel Jewelry"
 msgstr ""
 
 msgctxt "eras.name"
@@ -4778,8 +4791,44 @@ msgctxt "quality_levels.name"
 msgid "Perfect"
 msgstr ""
 
+msgctxt "resources.challenge.description"
+msgid "A thousand units of cheese of exceptional quality sold to the towns — and cheese begins to be asked by the name of the town."
+msgstr ""
+
+msgctxt "resources.challenge.description"
+msgid "A thousand units of steel weapons of exceptional quality sold to the towns — and weapons begin to be asked by the name of the town."
+msgstr ""
+
+msgctxt "resources.challenge.description"
+msgid "A thousand units of wool of exceptional quality sold to the towns — and the cloth begins to be asked by the name of the town."
+msgstr ""
+
+msgctxt "resources.challenge.description"
+msgid "A thousand vessels of clay of exceptional quality sold to the towns — and they are known by the mark of the town."
+msgstr ""
+
+msgctxt "resources.challenge.name"
+msgid "A Blade with the Name of the Town"
+msgstr ""
+
+msgctxt "resources.challenge.name"
+msgid "A Mark on Fired Clay"
+msgstr ""
+
+msgctxt "resources.challenge.name"
+msgid "Gouda, Cheddar and Camembert"
+msgstr ""
+
+msgctxt "resources.challenge.name"
+msgid "Wool the Towns Ask for by Name"
+msgstr ""
+
 msgctxt "resources.name"
 msgid "Agave"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Aged Cheese"
 msgstr ""
 
 msgctxt "resources.name"
@@ -4928,6 +4977,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Carthamin"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Cashmere"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5084,6 +5137,14 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Cuttlefish"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Damascus Steel"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Damascus Weapons"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5519,6 +5580,10 @@ msgid "Pomegranates"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Porcelain"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Pork"
 msgstr ""
 
@@ -5727,6 +5792,22 @@ msgid "Sponges"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Steel"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Steel Jewelry"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Steel Tools"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Steel Weapons"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Stone Tableware"
 msgstr ""
 
@@ -5780,6 +5861,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Tobacco"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Tobacco Leaf"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5898,78 +5983,6 @@ msgctxt "resources.name"
 msgid "Zebu"
 msgstr ""
 
-msgctxt "resources.name"
-msgid "Tobacco Leaf"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Aged Cheese"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Porcelain"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Cashmere"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Damascus Steel"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Steel"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Steel Tools"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Steel Weapons"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Damascus Weapons"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Steel Jewelry"
-msgstr ""
-
-msgctxt "resources.challenge.name"
-msgid "Gouda, Cheddar and Camembert"
-msgstr ""
-
-msgctxt "resources.challenge.name"
-msgid "Wool the Towns Ask for by Name"
-msgstr ""
-
-msgctxt "resources.challenge.name"
-msgid "A Mark on Fired Clay"
-msgstr ""
-
-msgctxt "resources.challenge.name"
-msgid "A Blade with the Name of the Town"
-msgstr ""
-
-msgctxt "resources.challenge.description"
-msgid "A thousand units of cheese of exceptional quality sold to the towns — and cheese begins to be asked by the name of the town."
-msgstr ""
-
-msgctxt "resources.challenge.description"
-msgid "A thousand units of wool of exceptional quality sold to the towns — and the cloth begins to be asked by the name of the town."
-msgstr ""
-
-msgctxt "resources.challenge.description"
-msgid "A thousand vessels of clay of exceptional quality sold to the towns — and they are known by the mark of the town."
-msgstr ""
-
-msgctxt "resources.challenge.description"
-msgid "A thousand units of steel weapons of exceptional quality sold to the towns — and weapons begin to be asked by the name of the town."
-msgstr ""
-
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
 msgstr ""
@@ -6035,22 +6048,6 @@ msgid "The city lives off the land. Every improvement on the map — a farm, a m
 msgstr ""
 
 msgctxt "specializations.description"
-msgid "The land feeds the city. The farms, the plantations and the pastures of the city yield far more than before."
-msgstr ""
-
-msgctxt "specializations.description"
-msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
-msgstr ""
-
-msgctxt "specializations.description"
-msgid "The world knows the cellars of the city. Cheese brings more, and the dairies of the city fill it faster."
-msgstr ""
-
-msgctxt "specializations.description"
-msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
-msgstr ""
-
-msgctxt "specializations.description"
 msgid "The fleeces of the city are asked for by name. Wool brings more, and the looms of the city work it faster."
 msgstr ""
 
@@ -6058,28 +6055,20 @@ msgctxt "specializations.description"
 msgid "The forges of the city have a name among the smiths. Blades bring more, and the forges of the city strike them faster."
 msgstr ""
 
-msgctxt "challenges.name"
-msgid "All your Region are belong to us"
+msgctxt "specializations.description"
+msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
 msgstr ""
 
-msgctxt "challenges.name"
-msgid "Hanc marginis exiguitas non caperet"
+msgctxt "specializations.description"
+msgid "The land feeds the city. The farms, the plantations and the pastures of the city yield far more than before."
 msgstr ""
 
-msgctxt "challenges.description"
-msgid "A city that grows by the plough is worth more than one that grows by the coin. Spend a whole era without claiming a single chunk of the Region: not one hex bought, not one coin spent on claiming."
+msgctxt "specializations.description"
+msgid "The world knows the cellars of the city. Cheese brings more, and the dairies of the city fill it faster."
 msgstr ""
 
-msgctxt "challenges.description"
-msgid "The neighbours say the strip is too narrow to hold two cities. Prove them right: buy every chunk of the Region that is open for claiming in the current era."
-msgstr ""
-
-msgctxt "specializations.full_name"
-msgid "Specialization of foreign trade"
-msgstr ""
-
-msgctxt "specializations.full_name"
-msgid "Specialization of the domestic market"
+msgctxt "specializations.description"
+msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
 msgstr ""
 
 msgctxt "specializations.full_name"
@@ -6087,19 +6076,31 @@ msgid "Specialization of cheese"
 msgstr ""
 
 msgctxt "specializations.full_name"
+msgid "Specialization of foreign trade"
+msgstr ""
+
+msgctxt "specializations.full_name"
 msgid "Specialization of pottery"
 msgstr ""
 
 msgctxt "specializations.full_name"
-msgid "Specialization of wool"
+msgid "Specialization of the domestic market"
 msgstr ""
 
 msgctxt "specializations.full_name"
 msgid "Specialization of weapons"
 msgstr ""
 
+msgctxt "specializations.full_name"
+msgid "Specialization of wool"
+msgstr ""
+
 msgctxt "specializations.name"
 msgid "Agrarian"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Cheese"
 msgstr ""
 
 msgctxt "specializations.name"
@@ -6119,6 +6120,10 @@ msgid "Mining"
 msgstr ""
 
 msgctxt "specializations.name"
+msgid "Pottery"
+msgstr ""
+
+msgctxt "specializations.name"
 msgid "Raw Materials"
 msgstr ""
 
@@ -6127,19 +6132,11 @@ msgid "Science"
 msgstr ""
 
 msgctxt "specializations.name"
-msgid "Cheese"
-msgstr ""
-
-msgctxt "specializations.name"
-msgid "Pottery"
+msgid "Weapons"
 msgstr ""
 
 msgctxt "specializations.name"
 msgid "Wool"
-msgstr ""
-
-msgctxt "specializations.name"
-msgid "Weapons"
 msgstr ""
 
 msgctxt "technologies.description"
@@ -6271,6 +6268,10 @@ msgid "Allows you to build the tar pit and the tar distillery: resin or bitumen 
 msgstr ""
 
 msgctxt "technologies.description"
+msgid "Allows you to build the tobacco workshop: tobacco leaf → tobacco."
+msgstr ""
+
+msgctxt "technologies.description"
 msgid "Allows you to build the vineyard."
 msgstr ""
 
@@ -6323,6 +6324,10 @@ msgid "Unlocks salt extraction in salt deposits (on the surface of salt lakes an
 msgstr ""
 
 msgctxt "technologies.description"
+msgid "Unlocks steel in the forge and the goods forged of it."
+msgstr ""
+
+msgctxt "technologies.description"
 msgid "Unlocks the ability to find and gather native metals.\nUnlocks metal ores (gold, silver, copper) and metalloids (antimony and arsenic).\nAllows you to build the forge."
 msgstr ""
 
@@ -6340,14 +6345,6 @@ msgstr ""
 
 msgctxt "technologies.description"
 msgid "Unlocks the use of the water wheel to set millstones in motion."
-msgstr ""
-
-msgctxt "technologies.description"
-msgid "Allows you to build the tobacco workshop: tobacco leaf → tobacco."
-msgstr ""
-
-msgctxt "technologies.description"
-msgid "Unlocks steel in the forge and the goods forged of it."
 msgstr ""
 
 msgctxt "technologies.flavor"
@@ -6423,6 +6420,10 @@ msgid "India first boiled cane juice down to crystals that kept well, and the cr
 msgstr ""
 
 msgctxt "technologies.flavor"
+msgid "Iron with a little carbon is another metal. Charcoal driven into a hot bloom and a flux that keeps the melt clean give a smith an edge that holds and a blade that does not bend."
+msgstr ""
+
+msgctxt "technologies.flavor"
 msgid "Managing water flows became the key to claiming new lands: irrigation did more than water the fields, it drained waterlogged ground and turned marshes into fertile plains."
 msgstr ""
 
@@ -6464,6 +6465,10 @@ msgstr ""
 
 msgctxt "technologies.flavor"
 msgid "Plantations made it possible to grow olives and citrus in bulk, providing valuable goods and oils."
+msgstr ""
+
+msgctxt "technologies.flavor"
+msgid "Raw leaf is harsh and spoils quickly. Cured and cut, it keeps for years, so curing is what turned a harvested leaf into a stored good."
 msgstr ""
 
 msgctxt "technologies.flavor"
@@ -6544,14 +6549,6 @@ msgstr ""
 
 msgctxt "technologies.flavor"
 msgid "Working precious stones and metals turned the craft into art."
-msgstr ""
-
-msgctxt "technologies.flavor"
-msgid "Raw leaf is harsh and spoils quickly. Cured and cut, it keeps for years, so curing is what turned a harvested leaf into a stored good."
-msgstr ""
-
-msgctxt "technologies.flavor"
-msgid "Iron with a little carbon is another metal. Charcoal driven into a hot bloom and a flux that keeps the melt clean give a smith an edge that holds and a blade that does not bend."
 msgstr ""
 
 msgctxt "technologies.name"
@@ -6719,11 +6716,19 @@ msgid "Soda Extraction"
 msgstr ""
 
 msgctxt "technologies.name"
+msgid "Steel Making"
+msgstr ""
+
+msgctxt "technologies.name"
 msgid "Sugar Making"
 msgstr ""
 
 msgctxt "technologies.name"
 msgid "Tar Burning"
+msgstr ""
+
+msgctxt "technologies.name"
+msgid "Tobacco Curing"
 msgstr ""
 
 msgctxt "technologies.name"
@@ -6752,14 +6757,6 @@ msgstr ""
 
 msgctxt "technologies.name"
 msgid "Writing"
-msgstr ""
-
-msgctxt "technologies.name"
-msgid "Tobacco Curing"
-msgstr ""
-
-msgctxt "technologies.name"
-msgid "Steel Making"
 msgstr ""
 
 msgctxt "technologies.unlock_effects.name"
