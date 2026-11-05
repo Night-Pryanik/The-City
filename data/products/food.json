@@ -103,8 +103,8 @@
         "threshold": 1000,
         "trigger": "sell",
         "min_quality": "exceptional",
-        "name": "challenge_cheese_name",
-        "description": "challenge_cheese_desc",
+        "name": "Gouda, Cheddar and Camembert",
+        "description": "A thousand units of cheese of exceptional quality sold to the towns — and cheese begins to be asked by the name of the town.",
         "reward": { "type": "specialization", "id": "cheese_specialization" }
       }
     },

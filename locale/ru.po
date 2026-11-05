@@ -5939,35 +5939,35 @@ msgid "Steel Jewelry"
 msgstr "Стальные украшения"
 
 msgctxt "resources.challenge.name"
-msgid "challenge_cheese_name"
-msgstr "Сыр под именем города"
+msgid "Gouda, Cheddar and Camembert"
+msgstr "Гауда, Чеддер и Камамбер"
 
 msgctxt "resources.challenge.name"
-msgid "challenge_wool_name"
+msgid "Wool the Towns Ask for by Name"
 msgstr "Шерсть, которую спрашивают по имени"
 
 msgctxt "resources.challenge.name"
-msgid "challenge_pottery_name"
+msgid "A Mark on Fired Clay"
 msgstr "Клеймо на обожженной глине"
 
 msgctxt "resources.challenge.name"
-msgid "challenge_steel_name"
+msgid "A Blade with the Name of the Town"
 msgstr "Клинок с именем города"
 
 msgctxt "resources.challenge.description"
-msgid "challenge_cheese_desc"
+msgid "A thousand units of cheese of exceptional quality sold to the towns — and cheese begins to be asked by the name of the town."
 msgstr "Тысяча единиц сыра исключительного качества, проданных городкам, — и сыр начинают спрашивать по имени города."
 
 msgctxt "resources.challenge.description"
-msgid "challenge_wool_desc"
+msgid "A thousand units of wool of exceptional quality sold to the towns — and the cloth begins to be asked by the name of the town."
 msgstr "Тысяча единиц шерсти исключительного качества, проданных городкам, — и ткань начинают спрашивать по имени города."
 
 msgctxt "resources.challenge.description"
-msgid "challenge_pottery_desc"
+msgid "A thousand vessels of clay of exceptional quality sold to the towns — and they are known by the mark of the town."
 msgstr "Тысяча изделий из глины исключительного качества, проданных городкам, — и их узнают по клейму города."
 
 msgctxt "resources.challenge.description"
-msgid "challenge_steel_desc"
+msgid "A thousand units of steel weapons of exceptional quality sold to the towns — and weapons begin to be asked by the name of the town."
 msgstr "Тысяча единиц стального оружия исключительного качества, проданных городкам, — и оружие начинают спрашивать по имени города."
 
 msgctxt "roads.description"

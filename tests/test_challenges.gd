@@ -19,7 +19,9 @@
 #      the manager writes.
 #   7. The tasks of the era: the window of the era is judged when it closes, the free claiming of
 #      the new Region is not a purchase, and a task of another era is not offered.
-#   8. The live scene: the tab of the city window opens and lists both the tasks and the ladder.
+#   8. The live scene: the tab of the city window opens and lists both the tasks and the ladder, the
+#      ladder folded under the name of its challenge and opened by a click on that name. The names
+#      and descriptions of the rungs are the text of the data, not a key of the catalog.
 #
 # The expectations are derived from the data (the thresholds, the rewards, the goods), never from
 # the numbers of the file: a balance edit must not break the test.
@@ -123,6 +125,16 @@ func _test_data(state: Dictionary) -> void:
                 if str(reward.get("type", "")) == _mgr.REWARD_SPECIALIZATION:
                     check(not _cdata.get_specialization(str(reward.get("id", ""))).is_empty(),
                             "%s: the rung %s rewards an unknown specialization" % [pid, tier], state)
+            # The words of a rung are the text of the data. A key of the catalog in their place
+            # shows untranslated in every language the project does not ship.
+            for field in ["name", "description"]:
+                var text := str(block.get(field, ""))
+                check(text == "" or text.contains(" "),
+                        "%s: the rung %s carries a key of the catalog in \"%s\", not the text"
+                                % [pid, tier, field], state)
+        var challenge: Dictionary = blocks.get(_mgr.TIER_CHALLENGE, {})
+        check(str(challenge.get("name", "")).length() > 0,
+                "%s: the ladder has no challenge to be titled by" % pid, state)
     check(ladders >= 1, "at least one good must carry the ladder of the fame", state)
 
     check(not _gdata.challenges.is_empty(), "data/challenges.json declares no era challenge", state)
@@ -556,21 +568,55 @@ func _test_tab(state: Dictionary) -> void:
     if list == null:
         return
 
-    # A good of the ladder, a rung of it and the reward of that rung are all readable.
+    # The ladder is folded under the name of its challenge, and the rungs — the good, the reward of
+    # the rung, the prestige good — are readable once the player opens it.
     _mgr.record_sale(LADDER_GOOD, {"exceptional":
             int((_gdata.products[LADDER_GOOD][_mgr.TIER_REPUTATION] as Dictionary)
                     .get("threshold", 0))})
     city_ui.challenges_tab.refresh()
     await process_frame
+    var good_name: String = _gdata.get_product_name(LADDER_GOOD)
+    var ladder_name: String = str((_gdata.products[LADDER_GOOD]
+            [_mgr.TIER_CHALLENGE] as Dictionary).get("name", ""))
+    var rung_count := 0
+    for tier in _mgr.TIERS:
+        if (_gdata.products[LADDER_GOOD] as Dictionary).has(tier):
+            rung_count += 1
+    check(ladder_name != "", "the ladder of the test good carries no name", state)
+    check(_list_text(list).find(ladder_name) >= 0,
+            "the closed ladder is titled by its challenge", state)
+    check(_ladder_rungs(list, ladder_name) == 0, "a closed ladder hides its rungs", state)
+
+    var toggle := _ladder_toggle(list, ladder_name)
+    check(toggle != null, "the ladder of the good has no toggle of its own", state)
+    if toggle == null:
+        return
+    toggle.pressed.emit()
+    await process_frame
+    check(_ladder_rungs(list, ladder_name) == rung_count,
+            "the opened ladder lists every tier of the good (got %d of %d)"
+                    % [_ladder_rungs(list, ladder_name), rung_count], state)
     var text := _list_text(list)
-    check(text.find(_gdata.get_product_name(LADDER_GOOD)) >= 0,
-            "the tab names the good the ladder is about", state)
+    check(text.find(good_name) >= 0, "the tab names the good the ladder is about", state)
     check(text.find(str(_cdata.format_signed_percent(
             float(_mgr.reward_at(_gdata.products[LADDER_GOOD][_mgr.TIER_REPUTATION])
                     .get("value", 0.0))))) >= 0,
             "the tab says what the rung of the reputation gives", state)
     check(text.find("aged_cheese") < 0,
             "the prestige good of the ladder is named, not its identifier", state)
+
+    # The fold is remembered over a redraw: the list is rebuilt whenever the city changes, and the
+    # ladder the player opened stays open.
+    _mgr.record_sale(LADDER_GOOD, {"exceptional": 1})
+    city_ui.challenges_tab.refresh()
+    await process_frame
+    check(_ladder_rungs(list, ladder_name) == rung_count,
+            "a redraw keeps the ladder the player opened", state)
+
+    # Clicking the name again folds the ladder back.
+    _ladder_toggle(list, ladder_name).pressed.emit()
+    await process_frame
+    check(_ladder_rungs(list, ladder_name) == 0, "the ladder folds back on a second click", state)
 
     var specializations = city_ui.get_node_or_null(
             "ContentPanel/SpecializationPanel/Body/ScrollContainer/SpecializationList")
@@ -591,11 +637,29 @@ func _list_text(node: Node) -> String:
 
 func _collect_text(node: Node) -> String:
     var out := ""
-    if node is Label:
+    if node is Label or node is Button:
         out += node.text
     for child in node.get_children():
         out += " " + _collect_text(child)
     return out
+
+# The toggle of one ladder, found by the name of its good.
+func _ladder_toggle(list: Node, good_name: String) -> Button:
+    for child in list.get_children():
+        if child is Button and str(child.text).find(good_name) >= 0:
+            return child
+    return null
+
+# How many rungs the list shows under that ladder — zero while it stands closed.
+func _ladder_rungs(list: Node, good_name: String) -> int:
+    var toggle := _ladder_toggle(list, good_name)
+    if toggle == null:
+        return -1
+    var siblings: Array = list.get_children()
+    var next = siblings[siblings.find(toggle) + 1] \
+            if siblings.find(toggle) + 1 < siblings.size() else null
+    var rungs = next.get_node_or_null("Ladder") if next is MarginContainer else null
+    return rungs.get_child_count() if rungs != null else 0
 
 # --- THE STATE OF A NEW GAME ---
 

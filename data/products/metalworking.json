@@ -74,8 +74,8 @@
         "threshold": 1000,
         "trigger": "sell",
         "min_quality": "exceptional",
-        "name": "challenge_steel_name",
-        "description": "challenge_steel_desc",
+        "name": "A Blade with the Name of the Town",
+        "description": "A thousand units of steel weapons of exceptional quality sold to the towns — and weapons begin to be asked by the name of the town.",
         "reward": { "type": "specialization", "id": "weaponsmith_specialization" }
       }
     },

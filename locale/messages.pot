@@ -5939,35 +5939,35 @@ msgid "Steel Jewelry"
 msgstr ""
 
 msgctxt "resources.challenge.name"
-msgid "challenge_cheese_name"
+msgid "Gouda, Cheddar and Camembert"
 msgstr ""
 
 msgctxt "resources.challenge.name"
-msgid "challenge_wool_name"
+msgid "Wool the Towns Ask for by Name"
 msgstr ""
 
 msgctxt "resources.challenge.name"
-msgid "challenge_pottery_name"
+msgid "A Mark on Fired Clay"
 msgstr ""
 
 msgctxt "resources.challenge.name"
-msgid "challenge_steel_name"
+msgid "A Blade with the Name of the Town"
 msgstr ""
 
 msgctxt "resources.challenge.description"
-msgid "challenge_cheese_desc"
+msgid "A thousand units of cheese of exceptional quality sold to the towns — and cheese begins to be asked by the name of the town."
 msgstr ""
 
 msgctxt "resources.challenge.description"
-msgid "challenge_wool_desc"
+msgid "A thousand units of wool of exceptional quality sold to the towns — and the cloth begins to be asked by the name of the town."
 msgstr ""
 
 msgctxt "resources.challenge.description"
-msgid "challenge_pottery_desc"
+msgid "A thousand vessels of clay of exceptional quality sold to the towns — and they are known by the mark of the town."
 msgstr ""
 
 msgctxt "resources.challenge.description"
-msgid "challenge_steel_desc"
+msgid "A thousand units of steel weapons of exceptional quality sold to the towns — and weapons begin to be asked by the name of the town."
 msgstr ""
 
 msgctxt "roads.description"
