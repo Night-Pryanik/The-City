@@ -2556,6 +2556,9 @@ msgstr "Неизвестное поле \"%s\" в %s."
 msgid "Unknown trade direction — the order was not placed."
 msgstr "Неизвестное направление сделки — заказ не размещён."
 
+msgid "Unlocks recipes:"
+msgstr "Открывает рецепты:"
+
 msgid "Unspent choices: %d"
 msgstr "Нераспределённых выборов: %d"
 

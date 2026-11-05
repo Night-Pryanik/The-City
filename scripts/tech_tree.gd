@@ -19,12 +19,27 @@ const UI_THEME = preload("res://scripts/ui_theme.gd")
 # --- The dimensions ---
 const COL_GAP: int = 80 # the horizontal gap between the columns
 const COL_PADDING: int = 24 # the indent from the edge of _inner
-const BUTTON_WIDTH: int = 220 # the fixed width of the button
 const BUTTON_HEIGHT: int = 75 # the fixed height of the button
 const BUTTON_VERTICAL_GAP: int = 16 # the vertical gap between the buttons in a column
 const ICON_SIZE: int = 65 # the size of the icon of the technology
 const UNLOCK_ICON_SIZE: int = 40 # the size of the icon of the unlocked content on the button of the technology
 const UNLOCK_ICONS_MARGIN: int = 3 # the distance from the icons to the edges of the button
+const UNLOCK_ICONS_SEPARATION: int = 4 # the gap between the icons of the unlocked content
+const UNLOCK_ICONS_LEFT: int = 8 + ICON_SIZE + 8 # the row starts behind the icon of the technology
+const UNLOCK_ICONS_VISIBLE: int = 4 # the number of slots the row has: for icons, and for arrows
+const UNLOCK_ROW_SLOT: int = UNLOCK_ICON_SIZE + UNLOCK_ICONS_SEPARATION # the pitch of one slot: an icon, or an arrow
+const UNLOCK_ARROW_SIZE: int = 22 # the side of the arrow that scrolls the row of unlocked icons
+
+# The width of the strip while no arrow takes a slot: the button is as wide as the row it
+# has to hold, so a technology that opens more than UNLOCK_ICONS_VISIBLE things scrolls the
+# row instead of shrinking the icons, and the names of the technologies fit on one line.
+const UNLOCK_ROW_PLAIN_WIDTH: int = (UNLOCK_ICONS_VISIBLE * UNLOCK_ICON_SIZE
+        + (UNLOCK_ICONS_VISIBLE - 1) * UNLOCK_ICONS_SEPARATION)
+const BUTTON_WIDTH: int = UNLOCK_ICONS_LEFT + UNLOCK_ROW_PLAIN_WIDTH + 8
+
+const ICON_NEW_RECIPES := "new_recipe.png" # the badge of a technology that opens recipes
+const ICON_ARROW_LEFT := "chevron_left.svg"
+const ICON_ARROW_RIGHT := "chevron_right.svg"
 
 # --- The separation by eras ---
 # Each technology in the JSON contains the field "era" (the id of the era), and the human-readable
@@ -878,27 +893,38 @@ func _create_tech_button(tech_data: Dictionary) -> Button:
 
 func _add_unlock_icons(btn: Button, tech_id: String):
     # A row of the small icons at the bottom edge of the button: everything that the
-    # technology opens (the buildings, the improvements, the modifier effects).
+    # technology opens (the buildings, the improvements, the recipes, the modifier effects).
     # Each icon has its own tooltip_text — on hover over the icon
     # it is shown, and not the common tooltip of the technology.
     var items: Array = _get_unlock_items(tech_id)
     if items.is_empty():
         return
 
+    # The row is a strip: it shows UNLOCK_ICONS_VISIBLE slots and scrolls when there are more.
+    # The bar itself is never drawn — the arrows and the mouse wheel do the scrolling,
+    # and a bar inside a button would eat the height the icons need.
+    var strip := ScrollContainer.new()
+    strip.name = "UnlockIconsScroll"
+    strip.anchor_left = 0.0
+    strip.anchor_right = 1.0
+    strip.anchor_top = 1.0
+    strip.anchor_bottom = 1.0
+    strip.offset_left = UNLOCK_ICONS_LEFT
+    strip.offset_right = -8
+    strip.offset_top = -(UNLOCK_ICON_SIZE + UNLOCK_ICONS_MARGIN)
+    strip.offset_bottom = -UNLOCK_ICONS_MARGIN
+    strip.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+    strip.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    # PASS, so that a click on the row still reaches the button and starts the research.
+    strip.mouse_filter = Control.MOUSE_FILTER_PASS
+    btn.add_child(strip)
+
     var row := HBoxContainer.new()
     row.name = "UnlockIconsRow"
-    row.anchor_left = 0.25
-    row.anchor_right = 1.0
-    row.anchor_top = 1.0
-    row.anchor_bottom = 1.0
-    row.offset_top = - (UNLOCK_ICON_SIZE + UNLOCK_ICONS_MARGIN)
-    row.offset_bottom = - UNLOCK_ICONS_MARGIN
-    row.offset_left = 22
-    row.offset_right = -8
-    row.add_theme_constant_override("separation", 4)
+    row.add_theme_constant_override("separation", UNLOCK_ICONS_SEPARATION)
     row.alignment = BoxContainer.ALIGNMENT_BEGIN
     row.mouse_filter = Control.MOUSE_FILTER_PASS
-    btn.add_child(row)
+    strip.add_child(row)
 
     for item in items:
         var tex: Texture2D = _load_tech_icon(item.get("icon", ""))
@@ -912,6 +938,190 @@ func _add_unlock_icons(btn: Button, tech_id: String):
         icon.tooltip_text = item.get("tip", "")
         icon.mouse_filter = Control.MOUSE_FILTER_PASS
         row.add_child(icon)
+
+    _add_unlock_arrows(btn, strip, row)
+
+# The wheel over the row scrolls it by one icon. Only a row that actually overflows takes
+# the wheel: otherwise the gesture belongs to the tree, which is scrolled by the same wheel.
+func _on_unlock_row_input(event: InputEvent, strip: ScrollContainer, row: HBoxContainer) -> void:
+    if not (event is InputEventMouseButton):
+        return
+    var mb := event as InputEventMouseButton
+    if not mb.pressed:
+        return
+    var direction := 0
+    match mb.button_index:
+        MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_LEFT:
+            direction = -1
+        MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_RIGHT:
+            direction = 1
+        _:
+            return
+    if not _unlock_row_overflows(row):
+        return
+    _unlock_scroll_by(strip, row, direction)
+    strip.accept_event()
+
+func _add_unlock_arrows(btn: Button, strip: ScrollContainer, row: HBoxContainer) -> void:
+    # An arrow stands in a whole slot of the row rather than over an icon: while the row needs
+    # arrows, the end slots belong to them and nothing of the unlocked content is ever covered.
+    # A row that fits is left as plain icons.
+    strip.gui_input.connect(_on_unlock_row_input.bind(strip, row))
+    # The arrows follow three things: how far the row is scrolled, how wide the row is, and
+    # how wide the strip became. The bar of a hidden row still holds the offset, and the row
+    # is resized when an icon is added to it, so a change in either side refreshes the arrows.
+    var bar := strip.get_h_scroll_bar()
+    bar.value_changed.connect(func(_value): _refresh_unlock_arrows(btn, strip, row))
+    strip.resized.connect(func(): _refresh_unlock_arrows(btn, strip, row))
+    row.resized.connect(func(): _refresh_unlock_arrows(btn, strip, row))
+
+    for direction in [-1, 1]:
+        var arrow := Button.new()
+        arrow.name = "UnlockArrowLeft" if direction < 0 else "UnlockArrowRight"
+        arrow.focus_mode = Control.FOCUS_NONE
+        arrow.expand_icon = true
+        arrow.icon = IconRegistry.get_texture(ICON_ARROW_LEFT if direction < 0 else ICON_ARROW_RIGHT)
+        arrow.custom_minimum_size = Vector2(UNLOCK_ARROW_SIZE, UNLOCK_ARROW_SIZE)
+        arrow.anchor_left = 0.0 if direction < 0 else 1.0
+        arrow.anchor_right = arrow.anchor_left
+        arrow.anchor_top = 1.0
+        arrow.anchor_bottom = 1.0
+        arrow.offset_top = -((UNLOCK_ICON_SIZE + UNLOCK_ARROW_SIZE) * 0.5 + UNLOCK_ICONS_MARGIN)
+        arrow.offset_bottom = arrow.offset_top + UNLOCK_ARROW_SIZE
+        # The arrow is centred in the end slot of the row, where an icon would otherwise stand.
+        var slot_padding := int((UNLOCK_ROW_SLOT - UNLOCK_ARROW_SIZE) * 0.5)
+        if direction < 0:
+            arrow.offset_left = UNLOCK_ICONS_LEFT + slot_padding
+            arrow.offset_right = arrow.offset_left + UNLOCK_ARROW_SIZE
+        else:
+            arrow.offset_right = -(8 + slot_padding)
+            arrow.offset_left = arrow.offset_right - UNLOCK_ARROW_SIZE
+        # STOP: the arrow scrolls the row, it must not start the research of the technology.
+        arrow.mouse_filter = Control.MOUSE_FILTER_STOP
+        arrow.pressed.connect(_on_unlock_arrow_pressed.bind(strip, row, direction))
+        _style_unlock_arrow(arrow)
+        btn.add_child(arrow)
+
+    _refresh_unlock_arrows(btn, strip, row)
+
+# The plate under a scroll arrow: a plain chevron on the button is read as part of the panel,
+# so the arrow gets the frame of a control. The frame also keeps it visible on both the dark
+# and the lit shade of a technology button.
+func _style_unlock_arrow(arrow: Button) -> void:
+    var border := UI_THEME.color("control_border")
+    arrow.flat = false
+    arrow.add_theme_stylebox_override("normal",
+            _unlock_arrow_plate(UI_THEME.color("control_bg"), border))
+    arrow.add_theme_stylebox_override("hover",
+            _unlock_arrow_plate(UI_THEME.color("control_hover"), border))
+    arrow.add_theme_stylebox_override("pressed",
+            _unlock_arrow_plate(UI_THEME.color("control_pressed"), border))
+    arrow.add_theme_stylebox_override("focus",
+            _unlock_arrow_plate(UI_THEME.color("control_bg"), border))
+
+func _unlock_arrow_plate(bg: Color, border: Color) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = bg
+    style.border_color = border
+    style.set_border_width_all(1)
+    style.set_corner_radius_all(3)
+    # A 1 px frame and 2 px of padding are all the plate can afford: the chevron has to
+    # stay readable inside a control that is itself only a little taller than an icon.
+    UI_THEME.set_content_margins(style, 2.0)
+    return style
+
+func _on_unlock_arrow_pressed(strip: ScrollContainer, row: HBoxContainer, direction: int) -> void:
+    _unlock_scroll_by(strip, row, direction)
+
+func _get_unlock_row_offset(strip: ScrollContainer) -> float:
+    return strip.get_h_scroll_bar().value
+
+# The bar is the offset of the row even when it is not drawn: writing its value is what
+# makes the container scroll, and the arrows are refreshed from the signal it emits.
+func _set_unlock_row_offset(strip: ScrollContainer, value: float) -> void:
+    strip.get_h_scroll_bar().value = value
+
+func _unlock_row_content_width(row: HBoxContainer) -> float:
+    var width := 0.0
+    for child in row.get_children():
+        if not (child is Control):
+            continue
+        width += child.custom_minimum_size.x + float(UNLOCK_ICONS_SEPARATION)
+    if row.get_child_count() > 0:
+        width -= float(UNLOCK_ICONS_SEPARATION)
+    return width
+
+# The row needs arrows as soon as its content is wider than the whole strip; the width of
+# the strip itself is not the test, because the arrows take slots out of it.
+func _unlock_row_overflows(row: HBoxContainer) -> bool:
+    return _unlock_row_content_width(row) > float(UNLOCK_ROW_PLAIN_WIDTH) + 0.5
+
+# Which of the two arrows stand at this position of the row.
+func _unlock_arrows_at(content: float, offset: float) -> Array[bool]:
+    var needs := content > float(UNLOCK_ROW_PLAIN_WIDTH) + 0.5
+    var left := needs and offset > 0.5
+    # The right arrow asks whether the end of the content is out of reach even when it does
+    # not take a slot itself: giving it one only makes the answer more yes.
+    var right := needs and offset + float(UNLOCK_ROW_PLAIN_WIDTH) \
+            - (float(UNLOCK_ROW_SLOT) if left else 0.0) < content - 0.5
+    return [left, right]
+
+# How much of the row the icons get at this position: the whole strip, minus the slots
+# the arrows stand in.
+func _unlock_row_window(content: float, offset: float) -> float:
+    var arrows := _unlock_arrows_at(content, offset)
+    return float(UNLOCK_ROW_PLAIN_WIDTH) \
+            - (float(UNLOCK_ROW_SLOT) if arrows[0] else 0.0) \
+            - (float(UNLOCK_ROW_SLOT) if arrows[1] else 0.0)
+
+func _unlock_row_max_offset(content: float, offset: float) -> float:
+    return maxf(0.0, content - _unlock_row_window(content, offset))
+
+# The positions the row is allowed to rest in. A position that hides less than one slot of
+# content behind the left arrow is not worth that slot: the hidden icon fits into it, so the
+# row belongs at the beginning of the content instead, where the icon is drawn.
+func _unlock_canonical_offset(content: float, offset: float) -> float:
+    if offset > 0.5 and offset <= float(UNLOCK_ROW_SLOT) + 0.5:
+        return 0.0
+    return offset
+
+# One step of the wheel or of an arrow. A step is not always one slot of the bar: the arrow
+# that appears on that step takes a slot of its own, so the step goes on until it really
+# brings a new icon in.
+func _unlock_scroll_by(strip: ScrollContainer, row: HBoxContainer, direction: int) -> void:
+    var content := _unlock_row_content_width(row)
+    var offset := _unlock_canonical_offset(content, _get_unlock_row_offset(strip))
+    var edge := offset + _unlock_row_window(content, offset)
+    var target := offset + direction * float(UNLOCK_ROW_SLOT)
+    while direction > 0 \
+            and target < _unlock_row_max_offset(content, target) - 0.5 \
+            and target + _unlock_row_window(content, target) <= edge + 0.5:
+        target += float(UNLOCK_ROW_SLOT)
+    target = _unlock_canonical_offset(content, target)
+    _set_unlock_row_offset(strip, clampf(target, 0.0, _unlock_row_max_offset(content, target)))
+
+func _refresh_unlock_arrows(btn: Button, strip: ScrollContainer, row: HBoxContainer) -> void:
+    if btn == null or not is_instance_valid(btn):
+        return
+    var content := _unlock_row_content_width(row)
+    var offset := _get_unlock_row_offset(strip)
+    var canonical := _unlock_canonical_offset(content, offset)
+    if not is_equal_approx(canonical, offset):
+        # The bar clamps the row to its own idea of the end, which can be one of the positions
+        # an arrow is not worth; the position decides the arrows, so it is corrected first.
+        _set_unlock_row_offset(strip, canonical)
+        return
+    var arrows := _unlock_arrows_at(content, offset)
+    # The strip gives up the slots the arrows stand in, so the icons scroll past a free
+    # gutter instead of sliding under a button.
+    strip.offset_left = UNLOCK_ICONS_LEFT + (UNLOCK_ROW_SLOT if arrows[0] else 0)
+    strip.offset_right = -(8 + (UNLOCK_ROW_SLOT if arrows[1] else 0))
+    var left_arrow := btn.get_node_or_null("UnlockArrowLeft")
+    var right_arrow := btn.get_node_or_null("UnlockArrowRight")
+    if left_arrow != null:
+        left_arrow.visible = arrows[0]
+    if right_arrow != null:
+        right_arrow.visible = arrows[1]
 
 func _get_unlock_items(tech_id: String) -> Array:
     # Assembles the list of {"icon", "tip"} — everything that the technology opens.
@@ -948,6 +1158,21 @@ func _get_unlock_items(tech_id: String) -> Array:
             _add_unlock_item(result, seen, "road.svg",
                     tr("%s: up to %d units/sec per section") % [str(road.get("name", "")),
                             int(road.get("max_speed", 0))])
+
+    # The recipes (data/crafts/*.json, the field unlock_tech). Unlike the buildings, they are
+    # not drawn one by one: one technology opens up to fourteen of them, and the row has room
+    # for four icons of content of any kind. One badge stands for the whole set, and the list
+    # of what it opens belongs to its tooltip.
+    var recipe_names: Array[String] = []
+    for craft in GameData.crafts:
+        if craft.get("unlock_tech", "") == tech_id:
+            recipe_names.append(craft.get("name", craft.get("id", "")))
+    if not recipe_names.is_empty():
+        recipe_names.sort()
+        var recipe_tip := tr("Unlocks recipes:")
+        for recipe_name in recipe_names:
+            recipe_tip += "\n- " + recipe_name
+        _add_unlock_item(result, seen, ICON_NEW_RECIPES, recipe_tip)
 
     # The modifier effects of the technology (modifiers.json -> tech_modifiers).
     var mods: Dictionary = GameData.modifiers

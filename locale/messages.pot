@@ -2556,6 +2556,9 @@ msgstr ""
 msgid "Unknown trade direction — the order was not placed."
 msgstr ""
 
+msgid "Unlocks recipes:"
+msgstr ""
+
 msgid "Unspent choices: %d"
 msgstr ""
 
