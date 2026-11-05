@@ -41,7 +41,10 @@ func _ready():
     if new_game_btn:
         # The button in the pause menu always works from a running game:
         # instead of starting a new game, it returns to the main menu.
-        new_game_btn.text = tr("Return to main menu")
+        # The source text, not tr(): Godot re-translates the `text` property on a
+        # language change using its current value as the key, so a text already
+        # translated here would freeze in the language it was opened in.
+        new_game_btn.text = "Return to main menu"
         new_game_btn.pressed.connect(_on_new_game)
     else: printerr("NewGameButton not found in PauseMenu")
 
@@ -55,8 +58,9 @@ func _make_confirm_dialog():
     confirm_dialog = ConfirmationDialog.new()
     # We localize the standard dialog buttons (by default Godot shows
     # the English "OK" / "Cancel" — a project without translation files).
-    confirm_dialog.get_ok_button().text = tr("Yes")
-    confirm_dialog.get_cancel_button().text = tr("Cancel")
+    # Source texts rather than tr(), for the same reason as the menu buttons.
+    confirm_dialog.get_ok_button().text = "Yes"
+    confirm_dialog.get_cancel_button().text = "Cancel"
     # While the pause menu is open, the game is paused, so the dialog must
     # accept input when get_tree().paused == true.
     confirm_dialog.process_mode = Node.PROCESS_MODE_ALWAYS
