@@ -81,9 +81,10 @@
     },
     {
       // The weapon of the brand bar: it is made of the good that carries the name of the city, so it
-      // stands above the steel one without a technology of its own.
+      // stands above the steel one without a technology of its own. The blade is named by the steel
+      // it is forged from, and that steel is named by the city — hence the tag in front of it.
       "id": "damascus_weapons", "price": 250,
-      "name": "Damascus Weapons",
+      "name": "<city_name>-steel Weapons",
       "type": "product",
       "category": "weapons",
       "icon": "damascus_weapons.png"

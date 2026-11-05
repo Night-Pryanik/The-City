@@ -175,9 +175,10 @@ func load_all_data(mod_dirs: Array = []):
     raw_data = merged_data
 
     # The translation is applied BEFORE assembling the entities into dictionaries: further on, everyone who
-    # reads GameData.products[id]["name"] already gets a ready-to-display
-    # text in the current language. A language change re-reads the data from scratch
-    # (LocalizationManager.set_locale → GameData.load_all_data).
+    # reads GameData.products[id]["name"] already gets a text in the current language. A language change
+    # re-reads the data from scratch (LocalizationManager.set_locale → GameData.load_all_data).
+    # The name of a good of the brand is the exception: its phrase carries the tag <city_name>, which only
+    # the city knows later, so such a record is display-ready after GameData.get_product_name, not before.
     _localize_display_fields(merged_data)
 
     terrains = {}

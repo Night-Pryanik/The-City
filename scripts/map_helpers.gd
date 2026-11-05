@@ -932,7 +932,7 @@ static func get_tech_reveal_conflict(tile: Dictionary) -> Dictionary:
     var imp_name: String = GameData.improvements.get(expected_imp, {}).get("name", expected_imp)
     return {
         "res_id": natural_res,
-        "res_name": res_data.get("name", natural_res),
+        "res_name": GameData.get_product_name(natural_res),
         "improved_by": expected_imp,
         "imp_name": imp_name
     }
@@ -1096,7 +1096,7 @@ static func get_chunk_info(chunk: Array, tile_data: Array) -> String:
         if is_resource_revealed(tile):
             var eff_res = get_effective_resource(tile)
             if eff_res != "":
-                var res_name: String = GameData.raw_resources.get(eff_res, {}).get("name", eff_res)
+                var res_name: String = GameData.get_product_name(eff_res)
                 resources.append(res_name)
 
     var terrain_names: Array[String] = []

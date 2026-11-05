@@ -254,7 +254,7 @@ func _ladder_name(manager, records: Array, product: String) -> String:
             var name := str(record.get("name", ""))
             if name != "":
                 return name
-    return GameData.get_good_display_name(product)
+    return GameData.get_product_name(product)
 
 # The head of a fold: the mark of what stands under it, its name, and how far the city has come
 # along it. Collapsed, it still answers the question the closed list would otherwise hide — whether

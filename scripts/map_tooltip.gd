@@ -702,7 +702,7 @@ func _build_text(row: int, col: int, tile_data: Array, _city_row: int = 0, _city
         res_id = ""
     var res_name = tr("none")
     if res_id != "":
-        res_name = GameData.raw_resources.get(res_id, {}).get("name", res_id)
+        res_name = GameData.get_product_name(res_id)
 
     var terrain_data = GameData.terrains.get(tile.terrain, {})
     if terrain_data.get("unique", false) and not is_revealed:
@@ -912,7 +912,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
             suffix = " " + tr("heads per %.0f sec") % MapHelpers.get_breeding_cycle_period(res_data)
         else:
             final_amount = ceili(base_amount * bonus_multiplier * fill_frac)
-        var prod_name = prod_data.get("name", prod_id)
+        var prod_name = GameData.get_product_name(prod_id)
         var icon_path = ""
         if prod_data.has("icon"):
             var icon_name = prod_data["icon"]

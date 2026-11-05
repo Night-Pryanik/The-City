@@ -1605,7 +1605,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 wood_icon_path = IconRegistry.icon_path(wood_data["icon"])
             var lj_products := []
             lj_products.append({"type": "header", "text": tr("Will produce:")})
-            var wood_label = wood_data.get("name", tr("Wood"))
+            var wood_label = GameData.get_product_name("wood")
             lj_products.append({"type": "product", "name": wood_label, "amount": lj_per_sec, "icon_path": wood_icon_path, "suffix": " " + TranslationServer.translate("units/sec")})
             var lj_box = VBoxContainer.new()
             map_tooltip.render_products(lj_products, lj_box, true)
@@ -1633,7 +1633,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 # produces can be a number or a range [min, max] - in the
                 # preview we show the deterministic minimum (see RangeUtils).
                 var base_amount = float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
-                var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
+                var prod_name = GameData.get_product_name(prod_id)
                 var icon_path = ""
                 var prod_data = GameData.products.get(prod_id, {})
                 if prod_data.has("icon"):

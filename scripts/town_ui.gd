@@ -1870,17 +1870,7 @@ func _get_resource_icon_name(resource_id: String) -> String:
 func _get_resource_display_name(resource_id: String) -> String:
     if _is_group_id(resource_id):
         return GameData.format_resource_name(resource_id)
-    var resource_data := GameData.get_resource_data(resource_id)
-    var display_name := GameData.get_good_display_name(resource_id)
-    if not display_name.is_empty() and display_name != resource_id:
-        return display_name
-    # A guard for opening the window at the moment when the common loader has not yet
-    # filled GameData: we still show not the ID but the available name.
-    var raw_data: Dictionary = GameData.raw_resources.get(resource_id, {})
-    if not raw_data.is_empty():
-        return str(raw_data.get("name", resource_id))
-    var product_data: Dictionary = GameData.products.get(resource_id, {})
-    return str(product_data.get("name", resource_id))
+    return GameData.get_product_name(resource_id)
 
 # --- Service access for tests ---
 

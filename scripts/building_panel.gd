@@ -1370,7 +1370,7 @@ func _make_craft_content(craft_name: String, craft_resources, craft_result: Dict
             icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
             content.add_child(icon_rect)
         var prod_label = Label.new()
-        prod_label.text = pdata.get("name", prod_id)
+        prod_label.text = GameData.get_product_name(prod_id)
         prod_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         content.add_child(prod_label)
         var amount = craft_result[prod_id]
@@ -1660,8 +1660,4 @@ func _get_resource_icon(res_id: String) -> String:
 
 # Returns the human-readable name of a resource (from the goods or from the raw materials)
 func _get_resource_name(res_id: String) -> String:
-    if products.has(res_id):
-        return products[res_id].get("name", res_id)
-    if raw_resources.has(res_id):
-        return raw_resources[res_id].get("name", res_id)
-    return res_id
+    return GameData.get_product_name(res_id)

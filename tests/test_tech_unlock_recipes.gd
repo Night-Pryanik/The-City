@@ -161,7 +161,7 @@ func _check_premium_recipe(tree, state: Dictionary) -> void:
     _cdata.city_name = "Testfeld"
     _mgr.mark_tier_done(str(ladder["id"]), "brand")
     var after := _tooltip_names(_recipe_tip(tree, tech_id))
-    var brand_name := str(_gdata.get_good_display_name(str(ladder["brand"])))
+    var brand_name := str(_gdata.get_product_name(str(ladder["brand"])))
     check(after.has(brand_name),
         "the tooltip announces the premium recipe \"%s\" once the rung is paid" % brand_name, state)
     check(not after.has(data_name),

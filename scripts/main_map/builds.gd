@@ -42,7 +42,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
                     if amount <= 0:
                         continue
                     CityData.add_to_storage(prod_id, amount, forage_quality)
-                    hud.show_message(tr("Collected %d %s!") % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)], GameData.HUD_MESSAGE_NORMAL)
+                    hud.show_message(tr("Collected %d %s!") % [amount, GameData.get_product_name(prod_id)], GameData.HUD_MESSAGE_NORMAL)
                 # The resource disappears from the map after the gathering.
                 tile.resource = null
         elif action_type == "demolish":

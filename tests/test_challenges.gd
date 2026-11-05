@@ -195,16 +195,13 @@ func _check_brand_product(state: Dictionary, pid: String, brand_id: String) -> v
     check(float(brand.get("price", 0.0)) > float(_gdata.products[base].get("price", 0.0)),
             "the prestige good %s must be dearer than the good it is made of" % brand_id, state)
 
-    # The name of a brand is composed from the good and the city, and it stands without brackets: a
-    # brand is read as a name of the good, the way «пармская» is, not as a qualification in
-    # parentheses. The wording of the phrase belongs to the catalog, so what is judged here is the
-    # structure — the good, the city, and no brackets — in whatever language the run speaks. The
-    # record keeps a name of its own for the moments the city has none (the menu, a detached mod
-    # probe), and that name is the fallback, not the label of the running game.
+    # The phrase of a brand name lives in the data, with the tag <city_name> where the city belongs,
+    # and the catalog carries the phrase of its own language. What is judged here is therefore the
+    # substitution and the shape of the phrase: the good, the city, no brackets, no tag left standing.
     var saved_city := str(_cdata.city_name)
     _cdata.city_name = "Testfeld"
     var base_name := str(_gdata.get_product_name(base))
-    var shown := str(_gdata.get_good_display_name(brand_id))
+    var shown := str(_gdata.get_product_name(brand_id))
     check(shown.contains("Testfeld") and shown.contains(base_name),
             "the prestige good %s must be shown by its base good and by the city: %s"
                     % [brand_id, shown], state)
@@ -216,9 +213,10 @@ func _check_brand_product(state: Dictionary, pid: String, brand_id: String) -> v
                 "the row of the building must carry the name of the brand, not the name of the " +
                 "workshop: %s" % str(recipe.get("name", "")), state)
     _cdata.city_name = ""
-    check(str(_gdata.get_good_display_name(brand_id)) == str(_gdata.get_product_name(brand_id)),
-            "without a name of the city the prestige good must fall back to the name of its record",
-            state)
+    var nameless := str(_gdata.get_product_name(brand_id))
+    check(not nameless.contains(_gdata.TAG_CITY_NAME) and not nameless.contains("Testfeld"),
+            "a city without a name must leave neither the tag nor a hole in the phrase: %s"
+                    % nameless, state)
     _cdata.city_name = saved_city
 
 # --- 2. THE COUNTERS ---

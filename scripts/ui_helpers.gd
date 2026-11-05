@@ -579,7 +579,7 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
         
         var label = Label.new()
         var special_yield = pdata.get("special_yield", {})
-        label.text = pdata.get("name", prod_id)
+        label.text = GameData.get_product_name(prod_id)
         label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(label)
         product_labels.append(label)
@@ -646,7 +646,7 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
 
             var yield_label = Label.new()
             yield_label.text = "%s: %d" % [
-                yield_data.get("name", yield_id), int(special_yield[yield_id])]
+                GameData.get_product_name(yield_id), int(special_yield[yield_id])]
             yield_label.add_theme_color_override("font_color", UI_THEME.color("warning"))
             yield_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
             row.add_child(yield_label)
@@ -1375,7 +1375,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
     for yield_id in special_yield:
         var yield_label = Label.new()
         yield_label.text = "%s: %d" % [
-            GameData.products.get(yield_id, {}).get("name", yield_id),
+            GameData.get_product_name(yield_id),
             int(special_yield[yield_id])
         ]
         yield_label.add_theme_color_override("font_color", quality_marker_color())

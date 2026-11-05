@@ -299,7 +299,7 @@ func _fill_tamed_section() -> void:
             for subgroup in _get_subgroups(data):
                 if not animal_subgroups.has(subgroup):
                     animal_subgroups[subgroup] = []
-                animal_subgroups[subgroup].append({"id": resource_id, "name": data.get("name", resource_id), "icon": data.get("icon", "")})
+                animal_subgroups[subgroup].append({"id": resource_id, "name": GameData.get_product_name(resource_id), "icon": data.get("icon", "")})
 
         for subgroup in animal_subgroups.keys():
             var subgroup_label = Label.new()
@@ -392,7 +392,7 @@ func _fill_storage_section() -> void:
         for prod_id in items:
             var amount = city_storage[prod_id]
             var pdata = products.get(prod_id, {})
-            var product_name = GameData.get_good_display_name(prod_id)
+            var product_name = GameData.get_product_name(prod_id)
             var is_food = pdata.get("category") == "food"
             var row = HBoxContainer.new()
             row.add_theme_constant_override("separation", 6)
@@ -491,8 +491,7 @@ func update_values():
             continue
         var amount_label = amount_labels.get(prod_id)
         if amount_label != null and is_instance_valid(amount_label):
-            var pdata = products.get(prod_id, {})
-            var prod_name = pdata.get("name", prod_id)
+            var prod_name = GameData.get_product_name(prod_id)
             amount_label.text = "%s: %d  " % [prod_name, city_storage.get(prod_id, 0)]
         var prod_label = prod_labels.get(prod_id)
         if prod_label != null and is_instance_valid(prod_label):

@@ -388,7 +388,7 @@ func get_product_group_member_names(key: String) -> Array:
         return []
     var names = []
     for prod_id in product_groups[gkey]:
-        names.append(products.get(prod_id, {}).get("name", prod_id))
+        names.append(get_product_name(prod_id))
     return names
 
 # Is the resource key a group one (does it start with "@")?
@@ -404,7 +404,7 @@ func format_resource_input(key: String, amount: float) -> String:
             return "%s - %d" % [group_name, int(amount)]
         # The group was not found — we show the key without the "@"
         return "%s - %d" % [key.trim_prefix("@"), int(amount)]
-    return "%s - %d" % [products.get(key, {}).get("name", key), int(amount)]
+    return "%s - %d" % [get_product_name(key), int(amount)]
 
 # Formats the name of the resource for display in the interface (the costs, the stocks).
 # For the group resources it returns only the name of the group (without the list of members).
@@ -416,7 +416,7 @@ func format_resource_name(key: String) -> String:
         return key.trim_prefix("@")
     # The sale pool can contain both the products and the raw resources.
     var resource_data := get_resource_data(key)
-    return str(resource_data.get("name", key))
+    return resolve_display_tags(str(resource_data.get("name", key)))
 
 func get_special_yield(product_id: String) -> Dictionary:
     return products.get(product_id, {}).get("special_yield", {})
@@ -745,37 +745,66 @@ func get_extra_name(product_id: String) -> String:
 
 func get_product_name(pid: String) -> String:
     if products.has(pid):
-        return str(products[pid].get("name", pid))
+        return resolve_display_tags(str(products[pid].get("name", pid)))
     if raw_resources.has(pid):
-        return str(raw_resources[pid].get("name", pid))
+        return resolve_display_tags(str(raw_resources[pid].get("name", pid)))
     return pid
 
-# The name a good is shown by. A prestige good of a brand tier (data/products/*.json, "brand_of") is
-# named after the city that earned it — "Cheese of Ячтву" in the source language, «Сыр Ячтву» in the
-# Russian one — and the phrase is composed here, not stored in the data: the record keeps a name of
-# its own, so the good is still addressable and still translatable, and the same save in another
-# language says the same thing about the same city. The name stands without brackets: a brand is read
-# as a name of the good, the way «пармская ветчина» is, not as a qualification in parentheses.
-func get_good_display_name(pid: String) -> String:
-    var brand_of := str(products.get(pid, {}).get("brand_of", ""))
-    if brand_of.is_empty():
-        return get_product_name(pid)
-    var city = get_node_or_null("/root/CityData")
-    var city_name := str(city.city_name) if city != null else ""
-    if city_name.is_empty():
-        return get_product_name(pid)
-    return tr("%s of %s") % [get_product_name(brand_of), city_name]
+# --- THE CITY IN A NAME OF A GOOD -------------------------------------------------
+#
+# A display name in data/*.json carries the tag "<city_name>" where the phrase has to read the name
+# of the city, and the phrase itself belongs to the data: "Cheese of <city_name>" in the source
+# language, «Сыр <city_name>» in the Russian one. The code substitutes the name and nothing else, so
+# every language keeps its own word order in the catalog and no rule of naming lives in the code.
+#
+# The substitution happens at display time, never when the files are read: the data is loaded before
+# the city is named (main_menu picks the name after GameData.load_all_data), and a loaded save knows
+# its name later still.
+const TAG_CITY_NAME := "<city_name>"
 
-# The label of a recipe: the name of the good it gives when the recipe gives one good of a brand,
-# otherwise the name of the recipe. The brand of the city is a name of a good, not of a workshop, and
-# the row of a building has to say whose cheese the slot is aging.
+func resolve_display_tags(text: String) -> String:
+    if not text.contains(TAG_CITY_NAME):
+        return text
+    var city_name := _city_name()
+    if city_name.is_empty():
+        return _text_left_by_an_unnamed_city(text)
+    return text.replace(TAG_CITY_NAME, city_name)
+
+func _city_name() -> String:
+    var city = get_node_or_null("/root/CityData")
+    return str(city.city_name) if city != null else ""
+
+# A city that has no name yet leaves the place of the tag empty, and the phrase is tidied after it:
+# the spaces collapse, a separator the tag hung on falls away, and the word that came to the front is
+# capitalised again. This state is not reachable in the game — the name is picked before the city
+# exists — it only keeps a raw "<city_name>" out of the interface.
+func _text_left_by_an_unnamed_city(text: String) -> String:
+    var out := " ".join(text.replace(TAG_CITY_NAME, " ").split(" ", false))
+    while out.length() > 0 and out[0] in " -–—:,;":
+        out = out.substr(1)
+    while out.length() > 0 and out[out.length() - 1] in " -–—:,;":
+        out = out.substr(0, out.length() - 1)
+    if out.length() > 0 and out[0] == out[0].to_lower():
+        out = out[0].to_upper() + out.substr(1)
+    return out
+
+# The label of a recipe: the name of the good it gives when that good is named after the city,
+# otherwise the name of the recipe. The city is a name of a good, not of a workshop, and the row of a
+# building has to say whose cheese the slot is aging.
 func get_craft_display_name(recipe: Dictionary) -> String:
     var result = recipe.get("result", {})
     if result is Dictionary and result.size() == 1:
         for pid in result:
-            if str(products.get(str(pid), {}).get("brand_of", "")) != "":
-                return get_good_display_name(str(pid))
+            if is_named_by_city(str(pid)):
+                return get_product_name(str(pid))
     return str(recipe.get("name", ""))
+
+# Whether a good carries the name of the city: a prestige good of a brand tier ("brand_of") or any
+# good whose own name in the data asks for the name of the city.
+func is_named_by_city(pid: String) -> bool:
+    if is_brand_good(pid):
+        return true
+    return str(products.get(pid, {}).get("name", "")).contains(TAG_CITY_NAME)
 
 # The prestige good a recipe works: its own result or one of its ingredients, when that good is the
 # brand of another ("brand_of"). A blade forged of the bar that carries the name of the city is the
@@ -799,7 +828,6 @@ func get_brand_product_of_craft(recipe: Dictionary) -> String:
             if not key.begins_with("@") and is_brand_good(key):
                 return key
     return ""
-
 
 func is_brand_good(pid: String) -> bool:
     return not str(products.get(pid, {}).get("brand_of", "")).is_empty()
@@ -1620,7 +1648,7 @@ func _build_consumption_entry(res_key: String, rule: Dictionary) -> Dictionary:
             print("GameData: the product '", res_key, "' from data/consumption.json was not found — the record is skipped.")
             return {}
         entry["product_id"] = res_key
-        entry["product_name"] = products.get(res_key, {}).get("name", res_key)
+        entry["product_name"] = get_product_name(res_key)
         entry["is_group"] = false
         entry["group_members"] = []
         entry["display_key"] = res_key
@@ -1784,7 +1812,7 @@ func get_profession_consumption(prof_id: String) -> Array:
             continue
         result.append({
             "product_id": pid,
-            "product_name": prod.get("name", pid),
+            "product_name": get_product_name(pid),
             "amount": int(cons.get("amount", 0)),
             "interval": float(cons.get("interval", 0)),
             "production_bonus": float(cons.get("production_bonus", 0.0)),

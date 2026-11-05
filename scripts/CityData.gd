@@ -2390,7 +2390,7 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
         var reveal_tech: String = data.get("tech_reveal", "")
         if reveal_tech != tech_id:
             continue
-        var res_name: String = data.get("name", res_id)
+        var res_name: String = GameData.get_product_name(res_id)
         if _is_resource_on_map(tile_data, res_id):
             messages.append(tr("Scholars estimate: your region may contain %s.") % res_name)
         else:

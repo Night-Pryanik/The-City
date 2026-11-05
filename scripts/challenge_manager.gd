@@ -230,7 +230,7 @@ func _fame_record(product: Dictionary, tier: String, block: Dictionary) -> Dicti
         "id": challenge_id(product, block),
         "tier": tier,
         "product": str(product.get("id", "")),
-        "product_name": str(product.get("name", "")),
+        "product_name": GameData.get_product_name(str(product.get("id", ""))),
         "icon": str(block.get("icon", product.get("icon", ""))),
         "name": str(block.get("name", "")),
         "description": str(block.get("description", "")),
@@ -345,9 +345,9 @@ func reward_text(reward: Dictionary, product_id: String = "") -> String:
                         float(reward.get("value", 0.0)))
             return tr("The town pays %s more for %s") % [
                     CityData.format_signed_percent(float(reward.get("value", 0.0))),
-                    GameData.get_good_display_name(product_id)]
+                    GameData.get_product_name(product_id)]
         REWARD_BRAND_PRODUCT:
-            return tr("Unlock the recipe of %s") % GameData.get_good_display_name(
+            return tr("Unlock the recipe of %s") % GameData.get_product_name(
                     str(reward.get("product", "")))
         REWARD_SPECIALIZATION:
             var spec := CityData.get_specialization(str(reward.get("id", "")))

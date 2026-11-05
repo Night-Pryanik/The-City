@@ -1071,14 +1071,7 @@ func _unit_price_of(town: Dictionary, product_id: String) -> int:
 func _product_name(product_id: String) -> String:
     if GameData.is_group_key(product_id):
         return GameData.format_resource_name(product_id)
-    var resource_name := str(GameData.get_resource_data(product_id).get("name", ""))
-    if not resource_name.is_empty():
-        return resource_name
-    var raw: Dictionary = GameData.raw_resources.get(product_id, {})
-    if not raw.is_empty():
-        return str(raw.get("name", product_id))
-    var product: Dictionary = GameData.products.get(product_id, {})
-    return str(product.get("name", product_id))
+    return GameData.get_product_name(product_id)
 
 
 # The icon of a good of a deal: the icon of the product, or the icon of the group (its

@@ -328,7 +328,7 @@ func _on_resource_selected(res_id: String):
     pending_resource_id = res_id
     waiting_for_hex = true
     _clear_content()
-    var res_name = GameData.raw_resources.get(res_id, {}).get("name", res_id)
+    var res_name = GameData.get_product_name(res_id)
     _status_label.text = tr("Left-click on a hex to place: %s") % res_name
 
     var cancel_btn = _make_button(tr("Cancel"))
@@ -357,13 +357,13 @@ func handle_hex_click(row: int, col: int):
     if old_crop != null:
         tile["crop_bred"] = null
 
-    var res_name = GameData.raw_resources.get(pending_resource_id, {}).get("name", pending_resource_id)
+    var res_name = GameData.get_product_name(pending_resource_id)
     var msg = tr("Resource %s placed on the hex (%d, %d)") % [res_name, row, col]
     if old_res != null:
-        var old_name = GameData.raw_resources.get(old_res, {}).get("name", old_res)
+        var old_name = GameData.get_product_name(old_res)
         msg += tr(" (replaced: %s)") % old_name
     if old_crop != null:
-        var crop_name = GameData.raw_resources.get(old_crop, {}).get("name", old_crop)
+        var crop_name = GameData.get_product_name(old_crop)
         msg += tr(" (breeding reset: %s)") % crop_name
 
     if main_map.hud and main_map.hud.has_method("show_message"):

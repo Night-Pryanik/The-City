@@ -922,7 +922,7 @@ func get_actual_treasury_income_map() -> Dictionary:
                     income_by_source[source_id] = {}
                 income_by_source[source_id][pid] = {
                     "coins_per_sec": float(amount) / window_sec,
-                    "product_name": GameData.products.get(pid, {}).get("name", pid)
+                    "product_name": GameData.get_product_name(pid)
                 }
         if not income_by_source.is_empty():
             result[CityData.POPULATION_INCOME_TYPE] = income_by_source
@@ -995,7 +995,7 @@ func _planned_market_income_rows() -> Array:
         if not bool(per_pid[pid]["available"]):
             continue
         var market_price: float = float(per_pid[pid]["price"])
-        var product_name: String = GameData.products.get(pid, {}).get("name", pid)
+        var product_name: String = GameData.get_product_name(pid)
         for source_id in planned[pid]:
             var entry: Dictionary = planned[pid][source_id]
             var amount := float(entry.get("amount", 0))

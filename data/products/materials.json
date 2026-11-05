@@ -32,11 +32,11 @@
     { "id": "wax", "price": 9, "name": "Wax", "type": "product", "category": "material", "icon": "wax.png" },
     {
       // The brand good of the wool line (see data/challenges.json for the mechanic and the
-      // header comment of data/products/food.json). Its name is composed in the interface from
-      // this record and the name of the city, so the record itself stays the plain one.
+      // header comment of data/products/food.json). Its name is the phrase the player reads: the
+      // tag in it stands for the city that earned the brand.
       "id": "cashmere",
       "price": 24,
-      "name": "Cashmere",
+      "name": "Wool of <city_name>",
       "type": "product",
       "category": "material",
       "brand_of": "wool",

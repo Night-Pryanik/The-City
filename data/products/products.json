@@ -20,13 +20,13 @@
         "reward": { "type": "brand_product", "product": "porcelain" }
       },
       "challenge": {
-        "id": "pottery_challenge",
+        "id": "ceramics_challenge",
         "threshold": 1000,
         "trigger": "sell",
         "min_quality": "exceptional",
         "name": "A Mark on Fired Clay",
         "description": "A thousand vessels of clay of exceptional quality sold to the towns — and they are known by the mark of the town.",
-        "reward": { "type": "specialization", "id": "pottery_specialization" }
+        "reward": { "type": "specialization", "id": "ceramics_specialization" }
       }
     },
     {
@@ -34,11 +34,11 @@
       // data/products/materials.json.
       "id": "porcelain",
       "price": 30,
-      "name": "Porcelain",
+      "name": "Porcelain of <city_name>",
       "type": "product",
       "category": "household_items",
       "brand_of": "pottery",
-      "icon": "pottery.png"
+      "icon": "porcelain.png"
     },
     {
       "id": "amphora",

@@ -485,7 +485,7 @@ func _set_icon_tooltip(icon: TextureRect, row: Dictionary, display_key: String) 
             _row_title(row, display_key), icon_file])
     else:
         var source_pid := str(info.get("source_pid", ""))
-        var source_name := str(GameData.products.get(source_pid, {}).get("name", source_pid))
+        var source_name := GameData.get_product_name(source_pid)
         _set_tooltip(icon, tr("Icon of group \"%s\" taken from goods \"%s\"") % [
             _row_title(row, display_key), source_name])
 
@@ -707,7 +707,7 @@ func _price_tooltip_text(row: Dictionary) -> String:
     lines.append("")
     for pid in row.get("members", []):
         var member := str(pid)
-        var member_name: String = str(GameData.products.get(member, {}).get("name", member))
+        var member_name: String = GameData.get_product_name(member)
         var base_price: float = GameData.get_base_price(member)
         if base_price <= 0.0:
             lines.append(tr("%s: goods without a price") % member_name)

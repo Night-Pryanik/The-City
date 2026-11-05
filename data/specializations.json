@@ -157,15 +157,15 @@
       ]
     },
     {
-      "id": "pottery_specialization",
-      "name": "Pottery",
-      "full_name": "Specialization of pottery",
-      "description": "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster.",
+      "id": "ceramics_specialization",
+      "name": "Ceramics",
+      "full_name": "Specialization of ceramics",
+      "description": "The kilns of the city are known beyond its walls. Ceramics brings more, and the workshops of the city fill it faster.",
       "icon": "pottery.png",
-      "unlock": { "type": "challenge", "id": "pottery_challenge" },
+      "unlock": { "type": "challenge", "id": "ceramics_challenge" },
       "bonuses": [
-        { "type": "trade_sell_price", "value": 0.15, "products": ["pottery", "porcelain"] },
-        { "type": "building_production", "value": 0.20, "products": ["pottery", "porcelain"] }
+        { "type": "trade_sell_price", "value": 0.15, "products": ["pottery", "amphora", "porcelain"] },
+        { "type": "building_production", "value": 0.20, "products": ["pottery", "amphora", "porcelain"] }
       ]
     },
     {

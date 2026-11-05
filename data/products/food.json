@@ -32,8 +32,10 @@
   // fame of a good does not explain — a challenge of the era that opens something of its own.
   //
   // A "brand_of" record is a prestige good: an id of its own, never a grade of the old one. Its
-  // price is the base price of the good, and the interface reads "<the base good> <the city>" —
-  // the city name is composed at display time, so the data holds no name of a city at all.
+  // price is the base price of the good, and its "name" is the phrase the player reads, with the
+  // tag <city_name> where the name of the city belongs (see GameData.TAG_CITY_NAME). The data holds
+  // the format of the name and the catalog holds its translation; the code supplies the city alone,
+  // so a language keeps its own word order and the data holds no name of a city at all.
   "resources": [
     { "id": "wheat", "price": 2, "name": "Wheat", "type": "product", "category": "food", "icon": "wheat.png" },
     { "id": "oats", "price": 2, "name": "Oats", "type": "product", "category": "food", "icon": "oats.png" },
@@ -115,7 +117,7 @@
       // data/products/materials.json.
       "id": "aged_cheese",
       "price": 42,
-      "name": "Aged Cheese",
+      "name": "Cheese of <city_name>",
       "type": "product",
       "category": "food",
       "brand_of": "cheese",

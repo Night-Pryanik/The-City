@@ -348,9 +348,6 @@ msgstr "%s одомашнены — %d голов теперь в хранили
 msgid "%s is under development"
 msgstr "«%s» — в разработке"
 
-msgid "%s of %s"
-msgstr "%s %s"
-
 msgid "%s or better"
 msgstr "%s и выше"
 
@@ -3297,11 +3294,11 @@ msgstr "Письменные принадлежности"
 
 msgctxt "challenges.description"
 msgid "Buy every chunk of the Region that is open for claiming in the current era."
-msgstr ""
+msgstr "Выкупите в текущую эпоху каждый чанк Региона, который ещё можно присвоить."
 
 msgctxt "challenges.description"
 msgid "Spend a whole era without claiming a single chunk of the Region."
-msgstr ""
+msgstr "Проведите целую эпоху, не присвоив ни одного чанка Региона."
 
 msgctxt "challenges.name"
 msgid "All your Region are belong to us"
@@ -4824,12 +4821,12 @@ msgid "Wool the Towns Ask for by Name"
 msgstr "Шерсть, которую спрашивают по имени"
 
 msgctxt "resources.name"
-msgid "Agave"
-msgstr "Агава"
+msgid "<city_name>-steel Weapons"
+msgstr "Оружие из стали <city_name>"
 
 msgctxt "resources.name"
-msgid "Aged Cheese"
-msgstr "Выдержанный сыр"
+msgid "Agave"
+msgstr "Агава"
 
 msgctxt "resources.name"
 msgid "Alabaster"
@@ -4980,10 +4977,6 @@ msgid "Carthamin"
 msgstr "Картамин"
 
 msgctxt "resources.name"
-msgid "Cashmere"
-msgstr "Кашемир"
-
-msgctxt "resources.name"
 msgid "Cassava"
 msgstr "Кассава"
 
@@ -5002,6 +4995,10 @@ msgstr "Древесный уголь"
 msgctxt "resources.name"
 msgid "Cheese"
 msgstr "Сыр"
+
+msgctxt "resources.name"
+msgid "Cheese of <city_name>"
+msgstr "Сыр <city_name>"
 
 msgctxt "resources.name"
 msgid "Chestnut Bark"
@@ -5138,14 +5135,6 @@ msgstr "Вигна"
 msgctxt "resources.name"
 msgid "Cuttlefish"
 msgstr "Каракатица"
-
-msgctxt "resources.name"
-msgid "Damascus Steel"
-msgstr "Дамасская сталь"
-
-msgctxt "resources.name"
-msgid "Damascus Weapons"
-msgstr "Дамасское оружие"
 
 msgctxt "resources.name"
 msgid "Dates"
@@ -5580,8 +5569,8 @@ msgid "Pomegranates"
 msgstr "Гранаты"
 
 msgctxt "resources.name"
-msgid "Porcelain"
-msgstr "Фарфор"
+msgid "Porcelain of <city_name>"
+msgstr "Фарфор <city_name>"
 
 msgctxt "resources.name"
 msgid "Pork"
@@ -5808,6 +5797,10 @@ msgid "Steel Weapons"
 msgstr "Стальное оружие"
 
 msgctxt "resources.name"
+msgid "Steel of <city_name>"
+msgstr "Сталь <city_name>"
+
+msgctxt "resources.name"
 msgid "Stone Tableware"
 msgstr "Каменная посуда"
 
@@ -5952,6 +5945,10 @@ msgid "Wool Clothes"
 msgstr "Шерстяная одежда"
 
 msgctxt "resources.name"
+msgid "Wool of <city_name>"
+msgstr "Шерсть <city_name>"
+
+msgctxt "resources.name"
 msgid "Writing Set"
 msgstr "Письменный набор"
 
@@ -6056,8 +6053,8 @@ msgid "The forges of the city have a name among the smiths. Blades bring more, a
 msgstr "Кузницы города имеют имя среди кузнецов. Клинок приносит больше, а кузницы куют его быстрее."
 
 msgctxt "specializations.description"
-msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
-msgstr "Печи города знают за его стенами. Керамика приносит больше, а мастерские наполняют её быстрее."
+msgid "The kilns of the city are known beyond its walls. Ceramics brings more, and the workshops of the city fill it faster."
+msgstr "Печи города известны за его стенами. Керамика приносит больше, а мастерские города наполняют её быстрее."
 
 msgctxt "specializations.description"
 msgid "The land feeds the city. The farms, the plantations and the pastures of the city yield far more than before."
@@ -6072,16 +6069,16 @@ msgid "Workshops and mills of the city work faster. Every building that turns ra
 msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше."
 
 msgctxt "specializations.full_name"
+msgid "Specialization of ceramics"
+msgstr "Специализация керамики"
+
+msgctxt "specializations.full_name"
 msgid "Specialization of cheese"
 msgstr "Специализация сыра"
 
 msgctxt "specializations.full_name"
 msgid "Specialization of foreign trade"
 msgstr "Специализация внешней торговли"
-
-msgctxt "specializations.full_name"
-msgid "Specialization of pottery"
-msgstr "Специализация керамики"
 
 msgctxt "specializations.full_name"
 msgid "Specialization of the domestic market"
@@ -6098,6 +6095,10 @@ msgstr "Специализация шерсти"
 msgctxt "specializations.name"
 msgid "Agrarian"
 msgstr "Аграрная"
+
+msgctxt "specializations.name"
+msgid "Ceramics"
+msgstr "Керамика"
 
 msgctxt "specializations.name"
 msgid "Cheese"
@@ -6118,10 +6119,6 @@ msgstr "Промышленная"
 msgctxt "specializations.name"
 msgid "Mining"
 msgstr "Горнодобывающая"
-
-msgctxt "specializations.name"
-msgid "Pottery"
-msgstr "Глиняная посуда"
 
 msgctxt "specializations.name"
 msgid "Raw Materials"

@@ -348,9 +348,6 @@ msgstr ""
 msgid "%s is under development"
 msgstr ""
 
-msgid "%s of %s"
-msgstr ""
-
 msgid "%s or better"
 msgstr ""
 
@@ -4824,11 +4821,11 @@ msgid "Wool the Towns Ask for by Name"
 msgstr ""
 
 msgctxt "resources.name"
-msgid "Agave"
+msgid "<city_name>-steel Weapons"
 msgstr ""
 
 msgctxt "resources.name"
-msgid "Aged Cheese"
+msgid "Agave"
 msgstr ""
 
 msgctxt "resources.name"
@@ -4980,10 +4977,6 @@ msgid "Carthamin"
 msgstr ""
 
 msgctxt "resources.name"
-msgid "Cashmere"
-msgstr ""
-
-msgctxt "resources.name"
 msgid "Cassava"
 msgstr ""
 
@@ -5001,6 +4994,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Cheese"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Cheese of <city_name>"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5137,14 +5134,6 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Cuttlefish"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Damascus Steel"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Damascus Weapons"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5580,7 +5569,7 @@ msgid "Pomegranates"
 msgstr ""
 
 msgctxt "resources.name"
-msgid "Porcelain"
+msgid "Porcelain of <city_name>"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5808,6 +5797,10 @@ msgid "Steel Weapons"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Steel of <city_name>"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Stone Tableware"
 msgstr ""
 
@@ -5952,6 +5945,10 @@ msgid "Wool Clothes"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Wool of <city_name>"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Writing Set"
 msgstr ""
 
@@ -6056,7 +6053,7 @@ msgid "The forges of the city have a name among the smiths. Blades bring more, a
 msgstr ""
 
 msgctxt "specializations.description"
-msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
+msgid "The kilns of the city are known beyond its walls. Ceramics brings more, and the workshops of the city fill it faster."
 msgstr ""
 
 msgctxt "specializations.description"
@@ -6072,15 +6069,15 @@ msgid "Workshops and mills of the city work faster. Every building that turns ra
 msgstr ""
 
 msgctxt "specializations.full_name"
+msgid "Specialization of ceramics"
+msgstr ""
+
+msgctxt "specializations.full_name"
 msgid "Specialization of cheese"
 msgstr ""
 
 msgctxt "specializations.full_name"
 msgid "Specialization of foreign trade"
-msgstr ""
-
-msgctxt "specializations.full_name"
-msgid "Specialization of pottery"
 msgstr ""
 
 msgctxt "specializations.full_name"
@@ -6097,6 +6094,10 @@ msgstr ""
 
 msgctxt "specializations.name"
 msgid "Agrarian"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Ceramics"
 msgstr ""
 
 msgctxt "specializations.name"
@@ -6117,10 +6118,6 @@ msgstr ""
 
 msgctxt "specializations.name"
 msgid "Mining"
-msgstr ""
-
-msgctxt "specializations.name"
-msgid "Pottery"
 msgstr ""
 
 msgctxt "specializations.name"
