@@ -90,7 +90,6 @@
       "result": { "damascus_steel": 10 },
       "time": 15,
       "unlock_tech": "steel_making",
-      "unlock_challenge": "steel_challenge",
       "description": "Foldes the bloom of the city into the watered bar the smiths of other towns ask for."
     },
     {
@@ -175,7 +174,6 @@
       "result": { "damascus_weapons": 10 },
       "time": 8.0,
       "unlock_tech": "steel_making",
-      "unlock_challenge": "steel_challenge",
       "description": "Foldes and quenches the watered bar into blades that keep their edge."
     },
     {

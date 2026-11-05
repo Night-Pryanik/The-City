@@ -44,7 +44,6 @@
       "result": { "porcelain": 10 },
       "time": 12,
       "unlock_tech": "pottery",
-      "unlock_challenge": "pottery_challenge",
       "description": "Fires the clay of the city into the thin, ringing ware the towns pay a name for."
     },
     {
@@ -119,7 +118,6 @@
       "result": { "cashmere": 10 },
       "time": 12,
       "unlock_tech": "weaving",
-      "unlock_challenge": "wool_challenge",
       "description": "Combles and spins the fleece of the city into the softest cloth a town will ask for."
     },
     {

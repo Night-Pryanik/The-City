@@ -2200,6 +2200,11 @@ func is_craft_available(craft: Dictionary) -> bool:
     var required_tech = craft.get("unlock_tech", "")
     if required_tech != "" and not is_tech_unlocked(required_tech):
         return false
+    return is_craft_fame_granted(craft)
+
+# The fame half of the gate, asked without the research: a technology announces a premium recipe
+# only once the city has earned the right to work the good.
+func is_craft_fame_granted(craft: Dictionary) -> bool:
     var required_challenge = craft.get("unlock_challenge", "")
     if required_challenge != "" and not _is_challenge_opened(required_challenge):
         return false

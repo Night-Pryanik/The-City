@@ -15,6 +15,8 @@
 #   4. The button draws the badge among its icons, and the row of a fitting set shows no arrows.
 #   5. When the content is wider than the row, the arrows appear, the right one scrolls the row,
 #      the wheel over the row scrolls it too, and the tree under the cursor does not move.
+#   6. A premium recipe joins the list only with the rung of the brand that grants it, and then it
+#      is named by the city rather than by the title of the recipe.
 extends SceneTree
 
 # The hang watchdog — see tests/watchdog.gd.
@@ -23,6 +25,8 @@ const WATCHDOG = preload("res://tests/watchdog.gd")
 const SETTLE_FRAMES := 4
 
 var _gdata = null
+var _cdata = null
+var _mgr = null
 var _icons = null
 # The constants of the tree. The script of the tree is not preloaded: a preload would compile
 # it before the autoloads it names are registered, and the whole feature would fail to load.
@@ -44,7 +48,13 @@ func _run() -> void:
         await process_frame
     # The autoloads are not resolvable at the compile time of a --script file.
     _gdata = get_root().get_node("GameData")
+    _cdata = get_root().get_node("CityData")
     _icons = get_root().get_node("IconRegistry")
+    _mgr = main_map.get("challenge_manager")
+    check(_mgr != null, "the map carries the challenge manager", state)
+    if _mgr == null:
+        _finish(state)
+        return
     var city_ui = main_map.get_node_or_null("CityUI")
     check(city_ui != null, "CityUI is found", state)
     if city_ui == null:
@@ -60,6 +70,7 @@ func _run() -> void:
     _check_items(tree, state)
     _check_button(tree, state)
     await _check_scrolling(tree, state)
+    _check_premium_recipe(tree, state)
 
     _finish(state)
 
@@ -75,9 +86,18 @@ func _recipe_items(tree, tech_id: String) -> Array:
 func _recipe_names(tech_id: String) -> Array[String]:
     var names: Array[String] = []
     for craft in _gdata.crafts:
-        if craft.get("unlock_tech", "") == tech_id:
-            names.append(craft.get("name", craft.get("id", "")))
+        if craft.get("unlock_tech", "") != tech_id:
+            continue
+        if not _cdata.is_craft_fame_granted(craft):
+            continue
+        names.append(_gdata.get_craft_display_name(craft))
     return names
+
+func _tooltip_names(tip: String) -> Array[String]:
+    var out: Array[String] = []
+    for line in tip.split("\n").slice(1):
+        out.append(line.substr(2))
+    return out
 
 func _check_items(tree, state: Dictionary) -> void:
     var tech_id := "dyeing"
@@ -101,9 +121,7 @@ func _check_items(tree, state: Dictionary) -> void:
     for name in names:
         check(tip.contains("- " + name),
             "the tooltip names the recipe \"%s\"" % name, state)
-    var listed: Array[String] = []
-    for line in lines.slice(1):
-        listed.append(line.substr(2))
+    var listed := _tooltip_names(tip)
     var sorted := listed.duplicate()
     sorted.sort()
     check(listed == sorted, "the recipes are listed in the order of their names", state)
@@ -117,7 +135,67 @@ func _check_items(tree, state: Dictionary) -> void:
     check(_recipe_items(tree, "wheel").is_empty(),
         "a technology that opens no recipes gets no recipe badge", state)
 
-# --- What the button actually draws ------------------------------------------------------
+# --- The premium recipe in the list ------------------------------------------------------
+
+# A premium recipe is opened by the technology and by the rung of the brand at once, so the research
+# alone promises nothing: the line appears only when the rung is paid, and it names the good by the
+# city — the same name the slot of the workshop carries — never by the title written in the recipe.
+func _check_premium_recipe(tree, state: Dictionary) -> void:
+    var ladder := _brand_ladder()
+    check(not ladder.is_empty(),
+        "the data has a ladder whose rung of the brand grants a recipe of a technology", state)
+    if ladder.is_empty():
+        return
+    var recipe: Dictionary = ladder["recipe"]
+    var tech_id := str(recipe.get("unlock_tech", ""))
+    var data_name := str(recipe.get("name", ""))
+    var tip := _recipe_tip(tree, tech_id)
+    check(tip != "", "the technology %s has the badge of recipes" % tech_id, state)
+    if tip == "":
+        return
+
+    check(not _tooltip_names(tip).has(data_name),
+        "the tooltip hides the premium recipe before its rung of the brand", state)
+
+    var saved_city := str(_cdata.city_name)
+    _cdata.city_name = "Testfeld"
+    _mgr.mark_tier_done(str(ladder["id"]), "brand")
+    var after := _tooltip_names(_recipe_tip(tree, tech_id))
+    var brand_name := str(_gdata.get_good_display_name(str(ladder["brand"])))
+    check(after.has(brand_name),
+        "the tooltip announces the premium recipe \"%s\" once the rung is paid" % brand_name, state)
+    check(not after.has(data_name),
+        "the line of a premium recipe carries the name of the city, not the title of the recipe (%s)"
+            % data_name, state)
+    _cdata.city_name = saved_city
+    _mgr.done_tiers.erase("%s:brand" % str(ladder["id"]))
+
+func _recipe_tip(tree, tech_id: String) -> String:
+    var items := _recipe_items(tree, tech_id)
+    return str(items[0]["tip"]) if not items.is_empty() else ""
+
+# The first ladder whose rung of the brand rewards a recipe the data attributes to a technology.
+func _brand_ladder() -> Dictionary:
+    for pid in _gdata.products:
+        var product: Dictionary = _gdata.products[pid]
+        var block = product.get("brand", null)
+        if not (block is Dictionary):
+            continue
+        for reward in _mgr.rewards_of(block):
+            if not (reward is Dictionary) or str(reward.get("type", "")) != "brand_product":
+                continue
+            var brand_id := str(reward.get("product", ""))
+            var recipe := _recipe_of(brand_id)
+            if str(recipe.get("unlock_tech", "")) == "":
+                continue
+            return {"id": _mgr.challenge_id(product, block), "brand": brand_id, "recipe": recipe}
+    return {}
+
+func _recipe_of(pid: String) -> Dictionary:
+    for craft in _gdata.crafts:
+        if craft.get("result", {}).has(pid):
+            return craft
+    return {}
 
 func _row_of(tree, tech_id: String) -> HBoxContainer:
     var btn: Button = tree._tech_nodes[tech_id]["button"]

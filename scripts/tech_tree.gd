@@ -1163,10 +1163,17 @@ func _get_unlock_items(tech_id: String) -> Array:
     # not drawn one by one: one technology opens up to fourteen of them, and the row has room
     # for four icons of content of any kind. One badge stands for the whole set, and the list
     # of what it opens belongs to its tooltip.
+    # A premium recipe joins the list only when the rung of the brand has granted the good: before
+    # that the research opens the ordinary recipe alone, and the name of the city is not yet earned.
+    # The lines speak the names the workshop slots speak (GameData.get_craft_display_name), so the
+    # brand good is announced by the city, not by the title written in the data.
     var recipe_names: Array[String] = []
     for craft in GameData.crafts:
-        if craft.get("unlock_tech", "") == tech_id:
-            recipe_names.append(craft.get("name", craft.get("id", "")))
+        if craft.get("unlock_tech", "") != tech_id:
+            continue
+        if not CityData.is_craft_fame_granted(craft):
+            continue
+        recipe_names.append(GameData.get_craft_display_name(craft))
     if not recipe_names.is_empty():
         recipe_names.sort()
         var recipe_tip := tr("Unlocks recipes:")

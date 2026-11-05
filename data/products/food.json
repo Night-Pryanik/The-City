@@ -26,9 +26,10 @@
   //
   // Every recipe that works a prestige good — the recipe of the good itself and every recipe that
   // takes it as an ingredient, the bar and the blade forged of it — is offered only after the rung
-  // carrying the "brand_product" reward is paid. The game reads that from the data, so the author
-  // writes no gate; a recipe may still name the task in "unlock_challenge" by hand, which is how a
-  // challenge of the era opens a work that is not a brand of a good.
+  // carrying the "brand_product" reward is paid. The game reads that from the data, so such a
+  // recipe writes no gate: "unlock_challenge" on it would ask for the rung the named identifier
+  // belongs to, which is not necessarily the rung that grants the good. The field is for a work the
+  // fame of a good does not explain — a challenge of the era that opens something of its own.
   //
   // A "brand_of" record is a prestige good: an id of its own, never a grade of the old one. Its
   // price is the base price of the good, and the interface reads "<the base good> <the city>" —
