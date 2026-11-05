@@ -22,7 +22,7 @@
       "type": "product",
       "category": "metals",
       "brand_of": "steel",
-      "icon": "iron.png"
+      "icon": "damascus_steel.png"
     },
     { "id": "tin", "price": 16, "name": "Tin", "type": "product", "category": "metals", "icon": "tin.png" },
     { "id": "antimony", "price": 18, "name": "Antimony", "type": "product", "category": "metals", "icon": "antimony.png" },
