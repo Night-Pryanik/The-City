@@ -75,6 +75,7 @@ func _run() -> void:
     _test_ladder(state)
     _test_picks(state)
     _test_gates(state)
+    _test_brand_work(state)
     _test_save(state)
     await _test_era(state)
     await _test_tab(state)
@@ -361,6 +362,70 @@ func _test_gates(state: Dictionary) -> void:
         if str(other.get("id", "")) == spec_id:
             found = true
     check(found, "an unopened branch is listed among the unavailable ones", state)
+
+# --- 5b. THE WORK OF THE BRAND ---
+
+# The rung of the brand opens every recipe that works the prestige good it grants: the good itself
+# and the goods forged or woven out of it. The gate is read from the pair (the brand of the good,
+# the reward of the rung), not from the recipe, so a work the author forgot to gate is still closed
+# — the field "unlock_challenge" is stripped from a copy of each recipe below to prove it.
+func _test_brand_work(state: Dictionary) -> void:
+    var ladders := 0
+    var works := 0
+    for pid in _gdata.products:
+        var product: Dictionary = _gdata.products[pid]
+        var block = product.get(_mgr.TIER_BRAND, null)
+        if not (block is Dictionary):
+            continue
+        var reward: Dictionary = _mgr.reward_at(block)
+        if str(reward.get("type", "")) != _mgr.REWARD_BRAND_PRODUCT:
+            continue
+        var brand := str(reward.get("product", ""))
+        var recipes := _crafts_working(brand)
+        if recipes.is_empty():
+            continue
+        ladders += 1
+        var id: String = _mgr.challenge_id(product, block)
+        var quality := str(block.get("min_quality", "exceptional"))
+        var threshold := int(block.get("threshold", 0))
+        for craft in recipes:
+            works += 1
+            _reset_all()
+            var bare: Dictionary = (craft as Dictionary).duplicate(true)
+            bare.erase("unlock_challenge")
+            var tech := str(bare.get("unlock_tech", ""))
+            if tech != "" and tech not in _cdata.unlocked_technologies:
+                _cdata.unlocked_technologies.append(tech)
+            check(not _cdata.is_craft_available(bare),
+                    "%s is closed while the rung of %s is unpaid" % [str(bare.get("id", "")), id],
+                    state)
+            _mgr.record_sale(pid, {quality: threshold})
+            check(_cdata.is_craft_available(bare),
+                    "the rung of the brand of %s opens the work of %s without a gate of its own"
+                            % [pid, str(bare.get("id", ""))], state)
+            # The branch of the specialization is not one of those works: it waits for the last rung.
+            var spec := str(_mgr.reward_at(product.get(_mgr.TIER_CHALLENGE, {}))
+                    .get("id", "") if product.has(_mgr.TIER_CHALLENGE) else "")
+            if spec != "":
+                check(not _cdata.is_specialization_available(_cdata.get_specialization(spec)),
+                        "the work of the brand does not hand out the branch of the ladder", state)
+    check(ladders >= 1, "at least one ladder grants a prestige good the city can work", state)
+    # The steel line is the ladder whose brand is worked by more than one recipe; if it ever loses
+    # that, the rule below has nothing to prove.
+    check(works >= 2, "several recipes work a prestige good (got %d)" % works, state)
+
+
+# Every recipe that works the prestige good: the one that makes it and the ones that take it as an
+# ingredient. The list is built by the code the game gates with, so the test asks the same question
+# the panel asks.
+func _crafts_working(brand_id: String) -> Array:
+    var out: Array = []
+    for craft in _gdata.crafts:
+        if not (craft is Dictionary):
+            continue
+        if str(_gdata.get_brand_product_of_craft(craft)) == brand_id:
+            out.append(craft)
+    return out
 
 func _craft_of(result_id: String) -> Dictionary:
     for craft in _gdata.crafts:

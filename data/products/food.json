@@ -24,10 +24,11 @@
   // "name" and "description" belong to the challenge only: it is the one block the player accepts
   // on purpose, so it is the one that needs a title of its own.
   //
-  // A recipe opened by a rung of the fame writes the identifier of that task in "unlock_challenge"
-  // and is offered as soon as the rung carrying the "brand_product" reward is paid — not only after
-  // the whole ladder. Every recipe that works the prestige good, the bar and the blade out of it,
-  // names the same task, so one rung opens the whole branch of the good.
+  // Every recipe that works a prestige good — the recipe of the good itself and every recipe that
+  // takes it as an ingredient, the bar and the blade forged of it — is offered only after the rung
+  // carrying the "brand_product" reward is paid. The game reads that from the data, so the author
+  // writes no gate; a recipe may still name the task in "unlock_challenge" by hand, which is how a
+  // challenge of the era opens a work that is not a brand of a good.
   //
   // A "brand_of" record is a prestige good: an id of its own, never a grade of the old one. Its
   // price is the base price of the good, and the interface reads "<the base good> <the city>" —

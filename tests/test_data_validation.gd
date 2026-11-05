@@ -117,6 +117,11 @@ func _test_detector(state: Dictionary):
         # branches that wait for the tiers of "cheese" and "wool" must stay silent here, including
         # the tier whose id the data never writes.
         "specialization_challenge": [["ghost_challenge", "ghost_branch"]],
+        # The same reference read from a recipe: a work behind a task of the fame that is declared
+        # nowhere is closed forever, and the row of the building only shows it as unavailable.
+        "recipe_challenge": [["ghost_challenge", "bad_craft_challenge"]],
+        # A good that calls itself a brand, though no rung of the fame grants it.
+        "brand_ungranted": [["ungranted_brand", "ungranted_brand"]],
         # The "product without a source" problem has no missing identifier:
         # the fault is not in a reference but in its absence. So ref_id and
         # source_id are both the id of the owning product itself.
@@ -275,6 +280,11 @@ func _test_no_false_positives_on_synthetic(state: Dictionary):
         "\"sell\" is a trigger the code implements", state)
     check(_find(problems, "fame_reward", "wool_branch", "wool").is_empty(),
         "a reward that names an existing branch must not be considered a breakage", state)
+    # The same reference read from a recipe, and a prestige good the rung of the brand does grant.
+    check(_find(problems, "recipe_challenge", "wool_challenge", "cashmere_loom").is_empty(),
+        "a recipe may wait for the derived id of a ladder, exactly as a branch does", state)
+    check(_find(problems, "brand_ungranted", "cashmere", "cashmere").is_empty(),
+        "the good that the rung of the brand grants is not an unattached brand", state)
 
     # Explicitly empty fields (null) are not references. None of these entities
     # must end up in the result under any kind of check.
@@ -915,8 +925,16 @@ func _make_data() -> Node:
                 "challenge": {"id": "cheese_challenge", "trigger": "sell", "threshold": 100,
                         "reward": {"type": "specialization", "id": "cheese_branch"}}},
         "wool": {"id": "wool", "name": "Wool", "category": "other",
+                # The rung of the brand grants a prestige good of its own, and the good says which
+                # base it is the brand of. The pair is what opens the work of the brand, so the
+                # reference of the good and the reward of the rung must agree — here they do, and the
+                # validator stays silent about both.
+                "brand": {"trigger": "sell", "threshold": 20,
+                        "reward": {"type": "brand_product", "product": "cashmere"}},
                 "challenge": {"trigger": "produce", "threshold": 50,
                         "reward": {"type": "specialization", "id": "wool_branch"}}},
+        "cashmere": {"id": "cashmere", "name": "Cashmere", "category": "other",
+                "brand_of": "wool"},
     }
     gd.raw_resources = {
         "wheat_field": {"id": "wheat_field", "name": "Wheat Field", "type": "raw",
@@ -953,6 +971,10 @@ func _make_data() -> Node:
     gd.products["carmine"] = {"id": "carmine", "name": "Carmine", "category": "other"}
     gd.products["сarmine"] = {"id": "сarmine", "name": "Carmine (typo)",
             "category": "other"}
+    # A good that calls itself the prestige form of another although no rung of the fame grants it:
+    # the game cannot tell which ladder opens its work, so the recipes of the good stand unopened.
+    gd.products["ungranted_brand"] = {"id": "ungranted_brand", "name": "Brand of Nobody",
+            "category": "other", "brand_of": "wool"}
     # produced_in → a non-existent building
     gd.buildings.append({"id": "bad_building_tech", "name": "House", "unlock_tech": "ghost_tech"})
     # profession on a building
@@ -998,6 +1020,12 @@ func _make_data() -> Node:
         {"id": "good_recipe", "name": "Good Recipe", "produced_in": ["bakery"],
                 "resources": {"wood": 2, "@grains": 5}, "result": {"flour": 3},
                 "unlock_tech": "t_fire"},
+        # A work of the brand, gated by the ladder of the good it comes from. The id is the derived
+        # one — the block of "wool" writes none — and the reference is right, so the validator says
+        # nothing about it.
+        {"id": "cashmere_loom", "name": "Cashmere Cloth", "produced_in": ["bakery"],
+                "resources": {"wool": 2}, "result": {"cashmere": 1},
+                "unlock_challenge": "wool_challenge"},
         # Pseudo-output: result is empty, the goods item "appears" only in
         # display_result — like "Science" in data/crafts/pseudo.json.
         {"id": "pseudo_recipe", "name": "Pseudo Recipe", "produced_in": ["bakery"],
@@ -1031,8 +1059,13 @@ func _make_data() -> Node:
                 "resources": {}, "result": {
                     "bad_unlock_improvement": 1, "bad_product_tech": 1,
                     "bad_category": 1, "null_product": 1,
-                    "cheese": 1, "wool": 1,
+                    "cheese": 1, "wool": 1, "cashmere": 1, "ungranted_brand": 1,
                     "сoal_typo": 1, "сarmine": 1, "carmine": 1}},
+        # A recipe that waits for a task of the fame no era declares and no good carries: the gate is
+        # never paid, and the row stands in the building forever.
+        {"id": "bad_craft_challenge", "name": "Recipe behind a ghost challenge",
+                "produced_in": ["bakery"], "resources": {}, "result": {},
+                "unlock_challenge": "ghost_challenge"},
     ]
     # The "animals" category on a raw resource is a map generation filter, not
     # a category from categories.json. It is checked on a raw resource below.

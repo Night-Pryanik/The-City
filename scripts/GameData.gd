@@ -777,6 +777,33 @@ func get_craft_display_name(recipe: Dictionary) -> String:
                 return get_good_display_name(str(pid))
     return str(recipe.get("name", ""))
 
+# The prestige good a recipe works: its own result or one of its ingredients, when that good is the
+# brand of another ("brand_of"). A blade forged of the bar that carries the name of the city is the
+# work of the brand as much as the bar itself. An empty string means the recipe touches no prestige
+# good, so the fame of a good has nothing to say about it.
+func get_brand_product_of_craft(recipe: Dictionary) -> String:
+    var result = recipe.get("result", null)
+    if result is Dictionary:
+        for pid in result.keys():
+            if is_brand_good(str(pid)):
+                return str(pid)
+    for term in craft_alternatives(recipe):
+        if not (term is Array):
+            continue
+        for variant in term:
+            if not (variant is Dictionary):
+                continue
+            var key := str(variant.get("key", ""))
+            # A goods group ("@tools") names no single good: the brand of the city is worked by its
+            # own identifier or not at all.
+            if not key.begins_with("@") and is_brand_good(key):
+                return key
+    return ""
+
+
+func is_brand_good(pid: String) -> bool:
+    return not str(products.get(pid, {}).get("brand_of", "")).is_empty()
+
 # The icon file of a good or of a raw resource ("" — not set).
 func get_product_icon(pid: String) -> String:
     if products.has(pid):

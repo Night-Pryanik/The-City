@@ -390,6 +390,42 @@ func is_challenge_opened(challenge_id: String) -> bool:
     return is_tier_done(challenge_id, TIER_CHALLENGE)
 
 
+# --- WHAT THE RUNG OF THE BRAND OPENS ------------------------------------------
+
+# The prestige good → the fame task whose rung of the brand grants it. The pair is written on the
+# side of the ladder (the reward of the block), so the work of the brand is opened without the author
+# naming the task in every recipe again. The map comes from the data alone and is built once: the
+# loaded goods do not change while the city plays.
+var _brand_granters := {}
+
+
+func _index_brand_granters() -> void:
+    _brand_granters = {}
+    for pid in GameData.products:
+        var product: Dictionary = GameData.products[pid]
+        var block = product.get(TIER_BRAND, null)
+        if not (block is Dictionary):
+            continue
+        for reward in rewards_of(block):
+            if not (reward is Dictionary):
+                continue
+            if str(reward.get("type", "")) != REWARD_BRAND_PRODUCT:
+                continue
+            _brand_granters[str(reward.get("product", ""))] = challenge_id(product, block)
+
+
+# Whether the city has earned the right to work this prestige good: the rung that grants it is paid.
+# A good that no ladder grants is a mistake of the data, not a debt of the city — the validator names
+# it — and until the author fixes it the good is worked as an ordinary one.
+func is_brand_granted(brand_id: String) -> bool:
+    if _brand_granters.is_empty():
+        _index_brand_granters()
+    var id := str(_brand_granters.get(brand_id, ""))
+    if id.is_empty():
+        return true
+    return is_challenge_opened(id)
+
+
 # --- THE CHALLENGES OF THE ERA -------------------------------------------------
 
 # The one-off tasks of data/challenges.json.

@@ -2193,9 +2193,9 @@ func is_building_unlocked(building_id: String) -> bool:
                 return is_tech_unlocked(required_tech)
     return true
 
-# Is a recipe offered by a building: its technology is researched and the fame task it waits for has
-# granted its reward. The panels read the recipe list through this, so a prestige good cannot be
-# crafted from a window that shows it before the city has earned it.
+# Is a recipe offered by a building: its technology is researched and the fame of the good it works
+# has granted what the good is worth. The panels read the recipe list through this, so a prestige
+# good cannot be crafted from a window that shows it before the city has earned it.
 func is_craft_available(craft: Dictionary) -> bool:
     var required_tech = craft.get("unlock_tech", "")
     if required_tech != "" and not is_tech_unlocked(required_tech):
@@ -2203,7 +2203,17 @@ func is_craft_available(craft: Dictionary) -> bool:
     var required_challenge = craft.get("unlock_challenge", "")
     if required_challenge != "" and not _is_challenge_opened(required_challenge):
         return false
-    return true
+    return _brand_work_is_granted(craft)
+
+# Every recipe that works a prestige good — the bar the city earned by name, or the blade forged of
+# it — waits for the rung that granted the good, whether or not the data names the task in the
+# recipe. A recipe of no brand good asks nothing of the fame.
+func _brand_work_is_granted(craft: Dictionary) -> bool:
+    var brand := GameData.get_brand_product_of_craft(craft)
+    if brand == "":
+        return true
+    var manager := _challenge_manager()
+    return manager != null and manager.is_brand_granted(brand)
 
 # The fame task by its identifier, for the gates of the data. A recipe is opened by the rung that
 # rewards the good it works, a branch of the specialization only by the last rung of the ladder.

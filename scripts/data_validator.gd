@@ -1046,8 +1046,12 @@ static func check_title(kind: String) -> String:
             return TranslationServer.translate("The fame of a good names a nonexistent quality")
         "fame_reward":
             return TranslationServer.translate("The fame of a good rewards a nonexistent entity")
+        "brand_ungranted":
+            return TranslationServer.translate("The prestige good is granted by no rung of the fame")
         "specialization_challenge":
             return TranslationServer.translate("Specialization waits for a nonexistent challenge")
+        "recipe_challenge":
+            return TranslationServer.translate("Recipe waits for a nonexistent challenge")
         "specialization_product":
             return TranslationServer.translate("Specialization bonus names a nonexistent product")
         "challenge_condition":
@@ -1149,7 +1153,9 @@ const CHECK_ORDER := [
     "fame_trigger",
     "fame_quality",
     "fame_reward",
+    "brand_ungranted",
     "specialization_challenge",
+    "recipe_challenge",
     "specialization_product",
     "challenge_condition",
     "road_level",
@@ -1189,11 +1195,15 @@ func validate(gd: Object) -> Array:
     all_resources.merge(raw_resources)
     all_resources.merge(products)
     var challenges := _index_by_id(gd.get("challenges"))
+    # The task identifiers the gates of the data may name: the challenges of the era and the tiers of
+    # the fame of a good. Built before the recipes, which are checked against them.
+    var challenge_ids := _challenge_ids(challenges, all_resources)
 
     _validate_schema(gd, problems)
     _validate_identifiers(gd, problems)
     _validate_blacklist(gd, problems)
-    _validate_crafts(gd.crafts, buildings, technologies, all_resources, product_groups, problems)
+    _validate_crafts(gd.crafts, buildings, technologies, all_resources, product_groups,
+            challenge_ids, problems)
     _validate_craft_extras(gd, all_resources, technologies, problems)
     _validate_buildings(gd.buildings, technologies, professions, problems)
     _validate_improvements(improvements, technologies, professions, problems)
@@ -1203,7 +1213,7 @@ func validate(gd: Object) -> Array:
     _validate_consumption(gd.consumption_rules, products, product_groups, professions, problems)
     _validate_technologies(technologies, problems)
     _validate_specializations(gd.specializations, improvements, all_resources,
-            _challenge_ids(challenges, all_resources), problems)
+            challenge_ids, problems)
     _validate_fame(all_resources, _quality_levels(gd), _index_by_id(gd.specializations),
             challenges, _known_challenge_conditions(), problems)
     _validate_roads(gd.roads, technologies, problems)
@@ -1837,9 +1847,11 @@ func _validate_cover_belts(covers: Dictionary, problems: Array) -> void:
 
 
 # --- THE RECIPES ---------------------------------------------------------------
-# produced_in, result / display_result, the resources (including the @-groups), unlock_tech.
+# produced_in, result / display_result, the resources (including the @-groups), unlock_tech,
+# unlock_challenge.
 func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
-        all_resources: Dictionary, product_groups: Dictionary, problems: Array) -> void:
+        all_resources: Dictionary, product_groups: Dictionary, challenge_ids: Dictionary,
+        problems: Array) -> void:
     for craft in crafts:
         if not (craft is Dictionary):
             continue
@@ -1889,6 +1901,10 @@ func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
         # produced_in, result / display_result, the resources (including the @-groups), unlock_tech.
         _check_tech_ref(craft.get("unlock_tech", ""), technologies, problems,
                 "recipe", craft_name, craft_id, "unlock_tech")
+        # The task the recipe waits for. A wrong identifier locks the recipe for good: the gate is
+        # never paid, and the city is left with a row it can never work.
+        _check_challenge_ref(craft.get("unlock_challenge", ""), challenge_ids, problems,
+                "recipe", craft_name, craft_id, "unlock_challenge")
 
 
         # produced_in → a building. "*" is the service marker "in any building".
@@ -2218,11 +2234,8 @@ func _validate_specializations(specializations: Array, improvements: Dictionary,
         for condition in _unlock_conditions(spec):
             if str(condition.get("type", "")) != "challenge":
                 continue
-            var challenge_id := str(condition.get("id", ""))
-            if challenge_id.is_empty() or challenge_ids.has(challenge_id):
-                continue
-            _add(problems, "specialization_challenge", "challenge", challenge_id,
-                    "specialization", name, spec_id, "unlock")
+            _check_challenge_ref(condition.get("id", ""), challenge_ids, problems,
+                    "specialization", name, spec_id, "unlock", "specialization_challenge")
         for bonus in spec.get("bonuses", []):
             if not (bonus is Dictionary):
                 continue
@@ -2257,6 +2270,10 @@ func _unlock_conditions(spec: Dictionary) -> Array:
 # of these cases — the reward never comes, the task never completes — so it is reported here.
 func _validate_fame(products: Dictionary, qualities: Array, specializations: Dictionary,
         challenges: Dictionary, conditions: Array, problems: Array) -> void:
+    # The prestige goods some rung of the fame grants. The game works out from these which recipes
+    # are the work of a brand — see the header comment of data/products/food.json — so a good that
+    # calls itself a brand yet is granted by nobody is a hole in the data, not a debt of the city.
+    var granted := {}
     for pid in products:
         var product: Dictionary = products[pid]
         var name := _entity_name(product, str(pid))
@@ -2271,7 +2288,7 @@ func _validate_fame(products: Dictionary, qualities: Array, specializations: Dic
             _add_quality_check(block, qualities, name, str(pid), tier, problems)
             for reward in _reward_records(block):
                 _check_reward_reference(reward, products, specializations, name, str(pid),
-                        tier, problems)
+                        tier, problems, granted)
     for challenge_id in challenges:
         var challenge: Dictionary = challenges[challenge_id]
         var name := _entity_name(challenge, str(challenge_id))
@@ -2283,7 +2300,14 @@ func _validate_fame(products: Dictionary, qualities: Array, specializations: Dic
                     str(challenge_id), "condition")
         for reward in _reward_records(challenge):
             _check_reward_reference(reward, products, specializations, name, str(challenge_id),
-                    "reward", problems)
+                    "reward", problems, granted)
+
+    for pid in products:
+        var product: Dictionary = products[pid]
+        if str(product.get("brand_of", "")).is_empty() or granted.has(str(pid)):
+            continue
+        _add(problems, "brand_ungranted", "product", str(pid), "product",
+                _entity_name(product, str(pid)), str(pid), "brand_of")
 
 
 # A tier that waits for a quality level the data does not declare counts nothing at all: the units
@@ -2310,14 +2334,19 @@ func _reward_records(block) -> Array:
 # A reward of the type that addresses an entity must address an existing one. "effect_stub" and
 # "trade_price" name no record of the data, so nothing is checked for them here.
 func _check_reward_reference(reward, products: Dictionary, specializations: Dictionary,
-        name: String, entity_id: String, field: String, problems: Array) -> void:
+        name: String, entity_id: String, field: String, problems: Array,
+        granted: Dictionary = {}) -> void:
     if not (reward is Dictionary):
         return
     var type := str(reward.get("type", ""))
     if type == "brand_product":
         var good := str(reward.get("product", ""))
-        if not good.is_empty() and not products.has(good):
+        if good.is_empty():
+            return
+        if not products.has(good):
             _add(problems, "fame_reward", "product", good, "product", name, entity_id, field)
+        else:
+            granted[good] = entity_id
     elif type == "specialization":
         var branch := str(reward.get("id", ""))
         if not branch.is_empty() and not specializations.has(branch):
@@ -2391,6 +2420,19 @@ func _check_tech_ref(value, technologies: Dictionary, problems: Array,
     if tech_id.is_empty() or technologies.has(tech_id):
         return
     _add(problems, "unlock_tech", "technology", tech_id,
+            source_kind, source_name, source_id, field)
+
+
+# A reference to a task of the fame (data/challenges.json or the challenge tier of a good). The
+# gate of a recipe and the unlock of a branch are both answered by the identifier of the task, and a
+# wrong one closes what it names forever — silently, because nothing in the data points back.
+func _check_challenge_ref(value, challenge_ids: Dictionary, problems: Array,
+        source_kind: String, source_name: String, source_id: String, field: String,
+        kind: String = "recipe_challenge") -> void:
+    var challenge_id := _as_id(value)
+    if challenge_id.is_empty() or challenge_ids.has(challenge_id):
+        return
+    _add(problems, kind, "challenge", challenge_id,
             source_kind, source_name, source_id, field)
 
 

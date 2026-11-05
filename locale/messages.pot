@@ -15,6 +15,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "%s (%s)"
+msgstr ""
+
 msgid "%s of %s"
 msgstr ""
 
@@ -66,6 +69,9 @@ msgstr ""
 msgid "Reached"
 msgstr ""
 
+msgid "Recipe waits for a nonexistent challenge"
+msgstr ""
+
 msgid "Sold"
 msgstr ""
 
@@ -103,6 +109,9 @@ msgid "The fame of a good names a nonexistent quality"
 msgstr ""
 
 msgid "The fame of a good rewards a nonexistent entity"
+msgstr ""
+
+msgid "The prestige good is granted by no rung of the fame"
 msgstr ""
 
 msgid "The recipe of %s opens"
@@ -3753,6 +3762,18 @@ msgctxt "crafts.description"
 msgid "Foldes the bloom of the city into the watered bar the smiths of other towns ask for."
 msgstr ""
 
+msgctxt "crafts.description"
+msgid "Drives charcoal into a bloom of iron in the forge."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Foldes and quenches the watered bar into blades that keep their edge."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of steel."
+msgstr ""
+
 msgctxt "crafts.name"
 msgid "Alpaca Meat"
 msgstr ""
@@ -4219,6 +4240,26 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Damascus Steel"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Steel"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Steel Tools"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Steel Weapons"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Damascus Weapons"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Steel Jewelry"
 msgstr ""
 
 msgctxt "eras.name"
@@ -5877,6 +5918,26 @@ msgctxt "resources.name"
 msgid "Damascus Steel"
 msgstr ""
 
+msgctxt "resources.name"
+msgid "Steel"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Steel Tools"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Steel Weapons"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Damascus Weapons"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Steel Jewelry"
+msgstr ""
+
 msgctxt "resources.challenge.name"
 msgid "challenge_cheese_name"
 msgstr ""
@@ -5890,7 +5951,7 @@ msgid "challenge_pottery_name"
 msgstr ""
 
 msgctxt "resources.challenge.name"
-msgid "challenge_iron_name"
+msgid "challenge_steel_name"
 msgstr ""
 
 msgctxt "resources.challenge.description"
@@ -5906,7 +5967,7 @@ msgid "challenge_pottery_desc"
 msgstr ""
 
 msgctxt "resources.challenge.description"
-msgid "challenge_iron_desc"
+msgid "challenge_steel_desc"
 msgstr ""
 
 msgctxt "roads.description"
@@ -5994,7 +6055,7 @@ msgid "The fleeces of the city are asked for by name. Wool brings more, and the 
 msgstr ""
 
 msgctxt "specializations.description"
-msgid "The forges of the city have a name among the smiths. Iron brings more, and the forges of the city strike it faster."
+msgid "The forges of the city have a name among the smiths. Blades bring more, and the forges of the city strike them faster."
 msgstr ""
 
 msgctxt "challenges.name"
@@ -6034,7 +6095,7 @@ msgid "Specialization of wool"
 msgstr ""
 
 msgctxt "specializations.full_name"
-msgid "Specialization of iron"
+msgid "Specialization of weapons"
 msgstr ""
 
 msgctxt "specializations.name"
@@ -6078,7 +6139,7 @@ msgid "Wool"
 msgstr ""
 
 msgctxt "specializations.name"
-msgid "Iron"
+msgid "Weapons"
 msgstr ""
 
 msgctxt "technologies.description"
@@ -6285,6 +6346,10 @@ msgctxt "technologies.description"
 msgid "Allows you to build the tobacco workshop: tobacco leaf → tobacco."
 msgstr ""
 
+msgctxt "technologies.description"
+msgid "Unlocks steel in the forge and the goods forged of it."
+msgstr ""
+
 msgctxt "technologies.flavor"
 msgid "A plow yoked to oxen made it possible to work heavy soils and raised yields."
 msgstr ""
@@ -6483,6 +6548,10 @@ msgstr ""
 
 msgctxt "technologies.flavor"
 msgid "Raw leaf is harsh and spoils quickly. Cured and cut, it keeps for years, so curing is what turned a harvested leaf into a stored good."
+msgstr ""
+
+msgctxt "technologies.flavor"
+msgid "Iron with a little carbon is another metal. Charcoal driven into a hot bloom and a flux that keeps the melt clean give a smith an edge that holds and a blade that does not bend."
 msgstr ""
 
 msgctxt "technologies.name"
@@ -6687,6 +6756,10 @@ msgstr ""
 
 msgctxt "technologies.name"
 msgid "Tobacco Curing"
+msgstr ""
+
+msgctxt "technologies.name"
+msgid "Steel Making"
 msgstr ""
 
 msgctxt "technologies.unlock_effects.name"
