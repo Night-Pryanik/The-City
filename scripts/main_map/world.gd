@@ -521,6 +521,12 @@ func advance_to_next_era():
     if tile_data.is_empty():
         return
 
+    # The era that is closing is judged by the challenges of the era BEFORE the free claiming of
+    # the new Region: the task of restraint counts the chunks the city bought, and what the advance
+    # itself gives away for nothing is not a purchase (challenge_manager.era_window_closed).
+    if challenge_manager != null:
+        challenge_manager.era_window_closed()
+
     # 1-2. We scout and join the whole current Region for free.
     # The hexes in the influence ring of a foreign town are NOT joined: they must not
     # blocks by in_town_influence), nor to buy a chunk (expansion_manager

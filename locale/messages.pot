@@ -15,6 +15,117 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "%s of %s"
+msgstr ""
+
+msgid "%s or better"
+msgstr ""
+
+msgid "A challenge of the era is completed."
+msgstr ""
+
+msgid "A specialization of the city"
+msgstr ""
+
+msgid "An effect still to be written (%s)"
+msgstr ""
+
+msgid "Challenge completed: %s"
+msgstr ""
+
+msgid "Challenge names a condition the game does not check"
+msgstr ""
+
+msgid "Challenges of another era"
+msgstr ""
+
+msgid "Challenges of this era"
+msgstr ""
+
+msgid "Chunks bought this era: %d"
+msgstr ""
+
+msgid "Chunks left to buy: %d"
+msgstr ""
+
+msgid "Completed"
+msgstr ""
+
+msgid "Done"
+msgstr ""
+
+msgid "Era %d"
+msgstr ""
+
+msgid "Known for %s"
+msgstr ""
+
+msgid "Produced"
+msgstr ""
+
+msgid "Reached"
+msgstr ""
+
+msgid "Sold"
+msgstr ""
+
+msgid "Specialization bonus names a nonexistent product"
+msgstr ""
+
+msgid "Specialization waits for a nonexistent challenge"
+msgstr ""
+
+msgid "The brand of %s"
+msgstr ""
+
+msgid "The challenge %s"
+msgstr ""
+
+msgid "The challenge of %s"
+msgstr ""
+
+msgid "The challenge of the era is completed: the city has a specialization to take."
+msgstr ""
+
+msgid "The city is not on the map yet."
+msgstr ""
+
+msgid "The fame of a good"
+msgstr ""
+
+msgid "The fame of a good counts an unknown trigger"
+msgstr ""
+
+msgid "The fame of a good has brought the city news."
+msgstr ""
+
+msgid "The fame of a good names a nonexistent quality"
+msgstr ""
+
+msgid "The fame of a good rewards a nonexistent entity"
+msgstr ""
+
+msgid "The recipe of %s opens"
+msgstr ""
+
+msgid "The specialization %s, and one choice to spend"
+msgstr ""
+
+msgid "The town pays %s dearer"
+msgstr ""
+
+msgid "The town pays %s dearer for %s"
+msgstr ""
+
+msgid "The towns know what the city is good at."
+msgstr ""
+
+msgid "The window: %s"
+msgstr ""
+
+msgid "The world has learned the name of the goods of the city."
+msgstr ""
+
 msgid "\n\nFound here: %s"
 msgstr ""
 
@@ -1104,7 +1215,7 @@ msgstr ""
 msgid "Encyclopedia"
 msgstr ""
 
-msgid "Era challenges"
+msgid "Challenges"
 msgstr ""
 
 msgid "Era: %s"
@@ -3626,6 +3737,22 @@ msgctxt "crafts.description"
 msgid "Cures, ages and cuts tobacco leaf."
 msgstr ""
 
+msgctxt "crafts.description"
+msgid "Awards the milk of the city to the cheese the world asks for by the name of the city."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Fires the clay of the city into the thin, ringing ware the towns pay a name for."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Combles and spins the fleece of the city into the softest cloth a town will ask for."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Foldes the bloom of the city into the watered bar the smiths of other towns ask for."
+msgstr ""
+
 msgctxt "crafts.name"
 msgid "Alpaca Meat"
 msgstr ""
@@ -4076,6 +4203,22 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Tobacco"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Aged Cheese"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Porcelain"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Cashmere"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Damascus Steel"
 msgstr ""
 
 msgctxt "eras.name"
@@ -5718,6 +5861,54 @@ msgctxt "resources.name"
 msgid "Tobacco Leaf"
 msgstr ""
 
+msgctxt "resources.name"
+msgid "Aged Cheese"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Porcelain"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Cashmere"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Damascus Steel"
+msgstr ""
+
+msgctxt "resources.challenge.name"
+msgid "challenge_cheese_name"
+msgstr ""
+
+msgctxt "resources.challenge.name"
+msgid "challenge_wool_name"
+msgstr ""
+
+msgctxt "resources.challenge.name"
+msgid "challenge_pottery_name"
+msgstr ""
+
+msgctxt "resources.challenge.name"
+msgid "challenge_iron_name"
+msgstr ""
+
+msgctxt "resources.challenge.description"
+msgid "challenge_cheese_desc"
+msgstr ""
+
+msgctxt "resources.challenge.description"
+msgid "challenge_wool_desc"
+msgstr ""
+
+msgctxt "resources.challenge.description"
+msgid "challenge_pottery_desc"
+msgstr ""
+
+msgctxt "resources.challenge.description"
+msgid "challenge_iron_desc"
+msgstr ""
+
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
 msgstr ""
@@ -5790,12 +5981,60 @@ msgctxt "specializations.description"
 msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
 msgstr ""
 
+msgctxt "specializations.description"
+msgid "The world knows the cellars of the city. Cheese brings more, and the dairies of the city fill it faster."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The fleeces of the city are asked for by name. Wool brings more, and the looms of the city work it faster."
+msgstr ""
+
+msgctxt "specializations.description"
+msgid "The forges of the city have a name among the smiths. Iron brings more, and the forges of the city strike it faster."
+msgstr ""
+
+msgctxt "challenges.name"
+msgid "All your Region are belong to us"
+msgstr ""
+
+msgctxt "challenges.name"
+msgid "Hanc marginis exiguitas non caperet"
+msgstr ""
+
+msgctxt "challenges.description"
+msgid "A city that grows by the plough is worth more than one that grows by the coin. Spend a whole era without claiming a single chunk of the Region: not one hex bought, not one coin spent on claiming."
+msgstr ""
+
+msgctxt "challenges.description"
+msgid "The neighbours say the strip is too narrow to hold two cities. Prove them right: buy every chunk of the Region that is open for claiming in the current era."
+msgstr ""
+
 msgctxt "specializations.full_name"
 msgid "Specialization of foreign trade"
 msgstr ""
 
 msgctxt "specializations.full_name"
 msgid "Specialization of the domestic market"
+msgstr ""
+
+msgctxt "specializations.full_name"
+msgid "Specialization of cheese"
+msgstr ""
+
+msgctxt "specializations.full_name"
+msgid "Specialization of pottery"
+msgstr ""
+
+msgctxt "specializations.full_name"
+msgid "Specialization of wool"
+msgstr ""
+
+msgctxt "specializations.full_name"
+msgid "Specialization of iron"
 msgstr ""
 
 msgctxt "specializations.name"
@@ -5824,6 +6063,22 @@ msgstr ""
 
 msgctxt "specializations.name"
 msgid "Science"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Cheese"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Pottery"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Wool"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Iron"
 msgstr ""
 
 msgctxt "technologies.description"
@@ -6566,8 +6821,16 @@ msgctxt "validator_entity_ref_category"
 msgid "this category"
 msgstr ""
 
+msgctxt "validator_entity_ref_challenge"
+msgid "this challenge"
+msgstr ""
+
 msgctxt "validator_entity_ref_climate_zone"
 msgid "this climate zone"
+msgstr ""
+
+msgctxt "validator_entity_ref_condition"
+msgid "this challenge condition"
 msgstr ""
 
 msgctxt "validator_entity_ref_consumption_rule"
@@ -6642,6 +6905,10 @@ msgctxt "validator_entity_ref_terrain_family"
 msgid "this terrain family"
 msgstr ""
 
+msgctxt "validator_entity_ref_trigger"
+msgid "this fame trigger"
+msgstr ""
+
 msgctxt "validator_entity_source_building"
 msgid "building"
 msgstr ""
@@ -6650,8 +6917,16 @@ msgctxt "validator_entity_source_category"
 msgid "category"
 msgstr ""
 
+msgctxt "validator_entity_source_challenge"
+msgid "challenge"
+msgstr ""
+
 msgctxt "validator_entity_source_climate_zone"
 msgid "climate zone"
+msgstr ""
+
+msgctxt "validator_entity_source_condition"
+msgid "challenge condition"
 msgstr ""
 
 msgctxt "validator_entity_source_consumption_rule"
@@ -6726,6 +7001,10 @@ msgctxt "validator_entity_source_terrain_family"
 msgid "terrain family"
 msgstr ""
 
+msgctxt "validator_entity_source_trigger"
+msgid "fame trigger"
+msgstr ""
+
 msgctxt "validator_entity_title_building"
 msgid "Building"
 msgstr ""
@@ -6734,8 +7013,16 @@ msgctxt "validator_entity_title_category"
 msgid "Category"
 msgstr ""
 
+msgctxt "validator_entity_title_challenge"
+msgid "Challenge"
+msgstr ""
+
 msgctxt "validator_entity_title_climate_zone"
 msgid "Climate zone"
+msgstr ""
+
+msgctxt "validator_entity_title_condition"
+msgid "Challenge condition"
 msgstr ""
 
 msgctxt "validator_entity_title_consumption_rule"
@@ -6808,4 +7095,8 @@ msgstr ""
 
 msgctxt "validator_entity_title_terrain_family"
 msgid "Terrain family"
+msgstr ""
+
+msgctxt "validator_entity_title_trigger"
+msgid "Fame trigger"
 msgstr ""

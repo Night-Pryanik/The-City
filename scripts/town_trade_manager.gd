@@ -921,7 +921,7 @@ func _take_from_city(key: String, amount: int) -> void:
             var take := mini(left, int(CityData.city_storage.get(pid, 0)))
             if take <= 0:
                 continue
-            CityData.remove_from_storage(pid, take, SALE_QUALITY_PRIORITY)
+            _record_city_sale(pid, CityData.remove_from_storage(pid, take, SALE_QUALITY_PRIORITY))
             left -= take
         return
     var available: Array = []
@@ -931,10 +931,28 @@ func _take_from_city(key: String, amount: int) -> void:
     var left := amount
     while left > 0 and not available.is_empty():
         var pid := str(available[randi() % available.size()])
-        CityData.remove_from_storage(pid, 1, SALE_QUALITY_PRIORITY)
+        _record_city_sale(pid, CityData.remove_from_storage(pid, 1, SALE_QUALITY_PRIORITY))
         left -= 1
         if int(CityData.city_storage.get(pid, 0)) <= 0:
             available.erase(pid)
+
+
+# The units a town has taken from the city, booked by the concrete good and the quality that left
+# the storage — the fame of a good counts the units it actually gave away (challenge_manager.gd).
+# The manager is looked up by the name rather than passed in: a test drives this one on a bare
+# scene, and a sale there simply earns no fame.
+func _record_city_sale(pid: String, breakdown: Dictionary) -> void:
+    if breakdown.is_empty():
+        return
+    var map = get_node_or_null("/root/MainMap")
+    if map == null:
+        return
+    # get(), not the property: a bare scene has no such member at all, and a direct access there
+    # would be an engine error rather than a sale that earns no fame.
+    var manager = map.get("challenge_manager")
+    if manager == null:
+        return
+    manager.record_sale(pid, breakdown)
 
 
 # The price of one unit of a sale the order carries no price for: the average price of a
@@ -950,7 +968,7 @@ func _sale_unit_price(key: String) -> int:
         price = float(TownEconomy.get_group_price(key))
     else:
         price = GameData.get_price(key)
-    return int(round(price * CityData.get_specialization_multiplier(CityData.SPEC_TRADE_SELL_PRICE)))
+    return int(round(price * CityData.get_trade_sell_price_multiplier(key)))
 
 
 # Whether the town wants the good at all: the purchase column is the buy pool, and a good

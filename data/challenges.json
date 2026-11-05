@@ -1,0 +1,51 @@
+{
+  // The challenges of the era: the one-off tasks with a condition of their own (see docs.md,
+  // "The fame of a good" for the product blocks, which live in data/products instead).
+  //
+  // A challenge here is NOT described by the data alone: the data names it, says which condition
+  // of the code it runs and what it gives away, while the condition itself is checked in
+  // ChallengeManager._challenge_conditions(). A mod that adds a challenge with a condition the
+  // game does not know gets a warning and a challenge that never completes — the condition is the
+  // part a modder has to write, the rest is the file.
+  //
+  //   "condition" — the id of the check in the code. The two of the game are built on the claiming
+  //               of the chunks of the Region, and both take the era as their window:
+  //                 "buy_no_chunks_in_one_era" — the era ends and the city has bought nothing.
+  //                   The counter is reset when the era advances, so the task is offered again in
+  //                   every one of them; the free claiming of the new Region, which comes with the
+  //                   advance itself and spends no money, is not a purchase.
+  //                 "buy_all_available_chunks_in_one_era" — no hex of the Region of the current
+  //                   era is left that the city could still claim.
+  //   "once" — a challenge completed is taken off the list for the whole game. Without the field
+  //               it is completed again whenever its condition holds, which is what makes the era
+  //               tasks repeat.
+  //   "era" — the era the challenge is offered in, as the index of data/eras.json. The era tasks
+  //               that spend the era as their window need it: a task of restraint in the first era
+  //               cannot be set again in the second, because the advance itself claims the new
+  //               Region. An absent field means every era.
+  //   "reward" — the same records as the reward of a product block. A challenge whose reward is a
+  //               specialization gives the city a pick of its own; any other reward gives none.
+  //
+  // The list of the challenges and of their rewards is shown to the player before he accepts any
+  // of them (the tab "Challenges" of the city window).
+  "challenges": [
+    {
+      "id": "region_of_our_own",
+      "name": "All your Region are belong to us",
+      "description": "A city that grows by the plough is worth more than one that grows by the coin. Spend a whole era without claiming a single chunk of the Region: not one hex bought, not one coin spent on claiming.",
+      "icon": "era_challenges.svg",
+      "condition": "buy_no_chunks_in_one_era",
+      "era": 0,
+      "once": true,
+      "reward": { "type": "effect_stub", "id": "region_restraint" }
+    },
+    {
+      "id": "no_margin_left",
+      "name": "Hanc marginis exiguitas non caperet",
+      "description": "The neighbours say the strip is too narrow to hold two cities. Prove them right: buy every chunk of the Region that is open for claiming in the current era.",
+      "icon": "era_challenges.svg",
+      "condition": "buy_all_available_chunks_in_one_era",
+      "reward": { "type": "effect_stub", "id": "whole_region" }
+    }
+  ]
+}

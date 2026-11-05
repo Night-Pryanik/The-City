@@ -81,6 +81,19 @@
       "description": "Makes a set of tools for craftsmen."
     },
     {
+      // The prestige good of the steel line (see the header comment of
+      // data/products/food.json).
+      "id": "damascus_steel",
+      "name": "Damascus Steel",
+      "produced_in": [ "forge" ],
+      "resources": { "steel": 20, "charcoal": 10 },
+      "result": { "damascus_steel": 10 },
+      "time": 15,
+      "unlock_tech": "steel_making",
+      "unlock_challenge": "steel_challenge",
+      "description": "Foldes the bloom of the city into the watered bar the smiths of other towns ask for."
+    },
+    {
       "id": "bronze_weapons",
       "name": "Bronze Weapons",
       "produced_in": [ "forge" ],
@@ -101,6 +114,18 @@
       "description": "Makes iron out of ore."
     },
     {
+      // Steel is made where the bar is worked, not where the ore is smelted: the bloom goes back into
+      // the forge with charcoal, and the smith takes the carbon up into it.
+      "id": "steel",
+      "name": "Steel",
+      "produced_in": [ "forge" ],
+      "resources": [ [ { "iron": 20 }, { "meteorite_iron": 20 } ], { "charcoal": 20 } ],
+      "result": { "steel": 10 },
+      "time": 8.0,
+      "unlock_tech": "steel_making",
+      "description": "Drives charcoal into a bloom of iron in the forge."
+    },
+    {
       "id": "iron_tools",
       "name": "Iron Tools",
       "produced_in": [ "forge" ],
@@ -108,6 +133,16 @@
       "result": { "iron_tools": 10 },
       "time": 5.0,
       "unlock_tech": "iron_processing",
+      "description": "Makes a set of tools for craftsmen."
+    },
+    {
+      "id": "steel_tools",
+      "name": "Steel Tools",
+      "produced_in": [ "forge" ],
+      "resources": { "steel": 20, "charcoal": 20 },
+      "result": { "steel_tools": 10 },
+      "time": 5.0,
+      "unlock_tech": "steel_making",
       "description": "Makes a set of tools for craftsmen."
     },
     {
@@ -119,6 +154,29 @@
       "time": 6.0,
       "unlock_tech": "iron_processing",
       "description": "Makes a batch of weapons to defend the city."
+    },
+    {
+      "id": "steel_weapons",
+      "name": "Steel Weapons",
+      "produced_in": [ "forge" ],
+      "resources": { "steel": 30, "charcoal": 20 },
+      "result": { "steel_weapons": 10 },
+      "time": 6.0,
+      "unlock_tech": "steel_making",
+      "description": "Makes a batch of weapons to defend the city."
+    },
+    {
+      // The blade of the brand bar: it stands above the steel one and is opened by the same rung of
+      // the fame as the bar itself, so the city that earned the brand can work it at once.
+      "id": "damascus_weapons",
+      "name": "Damascus Weapons",
+      "produced_in": [ "forge" ],
+      "resources": { "damascus_steel": 20, "charcoal": 20 },
+      "result": { "damascus_weapons": 10 },
+      "time": 8.0,
+      "unlock_tech": "steel_making",
+      "unlock_challenge": "steel_challenge",
+      "description": "Foldes and quenches the watered bar into blades that keep their edge."
     },
     {
       "id": "tin",

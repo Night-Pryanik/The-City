@@ -1,4 +1,37 @@
 {
+  // The fame of a good: three optional blocks a product may carry (see docs.md, "The fame of a
+  // good"). They share one counter and differ only in what they give away.
+  //
+  // The counter is the amount of this good the CITY HAS GIVEN UP through the trigger below, split
+  // by the quality of the units. It is cumulative and never spent, so a threshold passed long ago
+  // still counts the sales of the whole game, and a save made before the blocks existed simply
+  // carries no counter.
+  //
+  //   "trigger" — "sell" counts the units a town takes from the city, "produce" counts the units
+  //               the city makes. "sell" is the default and the honest one: fame needs witnesses,
+  //               and a city that ate all its own cheese is not known for cheese. Trade opens with
+  //               the second era, so an early good that should be famous sooner writes "produce".
+  //   "threshold" — the units the counter must reach. The blocks are absolute, not steps: 500
+  //               branded units also cleared the 200 of the reputation.
+  //   "min_quality" — only the units of this level and above feed the counter. Without the field
+  //               every level counts. The quality of the deposits is thus the currency of prestige.
+  //   "reward" — what the block gives:
+  //               { "type": "trade_price", "value": <share> }  the towns pay this much more;
+  //               { "type": "brand_product", "product": <id> } the recipe of a prestige good;
+  //               { "type": "specialization", "id": <id> }     the branch, and a pick for it;
+  //               { "type": "effect_stub", "id": <id> }       a place for an effect of the code.
+  //
+  // "name" and "description" belong to the challenge only: it is the one block the player accepts
+  // on purpose, so it is the one that needs a title of its own.
+  //
+  // A recipe opened by a rung of the fame writes the identifier of that task in "unlock_challenge"
+  // and is offered as soon as the rung carrying the "brand_product" reward is paid — not only after
+  // the whole ladder. Every recipe that works the prestige good, the bar and the blade out of it,
+  // names the same task, so one rung opens the whole branch of the good.
+  //
+  // A "brand_of" record is a prestige good: an id of its own, never a grade of the old one. Its
+  // price is the base price of the good, and the interface reads "<the base good> <the city>" —
+  // the city name is composed at display time, so the data holds no name of a city at all.
   "resources": [
     { "id": "wheat", "price": 2, "name": "Wheat", "type": "product", "category": "food", "icon": "wheat.png" },
     { "id": "oats", "price": 2, "name": "Oats", "type": "product", "category": "food", "icon": "oats.png" },
@@ -46,8 +79,46 @@
       "category": "food",
       "icon": "chickpeas.png"
     },
-    { "id": "cheese", "price": 14, "name": "Cheese", "type": "product", "category": "food", "icon": "cheese.png" },
+    {
+      "id": "cheese",
+      "price": 14,
+      "name": "Cheese",
+      "type": "product",
+      "category": "food",
+      "icon": "cheese.png",
+      "reputation": {
+        "threshold": 200,
+        "trigger": "sell",
+        "reward": { "type": "trade_price", "value": 0.10 }
+      },
+      "brand": {
+        "threshold": 500,
+        "trigger": "sell",
+        "min_quality": "exceptional",
+        "reward": { "type": "brand_product", "product": "aged_cheese" }
+      },
+      "challenge": {
+        "id": "cheese_challenge",
+        "threshold": 1000,
+        "trigger": "sell",
+        "min_quality": "exceptional",
+        "name": "challenge_cheese_name",
+        "description": "challenge_cheese_desc",
+        "reward": { "type": "specialization", "id": "cheese_specialization" }
+      }
+    },
     { "id": "bread", "price": 6, "name": "Bread", "type": "product", "category": "food", "icon": "bread.png" },
+    {
+      // The brand good of the cheese line — see the comment at cashmere in
+      // data/products/materials.json.
+      "id": "aged_cheese",
+      "price": 42,
+      "name": "Aged Cheese",
+      "type": "product",
+      "category": "food",
+      "brand_of": "cheese",
+      "icon": "cheese.png"
+    },
     {
       "id": "foraged_food",
       "price": 1,

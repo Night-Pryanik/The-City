@@ -1,8 +1,47 @@
 {
   "resources": [
     { "id": "hide", "price": 5, "name": "Hide", "type": "product", "category": "material", "icon": "hide.png" },
-    { "id": "wool", "price": 8, "name": "Wool", "type": "product", "category": "material", "icon": "wool.png" },
+    {
+      "id": "wool",
+      "price": 8,
+      "name": "Wool",
+      "type": "product",
+      "category": "material",
+      "icon": "wool.png",
+      "reputation": {
+        "threshold": 200,
+        "trigger": "sell",
+        "reward": { "type": "trade_price", "value": 0.10 }
+      },
+      "brand": {
+        "threshold": 500,
+        "trigger": "sell",
+        "min_quality": "exceptional",
+        "reward": { "type": "brand_product", "product": "cashmere" }
+      },
+      "challenge": {
+        "id": "wool_challenge",
+        "threshold": 1000,
+        "trigger": "sell",
+        "min_quality": "exceptional",
+        "name": "challenge_wool_name",
+        "description": "challenge_wool_desc",
+        "reward": { "type": "specialization", "id": "wool_specialization" }
+      }
+    },
     { "id": "wax", "price": 9, "name": "Wax", "type": "product", "category": "material", "icon": "wax.png" },
+    {
+      // The brand good of the wool line (see data/challenges.json for the mechanic and the
+      // header comment of data/products/food.json). Its name is composed in the interface from
+      // this record and the name of the city, so the record itself stays the plain one.
+      "id": "cashmere",
+      "price": 24,
+      "name": "Cashmere",
+      "type": "product",
+      "category": "material",
+      "brand_of": "wool",
+      "icon": "wool.png"
+    },
     { "id": "feathers", "price": 4, "name": "Feathers", "type": "product", "category": "material", "icon": "feathers.png" },
     { "id": "flour", "price": 4, "name": "Flour", "type": "product", "category": "material", "icon": "flour.png" },
     { "id": "clay", "price": 3, "name": "Clay", "type": "product", "category": "material", "icon": "clay.png" },

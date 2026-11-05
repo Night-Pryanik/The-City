@@ -7,6 +7,37 @@
       "type": "product",
       "category": "household_items",
       "unlock_tech": "pottery",
+      "icon": "pottery.png",
+      "reputation": {
+        "threshold": 200,
+        "trigger": "sell",
+        "reward": { "type": "trade_price", "value": 0.10 }
+      },
+      "brand": {
+        "threshold": 500,
+        "trigger": "sell",
+        "min_quality": "exceptional",
+        "reward": { "type": "brand_product", "product": "porcelain" }
+      },
+      "challenge": {
+        "id": "pottery_challenge",
+        "threshold": 1000,
+        "trigger": "sell",
+        "min_quality": "exceptional",
+        "name": "challenge_pottery_name",
+        "description": "challenge_pottery_desc",
+        "reward": { "type": "specialization", "id": "pottery_specialization" }
+      }
+    },
+    {
+      // The brand good of the pottery line — see the comment at cashmere in
+      // data/products/materials.json.
+      "id": "porcelain",
+      "price": 30,
+      "name": "Porcelain",
+      "type": "product",
+      "category": "household_items",
+      "brand_of": "pottery",
       "icon": "pottery.png"
     },
     {

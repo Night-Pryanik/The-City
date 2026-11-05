@@ -392,7 +392,7 @@ func _fill_storage_section() -> void:
         for prod_id in items:
             var amount = city_storage[prod_id]
             var pdata = products.get(prod_id, {})
-            var product_name = pdata.get("name", prod_id)
+            var product_name = GameData.get_good_display_name(prod_id)
             var is_food = pdata.get("category") == "food"
             var row = HBoxContainer.new()
             row.add_theme_constant_override("separation", 6)

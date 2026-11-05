@@ -35,6 +35,19 @@
       "description": "Creates clay pots for storage."
     },
     {
+      // The prestige good of the pottery line (see the header comment of
+      // data/products/food.json).
+      "id": "porcelain",
+      "name": "Porcelain",
+      "produced_in": [ "pottery_workshop" ],
+      "resources": { "clay": 20 },
+      "result": { "porcelain": 10 },
+      "time": 12,
+      "unlock_tech": "pottery",
+      "unlock_challenge": "pottery_challenge",
+      "description": "Fires the clay of the city into the thin, ringing ware the towns pay a name for."
+    },
+    {
       "id": "amphora",
       "name": "Amphora",
       "produced_in": [ "pottery_workshop" ],
@@ -95,6 +108,19 @@
       "time": 4.0,
       "unlock_tech": "weaving",
       "description": "Weaves clothes out of wool."
+    },
+    {
+      // The prestige good of the wool line (see the header comment of
+      // data/products/food.json).
+      "id": "cashmere",
+      "name": "Cashmere",
+      "produced_in": [ "weaver_house" ],
+      "resources": { "wool": 20 },
+      "result": { "cashmere": 10 },
+      "time": 12,
+      "unlock_tech": "weaving",
+      "unlock_challenge": "wool_challenge",
+      "description": "Combles and spins the fleece of the city into the softest cloth a town will ask for."
     },
     {
       "id": "silk_clothes",

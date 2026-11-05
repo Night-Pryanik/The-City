@@ -71,6 +71,13 @@ func _ready():
     add_child(town_trade_manager)
     town_trade_manager.initialize(town_manager, delivery_manager)
 
+    # The fame of a good and the challenges of the era need the trade (the units a town takes), the
+    # claiming of the Region (the era tasks) and the era itself, so the manager comes after them.
+    challenge_manager = CHALLENGE_MANAGER_SCRIPT.new()
+    challenge_manager.name = "ChallengeManager"
+    add_child(challenge_manager)
+    challenge_manager.bind_map(self)
+
     if SaveManager.is_loaded:
         GameData.load_all_data()
         map_renderer.load_icons()

@@ -12,6 +12,7 @@ const UiHelpers = preload("res://scripts/ui_helpers.gd")
 @onready var technologies_panel = $ContentPanel/TechnologiesPanel
 @onready var effects_panel = $ContentPanel/EffectsPanel
 @onready var specialization_panel = $ContentPanel/SpecializationPanel
+@onready var challenges_panel = $ContentPanel/ChallengesPanel
 
 # The tab buttons
 @onready var resources_tab_button = $TabBarPanel/TabBar/ResourcesTabButton
@@ -71,6 +72,8 @@ var external_trade_tab: Node
 var effects_tab: Node
 # The tab "Specialization" — the branches of the city and their bonuses (see specialization_tab.gd).
 var specialization_tab: Node
+# The tab "Challenges" — the fame of a good and the tasks of the era (see challenges_tab.gd).
+var challenges_tab: Node
 # The map itself: the foreign trade column reads the towns discovered by the player
 # from it (see set_map).
 var main_map: Node = null
@@ -145,6 +148,8 @@ func set_map(map_node: Node):
     main_map = map_node
     if external_trade_tab != null:
         external_trade_tab.set_map(map_node)
+    if challenges_tab != null:
+        challenges_tab.set_map(map_node)
 
 func _ready():
     # We load the modules
@@ -218,11 +223,18 @@ func _ready():
     specialization_tab.setup($ContentPanel/SpecializationPanel)
     add_child(specialization_tab)
 
+    # The tab "Challenges": the fame of a good and the tasks of the era. The counters live on the
+    # map (ChallengeManager), so the tab is given the map as the foreign trade column is.
+    challenges_tab = load("res://scripts/challenges_tab.gd").new()
+    challenges_tab.setup($ContentPanel/ChallengesPanel)
+    challenges_tab.set_map(main_map)
+    add_child(challenges_tab)
+
     # The signals of the buttons
-    for btn in [resources_tab_button, buildings_tab_button, trade_tab_button, technologies_tab_button, effects_tab_button, specialization_tab_button]:
+    for btn in [resources_tab_button, buildings_tab_button, trade_tab_button, technologies_tab_button, effects_tab_button, era_challenges_button, specialization_tab_button]:
         if not btn.pressed.is_connected(_on_tab_button_pressed):
             btn.pressed.connect(_on_tab_button_pressed.bind(btn))
-    stub_buttons = [era_challenges_button, encyclopedia_button]
+    stub_buttons = [encyclopedia_button]
     for btn in stub_buttons:
         if not btn.pressed.is_connected(_on_stub_button_pressed):
             btn.pressed.connect(_on_stub_button_pressed.bind(btn))
@@ -243,6 +255,7 @@ func _ready():
         {"button": trade_tab_button, "id": "trade"},
         {"button": technologies_tab_button, "id": "technologies"},
         {"button": effects_tab_button, "id": "effects"},
+        {"button": era_challenges_button, "id": "challenges"},
         {"button": specialization_tab_button, "id": "specialization"}
     ]
     _highlight_active_tab_button()
@@ -446,6 +459,7 @@ func _refresh_all():
     external_trade_tab.refresh()
     effects_tab.refresh()
     specialization_tab.refresh()
+    challenges_tab.refresh()
     _refresh_specialization_dot()
     _update_food_label()
 
@@ -456,6 +470,7 @@ func _switch_tab(tab_id: String):
     trade_panel.visible = (tab_id == "trade")
     technologies_panel.visible = (tab_id == "technologies")
     effects_panel.visible = (tab_id == "effects")
+    challenges_panel.visible = (tab_id == "challenges")
     specialization_panel.visible = (tab_id == "specialization")
 
     # The right panel "Built buildings" is shown only on the tabs
@@ -488,6 +503,10 @@ func _switch_tab(tab_id: String):
         # The branches and the milestones of the population: the list is short and is rebuilt on
         # every opening, so a pick made in the choice window is never shown stale.
         specialization_tab.refresh()
+    elif tab_id == "challenges":
+        # The counters of the fame grow while the window stands closed, so the list is built on
+        # every opening rather than kept in step with the ticks.
+        challenges_tab.refresh()
 
     ui_helpers.set_message("")
     _highlight_active_tab_button()

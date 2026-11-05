@@ -111,6 +111,11 @@ const DELIVERY_MANAGER_SCRIPT := preload("res://scripts/delivery_manager.gd")
 # for the same reason as the logistics: no visual part, no scene node.
 const TOWN_TRADE_MANAGER_SCRIPT := preload("res://scripts/town_trade_manager.gd")
 
+# The fame of a good and the challenges of the era (see challenge_manager.gd). Created in code for
+# the same reason as the trade: no visual part, and it reads the era and the claiming of the Region
+# from the map it lives on.
+const CHALLENGE_MANAGER_SCRIPT := preload("res://scripts/challenge_manager.gd")
+
 # The active pause (see active_pause.gd): it draws the frame around the window and
 # holds the queue of the waiting actions, therefore it is created in code together
 # with its own layer.
@@ -308,6 +313,10 @@ var delivery_manager: Node = null
 # The trade with the towns: the orders of the town window, the standing contracts
 # and their payments (see town_trade_manager.gd).
 var town_trade_manager: Node = null
+
+# The fame of a good and the challenges of the era: the counters of what the city gave away, the
+# tiers the city has been paid for, and the tasks of data/challenges.json (see challenge_manager.gd).
+var challenge_manager: Node = null
 
 # The active pause: the queue of the actions, which wait for the resume of the
 # simulation (see active_pause.gd). This node owns the flag of the pause of the

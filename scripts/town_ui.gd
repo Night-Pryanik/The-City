@@ -574,6 +574,10 @@ func _unit_price(resource_id: String, side: String) -> int:
     else:
         var quality_id := _town_quality_of(resource_id) if side == SIDE_SELL else ""
         price = GameData.get_price_for_quality(resource_id, quality_id)
+    # The purchase column is where the city sells: the fame of a good and the prestige branches
+    # scoped to it lift that row alone, not every row of the column.
+    if side == SIDE_BUY:
+        return int(round(price * CityData.get_trade_sell_price_multiplier(resource_id)))
     return int(round(price * CityData.get_specialization_multiplier(_price_bonus_kind(side))))
 
 # The specialization bonus that acts on a column. The side is the side of the TOWN: in the sale
@@ -1867,8 +1871,8 @@ func _get_resource_display_name(resource_id: String) -> String:
     if _is_group_id(resource_id):
         return GameData.format_resource_name(resource_id)
     var resource_data := GameData.get_resource_data(resource_id)
-    var display_name := str(resource_data.get("name", ""))
-    if not display_name.is_empty():
+    var display_name := GameData.get_good_display_name(resource_id)
+    if not display_name.is_empty() and display_name != resource_id:
         return display_name
     # A guard for opening the window at the moment when the common loader has not yet
     # filled GameData: we still show not the ID but the available name.

@@ -55,6 +55,15 @@
       "icon": "iron_jewelry.png"
     },
     {
+      "id": "steel_jewelry",
+      "price": 82,
+      "name": "Steel Jewelry",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "steel_making",
+      "icon": "steel_jewelry.png"
+    },
+    {
       "id": "lazurite_jewelry",
       "price": 120,
       "name": "Lazurite Jewelry",

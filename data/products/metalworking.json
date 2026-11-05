@@ -22,6 +22,13 @@
       "icon": "iron_tools.png"
     },
     {
+      "id": "steel_tools", "price": 135,
+      "name": "Steel Tools",
+      "type": "product",
+      "category": "tools",
+      "icon": "steel_tools.png"
+    },
+    {
       "id": "copper_weapons", "price": 45,
       "name": "Copper Weapons",
       "type": "product",
@@ -41,6 +48,45 @@
       "type": "product",
       "category": "weapons",
       "icon": "iron_weapons.png"
+    },
+    {
+      // The fame of the steel line is earned by the blade, not by the bar: a town asks for the
+      // weapons of a named city, while steel as a material is what the forge sells to everyone. The
+      // three tiers are the ladder of this good — see the header comment of data/products/food.json.
+      "id": "steel_weapons", "price": 165,
+      "name": "Steel Weapons",
+      "type": "product",
+      "category": "weapons",
+      "icon": "steel_weapons.png",
+      "reputation": {
+        "threshold": 200,
+        "trigger": "sell",
+        "reward": { "type": "trade_price", "value": 0.10 }
+      },
+      "brand": {
+        "threshold": 500,
+        "trigger": "sell",
+        "min_quality": "exceptional",
+        "reward": { "type": "brand_product", "product": "damascus_steel" }
+      },
+      "challenge": {
+        "id": "steel_challenge",
+        "threshold": 1000,
+        "trigger": "sell",
+        "min_quality": "exceptional",
+        "name": "challenge_steel_name",
+        "description": "challenge_steel_desc",
+        "reward": { "type": "specialization", "id": "weaponsmith_specialization" }
+      }
+    },
+    {
+      // The weapon of the brand bar: it is made of the good that carries the name of the city, so it
+      // stands above the steel one without a technology of its own.
+      "id": "damascus_weapons", "price": 250,
+      "name": "Damascus Weapons",
+      "type": "product",
+      "category": "weapons",
+      "icon": "damascus_weapons.png"
     }
   ]
 }

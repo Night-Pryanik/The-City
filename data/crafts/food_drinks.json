@@ -168,6 +168,20 @@
       "unlock_tech": "cheese_making"
     },
     {
+      // The prestige good of the cheese line: the brand the city earns by the fame of its cheese
+      // (see the header comment of data/products/food.json). The dairy of the city must already know
+      // how to make cheese at all — the brand is a way of making it, not another building.
+      "id": "aged_cheese",
+      "name": "Aged Cheese",
+      "produced_in": [ "dairy" ],
+      "resources": { "raw_milk": 10 },
+      "result": { "aged_cheese": 10 },
+      "time": 15,
+      "unlock_tech": "cheese_making",
+      "unlock_challenge": "cheese_challenge",
+      "description": "Awards the milk of the city to the cheese the world asks for by the name of the city."
+    },
+    {
       "id": "beer",
       "name": "Beer",
       "produced_in": [ "brewer_house" ],

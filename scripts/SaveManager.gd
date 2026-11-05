@@ -326,7 +326,15 @@ func _collect_data(main_map: Node) -> Dictionary:
         # been spent. The milestones themselves are not saved — they are derived from the
         # population (see CityData.get_specialization_picks_earned).
         "chosen_specializations": CityData.chosen_specialization_ids,
-        "specialization_claimed": CityData.specialization_claimed
+        "specialization_claimed": CityData.specialization_claimed,
+        # The gifts of the challenges of the era, kept apart from the milestones (see
+        # CityData.specialization_challenge_picks).
+        "specialization_challenge_picks": CityData.specialization_challenge_picks,
+        # The fame of the goods: what the city has given away, tier by tier, and what it has been
+        # paid for. A save written before the mechanic simply carries no counters, and the city has
+        # earned nothing yet (there is no migration of an old save).
+        "challenge_state": main_map.challenge_manager.serialize() \
+                if main_map.challenge_manager else {}
     }
 
 func apply_loaded_data():
@@ -385,6 +393,13 @@ func apply_loaded_data():
     var saved_chosen = saved_data.get("chosen_specializations", [])
     CityData.chosen_specialization_ids = saved_chosen if saved_chosen is Array else []
     CityData.specialization_claimed = int(saved_data.get("specialization_claimed", 0))
+    CityData.specialization_challenge_picks = int(saved_data.get("specialization_challenge_picks", 0))
+    # The fame of the goods. A save without the block carries no counters: the city has earned
+    # nothing, which is what the data of an old game says.
+    var map_for_challenges = get_node_or_null("/root/MainMap")
+    if map_for_challenges != null and map_for_challenges.challenge_manager != null:
+        map_for_challenges.challenge_manager.deserialize(
+                saved_data.get("challenge_state", {}))
     # We restore the building constructions (their construction progress is stored in build_manager)
     CityData.building_construction = saved_data.get("building_construction", {})
     # tile_data will be restored separately

@@ -15,6 +15,117 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "%s of %s"
+msgstr "%s %s"
+
+msgid "%s or better"
+msgstr "%s и выше"
+
+msgid "A challenge of the era is completed."
+msgstr "Вызов эпохи выполнен."
+
+msgid "A specialization of the city"
+msgstr "Специализация города"
+
+msgid "An effect still to be written (%s)"
+msgstr "Эффект ещё не написан (%s)"
+
+msgid "Challenge completed: %s"
+msgstr "Вызов выполнен: %s"
+
+msgid "Challenge names a condition the game does not check"
+msgstr "Вызов называет условие, которое игра не проверяет"
+
+msgid "Challenges of another era"
+msgstr "Вызовы другой эпохи"
+
+msgid "Challenges of this era"
+msgstr "Вызовы этой эпохи"
+
+msgid "Chunks bought this era: %d"
+msgstr "Чанков куплено в эту эпоху: %d"
+
+msgid "Chunks left to buy: %d"
+msgstr "Чанков осталось купить: %d"
+
+msgid "Completed"
+msgstr "Выполнено"
+
+msgid "Done"
+msgstr "Готово"
+
+msgid "Era %d"
+msgstr "Эпоха %d"
+
+msgid "Known for %s"
+msgstr "Известен: %s"
+
+msgid "Produced"
+msgstr "Произведено"
+
+msgid "Reached"
+msgstr "Достигнуто"
+
+msgid "Sold"
+msgstr "Продано"
+
+msgid "Specialization bonus names a nonexistent product"
+msgstr "Бонус специализации ссылается на несуществующий товар"
+
+msgid "Specialization waits for a nonexistent challenge"
+msgstr "Специализация ждёт несуществующего вызова"
+
+msgid "The brand of %s"
+msgstr "Бренд: %s"
+
+msgid "The challenge %s"
+msgstr "Вызов %s"
+
+msgid "The challenge of %s"
+msgstr "Вызов: %s"
+
+msgid "The challenge of the era is completed: the city has a specialization to take."
+msgstr "Вызов эпохи выполнен: городу доступен ещё один выбор специализации."
+
+msgid "The city is not on the map yet."
+msgstr "Города ещё нет на карте."
+
+msgid "The fame of a good"
+msgstr "Слава товара"
+
+msgid "The fame of a good counts an unknown trigger"
+msgstr "Слава товара считает неизвестный триггер"
+
+msgid "The fame of a good has brought the city news."
+msgstr "Слава товара принесла городу новость."
+
+msgid "The fame of a good names a nonexistent quality"
+msgstr "Слава товара ссылается на несуществующее качество"
+
+msgid "The fame of a good rewards a nonexistent entity"
+msgstr "Слава товара награждает несуществующую сущность"
+
+msgid "The recipe of %s opens"
+msgstr "Открывается рецепт: %s"
+
+msgid "The specialization %s, and one choice to spend"
+msgstr "Новая ветвь — %s — и один свободный выбор"
+
+msgid "The town pays %s dearer"
+msgstr "Городки платят на %s больше"
+
+msgid "The town pays %s dearer for %s"
+msgstr "Городки платят на %s больше за %s"
+
+msgid "The towns know what the city is good at."
+msgstr "Городки знают, чем славен город."
+
+msgid "The window: %s"
+msgstr "Окно задачи: %s"
+
+msgid "The world has learned the name of the goods of the city."
+msgstr "Мир узнал названия товаров города."
+
 msgid "\n\nFound here: %s"
 msgstr "\n\nЗдесь обнаружено: %s"
 
@@ -1104,8 +1215,8 @@ msgstr "Эффекты"
 msgid "Encyclopedia"
 msgstr "Энциклопедия"
 
-msgid "Era challenges"
-msgstr "Вызовы эпохи"
+msgid "Challenges"
+msgstr "Вызовы"
 
 msgid "Era: %s"
 msgstr "Эпоха: %s"
@@ -3626,6 +3737,22 @@ msgctxt "crafts.description"
 msgid "Cures, ages and cuts tobacco leaf."
 msgstr "Выделывает, вылёживает и нарезает табачный лист"
 
+msgctxt "crafts.description"
+msgid "Awards the milk of the city to the cheese the world asks for by the name of the city."
+msgstr "Молоко города идёт в тот сыр, о котором спрашивают по имени города."
+
+msgctxt "crafts.description"
+msgid "Fires the clay of the city into the thin, ringing ware the towns pay a name for."
+msgstr "Глина города обжигается в тонкую звонкую посуду, за которую платят по имени."
+
+msgctxt "crafts.description"
+msgid "Combles and spins the fleece of the city into the softest cloth a town will ask for."
+msgstr "Руно города вычёсывают и прядут в самую мягкую ткань, какую только попросят в городках."
+
+msgctxt "crafts.description"
+msgid "Foldes the bloom of the city into the watered bar the smiths of other towns ask for."
+msgstr "Слиток города коётся в полосу с узором, которую просят кузнецы других городков."
+
 msgctxt "crafts.name"
 msgid "Alpaca Meat"
 msgstr "Мясо альпаки"
@@ -4077,6 +4204,22 @@ msgstr "Письменный набор"
 msgctxt "crafts.name"
 msgid "Tobacco"
 msgstr "Табак"
+
+msgctxt "crafts.name"
+msgid "Aged Cheese"
+msgstr "Выдержанный сыр"
+
+msgctxt "crafts.name"
+msgid "Porcelain"
+msgstr "Фарфор"
+
+msgctxt "crafts.name"
+msgid "Cashmere"
+msgstr "Кашемир"
+
+msgctxt "crafts.name"
+msgid "Damascus Steel"
+msgstr "Дамасская сталь"
 
 msgctxt "eras.name"
 msgid "Ancient"
@@ -5718,6 +5861,54 @@ msgctxt "resources.name"
 msgid "Tobacco Leaf"
 msgstr "Табачный лист"
 
+msgctxt "resources.name"
+msgid "Aged Cheese"
+msgstr "Выдержанный сыр"
+
+msgctxt "resources.name"
+msgid "Porcelain"
+msgstr "Фарфор"
+
+msgctxt "resources.name"
+msgid "Cashmere"
+msgstr "Кашемир"
+
+msgctxt "resources.name"
+msgid "Damascus Steel"
+msgstr "Дамасская сталь"
+
+msgctxt "resources.challenge.name"
+msgid "challenge_cheese_name"
+msgstr "Сыр под именем города"
+
+msgctxt "resources.challenge.name"
+msgid "challenge_wool_name"
+msgstr "Шерсть, которую спрашивают по имени"
+
+msgctxt "resources.challenge.name"
+msgid "challenge_pottery_name"
+msgstr "Клеймо на обожженной глине"
+
+msgctxt "resources.challenge.name"
+msgid "challenge_iron_name"
+msgstr "Сталь, названная городом"
+
+msgctxt "resources.challenge.description"
+msgid "challenge_cheese_desc"
+msgstr "Тысяча единиц сыра исключительного качества, проданных городкам, — и сыр начинают спрашивать по имени города."
+
+msgctxt "resources.challenge.description"
+msgid "challenge_wool_desc"
+msgstr "Тысяча единиц шерсти исключительного качества, проданных городкам, — и ткань начинают спрашивать по имени города."
+
+msgctxt "resources.challenge.description"
+msgid "challenge_pottery_desc"
+msgstr "Тысяча изделий из глины исключительного качества, проданных городкам, — и их узнают по клейму города."
+
+msgctxt "resources.challenge.description"
+msgid "challenge_iron_desc"
+msgstr "Тысяча слитков железа исключительного качества, проданных городкам, — и кузнецы начинают спрашивать их по имени города."
+
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
 msgstr "Ровная дорога для телег. Позволяет перевозить втрое больше, чем тропка."
@@ -5790,6 +5981,38 @@ msgctxt "specializations.description"
 msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
 msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше."
 
+msgctxt "specializations.description"
+msgid "The world knows the cellars of the city. Cheese brings more, and the dairies of the city fill it faster."
+msgstr "Подвалы города известны миру. Сыр приносит больше, а сыроварни наполняют его быстрее."
+
+msgctxt "specializations.description"
+msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
+msgstr "Печи города знают за его стенами. Керамика приносит больше, а мастерские наполняют её быстрее."
+
+msgctxt "specializations.description"
+msgid "The fleeces of the city are asked for by name. Wool brings more, and the looms of the city work it faster."
+msgstr "Руно города спрашивают по имени. Шерсть приносит больше, а станки ткут её быстрее."
+
+msgctxt "specializations.description"
+msgid "The forges of the city have a name among the smiths. Iron brings more, and the forges of the city strike it faster."
+msgstr "Кузницы города имеют имя среди кузнецов. Железо приносит больше, а кузницы куют его быстрее."
+
+msgctxt "challenges.name"
+msgid "All your Region are belong to us"
+msgstr "Весь Регион принадлежит нам"
+
+msgctxt "challenges.name"
+msgid "Hanc marginis exiguitas non caperet"
+msgstr "Hanc marginis exiguitas non caperet"
+
+msgctxt "challenges.description"
+msgid "A city that grows by the plough is worth more than one that grows by the coin. Spend a whole era without claiming a single chunk of the Region: not one hex bought, not one coin spent on claiming."
+msgstr "Город, который растёт плугом, стоит больше города, который растёт монетой. Проведите целую эпоху, не присвоив ни одного чанка Региона: ни одного гекса за монеты."
+
+msgctxt "challenges.description"
+msgid "The neighbours say the strip is too narrow to hold two cities. Prove them right: buy every chunk of the Region that is open for claiming in the current era."
+msgstr "Соседи говорят, что полоса земли слишком узка для двух городов. Докажите, что они правы: выкупите в текущую эпоху каждый чанк Региона, который ещё можно присвоить."
+
 msgctxt "specializations.full_name"
 msgid "Specialization of foreign trade"
 msgstr "Специализация внешней торговли"
@@ -5797,6 +6020,22 @@ msgstr "Специализация внешней торговли"
 msgctxt "specializations.full_name"
 msgid "Specialization of the domestic market"
 msgstr "Специализация внутреннего рынка"
+
+msgctxt "specializations.full_name"
+msgid "Specialization of cheese"
+msgstr "Специализация сыра"
+
+msgctxt "specializations.full_name"
+msgid "Specialization of pottery"
+msgstr "Специализация керамики"
+
+msgctxt "specializations.full_name"
+msgid "Specialization of wool"
+msgstr "Специализация шерсти"
+
+msgctxt "specializations.full_name"
+msgid "Specialization of iron"
+msgstr "Специализация железа"
 
 msgctxt "specializations.name"
 msgid "Agrarian"
@@ -5825,6 +6064,22 @@ msgstr "Сырьевая"
 msgctxt "specializations.name"
 msgid "Science"
 msgstr "Научная"
+
+msgctxt "specializations.name"
+msgid "Cheese"
+msgstr "Сыр"
+
+msgctxt "specializations.name"
+msgid "Pottery"
+msgstr "Глиняная посуда"
+
+msgctxt "specializations.name"
+msgid "Wool"
+msgstr "Шерсть"
+
+msgctxt "specializations.name"
+msgid "Iron"
+msgstr "Железо"
 
 msgctxt "technologies.description"
 msgid "+30% to resource production on plantations."
@@ -6566,9 +6821,17 @@ msgctxt "validator_entity_ref_category"
 msgid "this category"
 msgstr "эту категорию"
 
+msgctxt "validator_entity_ref_challenge"
+msgid "this challenge"
+msgstr "этот вызов"
+
 msgctxt "validator_entity_ref_climate_zone"
 msgid "this climate zone"
 msgstr "эту климатическую зону"
+
+msgctxt "validator_entity_ref_condition"
+msgid "this challenge condition"
+msgstr "это условие вызова"
 
 msgctxt "validator_entity_ref_consumption_rule"
 msgid "this consumption rule"
@@ -6642,6 +6905,10 @@ msgctxt "validator_entity_ref_terrain_family"
 msgid "this terrain family"
 msgstr "это семейство местности"
 
+msgctxt "validator_entity_ref_trigger"
+msgid "this fame trigger"
+msgstr "этот триггер славы"
+
 msgctxt "validator_entity_source_building"
 msgid "building"
 msgstr "здании"
@@ -6650,9 +6917,17 @@ msgctxt "validator_entity_source_category"
 msgid "category"
 msgstr "категории"
 
+msgctxt "validator_entity_source_challenge"
+msgid "challenge"
+msgstr "вызове"
+
 msgctxt "validator_entity_source_climate_zone"
 msgid "climate zone"
 msgstr "климатическая зона"
+
+msgctxt "validator_entity_source_condition"
+msgid "challenge condition"
+msgstr "условии вызова"
 
 msgctxt "validator_entity_source_consumption_rule"
 msgid "consumption rule"
@@ -6726,6 +7001,10 @@ msgctxt "validator_entity_source_terrain_family"
 msgid "terrain family"
 msgstr "семейство местности"
 
+msgctxt "validator_entity_source_trigger"
+msgid "fame trigger"
+msgstr "триггере славы"
+
 msgctxt "validator_entity_title_building"
 msgid "Building"
 msgstr "Здания"
@@ -6734,9 +7013,17 @@ msgctxt "validator_entity_title_category"
 msgid "Category"
 msgstr "Категории"
 
+msgctxt "validator_entity_title_challenge"
+msgid "Challenge"
+msgstr "Вызова"
+
 msgctxt "validator_entity_title_climate_zone"
 msgid "Climate zone"
 msgstr "Климатическая зона"
+
+msgctxt "validator_entity_title_condition"
+msgid "Challenge condition"
+msgstr "Условия вызова"
 
 msgctxt "validator_entity_title_consumption_rule"
 msgid "Consumption rule"
@@ -6809,3 +7096,7 @@ msgstr "Местности"
 msgctxt "validator_entity_title_terrain_family"
 msgid "Terrain family"
 msgstr "Семейство местности"
+
+msgctxt "validator_entity_title_trigger"
+msgid "Fame trigger"
+msgstr "Триггера славы"

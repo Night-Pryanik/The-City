@@ -80,7 +80,7 @@ tooltip_text = "Effects"
 [node name="EraChallengesButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1900000401]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
-tooltip_text = "Era challenges"
+tooltip_text = "Challenges"
 
 [node name="ReputationSpecializationButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1900000402]
 custom_minimum_size = Vector2(36, 34)
@@ -575,6 +575,46 @@ size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
 [node name="SpecializationList" type="VBoxContainer" parent="ContentPanel/SpecializationPanel/Body/ScrollContainer" unique_id=1900000605]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="ChallengesPanel" type="Control" parent="ContentPanel" unique_id=1900000701]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLabel" type="Label" parent="ContentPanel/ChallengesPanel" unique_id=1900000702]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 6.0
+offset_right = 183.0
+offset_bottom = 29.0
+text = "Challenges"
+
+[node name="Body" type="VBoxContainer" parent="ContentPanel/ChallengesPanel" unique_id=1900000703]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 32.0
+offset_right = -8.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+
+[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/ChallengesPanel/Body" unique_id=1900000704]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ChallengeList" type="VBoxContainer" parent="ContentPanel/ChallengesPanel/Body/ScrollContainer" unique_id=1900000705]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4

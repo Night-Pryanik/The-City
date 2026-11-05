@@ -11,6 +11,19 @@
     { "id": "gold", "price": 70, "name": "Gold", "type": "product", "category": "metals", "icon": "gold.png" },
     { "id": "silver", "price": 40, "name": "Silver", "type": "product", "category": "metals", "icon": "silver.png" },
     { "id": "iron", "price": 26, "name": "Iron", "type": "product", "category": "metals", "icon": "iron.png" },
+    { "id": "steel", "price": 58, "name": "Steel", "type": "product", "category": "metals", "icon": "steel.png" },
+    {
+      // The brand good of the steel line — see the comment at cashmere in
+      // data/products/materials.json. It is the prestige form of steel, so the interface reads it as
+      // "Steel of <the city>"; the watered bar of Damascus is the antique shape of exactly that.
+      "id": "damascus_steel",
+      "price": 102,
+      "name": "Damascus Steel",
+      "type": "product",
+      "category": "metals",
+      "brand_of": "steel",
+      "icon": "iron.png"
+    },
     { "id": "tin", "price": 16, "name": "Tin", "type": "product", "category": "metals", "icon": "tin.png" },
     { "id": "antimony", "price": 18, "name": "Antimony", "type": "product", "category": "metals", "icon": "antimony.png" },
     { "id": "arsenic", "price": 18, "name": "Arsenic", "type": "product", "category": "metals", "icon": "arsenic.png" },

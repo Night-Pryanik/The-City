@@ -1089,14 +1089,14 @@ func _refresh_recipes_list(bdata: Dictionary):
     var building_id = bdata.get("id", "")
     var available_recipes = []
 
-    # We collect the recipes available for this building (taking the technologies into account)
+    # We collect the recipes available for this building (the technologies and the challenges
+    # of the era are decided by CityData, as in the panel of a built one)
     for craft in crafts_data:
         if craft["id"] == "empty":
             continue
         if not CityData.can_craft_in(craft["id"], building_id):
             continue
-        var craft_unlock_tech = craft.get("unlock_tech", "")
-        if craft_unlock_tech != "" and not CityData.is_tech_unlocked(craft_unlock_tech):
+        if not CityData.is_craft_available(craft):
             continue
         available_recipes.append(craft)
 

@@ -103,6 +103,16 @@
       "flavor": "A protoscience of attempts to turn base metals into gold."
     },
     {
+      "id": "steel_making",
+      "name": "Steel Making",
+      "era": "antiquity",
+      "science_cost": 4.0,
+      "icon": "steel_making.png",
+      "prerequisites": [ [ "iron_processing", "alchemy" ] ],
+      "description": "Unlocks steel in the forge and the goods forged of it.",
+      "flavor": "Iron with a little carbon is another metal. Charcoal driven into a hot bloom and a flux that keeps the melt clean give a smith an edge that holds and a blade that does not bend."
+    },
+    {
       "id": "glassblowing",
       "name": "Glassblowing",
       "era": "antiquity",

@@ -56,6 +56,17 @@
       "description": "Makes jewelry out of iron."
     },
     {
+      "id": "steel_jewelry",
+      "name": "Steel Jewelry",
+      "produced_in": [ "jeweler_house" ],
+      "resources": { "steel": 20, "charcoal": 20 },
+      "result": { "steel_jewelry": 10 },
+      "extra_kinds": ["gemstone"],
+      "time": 15,
+      "unlock_tech": "steel_making",
+      "description": "Makes jewelry out of steel."
+    },
+    {
       "id": "lazurite_jewelry",
       "name": "Lazurite Jewelry",
       "produced_in": [ "jeweler_house" ],

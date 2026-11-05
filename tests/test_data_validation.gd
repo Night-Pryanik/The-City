@@ -16,7 +16,9 @@
 #      resource's produces, or by a lumberjack hut, Cyrillic in the
 #      name/description fields (the charset check applies only to id fields;
 #      name/description are free-form and may contain any script, so a Cyrillic
-#      name here is a deliberate fixture) and underscores with digits in an id.
+#      name here is a deliberate fixture) and underscores with digits in an id,
+#      plus the unlock of a branch that waits for the challenge tier of a good —
+#      whether the block spells that id out or leaves it to be derived.
 #   3) THE COVER SOURCE OF WOOD is computed from the data, not hardcoded
 #      as a list: remove the hut or zero out wood_yield — the cover source of
 #      wood disappears, and the validator must notice this.
@@ -111,6 +113,10 @@ func _test_detector(state: Dictionary):
         "consumption_resource": [["ghost_product", "ghost_product"], ["jewelry", "jewelry"]],
         "consumption_group": [["@ghost_group", "@ghost_group"], ["@tools", "@tools"]],
         "prerequisite": [["ghost_tech", "bad_tech_prereq"]],
+        # A branch that waits for a challenge no era task and no product tier carries. The two
+        # branches that wait for the tiers of "cheese" and "wool" must stay silent here, including
+        # the tier whose id the data never writes.
+        "specialization_challenge": [["ghost_challenge", "ghost_branch"]],
         # The "product without a source" problem has no missing identifier:
         # the fault is not in a reference but in its absence. So ref_id and
         # source_id are both the id of the owning product itself.
@@ -247,6 +253,28 @@ func _test_no_false_positives_on_synthetic(state: Dictionary):
     var no_hint := _find(problems, "consumption_resource", "ghost_product", "ghost_product")
     check(not str(no_hint.get("where", "")).contains("Maybe you meant"),
         "a plain broken reference must not carry a hint: %s" % str(no_hint.get("where", "")), state)
+
+    # --- False positives of the challenge references of a specialization ---
+    #
+    # The tier of a good is a challenge of its own even though no challenges.json mentions it: the id
+    # lives in the product block, and where the block does not spell it out the code derives it from
+    # the product. A branch that waits for such a tier is an ordinary unlocking, not a breakage — the
+    # real data is built exactly this way, so a validator that missed the derived half of the id space
+    # would call four correct branches broken.
+    check(_find(problems, "specialization_challenge", "cheese_challenge", "cheese_branch").is_empty(),
+        "the tier of \"cheese\" writes its id in the product block, and the validator must read it",
+        state)
+    check(_find(problems, "specialization_challenge", "wool_challenge", "wool_branch").is_empty(),
+        "the tier of \"wool\" carries no id and the code derives it from the product — a branch that " +
+        "waits for that derived id is not a breakage", state)
+    check(_find(problems, "specialization_challenge", "era_chunks", "wool_branch").is_empty(),
+        "a branch unlocked by a task of the era must not be considered a breakage", state)
+    # The fame block itself is a valid record: a trigger the code knows and a reward naming a branch
+    # that exists must not add a problem of their own kind.
+    check(_find(problems, "fame_trigger", "sell", "cheese").is_empty(),
+        "\"sell\" is a trigger the code implements", state)
+    check(_find(problems, "fame_reward", "wool_branch", "wool").is_empty(),
+        "a reward that names an existing branch must not be considered a breakage", state)
 
     # Explicitly empty fields (null) are not references. None of these entities
     # must end up in the result under any kind of check.
@@ -585,6 +613,19 @@ func _test_real_data(state: Dictionary):
     check(unknown_keys.is_empty(),
         "res://data has dictionary keys that name nothing: %s" % _str_messages(unknown_keys), state)
 
+    # A branch the city can never take. The reference of an "unlock" reaches outside its own file into
+    # two collections, and the ids of the second half of them are not written anywhere as a list — so
+    # a plain read of the data cannot tell a correct branch from a typo, and the game only answers that
+    # the specialization stays unavailable. This is ours to keep exact for the same reason the
+    # whitelist above is: nothing here is third-party content waiting to be fixed.
+    var ghost_challenge_unlocks: Array = []
+    for problem in problems:
+        if problem.get("kind") == "specialization_challenge":
+            ghost_challenge_unlocks.append(problem)
+    check(ghost_challenge_unlocks.is_empty(),
+        "a specialization of res://data waits for a challenge that declares itself nowhere: %s" \
+                % _str_messages(ghost_challenge_unlocks), state)
+
     # The category is checked only on products: for every problem of kind
     # "category" the owner must be a product, not a raw resource.
     var products: Dictionary = gd.products
@@ -866,6 +907,16 @@ func _make_data() -> Node:
         # the ordinary situation "a raw resource is extracted, a product is
         # used" — the validator must tell them apart by collection, not by id.
         "clay": {"id": "clay", "name": "Clay", "category": "other"},
+        # The two goods the fame branch is walked on below. Their challenge tiers differ in one
+        # thing only: the first writes its own id, the second leaves it to be derived from the
+        # product — both are the way the data is written in res://data, and both must resolve when a
+        # specialization names them.
+        "cheese": {"id": "cheese", "name": "Cheese", "category": "food",
+                "challenge": {"id": "cheese_challenge", "trigger": "sell", "threshold": 100,
+                        "reward": {"type": "specialization", "id": "cheese_branch"}}},
+        "wool": {"id": "wool", "name": "Wool", "category": "other",
+                "challenge": {"trigger": "produce", "threshold": 50,
+                        "reward": {"type": "specialization", "id": "wool_branch"}}},
     }
     gd.raw_resources = {
         "wheat_field": {"id": "wheat_field", "name": "Wheat Field", "type": "raw",
@@ -980,6 +1031,7 @@ func _make_data() -> Node:
                 "resources": {}, "result": {
                     "bad_unlock_improvement": 1, "bad_product_tech": 1,
                     "bad_category": 1, "null_product": 1,
+                    "cheese": 1, "wool": 1,
                     "сoal_typo": 1, "сarmine": 1, "carmine": 1}},
     ]
     # The "animals" category on a raw resource is a map generation filter, not
@@ -1006,6 +1058,30 @@ func _make_data() -> Node:
         {"resource": "jewelry", "profession": ["blacksmith"]},
         {"resource": "@tools", "profession": ["farmer"]},
         {"resource": "wheat", "profession": ["ghost_prof"]},
+    ]
+
+    # --- The specializations of the city and the challenges of the era ---
+    #
+    # A branch unlocked by a challenge points outside the specialization file, and the target lives in
+    # one of two collections: a task of the era (data/challenges.json) or the challenge tier of a good
+    # (data/products/*.json), which the loader keeps inside the product record. Only the second of
+    # these is easy to miss: the tier of "cheese" is spelled "cheese_challenge" by the manager, which
+    # derives the id from the product when the block does not carry one — so a reference to a tier that
+    # exists reads as a reference to a challenge that does not.
+    gd.challenges = [
+        {"id": "era_chunks", "name": "One Region",
+                "condition": "buy_all_available_chunks_in_one_era",
+                "reward": {"type": "specialization", "id": "wool_branch"}},
+    ]
+    gd.specializations = [
+        # Both shapes of the unlock: one condition and a list of them.
+        {"id": "cheese_branch", "name": "Cheese Branch",
+                "unlock": {"type": "challenge", "id": "cheese_challenge"}},
+        {"id": "wool_branch", "name": "Wool Branch",
+                "unlock": [{"type": "challenge", "id": "wool_challenge"}]},
+        # The breakage: no task of the era and no tier of a good carries this id.
+        {"id": "ghost_branch", "name": "Ghost Branch",
+                "unlock": {"type": "challenge", "id": "ghost_challenge"}},
     ]
 
     # Explicitly empty fields (null). In data/*.json, for example,

@@ -37,6 +37,9 @@ var roads_by_level: Dictionary = {}
 # file, and the config block with the thresholds of the population.
 var specializations: Array = []
 var specialization_config: Dictionary = {}
+# The challenges of the era (data/challenges.json): the one-off tasks whose condition is checked in
+# the code, in the order of the file.
+var challenges: Array = []
 
 # The id of a vanilla entity -> the icon file names the VANILLA data draws it with, for the
 # entities drawn by several pictures. Taken before the mods are laid over: a tileset draws
@@ -106,6 +109,7 @@ const BLACKLIST_COLLECTIONS := [
     "covers",
     "climate_zones",
     "special_actions",
+    "challenges",
     "consumption",
 ]
 
@@ -120,6 +124,7 @@ const SOURCE_COLLECTIONS := [
     "improvements",
     "technologies",
     "categories",
+    "challenges",
     "professions",
     "product_groups",
     "roads",
@@ -326,6 +331,14 @@ func load_all_data(mod_dirs: Array = []):
             specializations.append(spec)
     var spec_config = merged_data.get("specialization_config", {})
     specialization_config = spec_config if spec_config is Dictionary else {}
+
+    # The challenges of the era (data/challenges.json). The records keep their condition id as it
+    # is written: ChallengeManager looks the check up by it, and a check the game does not know is
+    # reported by the validator rather than dropped here.
+    challenges = []
+    for challenge in merged_data.get("challenges", []):
+        if challenge is Dictionary and not str(challenge.get("id", "")).is_empty():
+            challenges.append(challenge)
 
 # Flattens the named blocks of the game balance into one flat dictionary.
 #

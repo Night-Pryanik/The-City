@@ -17,16 +17,24 @@
 //
 // "unlock" holds the other conditions of a branch, in the same format as before: one condition or
 // a list of them, the list meaning "all of them". Its types are listed in
-// CityData._specialization_condition_met.
+// CityData._specialization_condition_met. The type "challenge" names the fame task of a good by the
+// "id" the block of the product carries (see the header comment of data/products/food.json).
 //
-// A bonus record is { "type": <system>, "value": <share>, "improvements": [<ids>] }:
+// A bonus record is { "type": <system>, "value": <share>, "improvements": [<ids>], "products":
+// [<ids>] }:
 //   improvement_production  — the improvements of the map; with "improvements" only those, without
 //                             it every improvement;
-//   building_production     — every working building of the city;
-//   internal_market_price   — the price the internal market pays the city for its goods;
-//   trade_sell_price        — the price a town pays for the goods of the city;
+//   building_production     — every working building of the city; with "products" only the goods
+//                             named there are made faster;
+//   internal_market_price   — the price the internal market pays the city for its goods; with
+//                             "products" only those goods;
+//   trade_sell_price        — the price a town pays for the goods of the city; with "products"
+//                             only those goods;
 //   trade_buy_price         — the price the city pays a town (a negative value makes it cheaper);
 //   research_speed          — the rate of the science.
+// A record that names its improvements or its products acts on those alone and is left out of the
+// totals the interface shows over all the branches, so that a bonus of one good is never read as a
+// bonus of every good.
 //
 // "effects" are the non-numeric consequences of the branch (a new building, a recipe, a mechanic).
 // They are shown only in the tab "Specialization": the tab "Effects" carries the numbers.
@@ -130,6 +138,61 @@
       "bonuses": [
         { "type": "trade_sell_price", "value": 0.10 },
         { "type": "trade_buy_price", "value": -0.10 }
+      ]
+    },
+    {
+      // The prestige branches are not taken from the population: the city earns them by the fame of
+      // one good (see the header comment of data/products/food.json). They are listed among the
+      // unavailable branches all the same — a branch waits for a challenge, and the player may read
+      // what it waits for before he takes it up.
+      "id": "cheese_specialization",
+      "name": "Cheese",
+      "full_name": "Specialization of cheese",
+      "description": "The world knows the cellars of the city. Cheese brings more, and the dairies of the city fill it faster.",
+      "icon": "cheese.png",
+      "unlock": { "type": "challenge", "id": "cheese_challenge" },
+      "bonuses": [
+        { "type": "trade_sell_price", "value": 0.15, "products": ["cheese", "aged_cheese"] },
+        { "type": "building_production", "value": 0.20, "products": ["cheese", "aged_cheese"] }
+      ]
+    },
+    {
+      "id": "pottery_specialization",
+      "name": "Pottery",
+      "full_name": "Specialization of pottery",
+      "description": "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster.",
+      "icon": "pottery.png",
+      "unlock": { "type": "challenge", "id": "pottery_challenge" },
+      "bonuses": [
+        { "type": "trade_sell_price", "value": 0.15, "products": ["pottery", "porcelain"] },
+        { "type": "building_production", "value": 0.20, "products": ["pottery", "porcelain"] }
+      ]
+    },
+    {
+      "id": "wool_specialization",
+      "name": "Wool",
+      "full_name": "Specialization of wool",
+      "description": "The fleeces of the city are asked for by name. Wool brings more, and the looms of the city work it faster.",
+      "icon": "wool.png",
+      "unlock": { "type": "challenge", "id": "wool_challenge" },
+      "bonuses": [
+        { "type": "trade_sell_price", "value": 0.15, "products": ["wool", "cashmere"] },
+        { "type": "building_production", "value": 0.20, "products": ["wool", "cashmere"] }
+      ]
+    },
+    {
+      // The branch of the smiths is a branch of blades, not of the bar: the fame that earns it is the
+      // fame of the weapons the city sells, and its bonus reaches the weapons of every metal the
+      // forge knows — the iron it learned first and the watered steel it learned last.
+      "id": "weaponsmith_specialization",
+      "name": "Weapons",
+      "full_name": "Specialization of weapons",
+      "description": "The forges of the city have a name among the smiths. Blades bring more, and the forges of the city strike them faster.",
+      "icon": "iron_weapons.png",
+      "unlock": { "type": "challenge", "id": "steel_challenge" },
+      "bonuses": [
+        { "type": "trade_sell_price", "value": 0.15, "products": ["iron_weapons", "steel_weapons", "damascus_weapons"] },
+        { "type": "building_production", "value": 0.20, "products": ["iron_weapons", "steel_weapons", "damascus_weapons"] }
       ]
     }
   ]

@@ -398,6 +398,7 @@ func setup():
     # A new game starts without a branch and with no pick spent.
     chosen_specialization_ids.clear()
     specialization_claimed = 0
+    specialization_challenge_picks = 0
 
     # The food balance constants are persisted per save (SaveManager) and therefore
     # leak across a "load save -> main menu -> new game" in the same session: a value
@@ -1218,6 +1219,12 @@ func add_to_storage(pid: String, amount: int, quality: String = "common"):
         city_quality_detail[pid] = {}
     var detail: Dictionary = city_quality_detail[pid]
     detail[quality] = detail.get(quality, 0) + amount
+    # The fame of a good may be measured by what the city makes, not only by what it sells
+    # (challenge_manager.gd). A good bought in a town arrives the same way, and the tier that
+    # counts "produce" accepts it: the city owns the units from the moment they are on its shelves.
+    var manager := _challenge_manager()
+    if manager != null:
+        manager.record_production(pid, amount, quality)
     # A herd that has reached the city IS the species: the arrival of a live animal product
     # registers the species as domesticated, so a herd bought in a town opens the breeding
     # of this species on empty hexes even if the player has never met it on the map.
@@ -2186,6 +2193,30 @@ func is_building_unlocked(building_id: String) -> bool:
                 return is_tech_unlocked(required_tech)
     return true
 
+# Is a recipe offered by a building: its technology is researched and the fame task it waits for has
+# granted its reward. The panels read the recipe list through this, so a prestige good cannot be
+# crafted from a window that shows it before the city has earned it.
+func is_craft_available(craft: Dictionary) -> bool:
+    var required_tech = craft.get("unlock_tech", "")
+    if required_tech != "" and not is_tech_unlocked(required_tech):
+        return false
+    var required_challenge = craft.get("unlock_challenge", "")
+    if required_challenge != "" and not _is_challenge_opened(required_challenge):
+        return false
+    return true
+
+# The fame task by its identifier, for the gates of the data. A recipe is opened by the rung that
+# rewards the good it works, a branch of the specialization only by the last rung of the ladder.
+# Without the manager on the map the city has earned nothing — the same answer a fresh game gives.
+func _is_challenge_opened(challenge_id: String) -> bool:
+    var manager := _challenge_manager()
+    return manager != null and manager.is_challenge_opened(challenge_id)
+
+
+func _is_challenge_completed(challenge_id: String) -> bool:
+    var manager := _challenge_manager()
+    return manager != null and manager.is_challenge_completed(challenge_id)
+
 # Checks the additional conditions of the construction of the building from buildings.json.
 # It returns a dictionary {"ok": bool, "reason": String}, so that the UI and the actual
 # start of the construction show the same reason of the refusal.
@@ -3035,6 +3066,10 @@ const SPEC_RESEARCH_SPEED := "research_speed"
 var chosen_specialization_ids: Array = []
 # How many of the earned picks have been spent.
 var specialization_claimed: int = 0
+# The picks the challenges of the era have given the city (challenge_manager.gd). They are kept apart
+# from the milestones of the population because they are earned by another thing and are spent on any
+# branch — a challenge does not choose the branch for the player.
+var specialization_challenge_picks: int = 0
 
 # The branches are listed by the city window and the choice window.
 signal specialization_changed()
@@ -3089,9 +3124,19 @@ func get_specialization_picks_earned() -> int:
             earned += 1
     return earned
 
-# The earned picks that are still unspent.
+# The earned picks that are still unspent: the milestones of the population and the gifts of the
+# challenges of the era alike.
 func get_pending_specialization_picks() -> int:
-    return maxi(0, get_specialization_picks_earned() - specialization_claimed)
+    return maxi(0, get_specialization_picks_earned() + specialization_challenge_picks \
+            - specialization_claimed)
+
+
+# Gives the city a pick of its own: the reward of a challenge whose reward is a branch. The gift is
+# not a milestone — the city keeps the picks of its population — and it is spent on any branch the
+# player may take, not only on the one the challenge was about.
+func grant_specialization_pick() -> void:
+    specialization_challenge_picks += 1
+    check_specialization_choice()
 
 # The population of the next milestone, or 0 when the progression is over.
 func get_next_specialization_threshold() -> int:
@@ -3154,6 +3199,53 @@ func get_specialization_prerequisites_text(spec: Dictionary) -> String:
         bracketed.append("(%s)" % part)
     return tr(" or ").join(bracketed)
 
+# What a branch waits for beyond its predecessors, in words. The conditions of "unlock" are ANDed,
+# so they are read as a plain list. A prestige branch is opened by the fame of a good, and the player
+# is told which good: the name the author gave the tier when the data carries one, the good itself
+# otherwise.
+func get_specialization_unlock_text(spec: Dictionary) -> String:
+    var unlock = spec.get("unlock", [])
+    if unlock is Dictionary:
+        unlock = [unlock]
+    if not (unlock is Array):
+        return ""
+    var parts: Array = []
+    for condition in unlock:
+        if condition is Dictionary:
+            var text := _specialization_condition_text(condition)
+            if text != "":
+                parts.append(text)
+    return tr(" and ").join(parts)
+
+func _specialization_condition_text(condition: Dictionary) -> String:
+    var id := str(condition.get("id", ""))
+    match str(condition.get("type", "")):
+        "challenge":
+            var record := _challenge_record(id)
+            if record.is_empty():
+                return tr("The challenge %s") % id
+            var name := str(record.get("name", ""))
+            if name != "":
+                return name
+            return tr("The challenge of %s") % str(record.get("product_name", id))
+        "specialization":
+            var other := get_specialization(id)
+            return get_specialization_full_name(other) if not other.is_empty() else id
+    return "%s: %s" % [str(condition.get("type", "")).capitalize(), id]
+
+# The counter of the fame tiers lives on the map, not in the city; without it the city has earned
+# nothing, which is the same answer a fresh game gives. The property is read through get(): a map
+# built by hand for a test may carry no manager at all, and a direct access would be an error.
+func _challenge_manager() -> Node:
+    var fame_map = get_node_or_null("/root/MainMap")
+    if fame_map == null:
+        return null
+    return fame_map.get("challenge_manager")
+
+func _challenge_record(challenge_id: String) -> Dictionary:
+    var manager := _challenge_manager()
+    return manager.fame_record_of(challenge_id) if manager != null else {}
+
 func _specialization_unlock_met(spec: Dictionary) -> bool:
     var unlock = spec.get("unlock", [])
     if unlock is Dictionary:
@@ -3209,7 +3301,7 @@ func choose_specialization(id: String) -> bool:
     return true
 
 # The share a kind of bonus gives right now over the taken branches. A bonus that names its
-# improvements is left out: it acts on those improvements only, and a total "for every improvement"
+# improvements or its goods is left out: it acts on those only, and a total "for every improvement"
 # would claim more than the city really has (see get_specialization_improvement_share).
 func get_specialization_bonus(bonus_type: String) -> float:
     var total := 0.0
@@ -3218,6 +3310,8 @@ func get_specialization_bonus(bonus_type: String) -> float:
             if str(bonus.get("type", "")) != bonus_type:
                 continue
             if not _bonus_improvements(bonus).is_empty():
+                continue
+            if not _bonus_products(bonus).is_empty():
                 continue
             total += float(bonus.get("value", 0.0))
     return total
@@ -3272,6 +3366,42 @@ func _bonus_improvements(bonus: Dictionary) -> Array:
     if targets is String and str(targets) != "":
         return [str(targets)]
     return []
+
+# The goods a bonus names, or an empty list when it acts on every good of the system it belongs to.
+func _bonus_products(bonus: Dictionary) -> Array:
+    var targets = bonus.get("products", [])
+    if targets is Array:
+        return targets
+    if targets is String and str(targets) != "":
+        return [str(targets)]
+    return []
+
+# The share the taken branches give to ONE good: the branches that name no good of their own plus the
+# branches that name this one. A prestige branch scopes its bonus to the goods of its line, and the
+# totals of the tab "Effects" keep saying nothing about the goods the city at large is paid for.
+func get_specialization_product_share(bonus_type: String, pid: String) -> float:
+    var total := 0.0
+    for spec in get_chosen_specializations():
+        for bonus in spec.get("bonuses", []):
+            if str(bonus.get("type", "")) != bonus_type:
+                continue
+            if not _bonus_improvements(bonus).is_empty():
+                continue
+            var targets := _bonus_products(bonus)
+            if not targets.is_empty() and not targets.has(pid):
+                continue
+            total += float(bonus.get("value", 0.0))
+    return total
+
+# What a town pays for one unit of a good of the city: the branches of trade, the branches scoped to
+# this very good, and the fame of the good itself (challenge_manager.gd). The three multiply, so a
+# general branch and the reputation of one good are worth more together than either alone.
+func get_trade_sell_price_multiplier(pid: String) -> float:
+    var manager := _challenge_manager()
+    var fame := float(manager.get_fame_trade_price_share(pid)) if manager != null else 0.0
+    return maxf(0.1, get_specialization_multiplier(SPEC_TRADE_SELL_PRICE)) \
+            * maxf(0.1, 1.0 + get_specialization_product_share(SPEC_TRADE_SELL_PRICE, pid)) \
+            * maxf(0.1, 1.0 + fame)
 
 # The non-numeric consequences of a branch: a building, a recipe, a mechanic. They are text lines of
 # the data, the code does not act on them, and only the tab "Specialization" shows them.
@@ -3357,4 +3487,6 @@ func _specialization_condition_met(condition) -> bool:
             return get_storage_amount(id) >= int(condition.get("amount", 0))
         "specialization":
             return is_specialization_chosen(id)
+        "challenge":
+            return _is_challenge_completed(id)
     return false

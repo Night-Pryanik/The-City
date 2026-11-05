@@ -41,6 +41,11 @@
 #   consumption_resource— a consumption rule → a non-existent product
 #   consumption_group   — a consumption rule → a non-existent @-group
 #   prerequisite       — a technology requires a non-existent technology
+#   specialization_*   — a branch names a non-existent predecessor, improvement, good or challenge
+#   fame_trigger       — a tier of the fame of a good counts an unknown way
+#   fame_quality       — a tier of the fame waits for a non-existent quality level
+#   fame_reward        — a tier of the fame rewards a non-existent good or branch
+#   challenge_condition— an era challenge names a check the code does not implement
 #   road_level         — a road level has an incorrect or duplicate number
 #   road_max_speed     — a road level has a non-positive maximum speed
 #   road_work_cost     — a road level has a negative price of a segment
@@ -292,6 +297,11 @@ const RESOURCE_FIELDS := {
     "improved_by": LEAF,
     "unlock_improvement": LEAF,
     "unlock_tech": LEAF,
+    # The fame of a good: the three optional tiers and the base good of a prestige one.
+    "reputation": PRODUCT_FAME_TIER_FIELDS,
+    "brand": PRODUCT_FAME_TIER_FIELDS,
+    "challenge": PRODUCT_FAME_TIER_FIELDS,
+    "brand_of": LEAF,
     "tech_required": LEAF,
     "tech_reveal": LEAF,
     "allowed_terrain": LEAF,
@@ -355,6 +365,8 @@ const CRAFT_FIELDS := {
     "display_result": ID_MAP,
     "time": LEAF,
     "unlock_tech": LEAF,
+    # The fame task that opens the recipe (data/challenges.json, the "brand" tier of a product).
+    "unlock_challenge": LEAF,
     # The kinds of the additional ingredients the recipe accepts (data/craft_extras.json). The
     # concrete goods are chosen by the player, the result is generated — see GameData.
     "extra_kinds": LEAF,
@@ -686,6 +698,7 @@ const BLACKLIST_FIELDS := {
     "covers": BLACKLIST_ENTRY,
     "climate_zones": BLACKLIST_ENTRY,
     "special_actions": BLACKLIST_ENTRY,
+    "challenges": BLACKLIST_ENTRY,
     "consumption": BLACKLIST_ENTRY,
 }
 
@@ -704,6 +717,51 @@ const SPECIALIZATION_BONUS_FIELDS := {
     "value": LEAF,
     # The improvements the bonus acts on; an absent field means every improvement.
     "improvements": {"array": LEAF},
+    # The goods the bonus acts on; an absent field means every good of the system it names.
+    "products": {"array": LEAF},
+}
+
+# What a tier of the fame of a good gives away (data/products/*.json, data/challenges.json). The
+# fields one type needs and the ones it ignores are the union of the types, as with the conditions
+# of a specialization; ChallengeManager._apply_reward reads them.
+const CHALLENGE_REWARD_FIELDS := {
+    "type": LEAF,
+    "value": LEAF,
+    "id": LEAF,
+    "product": LEAF,
+}
+
+# The three optional blocks a product record may carry: the soft reputation, the brand of the city
+# and the challenge of the era. They share one counter (see the header comment of
+# data/products/food.json), so they share the shape of a rule.
+const PRODUCT_FAME_TIER_FIELDS := {
+    "id": LEAF,
+    "threshold": LEAF,
+    "trigger": LEAF,
+    "min_quality": LEAF,
+    "name": LEAF,
+    "description": LEAF,
+    "icon": LEAF,
+    "reward": {"any": [CHALLENGE_REWARD_FIELDS, {"array": CHALLENGE_REWARD_FIELDS}]},
+}
+
+# The ways a tier of the fame counts its units (data/products/*.json, the "trigger" field). A value
+# outside this list counts nothing: the game refuses to guess what an unknown trigger means, and a
+# good whose fame never arrives is the bug the author has to hear about.
+const FAME_TRIGGERS := ["sell", "produce"]
+
+const CHALLENGE_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "description": LEAF,
+    "icon": LEAF,
+    # The identifier of the check in ChallengeManager._challenge_conditions().
+    "condition": LEAF,
+    # Whether the challenge is taken off the list once completed; without the field it repeats.
+    "once": LEAF,
+    # The era the challenge is offered in; without the field every era offers it.
+    "era": LEAF,
+    "reward": {"any": [CHALLENGE_REWARD_FIELDS, {"array": CHALLENGE_REWARD_FIELDS}]},
 }
 
 const SPECIALIZATION_FIELDS := {
@@ -780,6 +838,7 @@ const SCHEMA := {
     "map_config": MAP_CONFIG_FIELDS,
     "game_balance": {"blocks": GAME_BALANCE_BLOCKS},
     "specializations": {"array": SPECIALIZATION_FIELDS},
+    "challenges": {"array": CHALLENGE_FIELDS},
     "specialization_config": SPECIALIZATION_CONFIG_FIELDS,
     "city_names": {"array": LEAF},
     "priority_default": LEAF,
@@ -800,6 +859,7 @@ const ENTITIES := [
     "category", "group", "recipe", "road", "terrain", "terrain_family", "cover", "climate_zone", "era",
     "quality_level", "priority_option", "special_action", "consumption_rule",
     "craft_extra", "craft_extra_kind", "specialization",
+    "challenge", "trigger", "condition",
 ]
 
 
@@ -907,6 +967,18 @@ static func entity_forms(kind: String, fallback: String = "product") -> Dictiona
             return {"title": TranslationServer.translate("Specialization", "validator_entity_title_specialization"),
                 "ref": TranslationServer.translate("this specialization", "validator_entity_ref_specialization"),
                 "source": TranslationServer.translate("specialization", "validator_entity_source_specialization")}
+        "challenge":
+            return {"title": TranslationServer.translate("Challenge", "validator_entity_title_challenge"),
+                "ref": TranslationServer.translate("this challenge", "validator_entity_ref_challenge"),
+                "source": TranslationServer.translate("challenge", "validator_entity_source_challenge")}
+        "trigger":
+            return {"title": TranslationServer.translate("Fame trigger", "validator_entity_title_trigger"),
+                "ref": TranslationServer.translate("this fame trigger", "validator_entity_ref_trigger"),
+                "source": TranslationServer.translate("fame trigger", "validator_entity_source_trigger")}
+        "condition":
+            return {"title": TranslationServer.translate("Challenge condition", "validator_entity_title_condition"),
+                "ref": TranslationServer.translate("this challenge condition", "validator_entity_ref_condition"),
+                "source": TranslationServer.translate("challenge condition", "validator_entity_source_condition")}
         _:
             # A special action closes the list: an unknown kind substitutes
             # the fallback above, one can only get here with a typo in the code.
@@ -968,6 +1040,18 @@ static func check_title(kind: String) -> String:
             return TranslationServer.translate("Specialization requires a nonexistent specialization")
         "specialization_improvement":
             return TranslationServer.translate("Specialization bonus names a nonexistent improvement")
+        "fame_trigger":
+            return TranslationServer.translate("The fame of a good counts an unknown trigger")
+        "fame_quality":
+            return TranslationServer.translate("The fame of a good names a nonexistent quality")
+        "fame_reward":
+            return TranslationServer.translate("The fame of a good rewards a nonexistent entity")
+        "specialization_challenge":
+            return TranslationServer.translate("Specialization waits for a nonexistent challenge")
+        "specialization_product":
+            return TranslationServer.translate("Specialization bonus names a nonexistent product")
+        "challenge_condition":
+            return TranslationServer.translate("Challenge names a condition the game does not check")
         "road_level":
             return TranslationServer.translate("Road level: wrong or duplicate number")
         "road_max_speed":
@@ -1031,6 +1115,10 @@ const SOURCE_COLLECTIONS := {
     "era": "eras",
     "quality_level": "quality_levels",
     "special_action": "special_actions",
+    # A prestige branch is owned by the specialization that waits for the fame of a good, and an era
+    # task by the challenge record that declares it: both are the source of a problem now.
+    "specialization": "specializations",
+    "challenge": "challenges",
 }
 
 # The order of the output of the blocks of problems in the window.
@@ -1058,6 +1146,12 @@ const CHECK_ORDER := [
     "prerequisite",
     "specialization_prerequisite",
     "specialization_improvement",
+    "fame_trigger",
+    "fame_quality",
+    "fame_reward",
+    "specialization_challenge",
+    "specialization_product",
+    "challenge_condition",
     "road_level",
     "road_max_speed",
     "road_work_cost",
@@ -1094,6 +1188,7 @@ func validate(gd: Object) -> Array:
     var all_resources: Dictionary = {}
     all_resources.merge(raw_resources)
     all_resources.merge(products)
+    var challenges := _index_by_id(gd.get("challenges"))
 
     _validate_schema(gd, problems)
     _validate_identifiers(gd, problems)
@@ -1107,7 +1202,10 @@ func validate(gd: Object) -> Array:
     _validate_product_groups(product_groups, group_names, products, problems)
     _validate_consumption(gd.consumption_rules, products, product_groups, professions, problems)
     _validate_technologies(technologies, problems)
-    _validate_specializations(gd.specializations, improvements, problems)
+    _validate_specializations(gd.specializations, improvements, all_resources,
+            _challenge_ids(challenges, all_resources), problems)
+    _validate_fame(all_resources, _quality_levels(gd), _index_by_id(gd.specializations),
+            challenges, _known_challenge_conditions(), problems)
     _validate_roads(gd.roads, technologies, problems)
     _validate_climate_zones(gd.climate_zones, terrains, _climate_families(terrains, gd.map_config), problems)
     _validate_cover_belts(gd.covers, problems)
@@ -2105,7 +2203,7 @@ func _validate_technologies(technologies: Dictionary, problems: Array) -> void:
 # are references by identifier: a typo gives nothing at all in silence (the branch is never offered,
 # the bonus acts on nothing), so the author has to hear about it here.
 func _validate_specializations(specializations: Array, improvements: Dictionary,
-        problems: Array) -> void:
+        products: Dictionary, challenge_ids: Dictionary, problems: Array) -> void:
     var by_id := {}
     for spec in specializations:
         if spec is Dictionary and not str(spec.get("id", "")).is_empty():
@@ -2117,16 +2215,172 @@ func _validate_specializations(specializations: Array, improvements: Dictionary,
             if not by_id.has(required):
                 _add(problems, "specialization_prerequisite", "specialization", required,
                         "specialization", name, spec_id, "prerequisites")
+        for condition in _unlock_conditions(spec):
+            if str(condition.get("type", "")) != "challenge":
+                continue
+            var challenge_id := str(condition.get("id", ""))
+            if challenge_id.is_empty() or challenge_ids.has(challenge_id):
+                continue
+            _add(problems, "specialization_challenge", "challenge", challenge_id,
+                    "specialization", name, spec_id, "unlock")
         for bonus in spec.get("bonuses", []):
             if not (bonus is Dictionary):
                 continue
             var targets = bonus.get("improvements", [])
-            if not (targets is Array):
+            if targets is Array:
+                for imp_id in targets:
+                    if not improvements.has(str(imp_id)):
+                        _add(problems, "specialization_improvement", "improvement", str(imp_id),
+                                "specialization", name, spec_id, "bonuses")
+            # The goods a bonus is scoped to: a typo here leaves the branch giving nothing, exactly
+            # as with the improvements.
+            var goods = bonus.get("products", [])
+            if goods is Array:
+                for pid in goods:
+                    if not products.has(str(pid)):
+                        _add(problems, "specialization_product", "product", str(pid),
+                                "specialization", name, spec_id, "bonuses")
+
+
+# The "unlock" of a branch as a list, whether the author wrote one condition or a list of them.
+func _unlock_conditions(spec: Dictionary) -> Array:
+    var unlock = spec.get("unlock", [])
+    if unlock is Dictionary:
+        return [unlock]
+    return unlock if unlock is Array else []
+
+
+# The fame of a good (data/products/*.json) and the challenges of the era (data/challenges.json).
+#
+# A tier names the good it rewards, the quality it waits for and the way it counts, and a challenge
+# names a check that lives in the code rather than in the data. A wrong identifier is silent in all
+# of these cases — the reward never comes, the task never completes — so it is reported here.
+func _validate_fame(products: Dictionary, qualities: Array, specializations: Dictionary,
+        challenges: Dictionary, conditions: Array, problems: Array) -> void:
+    for pid in products:
+        var product: Dictionary = products[pid]
+        var name := _entity_name(product, str(pid))
+        for tier in ["reputation", "brand", "challenge"]:
+            var block = product.get(tier, null)
+            if not (block is Dictionary):
                 continue
-            for imp_id in targets:
-                if not improvements.has(str(imp_id)):
-                    _add(problems, "specialization_improvement", "improvement", str(imp_id),
-                            "specialization", name, spec_id, "bonuses")
+            var trigger := str(block.get("trigger", "sell"))
+            if not FAME_TRIGGERS.has(trigger):
+                _add(problems, "fame_trigger", "trigger", trigger, "product", name,
+                        str(pid), tier)
+            _add_quality_check(block, qualities, name, str(pid), tier, problems)
+            for reward in _reward_records(block):
+                _check_reward_reference(reward, products, specializations, name, str(pid),
+                        tier, problems)
+    for challenge_id in challenges:
+        var challenge: Dictionary = challenges[challenge_id]
+        var name := _entity_name(challenge, str(challenge_id))
+        var condition := str(challenge.get("condition", ""))
+        # An empty list of the conditions means the code of the checks is not available to this run
+        # (a synthetic data set in a test) — then the conditions are not judged at all.
+        if not conditions.is_empty() and not condition.is_empty() and not conditions.has(condition):
+            _add(problems, "challenge_condition", "condition", condition, "challenge", name,
+                    str(challenge_id), "condition")
+        for reward in _reward_records(challenge):
+            _check_reward_reference(reward, products, specializations, name, str(challenge_id),
+                    "reward", problems)
+
+
+# A tier that waits for a quality level the data does not declare counts nothing at all: the units
+# of the counter are keyed by the declared levels, so an unknown name matches no key and the
+# threshold can never be reached. `levels` is the list of the declared identifiers.
+func _add_quality_check(block: Dictionary, levels: Array, name: String, entity_id: String,
+        field: String, problems: Array) -> void:
+    var quality := str(block.get("min_quality", ""))
+    if quality.is_empty() or levels.has(quality):
+        return
+    _add(problems, "fame_quality", "quality_level", quality, "product", name, entity_id, field)
+
+
+# One reward or a list of them, in the shape the data writes them.
+func _reward_records(block) -> Array:
+    var reward = block.get("reward", null) if block is Dictionary else null
+    if reward is Dictionary:
+        return [reward]
+    if reward is Array:
+        return reward
+    return []
+
+
+# A reward of the type that addresses an entity must address an existing one. "effect_stub" and
+# "trade_price" name no record of the data, so nothing is checked for them here.
+func _check_reward_reference(reward, products: Dictionary, specializations: Dictionary,
+        name: String, entity_id: String, field: String, problems: Array) -> void:
+    if not (reward is Dictionary):
+        return
+    var type := str(reward.get("type", ""))
+    if type == "brand_product":
+        var good := str(reward.get("product", ""))
+        if not good.is_empty() and not products.has(good):
+            _add(problems, "fame_reward", "product", good, "product", name, entity_id, field)
+    elif type == "specialization":
+        var branch := str(reward.get("id", ""))
+        if not branch.is_empty() and not specializations.has(branch):
+            _add(problems, "fame_reward", "specialization", branch, "product", name, entity_id, field)
+
+
+# The quality levels as they are declared (data/qualities.json) — the list, not the index: a
+# "min_quality" is judged by existence alone.
+func _quality_levels(gd: Object) -> Array:
+    var out: Array = []
+    var config = gd.get("qualities")
+    if not (config is Dictionary):
+        return out
+    var levels = config.get("quality_levels", [])
+    if not (levels is Array):
+        return out
+    for level in levels:
+        if level is Dictionary and not str(level.get("id", "")).is_empty():
+            out.append(str(level.get("id", "")))
+    return out
+
+
+# The identifiers a challenge reference answers to: the tasks of the era and the challenge tier of a
+# good, which the specialization and the recipe name from the outside. The id of the tier is the one
+# its block carries or, when the block stands on its own, the derived one — the same rule the manager
+# reads a counter by, so it is taken from the manager rather than written here again.
+func _challenge_ids(challenges: Dictionary, products: Dictionary) -> Dictionary:
+    var out := {}
+    for challenge_id in challenges:
+        out[challenge_id] = challenges[challenge_id]
+    var suffix := _challenge_id_suffix()
+    for pid in products:
+        var product = products[pid]
+        if not (product is Dictionary) or not ((product as Dictionary).has("challenge")):
+            continue
+        var block: Dictionary = (product as Dictionary).get("challenge", {})
+        var id := str(block.get("id", ""))
+        if id.is_empty():
+            id = "%s%s" % [str((product as Dictionary).get("id", pid)), suffix]
+        out[id] = block
+    return out
+
+
+# The suffix a challenge tier without its own id is addressed by. The load is not a cycle: the
+# validator only reads a constant of the manager, and the manager never loads the validator.
+func _challenge_id_suffix() -> String:
+    var script = load("res://scripts/challenge_manager.gd")
+    if script == null:
+        return "_challenge"
+    var suffix := str(script.get("CHALLENGE_ID_SUFFIX"))
+    return suffix if suffix != "" else "_challenge"
+
+
+# The identifiers of the checks of the era challenges (data/challenges.json, "condition"). They live
+# in the code, not in the data, so the validator asks ChallengeManager for the list. Without the
+# script (a test that runs the validator over a synthetic data set) the list is empty and the
+# conditions are left unjudged rather than reported as missing.
+func _known_challenge_conditions() -> Array:
+    var script = load("res://scripts/challenge_manager.gd")
+    if script == null:
+        return []
+    var conditions = script.get("KNOWN_CONDITIONS")
+    return conditions if conditions is Array else []
 
 
 # prerequisites → a technology. The format accepts both a flat list and a list

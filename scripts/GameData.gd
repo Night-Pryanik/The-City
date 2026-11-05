@@ -53,6 +53,9 @@ var game_balance: Dictionary = {} # the game balance (data/game_balance.json)
 # SPECIALIZATIONS OF THE CITY").
 var specializations: Array = []
 var specialization_config: Dictionary = {}
+# The challenges of the era (data/challenges.json): the one-off tasks whose condition is checked in
+# the code (see ChallengeManager).
+var challenges: Array = []
 # The road levels (data/roads.json). roads_by_level — level -> level data:
 # a road network segment stores a level number, therefore exactly such an index is needed.
 var roads: Array = []
@@ -152,6 +155,7 @@ func _assign_from(loader) -> void:
     game_balance = loader.game_balance
     specializations = loader.specializations
     specialization_config = loader.specialization_config
+    challenges = loader.challenges
     roads = loader.roads
     roads_by_level = loader.roads_by_level
     entity_sources = loader.entity_sources
@@ -745,6 +749,33 @@ func get_product_name(pid: String) -> String:
     if raw_resources.has(pid):
         return str(raw_resources[pid].get("name", pid))
     return pid
+
+# The name a good is shown by. A prestige good of a brand tier (data/products/*.json, "brand_of") is
+# named after the city that earned it — "Cheese of Ячтву" in the source language, «Сыр Ячтву» in the
+# Russian one — and the phrase is composed here, not stored in the data: the record keeps a name of
+# its own, so the good is still addressable and still translatable, and the same save in another
+# language says the same thing about the same city. The name stands without brackets: a brand is read
+# as a name of the good, the way «пармская ветчина» is, not as a qualification in parentheses.
+func get_good_display_name(pid: String) -> String:
+    var brand_of := str(products.get(pid, {}).get("brand_of", ""))
+    if brand_of.is_empty():
+        return get_product_name(pid)
+    var city = get_node_or_null("/root/CityData")
+    var city_name := str(city.city_name) if city != null else ""
+    if city_name.is_empty():
+        return get_product_name(pid)
+    return tr("%s of %s") % [get_product_name(brand_of), city_name]
+
+# The label of a recipe: the name of the good it gives when the recipe gives one good of a brand,
+# otherwise the name of the recipe. The brand of the city is a name of a good, not of a workshop, and
+# the row of a building has to say whose cheese the slot is aging.
+func get_craft_display_name(recipe: Dictionary) -> String:
+    var result = recipe.get("result", {})
+    if result is Dictionary and result.size() == 1:
+        for pid in result:
+            if str(products.get(str(pid), {}).get("brand_of", "")) != "":
+                return get_good_display_name(str(pid))
+    return str(recipe.get("name", ""))
 
 # The icon file of a good or of a raw resource ("" — not set).
 func get_product_icon(pid: String) -> String:

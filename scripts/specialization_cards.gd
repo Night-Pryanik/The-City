@@ -71,11 +71,11 @@ static func build(spec: Dictionary, on_choose: Callable = Callable()) -> PanelCo
     for effect in CityData.get_specialization_effects(spec):
         body.add_child(_line("• " + str(effect), UI_THEME.color("text_secondary")))
 
-    # A branch that is shown but cannot be taken yet: the predecessors it waits for. A chosen branch
-    # is never "locked", therefore the line is derived from the predecessors alone. The wording has a
-    # context of its own: a technology "requires" a technology, a branch "is waited for" by it.
-    if not CityData.are_specialization_prerequisites_met(spec):
-        var requires := CityData.get_specialization_prerequisites_text(spec)
+    # A branch that is shown but cannot be taken yet: what it waits for. A chosen branch is never
+    # "locked", therefore the line is derived from the conditions alone. The wording has a context of
+    # its own: a technology "requires" a technology, a branch "is waited for" by it.
+    if not CityData.is_specialization_chosen(id):
+        var requires := _requires_text(spec)
         if requires != "":
             body.add_child(_line(
                     TranslationServer.translate("Requires: %s", "specialization_requires") % requires,
@@ -85,6 +85,21 @@ static func build(spec: Dictionary, on_choose: Callable = Callable()) -> PanelCo
         row.add_child(_make_choose_button(id, on_choose))
 
     return card
+
+# Everything the branch waits for, in one line: the predecessors among the other branches and the
+# conditions of "unlock" outside them (the fame of a good opens a prestige branch). The two are
+# joined by a comma because the predecessors carry their own "and"/"or" and a third conjunction
+# would read as part of their grouping.
+static func _requires_text(spec: Dictionary) -> String:
+    var parts: Array = []
+    if not CityData.are_specialization_prerequisites_met(spec):
+        var predecessors := CityData.get_specialization_prerequisites_text(spec)
+        if predecessors != "":
+            parts.append(predecessors)
+    var unlock := CityData.get_specialization_unlock_text(spec)
+    if unlock != "":
+        parts.append(unlock)
+    return ", ".join(parts)
 
 static func _add_name(body: VBoxContainer, spec: Dictionary) -> void:
     var name_label := Label.new()

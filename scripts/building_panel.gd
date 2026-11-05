@@ -376,7 +376,8 @@ func _refresh():
             row.add_child(slot_label)
 
             # We collect the available recipes: "empty" + all the ones that can
-            # be crafted in this building (filtered by the researched technologies)
+            # be crafted in this building (filtered by the researched technologies and by
+            # the challenges of the era)
             var available = []
             available.append("empty")
             for craft in crafts_data:
@@ -384,8 +385,7 @@ func _refresh():
                     continue
                 if not CityData.can_craft_in(craft["id"], building_id):
                     continue
-                var craft_unlock_tech = craft.get("unlock_tech", "")
-                if craft_unlock_tech != "" and not CityData.is_tech_unlocked(craft_unlock_tech):
+                if not CityData.is_craft_available(craft):
                     continue
                 available.append(craft["id"])
 
@@ -651,7 +651,7 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
 
     for craft_id in available:
         var recipe := GameData.get_craft(craft_id)
-        var craft_name: String = str(recipe.get("name", craft_id))
+        var craft_name: String = GameData.get_craft_display_name(recipe)
         var craft_resources = recipe.get("resources", {})
         # display_result — a UI hint for the "non-material" outputs
         # (science and the future pseudo-resources): it is not read by
@@ -1385,12 +1385,15 @@ func _make_craft_content(craft_name: String, craft_resources, craft_result: Dict
 
 # The human-readable name of a recipe by its id (for the tooltips; an unknown id is
 # left as is). A recipe with additional ingredients gets the generated name, which carries
-# them: "Gold Jewelry (+Lazurite, Pearl)".
+# them: "Gold Jewelry (+Lazurite, Pearl)". The tooltip and the label of the slot button must
+# speak the same name, so both take it from the same lookup — including the brand good, whose
+# name carries the city instead of the recipe.
 func _get_craft_name(craft_id: String) -> String:
     var recipe := GameData.get_craft(craft_id)
     if recipe.is_empty():
         return craft_id
-    return str(recipe.get("name", craft_id))
+    var display_name := GameData.get_craft_display_name(recipe)
+    return display_name if not display_name.is_empty() else craft_id
 
 # Updates the content of the recipe selection button: the icons are drawn next to
 # the products, and not at the left edge.
@@ -1400,7 +1403,7 @@ func _get_craft_name(craft_id: String) -> String:
 # attached good. The ingredients of such a recipe are visible in the list of the recipes.
 func _update_slot_button(button, craft_id: String):
     var recipe := GameData.get_craft(craft_id)
-    var craft_name: String = str(recipe.get("name", craft_id))
+    var craft_name: String = GameData.get_craft_display_name(recipe)
     var craft_resources = recipe.get("resources", {})
     # display_result — a UI hint for the "non-material" outputs
     # (science and the future pseudo-resources): it is not read by the mechanics.
