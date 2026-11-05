@@ -19,9 +19,11 @@
 #      the manager writes.
 #   7. The tasks of the era: the window of the era is judged when it closes, the free claiming of
 #      the new Region is not a purchase, and a task of another era is not offered.
-#   8. The live scene: the tab of the city window opens and lists both the tasks and the ladder, the
-#      ladder folded under the name of its challenge and opened by a click on that name. The names
-#      and descriptions of the rungs are the text of the data, not a key of the catalog.
+#   8. The live scene: the tab of the city window opens and lists both the tasks of the era and the
+#      ladders of the goods, each group folded under a name of its own and opened by a click on it —
+#      a ladder by its challenge, a group of tasks by the group. The rungs are named by their tier
+#      alone, and the names and descriptions of the data are the text itself, not a key of the
+#      catalog.
 #
 # The expectations are derived from the data (the thresholds, the rewards, the goods), never from
 # the numbers of the file: a balance edit must not break the test.
@@ -568,6 +570,30 @@ func _test_tab(state: Dictionary) -> void:
     if list == null:
         return
 
+    # The tasks of the era fold the same way the ladders of the goods do: a closed group keeps its
+    # tasks out of the list, and only the name of the group is left to show that they are there.
+    var live_names: Array = []
+    for record in _gdata.challenges:
+        if record is Dictionary and _mgr.offers_in_current_era(record):
+            var task_name := str(record.get("name", ""))
+            if task_name != "":
+                live_names.append(task_name)
+    var era_title := tr("Challenges of this era")
+    var era_toggle := _fold_toggle(list, era_title)
+    check(not live_names.is_empty(), "the era has a task to fold away", state)
+    check(era_toggle != null, "the tasks of this era have a fold of their own", state)
+    if era_toggle != null and not live_names.is_empty():
+        check(_fold_contents(list, era_title) == 0, "a closed era fold hides its tasks", state)
+        check(_list_text(list).find(str(live_names[0])) < 0,
+                "a closed era fold keeps the task out of the text of the list", state)
+        era_toggle.pressed.emit()
+        await process_frame
+        check(_fold_contents(list, era_title) == live_names.size(),
+                "the opened era fold lists every task of the era (got %d of %d)"
+                        % [_fold_contents(list, era_title), live_names.size()], state)
+        check(_list_text(list).find(str(live_names[0])) >= 0,
+                "the opened era fold shows the task by its name", state)
+
     # The ladder is folded under the name of its challenge, and the rungs — the good, the reward of
     # the rung, the prestige good — are readable once the player opens it.
     _mgr.record_sale(LADDER_GOOD, {"exceptional":
@@ -585,17 +611,25 @@ func _test_tab(state: Dictionary) -> void:
     check(ladder_name != "", "the ladder of the test good carries no name", state)
     check(_list_text(list).find(ladder_name) >= 0,
             "the closed ladder is titled by its challenge", state)
-    check(_ladder_rungs(list, ladder_name) == 0, "a closed ladder hides its rungs", state)
+    check(_fold_contents(list, ladder_name) == 0, "a closed ladder hides its rungs", state)
 
-    var toggle := _ladder_toggle(list, ladder_name)
+    var toggle := _fold_toggle(list, ladder_name)
     check(toggle != null, "the ladder of the good has no toggle of its own", state)
     if toggle == null:
         return
     toggle.pressed.emit()
     await process_frame
-    check(_ladder_rungs(list, ladder_name) == rung_count,
+    check(_fold_contents(list, ladder_name) == rung_count,
             "the opened ladder lists every tier of the good (got %d of %d)"
-                    % [_ladder_rungs(list, ladder_name), rung_count], state)
+                    % [_fold_contents(list, ladder_name), rung_count], state)
+    # A rung is named by its tier alone. The good stands in the name of the fold above it, so a rung
+    # that repeated the good would say the same line once for every step of the ladder.
+    var rung_names := _rung_names(list, ladder_name)
+    check(rung_names.size() == rung_count, "every rung of the ladder is named", state)
+    for rung_name in rung_names:
+        check(str(rung_name) != "", "a rung of the ladder carries no name", state)
+        check(str(rung_name).find(good_name) < 0,
+                "the rung \"%s\" repeats the good its fold already names" % str(rung_name), state)
     var text := _list_text(list)
     check(text.find(good_name) >= 0, "the tab names the good the ladder is about", state)
     check(text.find(str(_cdata.format_signed_percent(
@@ -610,13 +644,13 @@ func _test_tab(state: Dictionary) -> void:
     _mgr.record_sale(LADDER_GOOD, {"exceptional": 1})
     city_ui.challenges_tab.refresh()
     await process_frame
-    check(_ladder_rungs(list, ladder_name) == rung_count,
+    check(_fold_contents(list, ladder_name) == rung_count,
             "a redraw keeps the ladder the player opened", state)
 
     # Clicking the name again folds the ladder back.
-    _ladder_toggle(list, ladder_name).pressed.emit()
+    _fold_toggle(list, ladder_name).pressed.emit()
     await process_frame
-    check(_ladder_rungs(list, ladder_name) == 0, "the ladder folds back on a second click", state)
+    check(_fold_contents(list, ladder_name) == 0, "the ladder folds back on a second click", state)
 
     var specializations = city_ui.get_node_or_null(
             "ContentPanel/SpecializationPanel/Body/ScrollContainer/SpecializationList")
@@ -643,23 +677,39 @@ func _collect_text(node: Node) -> String:
         out += " " + _collect_text(child)
     return out
 
-# The toggle of one ladder, found by the name of its good.
-func _ladder_toggle(list: Node, good_name: String) -> Button:
+# The toggle of one fold, found by the title it shows.
+func _fold_toggle(list: Node, title: String) -> Button:
     for child in list.get_children():
-        if child is Button and str(child.text).find(good_name) >= 0:
+        if child is Button and str(child.text).find(title) >= 0:
             return child
     return null
 
-# How many rungs the list shows under that ladder — zero while it stands closed.
-func _ladder_rungs(list: Node, good_name: String) -> int:
-    var toggle := _ladder_toggle(list, good_name)
+# The container the contents of an opened fold stand in; null while the fold is closed.
+func _fold_body(list: Node, title: String) -> Node:
+    var toggle := _fold_toggle(list, title)
     if toggle == null:
-        return -1
+        return null
     var siblings: Array = list.get_children()
     var next = siblings[siblings.find(toggle) + 1] \
             if siblings.find(toggle) + 1 < siblings.size() else null
-    var rungs = next.get_node_or_null("Ladder") if next is MarginContainer else null
-    return rungs.get_child_count() if rungs != null else 0
+    return next.get_node_or_null("FoldBody") if next is MarginContainer else null
+
+# How many entries the list shows under that fold — zero while it stands closed.
+func _fold_contents(list: Node, title: String) -> int:
+    var body = _fold_body(list, title)
+    return body.get_child_count() if body != null else 0
+
+# The name each rung of a ladder carries: the first line of its plate.
+func _rung_names(list: Node, title: String) -> Array:
+    var out: Array = []
+    var body = _fold_body(list, title)
+    if body == null:
+        return out
+    for plate in body.get_children():
+        var lines = plate.get_node_or_null("Row/Body")
+        if lines != null and lines.get_child_count() > 0:
+            out.append(str(lines.get_child(0).text))
+    return out
 
 # --- THE STATE OF A NEW GAME ---
 

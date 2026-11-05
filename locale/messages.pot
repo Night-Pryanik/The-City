@@ -60,7 +60,7 @@ msgstr ""
 msgid "Era %d"
 msgstr ""
 
-msgid "Known for %s"
+msgid "Reputation"
 msgstr ""
 
 msgid "Produced"
@@ -81,7 +81,7 @@ msgstr ""
 msgid "Specialization waits for a nonexistent challenge"
 msgstr ""
 
-msgid "The brand of %s"
+msgid "Brand"
 msgstr ""
 
 msgid "The challenge %s"
@@ -96,7 +96,7 @@ msgstr ""
 msgid "The city is not on the map yet."
 msgstr ""
 
-msgid "The fame of a good"
+msgid "Reputation and specialization"
 msgstr ""
 
 msgid "The fame of a good counts an unknown trigger"

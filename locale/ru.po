@@ -60,8 +60,8 @@ msgstr "Готово"
 msgid "Era %d"
 msgstr "Эпоха %d"
 
-msgid "Known for %s"
-msgstr "Известен: %s"
+msgid "Reputation"
+msgstr "Репутация"
 
 msgid "Produced"
 msgstr "Произведено"
@@ -81,8 +81,8 @@ msgstr "Бонус специализации ссылается на несущ
 msgid "Specialization waits for a nonexistent challenge"
 msgstr "Специализация ждёт несуществующего вызова"
 
-msgid "The brand of %s"
-msgstr "Бренд: %s"
+msgid "Brand"
+msgstr "Бренд"
 
 msgid "The challenge %s"
 msgstr "Вызов %s"
@@ -96,8 +96,8 @@ msgstr "Вызов эпохи выполнен: городу доступен е
 msgid "The city is not on the map yet."
 msgstr "Города ещё нет на карте."
 
-msgid "The fame of a good"
-msgstr "Слава товара"
+msgid "Reputation and specialization"
+msgstr "Репутация и специализация"
 
 msgid "The fame of a good counts an unknown trigger"
 msgstr "Слава товара считает неизвестный триггер"

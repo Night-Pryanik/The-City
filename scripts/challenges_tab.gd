@@ -3,10 +3,11 @@
 # The tab "Challenges": the fame a good of the city can earn and the tasks the era sets the city.
 #
 # The tab is the list the player is promised before he has earned anything — what each rung of the
-# ladder gives and how far the city has already walked. Nothing is withheld: every ladder of every
-# good stands in the list, done and not yet reached alike, and so do the tasks of the eras that are
-# not live. The three tiers of a good fold under the name of the challenge they lead to, so that
-# one ladder reads as one ladder.
+# ladder gives and how far the city has already walked. Nothing is withheld: every task of the era
+# and every ladder of every good stands in the list, done and not yet reached alike. Each of them is
+# a fold, so the tab reads as a table of contents and the name of a fold says what stands under it:
+# the tasks of an era group fold under the group, and the three tiers of a good fold under the name
+# of the challenge they lead to.
 #
 # The counters themselves are not computed here. ChallengeManager (scripts/challenge_manager.gd)
 # owns them and hands the tab ready-made records; the tab only says what a record means and how far
@@ -22,7 +23,7 @@ const UI_THEME = preload("res://scripts/ui_theme.gd")
 const ICON_SIZE := 40
 const ICON_FALLBACK := "reputation_specialization.svg"
 
-# The mark of the fold: the tiers of a good stand under its name, hidden until the player asks.
+# The mark of a fold: its contents stand under its name, hidden until the player asks.
 const FOLD_CLOSED := "▸"
 const FOLD_OPEN := "▾"
 const FOLD_ICON_SIZE := 24
@@ -40,7 +41,7 @@ var _main_map = null
 # The manager is found once and its signals are connected once: a refresh of the tab must not stack
 # the same handler again and again.
 var _bound_manager = null
-# Which ladders the player has opened. The list is rebuilt whenever a rung is paid or the city
+# Which folds the player has opened. The list is rebuilt whenever a rung is paid or the city
 # changes, and a rebuild must not close what the player just opened.
 var _expanded: Dictionary = {}
 
@@ -134,8 +135,9 @@ func _era_name(index: int) -> String:
 # --- The tasks of the era ---
 
 # The one-off tasks of data/challenges.json, in the order of the data: the live window first, then
-# the tasks of another era and the ones the city has done. A task of another era is not hidden — the
-# player sees what the world will ask, only not yet.
+# the tasks of another era and the ones the city has done. A task of another era is not dropped — the
+# player sees what the world will ask, only not yet. Each group is a fold of its own, so the whole of
+# the era takes three lines while the player is not reading it.
 func _add_era_challenges(manager) -> void:
     var live: Array = []
     var later: Array = []
@@ -149,25 +151,27 @@ func _add_era_challenges(manager) -> void:
             live.append(record)
         else:
             later.append(record)
-    if live.is_empty() and later.is_empty() and done.is_empty():
-        return
+    _add_era_fold("era_live", tr("Challenges of this era"), live, manager, true, "")
+    _add_era_fold("era_later", tr("Challenges of another era"), later, manager, false, "")
+    _add_era_fold("era_done", tr("Completed"), done, manager, false, tr("Done"))
 
-    if not live.is_empty():
-        _add_header(tr("Challenges of this era"))
-        for record in live:
-            list.add_child(_era_plate(record, manager, true))
-    if not later.is_empty():
-        _add_gap()
-        _add_header(tr("Challenges of another era"))
-        for record in later:
-            var plate := _era_plate(record, manager, false)
+# One group of the tasks of the era. A task of an era that is not live is faded as a whole; a task
+# the city has finished is not, because the list already says so in words.
+func _add_era_fold(key: String, title: String, records: Array, manager, is_live: bool,
+        done_text: String) -> void:
+    if records.is_empty():
+        return
+    _add_gap_if_not_top()
+    var expanded := _is_expanded(key)
+    list.add_child(_fold_toggle(key, title, str(records[0].get("icon", "")), expanded))
+    if not expanded:
+        return
+    var body := _fold_body()
+    for record in records:
+        var plate := _era_plate(record, manager, is_live, done_text)
+        if not is_live and done_text == "":
             plate.modulate = MUTED_MODULATE
-            list.add_child(plate)
-    if not done.is_empty():
-        _add_gap()
-        _add_header(tr("Completed"))
-        for record in done:
-            list.add_child(_era_plate(record, manager, false, tr("Done")))
+        body.add_child(plate)
 
 func _era_plate(record: Dictionary, manager, is_live: bool, done_text: String = "") -> Control:
     var name_text := str(record.get("name", ""))
@@ -205,35 +209,40 @@ func _add_fame(manager) -> void:
         groups[pid].append(record)
     if order.is_empty():
         return
-    _add_gap()
-    _add_header(tr("The fame of a good"))
+    _add_gap_if_not_top()
+    _add_header(tr("Reputation and specialization"))
     for pid in order:
         var rungs: Array = groups[pid]
         # The records come in the order of the identifiers; the ladder goes in the order of the tiers.
         rungs.sort_custom(func(a, b):
                 return _tier_rank(manager, a) < _tier_rank(manager, b))
-        _add_gap()
         _add_ladder(pid, rungs, manager)
 
 func _tier_rank(manager, record: Dictionary) -> int:
     return (manager.TIERS as Array).find(str(record.get("tier", "")))
 
 func _add_ladder(product: String, records: Array, manager) -> void:
+    var reached := 0
+    var working := 0
+    for record in records:
+        if record.get("done", false):
+            reached += 1
+        elif int(record.get("progress", 0)) > 0:
+            working += 1
+    # The head of the fold says how far the ladder has come, so that a closed one is not a riddle.
+    var progress := ""
+    if reached == records.size():
+        progress = "— " + tr("Done")
+    elif reached > 0 or working > 0:
+        progress = "(%d / %d)" % [reached, records.size()]
+
+    _add_gap_if_not_top()
     var expanded := _is_expanded(product)
-    list.add_child(_ladder_toggle(product, _ladder_name(manager, records, product), records,
-            expanded))
+    list.add_child(_fold_toggle(product, _ladder_name(manager, records, product),
+            str(records[0].get("icon", "")), expanded, progress))
     if not expanded:
         return
-    # A MarginContainer stacks its children in one rect, so the rungs need a container of their own.
-    var edge := MarginContainer.new()
-    edge.name = "LadderFold"
-    edge.add_theme_constant_override("margin_left", FOLD_INDENT)
-    edge.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    list.add_child(edge)
-    var rungs := VBoxContainer.new()
-    rungs.name = "Ladder"
-    rungs.add_theme_constant_override("separation", 4)
-    edge.add_child(rungs)
+    var rungs := _fold_body()
     for record in records:
         rungs.add_child(_fame_plate(record, manager))
 
@@ -247,30 +256,21 @@ func _ladder_name(manager, records: Array, product: String) -> String:
                 return name
     return GameData.get_good_display_name(product)
 
-# The head of the fold: the mark of the good, the name of its challenge, and how far the city has
-# come along it. Collapsed, it still answers the question the closed list would otherwise hide —
-# whether the ladder is untouched, in progress, or walked to the end.
-func _ladder_toggle(product: String, title: String, records: Array, expanded: bool) -> Button:
-    var reached := 0
-    var working := 0
-    for record in records:
-        if record.get("done", false):
-            reached += 1
-        elif int(record.get("progress", 0)) > 0:
-            working += 1
-
+# The head of a fold: the mark of what stands under it, its name, and how far the city has come
+# along it. Collapsed, it still answers the question the closed list would otherwise hide — whether
+# the way is untouched, in progress, or walked to the end.
+func _fold_toggle(key: String, title: String, icon_name: String, expanded: bool,
+        progress: String = "") -> Button:
     var button := Button.new()
-    button.name = "LadderToggle"
+    button.name = "FoldToggle"
     button.flat = true
     button.focus_mode = Control.FOCUS_NONE
     button.alignment = HORIZONTAL_ALIGNMENT_LEFT
     button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     button.text = "%s %s" % [FOLD_OPEN if expanded else FOLD_CLOSED, title]
-    if reached == records.size():
-        button.text += " — " + tr("Done")
-    elif reached > 0 or working > 0:
-        button.text += " (%d / %d)" % [reached, records.size()]
-    var texture := _icon_texture(str(records[0].get("icon", "")))
+    if progress != "":
+        button.text += " " + progress
+    var texture := _icon_texture(icon_name)
     if texture != null:
         button.icon = texture
         button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -278,20 +278,34 @@ func _ladder_toggle(product: String, title: String, records: Array, expanded: bo
     button.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
     button.add_theme_color_override("font_hover_color", UI_THEME.color("text"))
     button.add_theme_color_override("font_pressed_color", UI_THEME.color("text"))
-    button.pressed.connect(_on_ladder_toggled.bind(product))
+    button.pressed.connect(_on_fold_toggled.bind(key))
     return button
 
-func _on_ladder_toggled(product: String) -> void:
-    _expanded[product] = not _is_expanded(product)
+# The contents of a fold, indented under its head. A MarginContainer stacks its children in one rect,
+# so they stand in a container of their own inside the indent.
+func _fold_body() -> VBoxContainer:
+    var edge := MarginContainer.new()
+    edge.name = "FoldEdge"
+    edge.add_theme_constant_override("margin_left", FOLD_INDENT)
+    edge.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    list.add_child(edge)
+    var body := VBoxContainer.new()
+    body.name = "FoldBody"
+    body.add_theme_constant_override("separation", 4)
+    edge.add_child(body)
+    return body
+
+func _on_fold_toggled(key: String) -> void:
+    _expanded[key] = not _is_expanded(key)
     refresh()
 
-func _is_expanded(product: String) -> bool:
-    return bool(_expanded.get(product, false))
+func _is_expanded(key: String) -> bool:
+    return bool(_expanded.get(key, false))
 
 func _fame_plate(record: Dictionary, manager) -> Control:
-    # The rung is named by its tier. The name a ladder carries belongs to the ladder, and the header
-    # of its fold shows it — a rung that repeated it would say the same line twice.
-    var name_text := _tier_caption(str(record.get("tier", "")), str(record.get("product_name", "")))
+    # The rung is named by its tier alone. The good it works stands in the name of the fold above it,
+    # and the lines under the name say what the rung asks and what it gives.
+    var name_text := _tier_caption(str(record.get("tier", "")))
     var plate := _plate(str(record.get("icon", "")), name_text, str(record.get("description", "")))
     var body: VBoxContainer = plate.get_node("Row/Body")
 
@@ -326,15 +340,15 @@ func _add_rewards(body: VBoxContainer, rewards: Array, product_id: String, manag
         if text != "":
             body.add_child(_line("• " + text, UI_THEME.color("income")))
 
-# The rung of the ladder, named by the tier it stands on and by the good it works. The name of a
-# ladder is not a rung's business: it titles the fold the rungs stand in.
-func _tier_caption(tier: String, product_name: String) -> String:
+# The rung of the ladder is named by its tier alone: the good it works stands in the name of the fold
+# above it, and the lines under the name say what the rung asks and what it gives.
+func _tier_caption(tier: String) -> String:
     match tier:
         "reputation":
-            return tr("Known for %s") % product_name
+            return tr("Reputation")
         "brand":
-            return tr("The brand of %s") % product_name
-    return tr("The challenge of %s") % product_name
+            return tr("Brand")
+    return tr("Specialization")
 
 func _trigger_label(trigger: String) -> String:
     if trigger == "produce":
@@ -423,3 +437,8 @@ func _add_gap() -> void:
     var gap := Control.new()
     gap.custom_minimum_size = Vector2(0, 6)
     list.add_child(gap)
+
+# The first thing in the list needs no air above it; every fold or header that follows another does.
+func _add_gap_if_not_top() -> void:
+    if list.get_child_count() > 0:
+        _add_gap()
