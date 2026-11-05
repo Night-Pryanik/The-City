@@ -348,6 +348,17 @@
       "default_recipes": [  ]
     },
     {
+      "id": "tobacco_workshop",
+      "name": "Tobacco Workshop",
+      "description": "Cures and cuts tobacco leaf.",
+      "work_cost": 35,
+      "additional_cost": [ { "planks": 100 }, { "@processed_construction_materials": 50 } ],
+      "icon": "tobacco_workshop.png",
+      "production_slots": 1.0,
+      "unlock_tech": "tobacco_curing",
+      "default_recipes": [ "tobacco" ]
+    },
+    {
       "id": "scriptorium",
       "name": "Scriptorium",
       "description": "A building where scribes copy, rewrite and translate documents. Produces science.",

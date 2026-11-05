@@ -2923,6 +2923,10 @@ msgctxt "buildings.description"
 msgid "Works stone into hewn blocks and stone goods for construction."
 msgstr ""
 
+msgctxt "buildings.description"
+msgid "Cures and cuts tobacco leaf."
+msgstr ""
+
 msgctxt "buildings.name"
 msgid "Alchemist's House"
 msgstr ""
@@ -3071,6 +3075,10 @@ msgctxt "buildings.name"
 msgid "Winemaker's House"
 msgstr ""
 
+msgctxt "buildings.name"
+msgid "Tobacco Workshop"
+msgstr ""
+
 msgctxt "categories.name"
 msgid "Additional Food"
 msgstr ""
@@ -3161,6 +3169,10 @@ msgstr ""
 
 msgctxt "categories.name"
 msgid "Writing Materials"
+msgstr ""
+
+msgctxt "categories.name"
+msgid "Tobacco Products"
 msgstr ""
 
 msgctxt "consumption_buildings_few"
@@ -3605,6 +3617,10 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Cures, ages and cuts tobacco leaf."
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4053,6 +4069,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Writing Set"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Tobacco"
 msgstr ""
 
 msgctxt "eras.name"
@@ -5691,6 +5711,10 @@ msgctxt "resources.name"
 msgid "Zebu"
 msgstr ""
 
+msgctxt "resources.name"
+msgid "Tobacco Leaf"
+msgstr ""
+
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
 msgstr ""
@@ -5999,6 +6023,10 @@ msgctxt "technologies.description"
 msgid "Unlocks the use of the water wheel to set millstones in motion."
 msgstr ""
 
+msgctxt "technologies.description"
+msgid "Allows you to build the tobacco workshop: tobacco leaf → tobacco."
+msgstr ""
+
 msgctxt "technologies.flavor"
 msgid "A plow yoked to oxen made it possible to work heavy soils and raised yields."
 msgstr ""
@@ -6193,6 +6221,10 @@ msgstr ""
 
 msgctxt "technologies.flavor"
 msgid "Working precious stones and metals turned the craft into art."
+msgstr ""
+
+msgctxt "technologies.flavor"
+msgid "Raw leaf is harsh and spoils quickly. Cured and cut, it keeps for years, so curing is what turned a harvested leaf into a stored good."
 msgstr ""
 
 msgctxt "technologies.name"
@@ -6393,6 +6425,10 @@ msgstr ""
 
 msgctxt "technologies.name"
 msgid "Writing"
+msgstr ""
+
+msgctxt "technologies.name"
+msgid "Tobacco Curing"
 msgstr ""
 
 msgctxt "technologies.unlock_effects.name"

@@ -1,0 +1,9 @@
+{
+  // Prepared tobacco. The good is deliberately not split by how it is used -
+  // smoked, sniffed or chewed are the buyer's business, and the data models the
+  // cured and cut leaf, not a device or a habit.
+  // The harvested leaf never reaches this family: curing is what makes it keep.
+  "resources": [
+    { "id": "tobacco", "price": 24, "name": "Tobacco", "type": "product", "category": "tobacco", "icon": "tobacco.png" }
+  ]
+}

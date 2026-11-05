@@ -266,6 +266,16 @@
       "flavor": "Plantations made it possible to grow olives and citrus in bulk, providing valuable goods and oils."
     },
     {
+      "id": "tobacco_curing",
+      "name": "Tobacco Curing",
+      "era": "ancient",
+      "science_cost": 3.0,
+      "icon": "tobacco_curing.png",
+      "prerequisites": [ [ "plantations" ] ],
+      "description": "Allows you to build the tobacco workshop: tobacco leaf → tobacco.",
+      "flavor": "Raw leaf is harsh and spoils quickly. Cured and cut, it keeps for years, so curing is what turned a harvested leaf into a stored good."
+    },
+    {
       "id": "soda_extraction",
       "name": "Soda Extraction",
       "era": "ancient",

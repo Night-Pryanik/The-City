@@ -1,0 +1,14 @@
+{
+  "crafts": [
+    {
+      "id": "tobacco",
+      "name": "Tobacco",
+      "produced_in": [ "tobacco_workshop" ],
+      "resources": { "tobacco_leaf": 20 },
+      "result": { "tobacco": 10 },
+      "time": 5.0,
+      "unlock_tech": "tobacco_curing",
+      "description": "Cures, ages and cuts tobacco leaf."
+    }
+  ]
+}

@@ -9,6 +9,7 @@
     { "id": "livestock", "name": "Livestock" },
     { "id": "fruits", "name": "Fruits" },
     { "id": "drinks", "name": "Drinks" },
+    { "id": "tobacco", "name": "Tobacco Products" },
     { "id": "spices", "name": "Spices" },
     { "id": "aux_food", "name": "Additional Food" },
     { "id": "sweeteners", "name": "Sweeteners" },

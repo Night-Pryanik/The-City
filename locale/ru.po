@@ -2923,6 +2923,10 @@ msgctxt "buildings.description"
 msgid "Works stone into hewn blocks and stone goods for construction."
 msgstr "Обработка камня: тесаные блоки и каменные изделия для строительства."
 
+msgctxt "buildings.description"
+msgid "Cures and cuts tobacco leaf."
+msgstr "Выделка и нарезка табачного листа."
+
 msgctxt "buildings.name"
 msgid "Alchemist's House"
 msgstr "Дом алхимика"
@@ -3071,6 +3075,10 @@ msgctxt "buildings.name"
 msgid "Winemaker's House"
 msgstr "Дом винодела"
 
+msgctxt "buildings.name"
+msgid "Tobacco Workshop"
+msgstr "Табачная мастерская"
+
 msgctxt "categories.name"
 msgid "Additional Food"
 msgstr "Дополнительная еда"
@@ -3162,6 +3170,10 @@ msgstr "Оружие"
 msgctxt "categories.name"
 msgid "Writing Materials"
 msgstr "Письменные принадлежности"
+
+msgctxt "categories.name"
+msgid "Tobacco Products"
+msgstr "Табачные изделия"
 
 msgctxt "consumption_buildings_few"
 msgid "buildings"
@@ -3606,6 +3618,10 @@ msgstr "Ткёт одежду из шёлка"
 msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
 msgstr "Ткёт одежду из шерсти"
+
+msgctxt "crafts.description"
+msgid "Cures, ages and cuts tobacco leaf."
+msgstr "Выделывает, вылёживает и нарезает табачный лист"
 
 msgctxt "crafts.name"
 msgid "Alpaca Meat"
@@ -4054,6 +4070,10 @@ msgstr "Шерстяная одежда"
 msgctxt "crafts.name"
 msgid "Writing Set"
 msgstr "Письменный набор"
+
+msgctxt "crafts.name"
+msgid "Tobacco"
+msgstr "Табак"
 
 msgctxt "eras.name"
 msgid "Ancient"
@@ -5691,6 +5711,10 @@ msgctxt "resources.name"
 msgid "Zebu"
 msgstr "Зебу"
 
+msgctxt "resources.name"
+msgid "Tobacco Leaf"
+msgstr "Табачный лист"
+
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
 msgstr "Ровная дорога для телег. Позволяет перевозить втрое больше, чем тропка."
@@ -5999,6 +6023,10 @@ msgctxt "technologies.description"
 msgid "Unlocks the use of the water wheel to set millstones in motion."
 msgstr "Открывает использование водяного колеса для приведения в движение мельничных жерновов."
 
+msgctxt "technologies.description"
+msgid "Allows you to build the tobacco workshop: tobacco leaf → tobacco."
+msgstr "Даёт возможность строить табачную мастерскую: табачный лист → табак."
+
 msgctxt "technologies.flavor"
 msgid "A plow yoked to oxen made it possible to work heavy soils and raised yields."
 msgstr "Плуг, запряжённый волами, позволил обрабатывать тяжёлые почвы и поднял урожайность."
@@ -6194,6 +6222,10 @@ msgstr "Дерево — древнейший строительный мате�
 msgctxt "technologies.flavor"
 msgid "Working precious stones and metals turned the craft into art."
 msgstr "Обработка драгоценных камней и металлов превратила ремесло в искусство."
+
+msgctxt "technologies.flavor"
+msgid "Raw leaf is harsh and spoils quickly. Cured and cut, it keeps for years, so curing is what turned a harvested leaf into a stored good."
+msgstr "Сырой лист резок и быстро портится. Выделанный и нарезанный, он хранится годами: именно выделка превращает собранный лист в лежалый товар."
 
 msgctxt "technologies.name"
 msgid "Alchemy"
@@ -6394,6 +6426,10 @@ msgstr "Обработка дерева"
 msgctxt "technologies.name"
 msgid "Writing"
 msgstr "Письменность"
+
+msgctxt "technologies.name"
+msgid "Tobacco Curing"
+msgstr "Табачное дело"
 
 msgctxt "technologies.unlock_effects.name"
 msgid "Allows scouts to explore areas in the fog of war."
