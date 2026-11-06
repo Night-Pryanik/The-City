@@ -64,9 +64,28 @@ var _presets: Dictionary = {}
 var _palette: Dictionary = {}
 var _metrics: Dictionary = {}
 
+# The dialogs whose title the engine draws, and whether the pointer is over the mark that closes
+# one of them. See _process.
+var _dialogs: Array[AcceptDialog] = []
+var _close_mark_hovered := false
+
 func _ready() -> void:
+    # A dialog stops the world, and the mark that closes it must still answer to the pointer —
+    # while the world runs and while it waits.
+    process_mode = Node.PROCESS_MODE_ALWAYS
     rescan()
     apply_stored_preset()
+    get_tree().node_added.connect(_watch_dialog)
+
+func _watch_dialog(node: Node) -> void:
+    var dialog := node as AcceptDialog
+    if dialog == null:
+        return
+    _dialogs.append(dialog)
+    dialog.tree_exiting.connect(_forget_dialog.bind(dialog))
+
+func _forget_dialog(dialog: AcceptDialog) -> void:
+    _dialogs.erase(dialog)
 
 # Reads the folder again. A file that does not parse, or lacks a token, is reported and
 # skipped as a whole — one broken preset must not leave the rest unloadable.
@@ -269,6 +288,7 @@ func _apply_theme() -> void:
     _style_tabs(theme)
     _style_scrollbars(theme)
     _style_popups(theme)
+    _style_windows(theme)
     _style_text(theme)
     _style_surfaces(theme)
     theme.set_block_signals(false)
@@ -389,6 +409,85 @@ func _style_popups(theme: Theme) -> void:
     theme.set_color("font_accelerator_color", "PopupMenu", color("text_muted"))
     theme.set_color("font_separator_color", "PopupMenu", color("text_muted"))
     theme.set_stylebox("panel", "PopupPanel", UI_THEME.panel())
+
+# The frame of a dialog built in code — the offer of a new era, the news of a task of the era, the
+# confirmation of the pause menu. Such a dialog is a real Window, not a plate of the screen, and the
+# engine paints it in two boxes: the body under the content (AcceptDialog/panel) and the frame of
+# the whole window (Window/embedded_border), which is expanded over the title bar and the sides and
+# is therefore the only thing that draws the border and the corners. A ConfirmationDialog owns no
+# item of its own and reads all of these through AcceptDialog.
+#
+# The margins of both boxes are the numbers of the engine, not a style: they are the size of the
+# decorations and the padding of the content, so a dialog keeps the geometry it had and only its
+# colours change.
+func _style_windows(theme: Theme) -> void:
+    var body := UI_THEME.panel()
+    body.border_width_left = 0
+    body.border_width_right = 0
+    body.border_width_top = 0
+    body.border_width_bottom = 0
+    theme.set_stylebox("panel", "AcceptDialog", body)
+    theme.set_stylebox("embedded_border", "Window", _window_frame())
+    theme.set_stylebox("embedded_unfocused_border", "Window", _window_frame())
+    theme.set_color("title_color", "Window", color("text_secondary"))
+    # The outline under the title belongs to the dark frame of the engine: over a plate of the
+    # palette it reads as a smudge.
+    theme.set_color("title_outline_modulate", "Window", Color(0, 0, 0, 0))
+    # The mark that closes a window is a texture, so no colour of the theme reaches it: the button
+    # is rasterised from the palette. The engine has no item for the hovered state — it swaps the
+    # texture only while the button is held — so the resting item is the one that carries the
+    # hover, and _process replaces it when the pointer comes over the mark.
+    theme.set_icon("close", "Window", _close_mark_texture())
+    theme.set_icon("close_pressed", "Window", UI_ICONS.close(UI_ICONS.CloseState.PRESSED))
+
+func _close_mark_texture() -> ImageTexture:
+    return UI_ICONS.close(UI_ICONS.CloseState.HOVER if _close_mark_hovered
+        else UI_ICONS.CloseState.REST)
+
+# The rectangle the engine answers a click on the close mark with, in the coordinates of the
+# window that embeds the dialog: it anchors the mark by its top left, eighteen pixels left of the
+# right edge of the content and twenty-four pixels above the content, and grows it down and to the
+# right by the size of the texture.
+func _close_mark_rect(dialog: AcceptDialog) -> Rect2:
+    var side := float(UI_ICONS.CLOSE_SIZE.x)
+    var h := float(dialog.get_theme_constant("close_h_offset", "Window"))
+    var v := float(dialog.get_theme_constant("close_v_offset", "Window"))
+    return Rect2(Vector2(dialog.position)
+        + Vector2(dialog.size.x - h, -v), Vector2(side, side))
+
+func _process(_delta: float) -> void:
+    if _dialogs.is_empty():
+        return
+    var where := get_window().get_mouse_position()
+    var hovered := false
+    for dialog in _dialogs:
+        if dialog.visible and _close_mark_rect(dialog).has_point(where):
+            hovered = true
+            break
+    if hovered == _close_mark_hovered:
+        return
+    _close_mark_hovered = hovered
+    var theme := ThemeDB.get_project_theme()
+    theme.set_block_signals(true)
+    theme.set_icon("close", "Window", _close_mark_texture())
+    theme.set_block_signals(false)
+    theme.emit_changed()
+
+# The frame of an embedded window: the plate of a window with the heavier border, grown over the
+# title bar (the thirty-two pixels of the engine under the thirty-six of the title) and over the
+# eight pixels of the sides, so the border of the dialog is its outer edge and not a line drawn
+# under the text.
+func _window_frame() -> StyleBoxFlat:
+    var style := UI_THEME.window_plate()
+    style.expand_margin_left = 8.0
+    style.expand_margin_top = 32.0
+    style.expand_margin_right = 8.0
+    style.expand_margin_bottom = 6.0
+    style.content_margin_left = 10.0
+    style.content_margin_top = 28.0
+    style.content_margin_right = 10.0
+    style.content_margin_bottom = 8.0
+    return style
 
 func _style_text(theme: Theme) -> void:
     theme.set_color("font_color", "Label", color("text"))

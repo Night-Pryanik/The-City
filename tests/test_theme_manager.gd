@@ -283,6 +283,61 @@ func _run() -> void:
     check(not theme.has_stylebox("panel", "Panel"),
         "a plain Panel is left to the screen that builds it", state)
 
+    # A dialog built in code is a real Window, not a plate of a screen, and the engine paints it in
+    # two boxes: the body behind the content (AcceptDialog/panel) and the frame of the whole window
+    # (Window/embedded_border), which is expanded over the title bar. The title and the close mark
+    # live above the body, so only the second box can give the caption a surface to sit on; a frame
+    # that paints nothing leaves them floating over the screen behind the dialog.
+    var dialog_style := theme.get_stylebox("panel", "AcceptDialog") as StyleBoxFlat
+    check(dialog_style != null and dialog_style.bg_color.is_equal_approx(
+            manager.color("panel_bg")),
+        "the body of a dialog takes the panel colour", state)
+    check(theme.get_color("title_color", "Window").is_equal_approx(
+            manager.color("text_secondary")),
+        "the title of a dialog follows the palette", state)
+    # The mark that closes a window is drawn as a texture, so the palette reaches it only through
+    # UiIcons: a plate, a frame and a cross, in the three states a control is drawn with. The side
+    # is not the engine's — it is the one that leaves the same margin of the title bar above the
+    # button and below it (see close() in ui_icons.gd).
+    _check_close_button(theme, manager, "close", "control_bg", state)
+    _check_close_button(theme, manager, "close_pressed", "control_pressed", state)
+    # The engine has no item for the hovered state, so the manager replaces the resting texture
+    # while the pointer is over the mark. The rectangle it tests is the one the engine draws and
+    # hits with: the mark is anchored by its top left, eighteen pixels left of the right edge of
+    # the content and twenty-four pixels above the content.
+    var watched := AcceptDialog.new()
+    watched.name = "WatchedDialog"
+    watched.size = Vector2i(300, 200)
+    get_root().add_child(watched)
+    var rect: Rect2 = manager._close_mark_rect(watched)
+    check(rect.position == Vector2(watched.position)
+            + Vector2(watched.size.x - 18, -24)
+            and rect.size == Vector2(20, 20),
+        "the mark is where the engine puts it (got %s)" % str(rect), state)
+    get_root().remove_child(watched)
+    watched.free()
+    for frame in ["embedded_border", "embedded_unfocused_border"]:
+        var ring := theme.get_stylebox(frame, "Window") as StyleBoxFlat
+        check(ring != null, "the %s of a window is themed" % frame, state)
+        if ring != null:
+            check(ring.bg_color.is_equal_approx(manager.color("panel_bg")),
+                "the frame of a window paints the plate of the palette under the title", state)
+            check(ring.border_color.is_equal_approx(manager.color("panel_border")),
+                "the frame of a window takes the panel border", state)
+            # The engine reserves thirty-two pixels above the content for the title bar; a frame
+            # expanded by less than that stops short of the caption.
+            check(ring.expand_margin_top >= 32.0,
+                "the frame of a window reaches the title bar", state)
+    # The border belongs to the frame alone: the body only has to fill the rectangle of the content,
+    # and a border on both boxes would draw the sides of the dialog twice.
+    if dialog_style != null:
+        check(dialog_style.border_width_left == 0 and dialog_style.border_width_top == 0,
+            "the body of a dialog draws no border of its own", state)
+    # A ConfirmationDialog is an AcceptDialog with a second button: it owns no item and reads the
+    # plate through the class it inherits from.
+    check(not theme.has_stylebox("panel", "ConfirmationDialog"),
+        "a confirmation dialog inherits the plate of AcceptDialog", state)
+
     # The screens mark their plates with a variation instead of owning a stylebox.
     var raised := theme.get_stylebox("panel", "SurfaceRaised") as StyleBoxFlat
     check(raised != null and raised.bg_color.is_equal_approx(manager.color("control_bg")),
@@ -376,6 +431,16 @@ func _run() -> void:
     # _ready() runs on the next step of the tree, and the window builds its nodes there.
     await process_frame
 
+    # The same step is what lets the manager start watching the dialogs: _ready connects it to the
+    # tree, so a dialog added after it is watched, and a dialog that leaves the tree is forgotten.
+    var tracked := AcceptDialog.new()
+    tracked.name = "TrackedDialog"
+    get_root().add_child(tracked)
+    check(manager._dialogs.has(tracked), "a dialog is watched for its close mark", state)
+    get_root().remove_child(tracked)
+    check(not manager._dialogs.has(tracked), "a dialog leaves the watch with the tree", state)
+    tracked.free()
+
     var title_before: Color = tech_window.title_label.get_theme_color("font_color")
     check(title_before.is_equal_approx(manager.color("income").lightened(0.35)),
         "a window builds its overrides from the palette that is current", state)
@@ -467,6 +532,39 @@ func _check_glyph(theme: Theme, manager, icon_name: String, type: String,
             if pixel.a > 0.99 and _close(pixel, wanted):
                 found = true
     check(found, "%s is drawn in the %s of the palette" % [label, token], state)
+
+# The button that closes a window: the plate of a control in one state, its frame, and the cross
+# of the mark over them. The middle of the button is the crossing of the arms; the plate, the frame
+# and the cross each have to be present somewhere in the glyph.
+func _check_close_button(theme: Theme, manager, icon_name: String, plate_token: String,
+        state: Dictionary) -> void:
+    var icon: Texture2D = theme.get_icon(icon_name, "Window")
+    check(icon != null, "Window/%s has a glyph of its own" % icon_name, state)
+    if icon == null:
+        return
+    check(icon.get_size() == Vector2(20, 20),
+        "Window/%s is a button of twenty pixels (got %s)" % [icon_name, str(icon.get_size())],
+        state)
+    var image := Image.new()
+    image.copy_from(icon.get_image())
+    image.convert(Image.FORMAT_RGBA8)
+    check(_close(image.get_pixel(10, 10), manager.color("text")),
+        "Window/%s crosses its arms in the middle" % icon_name, state)
+    var seen := {"plate": false, "frame": false, "cross": false}
+    for y in range(image.get_height()):
+        for x in range(image.get_width()):
+            var pixel := image.get_pixel(x, y)
+            if pixel.a <= 0.99:
+                continue
+            if _close(pixel, manager.color(plate_token)):
+                seen["plate"] = true
+            elif _close(pixel, manager.color("control_border")):
+                seen["frame"] = true
+            elif _close(pixel, manager.color("text")):
+                seen["cross"] = true
+    check(seen["plate"], "Window/%s fills its plate with the %s" % [icon_name, plate_token], state)
+    check(seen["frame"], "Window/%s draws the frame of a control" % icon_name, state)
+    check(seen["cross"], "Window/%s draws its cross in the text colour" % icon_name, state)
 
 func _close(a: Color, b: Color) -> bool:
     return maxf(maxf(absf(a.r - b.r), absf(a.g - b.g)), absf(a.b - b.b)) < 0.02

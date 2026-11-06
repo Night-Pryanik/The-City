@@ -1,20 +1,22 @@
 # ui_icons.gd
 #
 # The few glyphs of the interface that the engine draws as textures rather than as
-# styleboxes: the box of a checkbox, the switch of a check button, the knob of a slider.
-# A texture cannot follow a palette on its own, so the shapes are rasterised from the
-# palette every time one is applied.
+# styleboxes: the box of a checkbox, the switch of a check button, the knob of a slider,
+# the mark that closes a window. A texture cannot follow a palette on its own, so the
+# shapes are rasterised from the palette every time one is applied.
 #
 # The engine's own glyphs are drawn in near-white, which disappears on a light theme, and
 # the one SVG the project shipped was tuned for the old grey.
 #
-# The sizes match the engine defaults exactly (16×16, and 32×16 for the switch), so no
-# control changes its minimum size when the icons are replaced.
+# The sizes match the engine defaults exactly (16×16, and 32×16 for the switch), so no control
+# changes its minimum size when the icons are replaced. The close mark is the one glyph drawn
+# larger than the engine's, for the reason given at close().
 class_name UiIcons
 extends RefCounted
 
 const BOX_SIZE := Vector2i(16, 16)
 const SWITCH_SIZE := Vector2i(32, 16)
+const CLOSE_SIZE := Vector2i(20, 20)
 
 # Supersamples per edge of a pixel: a shape is either inside a sample or outside it, and
 # the fraction of the samples inside is the coverage, which is what smooths the edge.
@@ -24,7 +26,7 @@ const SS := 4
 # the accent tick sits on the same surface, so the glyph reads the same on any background.
 static func checkbox(checked: bool) -> ImageTexture:
     var layers: Array = [
-        {"color": UiTheme.color("control_bg"), "sd": _rounded_rect(Vector2(8, 8), Vector2(6.5, 6.5), 2.5), "w": -1.0},
+        {"color": UiTheme.color("control_bg"), "sd": _rounded_rect(Vector2(8, 8), Vector2(6.5, 6.5), 2.5), "w": - 1.0},
         {"color": UiTheme.color("control_border"), "sd": _rounded_rect(Vector2(8, 8), Vector2(6.5, 6.5), 2.5), "w": 1.5},
     ]
     if checked:
@@ -38,12 +40,12 @@ static func checkbox(checked: bool) -> ImageTexture:
 static func radio(checked: bool, muted: bool = false) -> ImageTexture:
     var frame := UiTheme.color("text_muted") if muted else UiTheme.color("control_border")
     var layers: Array = [
-        {"color": UiTheme.color("control_bg"), "sd": _disc(Vector2(8, 8), 6.5), "w": -1.0},
+        {"color": UiTheme.color("control_bg"), "sd": _disc(Vector2(8, 8), 6.5), "w": - 1.0},
         {"color": frame, "sd": _disc(Vector2(8, 8), 6.5), "w": 1.5},
     ]
     if checked:
         var dot := UiTheme.color("text_muted") if muted else UiTheme.color("accent")
-        layers.append({"color": dot, "sd": _disc(Vector2(8, 8), 3.6), "w": -1.0})
+        layers.append({"color": dot, "sd": _disc(Vector2(8, 8), 3.6), "w": - 1.0})
     return _render(BOX_SIZE, layers)
 
 # The switch of a check button: the knob moves across the track and both change role, so
@@ -53,17 +55,47 @@ static func switch_button(on: bool) -> ImageTexture:
     var knob := UiTheme.color("text_secondary") if not on else UiTheme.color("text")
     var centre_x := 8.0 if not on else 24.0
     var layers: Array = [
-        {"color": track, "sd": _rounded_rect(Vector2(16, 8), Vector2(15.5, 7.5), 7.5), "w": -1.0},
-        {"color": knob, "sd": _disc(Vector2(centre_x, 8), 5.5), "w": -1.0},
+        {"color": track, "sd": _rounded_rect(Vector2(16, 8), Vector2(15.5, 7.5), 7.5), "w": - 1.0},
+        {"color": knob, "sd": _disc(Vector2(centre_x, 8), 5.5), "w": - 1.0},
     ]
     return _render(SWITCH_SIZE, layers)
 
 # The round handle of a slider, drawn in one flat colour.
 static func knob(tint: Color) -> ImageTexture:
     var layers: Array = [
-        {"color": tint, "sd": _disc(Vector2(8, 8), 5.5), "w": -1.0},
+        {"color": tint, "sd": _disc(Vector2(8, 8), 5.5), "w": - 1.0},
     ]
     return _render(BOX_SIZE, layers)
+
+enum CloseState {REST, HOVER, PRESSED}
+
+# The mark that closes a window, drawn as the button the engine gives no stylebox for: the plate
+# and the frame of a control in the state the pointer puts it in — the same three fills a Button is
+# drawn with — and the cross over them, its arms within three pixels of the edge so the mark fills
+# the button instead of floating in it.
+#
+# Twenty pixels is not a taste: the engine anchors the mark by its top left, eighteen pixels left
+# of the right edge of the content and twenty-four above the content, and grows it down and to the
+# right by its own size. In the twenty-eight pixels of the title bar that leaves four above and
+# four below only at this side.
+static func close(state: int) -> ImageTexture:
+    var fill := UiTheme.color("control_bg")
+    if state == CloseState.HOVER:
+        fill = UiTheme.color("control_hover")
+    elif state == CloseState.PRESSED:
+        fill = UiTheme.color("control_pressed")
+    var plate := _rounded_rect(Vector2(10, 10), Vector2(9.35, 9.35),
+        UiTheme.metric("control_radius"))
+    var cross := UiTheme.color("text")
+    var layers: Array = [
+        {"color": fill, "sd": plate, "w": - 1.0},
+        {"color": UiTheme.color("control_border"), "sd": plate, "w": 1.3},
+        {"color": cross, "sd": _polyline(
+            PackedVector2Array([Vector2(6.0, 6.0), Vector2(14.0, 14.0)])), "w": 2.2},
+        {"color": cross, "sd": _polyline(
+            PackedVector2Array([Vector2(14.0, 6.0), Vector2(6.0, 14.0)])), "w": 2.2},
+    ]
+    return _render(CLOSE_SIZE, layers)
 
 # --- the rasteriser ---
 
