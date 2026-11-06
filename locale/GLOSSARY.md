@@ -170,8 +170,8 @@ register it in `project.godot` under
 * `data/*.json` — the `name`, `description` and `flavor` fields are
   player-visible; the translation is applied when the files are read
   (`scripts/data_loader.gd`). The English text stays in the JSON.
-* Invented proper nouns (the city names in `data/city_names.json`) are **not**
-  translated — they are treated as names, not as text.
+* Invented proper nouns (the city names in `locale/city_names_<code>.json`, one pool
+  per language) are **not** translated — they are treated as names, not as text.
 
 ## When one English text needs several translations
 

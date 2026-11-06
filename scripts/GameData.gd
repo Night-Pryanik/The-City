@@ -46,7 +46,7 @@ var qualities: Dictionary = {} # data about resource quality levels
 var map_config: Dictionary = {} # the world map configuration (data/map_config.json)
 var professions: Dictionary = {} # id -> profession data (data/professions.json)
 var consumption_rules: Array = [] # consumption entries (data/consumption.json)
-var city_names: Array = [] # city name variants (data/city_names.json)
+var city_names: Array = [] # city name variants (locale/city_names_<code>.json)
 var game_balance: Dictionary = {} # the game balance (data/game_balance.json)
 # The specializations of the city (data/specializations.json): the branches in the order of the
 # file and the config block with the thresholds of the population (see CityData, "THE
@@ -331,7 +331,7 @@ func get_max_unlocked_road_level() -> int:
         return 1
     return int(levels.back())
 
-# Returns a random city name from data/city_names.json.
+# Returns a random city name from the pool of the current language.
 # If the list is empty or not loaded — it returns a neutral default name.
 func get_random_city_name() -> String:
     if city_names.is_empty():

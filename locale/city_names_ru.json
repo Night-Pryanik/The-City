@@ -1,3 +1,12 @@
+// The pool of generated city names, one file per game language.
+//
+// A city name is not translated text: the whole list is a variant of its own, so
+// the loader takes a single file by the current language instead of running the
+// tr() pass over data/. The files of the two languages are position-aligned, so a
+// Latin name and its Cyrillic counterpart stand on the same line of each file.
+//
+// A mod may still ship a city_names array in its own data folder: those names are
+// appended to the list of the current language.
 {
   "city_names": [
     "Ячтву",

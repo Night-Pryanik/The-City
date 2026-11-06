@@ -166,7 +166,10 @@ Details:
   dictionary replaces the vanilla one, it does not add entries to it.
 - The records of the `consumption` collection are addressed by the `resource` field, not
   by `id` (the same as in the vanilla data).
-- Arrays without identifiers (for example, `city_names`) are only appended to.
+- Arrays without identifiers (for example, `city_names`) are only appended to. The
+  vanilla city-name pool is not one of these arrays: it lives per language in
+  `locale/city_names_<code>.json`, outside the mod merge, and what a mod adds is laid
+  on top of the pool of the current language.
 - The top-level dictionaries that are not collections of entities (`game_balance`,
   `modifiers`, `map_config`, `qualities`) are merged **recursively, block by block**: a
   mod changing one constant does not erase its neighbours.

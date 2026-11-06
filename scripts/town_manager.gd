@@ -404,7 +404,7 @@ func _is_in_player_start_area(row: int, col: int) -> bool:
         and col <= int(player_start_area["end_col"])
 
 
-# Creates a new record of a town with a unique name from city_names.json.
+# Creates a new record of a town with a unique name from the pool of the current language.
 # The personal ring influence_hexes is filled by compute_all_town_influences().
 func _make_town_record(town_index: int, row: int, col: int,
         is_era2_guaranteed: bool) -> Dictionary:
