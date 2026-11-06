@@ -416,6 +416,18 @@ func _ready():
     specialization_popup.hide()
     CityData.specialization_choice_offered.connect(_on_specialization_choice_offered)
 
+    # The reward of a task of the era: the same kind of news as a learned technology, so the same
+    # kind of window — the world stops while the player reads what he earned. A lost task is only
+    # said, not shown: it takes nothing away that the player has to act on.
+    challenge_news_dialog = AcceptDialog.new()
+    challenge_news_dialog.name = "ChallengeNewsDialog"
+    challenge_news_dialog.ok_button_text = tr("OK")
+    challenge_news_dialog.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+    challenge_news_dialog.visibility_changed.connect(_on_challenge_news_visibility_changed)
+    add_child(challenge_news_dialog)
+    challenge_news_dialog.hide()
+    challenge_manager.challenge_completed.connect(_on_era_challenge_completed)
+
     if pause_menu:
         if not pause_menu.save_pressed.is_connected(_on_pause_save):
             pause_menu.save_pressed.connect(_on_pause_save)

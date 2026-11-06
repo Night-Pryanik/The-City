@@ -18,7 +18,9 @@
 #   6. The save: the counters, the rungs paid and the price of the fame come back from the record
 #      the manager writes.
 #   7. The tasks of the era: the window of the era is judged when it closes, the free claiming of
-#      the new Region is not a purchase, and a task of another era is not offered.
+#      the new Region is not a purchase, and a task of another era is not offered. The outcome is
+#      told the player: the reward stops the world in a window of its own, the loss only fills the
+#      line of the HUD and the journal.
 #   8. The live scene: the tab of the city window opens and lists both the tasks of the era and the
 #      ladders of the goods, each group folded under a name of its own and opened by a click on it —
 #      a ladder by its challenge, a group of tasks by the group. The rungs are named by their tier
@@ -459,6 +461,7 @@ func _test_save(state: Dictionary) -> void:
     _mgr.record_sale(LADDER_GOOD, {"exceptional": int(reputation.get("threshold", 0))})
     _mgr.record_production(LADDER_GOOD, 12, "fine")
     _mgr.chunks_bought_this_era = 3
+    _mgr.failed_challenges["a_task_the_city_lost"] = true
     var snapshot: Dictionary = _mgr.serialize()
 
     _reset_all()
@@ -473,6 +476,8 @@ func _test_save(state: Dictionary) -> void:
     check(_mgr.produced_by_quality.get(LADDER_GOOD, {}).get("fine", 0) == 12,
             "the production counter comes back from the save", state)
     check(_mgr.chunks_bought_this_era == 3, "the window of the era is restored", state)
+    check(_mgr.is_challenge_failed("a_task_the_city_lost"),
+            "a task the city lost is not offered again by the save", state)
     # The price of the fame is a consequence of the rungs, and it is rebuilt, not stored.
     check(absf(_cdata.get_trade_sell_price_multiplier(LADDER_GOOD)
             - (1.0 + float(_mgr.reward_at(reputation).get("value", 0.0)))) < 0.0001,
@@ -505,26 +510,89 @@ func _test_era(state: Dictionary) -> void:
             == int(restraint.get("era", 0))),
             "a task of an era is offered only while that era runs", state)
 
-    # The window of the restraint is the era: one purchase in it and the task is lost.
-    _mgr.chunks_bought_this_era = 1
-    _mgr.era_window_closed()
-    check(not _mgr.is_challenge_completed(str(restraint.get("id", ""))),
-            "a city that bought a chunk is not the one that bought none", state)
-    check(_mgr.chunks_bought_this_era == 0,
-            "the window of the era closes with the era", state)
+    var restraint_id := str(restraint.get("id", ""))
+    var whole_id := str(whole.get("id", ""))
+    # What the city was told about each task, in the order the news came: [id, completed].
+    var news: Array = []
+    _mgr.challenge_completed.connect(
+            func(challenge: Dictionary): news.append([str(challenge.get("id", "")), true]))
+    _mgr.challenge_failed.connect(
+            func(challenge: Dictionary): news.append([str(challenge.get("id", "")), false]))
 
+    # The window of the restraint is the era, and it is lost with the first purchase: a task that
+    # asks for nothing bought cannot be won back by spending less afterwards.
+    _main_map.expansion_manager.territory_expanded.emit(0, 0, 0)
+    check(_mgr.chunks_bought_this_era == 1, "the claiming of a chunk is booked to the era", state)
+    check(_mgr.is_challenge_failed(restraint_id),
+            "the task of restraint is lost with the first purchase of the era", state)
+    check(not _mgr.is_challenge_completed(restraint_id),
+            "a city that bought a chunk is not the one that bought none", state)
+    check(not _mgr.era_challenge_records().has(restraint),
+            "a task the city cannot win is no longer offered", state)
+    check(news.has([restraint_id, false]), "the loss of a task is announced", state)
+    # The loss is said, not staged before the player: the line goes to the HUD and so into the
+    # journal, and the world keeps running — a task already lost asks nothing of him.
+    check(_journal_says(tr("Challenge failed: %s") % _title_of(restraint)),
+            "the loss of a task is in the journal", state)
+    check(_main_map._challenge_news_queue.is_empty()
+            and not _main_map.challenge_news_dialog.visible,
+            "the loss of a task opens no window", state)
+
+    # The closing of the era does not reward what the purchase already took away.
     _mgr.era_window_closed()
-    check(_mgr.is_challenge_completed(str(restraint.get("id", ""))),
+    check(_mgr.chunks_bought_this_era == 0, "the window of the era closes with the era", state)
+    _mgr.era_window_closed()
+    check(not _mgr.is_challenge_completed(restraint_id),
+            "an era that bought nothing after a lost era does not pay the task again", state)
+
+    # An era that bought nothing closes with its task done.
+    _reset_all()
+    _mgr.era_window_closed()
+    check(_mgr.is_challenge_completed(restraint_id),
             "an era that bought nothing closes with its task done", state)
 
-    # The whole Region is done when nothing is left to buy; the count reads the map.
-    var left: int = _mgr.available_chunk_count()
+    # The whole Region is measured as the Region, not as the part of it the fog has let the city
+    # see: the land the player has not scouted is still his to buy, and one chunk taken out of the
+    # explored corner is not a claimed Region.
+    _reset_all()
+    check(_mgr.region_open_hex_count() > 0, "a new Region is not yet the city's", state)
     check(_mgr.era_challenge_progress(whole).get("text", "") != "",
             "the task of the Region says how much is left", state)
-    if left == 0:
-        _mgr.era_window_closed()
-        check(_mgr.is_challenge_completed(str(whole.get("id", ""))),
-                "a Region with nothing left to claim is a claimed Region", state)
+    _main_map.expansion_manager.territory_expanded.emit(0, 0, 0)
+    check(not _mgr.is_challenge_completed(whole_id),
+            "one chunk bought under the fog does not claim the whole Region", state)
+    check(not _mgr.is_challenge_failed(whole_id),
+            "a Region still open is a task still winnable", state)
+
+    var claimed := _claim_whole_region()
+    check(_mgr.region_open_hex_count() == 0, "a Region taken has nothing left to take", state)
+    _main_map.expansion_manager.territory_expanded.emit(0, 0, 0)
+    check(_mgr.is_challenge_completed(whole_id),
+            "the Region is won by the last chunk of it, not by the era closing", state)
+    check(news.has([whole_id, true]), "the winning of the Region is announced", state)
+    # The reward is what stops the world: the player reads it in a window of its own, not in a line
+    # that passes by while he is busy with the map.
+    check(_main_map.challenge_news_dialog.visible
+            and str(_main_map.challenge_news_dialog.title) == tr("Challenge completed"),
+            "the winning of a task opens its window", state)
+    _main_map.challenge_news_dialog.visible = false
+    _restore_region(claimed)
+
+    # A task of every era is not buried by the era it lost: the next window asks it again, and only
+    # the news remembers the era that went by.
+    _reset_all()
+    _mgr.era_window_closed()
+    check(not _mgr.is_challenge_failed(whole_id),
+            "a task of every era survives the era it lost", state)
+    check(_mgr.era_challenge_records().has(whole),
+            "the lost window reopens the task it could not finish", state)
+    check(news.has([whole_id, false]), "the closed era says what the city did not manage", state)
+    check(_journal_says(tr("Challenge failed: %s") % _title_of(whole)),
+            "the closed era leaves the loss in the journal", state)
+    check(_main_map._challenge_news_queue.is_empty()
+            and str(_main_map.challenge_news_dialog.title) == tr("Challenge completed"),
+            "the closing era windows the reward it earned and nothing else", state)
+    _main_map.challenge_news_dialog.visible = false
 
     # A reward that is not a specialization gives no choice — the era tasks are exactly that.
     check(_cdata.specialization_challenge_picks == 0,
@@ -713,6 +781,26 @@ func _rung_names(list: Node, title: String) -> Array:
 
 # --- THE STATE OF A NEW GAME ---
 
+# The Region taken the way the claiming takes it: every hex of it marked as belonging to the
+# Influence. The flags the map carried before are given back, so a later pass does not walk a world
+# that was bought by the test rather than by the city.
+func _claim_whole_region() -> Dictionary:
+    var saved := {}
+    var bounds = _main_map.get_region_bounds()
+    for row in range(int(bounds.row_start), int(bounds.row_end) + 1):
+        for col in range(int(bounds.col_start), int(bounds.col_end) + 1):
+            var tile = _main_map.tile_data[row][col]
+            if tile == null:
+                continue
+            saved["%d,%d" % [row, col]] = bool(tile.get("in_influence", false))
+            tile["in_influence"] = true
+    return saved
+
+func _restore_region(saved: Dictionary) -> void:
+    for key in saved:
+        var parts := str(key).split(",")
+        _main_map.tile_data[int(parts[0])][int(parts[1])]["in_influence"] = bool(saved[key])
+
 # Everything the mechanic remembers, back to the empty counters it starts with. The test walks the
 # ladder more than once, and a rung paid by the pass before would hide the reward of the pass after.
 func _reset_all() -> void:
@@ -721,11 +809,42 @@ func _reset_all() -> void:
     _mgr.produced_by_quality.clear()
     _mgr.done_tiers.clear()
     _mgr.completed_challenges.clear()
+    _mgr.failed_challenges.clear()
     _mgr.chunks_bought_this_era = 0
     _mgr._fame_price_share.clear()
     _cdata.specialization_challenge_picks = 0
     _cdata.specialization_claimed = 0
     _cdata.chosen_specialization_ids.clear()
+    # The news of a task stops the world; a pass of the test is not the player reading it. The queue
+    # goes first: hiding the window asks for the next news, and there must be none left.
+    _main_map._challenge_news_queue.clear()
+    var dialog = _main_map.get("challenge_news_dialog")
+    if dialog != null:
+        dialog.visible = false
+    _main_map.apply_pause_state()
+    # The journal is what the test reads back to know what the player was told, so a pass of it
+    # starts with the history empty.
+    var journal = _main_map.get("journal")
+    if journal != null:
+        journal.clear()
+
+# Whether the journal of the game carries the line since the last reset. The important message of
+# the HUD is what writes it (hud_message.gd), so this is the record the player can still read after
+# the line itself passed by.
+func _journal_says(text: String) -> bool:
+    var journal = _main_map.get("journal")
+    if journal == null:
+        return false
+    for entry in journal.entries:
+        if str(entry.get("text", "")) == text:
+            return true
+    return false
+
+
+# The name the player reads for a task of the era; the id is what the record falls back to.
+func _title_of(record: Dictionary) -> String:
+    var name := str(record.get("name", ""))
+    return name if name != "" else str(record.get("id", ""))
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if condition:

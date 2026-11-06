@@ -15,7 +15,19 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "%s (%s)"
+msgstr ""
+
 msgid "Add to storage"
+msgstr ""
+
+msgid "Challenge completed"
+msgstr ""
+
+msgid "Challenge failed: %s"
+msgstr ""
+
+msgid "Failed"
 msgstr ""
 
 msgid "Nothing found"
@@ -6001,6 +6013,10 @@ msgctxt "resources.name"
 msgid "Zebu"
 msgstr ""
 
+msgctxt "resources.name"
+msgid "Pottery of <city_name>"
+msgstr ""
+
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
 msgstr ""
@@ -6089,6 +6105,10 @@ msgctxt "specializations.description"
 msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
 msgstr ""
 
+msgctxt "specializations.description"
+msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
+msgstr ""
+
 msgctxt "specializations.full_name"
 msgid "Specialization of ceramics"
 msgstr ""
@@ -6111,6 +6131,10 @@ msgstr ""
 
 msgctxt "specializations.full_name"
 msgid "Specialization of wool"
+msgstr ""
+
+msgctxt "specializations.full_name"
+msgid "Specialization of pottery"
 msgstr ""
 
 msgctxt "specializations.name"
@@ -6155,6 +6179,10 @@ msgstr ""
 
 msgctxt "specializations.name"
 msgid "Wool"
+msgstr ""
+
+msgctxt "specializations.name"
+msgid "Pottery"
 msgstr ""
 
 msgctxt "technologies.description"

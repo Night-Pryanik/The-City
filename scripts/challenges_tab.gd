@@ -78,16 +78,22 @@ func _bind_manager() -> void:
             _bound_manager.fame_tier_completed.disconnect(_on_fame_tier_completed)
         if _bound_manager.challenge_completed.is_connected(_on_challenge_completed):
             _bound_manager.challenge_completed.disconnect(_on_challenge_completed)
+        if _bound_manager.challenge_failed.is_connected(_on_challenge_failed):
+            _bound_manager.challenge_failed.disconnect(_on_challenge_failed)
     _bound_manager = manager
     if manager == null:
         return
     manager.fame_tier_completed.connect(_on_fame_tier_completed)
     manager.challenge_completed.connect(_on_challenge_completed)
+    manager.challenge_failed.connect(_on_challenge_failed)
 
 func _on_fame_tier_completed(_tier_id: String, _tier: String, _reward: Dictionary) -> void:
     _redraw_if_open()
 
 func _on_challenge_completed(_challenge: Dictionary) -> void:
+    _redraw_if_open()
+
+func _on_challenge_failed(_challenge: Dictionary) -> void:
     _redraw_if_open()
 
 # A tier is paid for in the middle of a tick, so the redraw happens only while the player looks at
@@ -135,30 +141,38 @@ func _era_name(index: int) -> String:
 # --- The tasks of the era ---
 
 # The one-off tasks of data/challenges.json, in the order of the data: the live window first, then
-# the tasks of another era and the ones the city has done. A task of another era is not dropped — the
-# player sees what the world will ask, only not yet. Each group is a fold of its own, so the whole of
-# the era takes three lines while the player is not reading it.
+# the tasks of another era, the ones the city has done and the ones it has lost. A task of another
+# era is not dropped — the player sees what the world will ask, only not yet. Each group is a fold of
+# its own, so the tasks of the era take a few lines while the player is not reading them.
 func _add_era_challenges(manager) -> void:
     var live: Array = []
     var later: Array = []
     var done: Array = []
+    var lost: Array = []
     for record in GameData.challenges:
         if not (record is Dictionary):
             continue
-        if manager.is_challenge_completed(str(record.get("id", ""))):
+        var id := str(record.get("id", ""))
+        if manager.is_challenge_completed(id):
             done.append(record)
+        elif manager.is_challenge_failed(id):
+            lost.append(record)
         elif manager.offers_in_current_era(record):
             live.append(record)
         else:
             later.append(record)
     _add_era_fold("era_live", tr("Challenges of this era"), live, manager, true, "")
     _add_era_fold("era_later", tr("Challenges of another era"), later, manager, false, "")
-    _add_era_fold("era_done", tr("Completed"), done, manager, false, tr("Done"))
+    _add_era_fold("era_done", tr("Completed"), done, manager, false, tr("Done"),
+            UI_THEME.color("income"))
+    _add_era_fold("era_lost", tr("Failed"), lost, manager, true, tr("Failed"),
+            UI_THEME.color("expense"))
 
 # One group of the tasks of the era. A task of an era that is not live is faded as a whole; a task
-# the city has finished is not, because the list already says so in words.
+# the city has finished is not, because the list already says so in words. The counter of a lost task
+# stays under its name: the player reads not only that the era is gone, but what took it.
 func _add_era_fold(key: String, title: String, records: Array, manager, is_live: bool,
-        done_text: String) -> void:
+        done_text: String, done_tint: Color = Color.WHITE) -> void:
     if records.is_empty():
         return
     _add_gap_if_not_top()
@@ -168,12 +182,13 @@ func _add_era_fold(key: String, title: String, records: Array, manager, is_live:
         return
     var body := _fold_body()
     for record in records:
-        var plate := _era_plate(record, manager, is_live, done_text)
+        var plate := _era_plate(record, manager, is_live, done_text, done_tint)
         if not is_live and done_text == "":
             plate.modulate = MUTED_MODULATE
         body.add_child(plate)
 
-func _era_plate(record: Dictionary, manager, is_live: bool, done_text: String = "") -> Control:
+func _era_plate(record: Dictionary, manager, is_live: bool, done_text: String = "",
+        done_tint: Color = Color.WHITE) -> Control:
     var name_text := str(record.get("name", ""))
     if name_text == "":
         name_text = str(record.get("id", ""))
@@ -190,7 +205,7 @@ func _era_plate(record: Dictionary, manager, is_live: bool, done_text: String = 
                 UI_THEME.color("text_secondary")))
     _add_rewards(body, manager.rewards_of(record), "", manager)
     if done_text != "":
-        body.add_child(_line(done_text, UI_THEME.color("income")))
+        body.add_child(_line(done_text, done_tint))
     return plate
 
 # --- The ladder of a good ---

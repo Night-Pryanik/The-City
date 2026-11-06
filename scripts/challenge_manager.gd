@@ -50,6 +50,11 @@ var done_tiers := {}
 # The era challenges completed: challenge id -> true.
 var completed_challenges := {}
 
+# The era challenges the city can no longer complete: challenge id -> true. Only a task offered once
+# stands here for the whole game; a task that returns with every era is judged again when the next
+# window opens, so its failure is announced but not kept.
+var failed_challenges := {}
+
 # The chunks the city bought since the era began (see _on_territory_expanded and era_window_closed).
 var chunks_bought_this_era := 0
 
@@ -66,6 +71,8 @@ var _fame_price_share := {}
 signal fame_tier_completed(tier_id: String, tier: String, reward: Dictionary)
 # An era challenge has been completed.
 signal challenge_completed(challenge: Dictionary)
+# An era challenge can no longer be completed: the window it was set in is lost for the city.
+signal challenge_failed(challenge: Dictionary)
 
 var _main_map = null
 
@@ -76,6 +83,7 @@ func _ready() -> void:
     set_process(false)
     fame_tier_completed.connect(_on_fame_tier_completed)
     challenge_completed.connect(_on_challenge_completed)
+    challenge_failed.connect(_on_challenge_failed)
 
 
 # The reward of a tier or of a task is a surprise the player did not have to look for, so it is said
@@ -88,10 +96,22 @@ func _on_fame_tier_completed(_tier_id: String, tier: String, _reward: Dictionary
 
 
 func _on_challenge_completed(challenge: Dictionary) -> void:
+    _show_challenge_news(challenge, true)
+
+
+func _on_challenge_failed(challenge: Dictionary) -> void:
+    _show_challenge_news(challenge, false)
+
+
+# The outcome of a task of the era is news the player is not sent looking for, so it is said out
+# loud: the important line of the HUD goes into the journal of the game (journal.gd). A completion
+# is also stopped in front of the player by the window the map builds; a failure is only said, since
+# the city has nothing to take and nothing to decide.
+func _show_challenge_news(challenge: Dictionary, completed: bool) -> void:
     var map = get_node_or_null("/root/MainMap")
     if map == null or map.hud == null:
         return
-    map.hud.show_message(_news_of_era_challenge(challenge), GameData.HUD_MESSAGE_IMPORTANT)
+    map.hud.show_message(_news_of_era_challenge(challenge, completed), GameData.HUD_MESSAGE_IMPORTANT)
 
 
 func _news_of_tier(tier: String) -> String:
@@ -106,11 +126,39 @@ func _news_of_tier(tier: String) -> String:
             return tr("The fame of a good has brought the city news.")
 
 
-func _news_of_era_challenge(challenge: Dictionary) -> String:
-    var name := str(challenge.get("name", ""))
-    if name.is_empty():
-        return tr("A challenge of the era is completed.")
-    return tr("Challenge completed: %s") % name
+func _news_of_era_challenge(challenge: Dictionary, completed: bool) -> String:
+    if completed:
+        return tr("Challenge completed: %s") % _challenge_title(challenge)
+    return tr("Challenge failed: %s") % _challenge_title(challenge)
+
+
+# A task of the era is known to the player by its name; the id is what the author left when the
+# record came without one.
+func _challenge_title(record: Dictionary) -> String:
+    var name := str(record.get("name", ""))
+    return name if name != "" else str(record.get("id", ""))
+
+
+# The body of the news about a task of the era: what it asked, where the city stands, and what the
+# outcome brought. The window of the result and the journal read it from here, so the two cannot
+# disagree about what was promised and what was earned.
+func challenge_news_text(record: Dictionary, completed: bool) -> String:
+    var lines: Array[String] = []
+    var title := _challenge_title(record)
+    if title != "":
+        lines.append(title)
+    var description := str(record.get("description", ""))
+    if description != "":
+        lines.append(description)
+    var progress := str(era_challenge_progress(record).get("text", ""))
+    if progress != "":
+        lines.append(progress)
+    if completed:
+        for reward in rewards_of(record):
+            var text := reward_text(reward)
+            if text != "":
+                lines.append(text)
+    return "\n".join(lines)
 
 
 # The map owns the era and the claiming of the Region, and both are needed by the era challenges.
@@ -124,11 +172,13 @@ func bind_map(main_map) -> void:
 # Called when the era advances, BEFORE the new Region is claimed: the window of the era that is
 # closing is judged while its own Region is still the whole of the picture, and the free claiming of
 # the new Region — which spends no money and is not a purchase — cannot spoil the task of restraint.
+# A task that is not done by the time its window closes is not done at all: the era does not wait.
 func era_window_closed() -> void:
     for record in era_challenge_records():
-        if not _condition_holds(record):
-            continue
-        complete_era_challenge(record)
+        if _condition_holds(record):
+            complete_era_challenge(record)
+        else:
+            fail_era_challenge(record)
     chunks_bought_this_era = 0
 
 
@@ -137,6 +187,8 @@ func _on_territory_expanded(_row: int, _col: int, _cost) -> void:
     for record in era_challenge_records():
         if _condition_holds(record):
             complete_era_challenge(record)
+        elif _condition_lost(record):
+            fail_era_challenge(record)
 
 
 # --- THE COUNTERS ------------------------------------------------------------
@@ -428,18 +480,23 @@ func is_brand_granted(brand_id: String) -> bool:
 
 # --- THE CHALLENGES OF THE ERA -------------------------------------------------
 
-# The one-off tasks of data/challenges.json.
+# The one-off tasks of data/challenges.json that the city can still finish.
 func era_challenge_records() -> Array:
     var out: Array = []
     for record in GameData.challenges:
         if not (record is Dictionary):
             continue
-        if completed_challenges.has(str(record.get("id", ""))):
+        var id := str(record.get("id", ""))
+        if completed_challenges.has(id) or failed_challenges.has(id):
             continue
         if not offers_in_current_era(record):
             continue
         out.append(record)
     return out
+
+
+func is_challenge_failed(id: String) -> bool:
+    return failed_challenges.has(id)
 
 
 # Whether the task of the data is offered at this moment. A record without "era" belongs to no
@@ -460,7 +517,20 @@ func _condition_holds(record: Dictionary) -> bool:
         "buy_no_chunks_in_one_era":
             return chunks_bought_this_era == 0
         "buy_all_available_chunks_in_one_era":
-            return _main_map != null and available_chunk_count() == 0
+            return _main_map != null and region_open_hex_count() == 0
+        _:
+            return false
+
+
+# Whether the condition of a live task has become unreachable before its window closed. The task of
+# restraint is lost with the first purchase of the era; the Region stays winnable until the era ends,
+# because every hex left in it can still be bought. A condition the code does not know is not called
+# lost here — the validator already reports it, and the city is not told it failed at something the
+# game never measured.
+func _condition_lost(record: Dictionary) -> bool:
+    match str(record.get("condition", "")):
+        "buy_no_chunks_in_one_era":
+            return chunks_bought_this_era > 0
         _:
             return false
 
@@ -473,6 +543,17 @@ func complete_era_challenge(record: Dictionary) -> void:
     for reward in rewards_of(record):
         apply_reward(null, reward)
     emit_signal("challenge_completed", record)
+
+
+# The window of the task is closed and the city did not meet it. A task offered once is gone for the
+# whole game; a task of every era comes back with the next window, so only its news is kept.
+func fail_era_challenge(record: Dictionary) -> void:
+    var id := str(record.get("id", ""))
+    if id.is_empty() or failed_challenges.has(id):
+        return
+    if bool(record.get("once", false)):
+        failed_challenges[id] = true
+    emit_signal("challenge_failed", record)
 
 
 # The progress of an era task, for the tab that lists them before the player accepts any of them.
@@ -489,7 +570,9 @@ func era_challenge_progress(record: Dictionary) -> Dictionary:
 # The chunks the city could still claim in the Region of the current era. A chunk is not stored on
 # the map: the claiming assembles it by a BFS outwards from a hex (expansion_manager.get_chunk_hexes),
 # so the task walks the same rule over every hex that is open, and a hex already counted is not taken
-# from a second start.
+# from a second start. The fog is not part of the count: land the city has not scouted is still the
+# Region it has to buy, and a task that read only the explored hexes would be met by taking the one
+# chunk the player happened to look at.
 func available_chunks() -> Array:
     if _main_map == null:
         return []
@@ -499,7 +582,7 @@ func available_chunks() -> Array:
     for row in range(int(bounds.row_start), int(bounds.row_end) + 1):
         for col in range(int(bounds.col_start), int(bounds.col_end) + 1):
             var key := "%d,%d" % [row, col]
-            if seen.has(key) or not _is_buyable_hex(row, col):
+            if seen.has(key) or not _is_claimable_hex(row, col):
                 continue
             var chunk = _main_map.expansion_manager.get_chunk_hexes(row, col)
             if chunk.is_empty():
@@ -514,9 +597,25 @@ func available_chunk_count() -> int:
     return available_chunks().size()
 
 
-# A hex is open for claiming when it is explored, inside the Region, and belongs neither to the city
-# nor to the ring of a town (expansion_manager.handle_action refuses the same three).
-func _is_buyable_hex(row: int, col: int) -> bool:
+# The hexes of the Region the city does not own and could still take. The count of HEXES, not of the
+# chunks above, is what the task of the whole Region is measured against: the grouping of the fog is
+# decided by how the player scouts, while the land left is the same whichever way he reaches it.
+func region_open_hex_count() -> int:
+    if _main_map == null:
+        return 0
+    var bounds = _main_map.get_region_bounds()
+    var count := 0
+    for row in range(int(bounds.row_start), int(bounds.row_end) + 1):
+        for col in range(int(bounds.col_start), int(bounds.col_end) + 1):
+            if _is_claimable_hex(row, col):
+                count += 1
+    return count
+
+
+# A hex is open for claiming when it is inside the Region and belongs neither to the city nor to the
+# ring of a town (expansion_manager refuses the same two). Whether the player has scouted it changes
+# when he can buy it, not whether the task still asks for it.
+func _is_claimable_hex(row: int, col: int) -> bool:
     if not _main_map.is_valid_hex(row, col):
         return false
     var tile = _main_map.get_tile_data(row, col)
@@ -524,7 +623,7 @@ func _is_buyable_hex(row: int, col: int) -> bool:
         return false
     if bool(tile.get("in_influence", false)) or bool(tile.get("in_town_influence", false)):
         return false
-    return bool(tile.get("is_explored", false))
+    return true
 
 
 # --- THE SAVE ------------------------------------------------------------------
@@ -538,6 +637,7 @@ func serialize() -> Dictionary:
         "produced": _copy_counters(produced_by_quality),
         "tiers": done_tiers.keys(),
         "challenges": completed_challenges.keys(),
+        "challenge_failures": failed_challenges.keys(),
         "chunks_this_era": chunks_bought_this_era,
     }
 
@@ -565,6 +665,11 @@ func deserialize(state: Dictionary) -> void:
     if challenges is Array:
         for id in challenges:
             completed_challenges[str(id)] = true
+    failed_challenges = {}
+    var failures = state.get("challenge_failures", [])
+    if failures is Array:
+        for id in failures:
+            failed_challenges[str(id)] = true
     chunks_bought_this_era = int(state.get("chunks_this_era", 0))
     _restore_fame_prices()
 

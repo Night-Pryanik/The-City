@@ -15,8 +15,20 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "%s (%s)"
+msgstr "%s (%s)"
+
 msgid "Add to storage"
 msgstr "Добавить на склад"
+
+msgid "Challenge completed"
+msgstr "Испытание выполнено"
+
+msgid "Challenge failed: %s"
+msgstr "Испытание провалено: %s"
+
+msgid "Failed"
+msgstr "Провалено"
 
 msgid "Nothing found"
 msgstr "Ничего не найдено"
@@ -490,7 +502,7 @@ msgid "300 px/s"
 msgstr "300 пикс/с"
 
 msgid "A challenge of the era is completed."
-msgstr "Вызов эпохи выполнен."
+msgstr "Испытание эпохи выполнено."
 
 msgid "A citizen has died of starvation. Population: %d"
 msgstr "Житель погиб от голода. Население: %d"
@@ -802,19 +814,19 @@ msgid "Carving rivers..."
 msgstr "Проведение рек..."
 
 msgid "Challenge completed: %s"
-msgstr "Вызов выполнен: %s"
+msgstr "Испытание выполнено: %s"
 
 msgid "Challenge names a condition the game does not check"
-msgstr "Вызов называет условие, которое игра не проверяет"
+msgstr "Испытание называет условие, которое игра не проверяет"
 
 msgid "Challenges"
-msgstr "Вызовы"
+msgstr "Испытания"
 
 msgid "Challenges of another era"
-msgstr "Вызовы другой эпохи"
+msgstr "Испытания другой эпохи"
 
 msgid "Challenges of this era"
-msgstr "Вызовы этой эпохи"
+msgstr "Испытания этой эпохи"
 
 msgid "Check a mod to add it to the game."
 msgstr "Отметьте модификацию, чтобы добавить её в игру."
@@ -1921,7 +1933,7 @@ msgid "Recipe references a nonexistent resource"
 msgstr "Рецепт ссылается на несуществующий ресурс"
 
 msgid "Recipe waits for a nonexistent challenge"
-msgstr "Рецепт ждёт несуществующего вызова"
+msgstr "Рецепт ждёт несуществующего испытания"
 
 msgid "Recipe yields a nonexistent resource"
 msgstr "Рецепт даёт несуществующий ресурс"
@@ -2227,7 +2239,7 @@ msgid "Specialization requires a nonexistent specialization"
 msgstr "Специализация требует несуществующую специализацию"
 
 msgid "Specialization waits for a nonexistent challenge"
-msgstr "Специализация ждёт несуществующего вызова"
+msgstr "Специализация ждёт несуществующего испытания"
 
 msgid "Specialization: %s"
 msgstr "Специализация: %s"
@@ -2368,13 +2380,13 @@ msgid "The belts the generator rolls are: polar, cold, mild, subtropical, tropic
 msgstr "Поясов, которые генератор задаёт, пять: polar, cold, mild, subtropical, tropical. Написание значения сравнивается буквально, поэтому пояс с ошибкой — это пояс, которого на карте не бывает, и покров там просто не вырастет. Если с ошибкой написаны ВСЕ пояса списка, покров не появится на карте вовсе. Пустой список означает «никаких ограничений», а не «нигде»."
 
 msgid "The challenge %s"
-msgstr "Вызов %s"
+msgstr "Испытание %s"
 
 msgid "The challenge of %s"
-msgstr "Вызов: %s"
+msgstr "Испытание: %s"
 
 msgid "The challenge of the era is completed: the city has a specialization to take."
-msgstr "Вызов эпохи выполнен: городу доступен ещё один выбор специализации."
+msgstr "Испытание эпохи выполнено: городу доступен ещё один выбор специализации."
 
 msgid "The chunk does not border explored territory — scout the neighbouring hexes first"
 msgstr "Чанк не граничит с исследованной территорией — сначала разведайте соседние гексы"
@@ -6001,6 +6013,10 @@ msgctxt "resources.name"
 msgid "Zebu"
 msgstr "Зебу"
 
+msgctxt "resources.name"
+msgid "Pottery of <city_name>"
+msgstr "Глиняная посуда <city_name>"
+
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
 msgstr "Ровная дорога для телег. Позволяет перевозить втрое больше, чем тропка."
@@ -6089,6 +6105,10 @@ msgctxt "specializations.description"
 msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
 msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше."
 
+msgctxt "specializations.description"
+msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
+msgstr "Печи города знают за его стенами. Керамика приносит больше, а мастерские наполняют её быстрее."
+
 msgctxt "specializations.full_name"
 msgid "Specialization of ceramics"
 msgstr "Специализация керамики"
@@ -6112,6 +6132,10 @@ msgstr "Специализация оружия"
 msgctxt "specializations.full_name"
 msgid "Specialization of wool"
 msgstr "Специализация шерсти"
+
+msgctxt "specializations.full_name"
+msgid "Specialization of pottery"
+msgstr "Специализация керамики"
 
 msgctxt "specializations.name"
 msgid "Agrarian"
@@ -6156,6 +6180,10 @@ msgstr "Оружейная"
 msgctxt "specializations.name"
 msgid "Wool"
 msgstr "Шерсть"
+
+msgctxt "specializations.name"
+msgid "Pottery"
+msgstr "Глиняная посуда"
 
 msgctxt "technologies.description"
 msgid "+30% to resource production on plantations."
@@ -6911,7 +6939,7 @@ msgstr "эту категорию"
 
 msgctxt "validator_entity_ref_challenge"
 msgid "this challenge"
-msgstr "этот вызов"
+msgstr "это испытание"
 
 msgctxt "validator_entity_ref_climate_zone"
 msgid "this climate zone"
@@ -6919,7 +6947,7 @@ msgstr "эту климатическую зону"
 
 msgctxt "validator_entity_ref_condition"
 msgid "this challenge condition"
-msgstr "это условие вызова"
+msgstr "условие этого испытания"
 
 msgctxt "validator_entity_ref_consumption_rule"
 msgid "this consumption rule"
@@ -7007,7 +7035,7 @@ msgstr "категории"
 
 msgctxt "validator_entity_source_challenge"
 msgid "challenge"
-msgstr "вызове"
+msgstr "испытании"
 
 msgctxt "validator_entity_source_climate_zone"
 msgid "climate zone"
@@ -7015,7 +7043,7 @@ msgstr "климатическая зона"
 
 msgctxt "validator_entity_source_condition"
 msgid "challenge condition"
-msgstr "условии вызова"
+msgstr "условии испытания"
 
 msgctxt "validator_entity_source_consumption_rule"
 msgid "consumption rule"
@@ -7103,7 +7131,7 @@ msgstr "Категории"
 
 msgctxt "validator_entity_title_challenge"
 msgid "Challenge"
-msgstr "Вызова"
+msgstr "Испытания"
 
 msgctxt "validator_entity_title_climate_zone"
 msgid "Climate zone"
@@ -7111,7 +7139,7 @@ msgstr "Климатическая зона"
 
 msgctxt "validator_entity_title_condition"
 msgid "Challenge condition"
-msgstr "Условия вызова"
+msgstr "Условия испытания"
 
 msgctxt "validator_entity_title_consumption_rule"
 msgid "Consumption rule"

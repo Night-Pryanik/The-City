@@ -348,6 +348,15 @@ var _last_research_hud_tech: String = ""
 var era_dialog: ConfirmationDialog
 var era_advance_button: Button
 
+# --- The news of the tasks of the era ---
+# The window that shows the reward of a finished task of data/challenges.json (see
+# challenge_manager.gd). A reward is read while the world waits; a loss is only said in the HUD and
+# kept in the journal.
+var challenge_news_dialog: AcceptDialog
+# The rewards of one judgment pass. The closing of an era decides every live task at once, and two
+# windows must not open through each other.
+var _challenge_news_queue: Array = []
+
 # Requests the redrawing of the layer of the progress bars. It is called at the start/completion of
 # the construction, the research and the scouting, when the layer may change, but
 # _process (_active) will no longer trigger the redraw (for example, because of

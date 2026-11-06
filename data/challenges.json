@@ -13,12 +13,17 @@
   //                 "buy_no_chunks_in_one_era" — the era ends and the city has bought nothing.
   //                   The counter is reset when the era advances, so the task is offered again in
   //                   every one of them; the free claiming of the new Region, which comes with the
-  //                   advance itself and spends no money, is not a purchase.
+  //                   advance itself and spends no money, is not a purchase. The first bought chunk
+  //                   of the era loses the task, and loses it at that moment.
   //                 "buy_all_available_chunks_in_one_era" — no hex of the Region of the current
-  //                   era is left that the city could still claim.
-  //   "once" — a challenge completed is taken off the list for the whole game. Without the field
-  //               it is completed again whenever its condition holds, which is what makes the era
-  //               tasks repeat.
+  //                   era is left outside the Influence of the city. The fog is not part of the
+  //                   rule: land the city has not scouted is still land it has to buy, and the
+  //                   hexes in the ring of another town are left out because they are never for
+  //                   sale.
+  //   "once" — a challenge is taken off the list for the whole game once the city has finished it,
+  //               and off it for good if the city loses it. Without the field the challenge is
+  //               completed again whenever its condition holds, and the era that closed without
+  //               finishing it only says so — the next era asks the same task again.
   //   "era" — the era the challenge is offered in, as the index of data/eras.json. The era tasks
   //               that spend the era as their window need it: a task of restraint in the first era
   //               cannot be set again in the second, because the advance itself claims the new
@@ -27,7 +32,9 @@
   //               specialization gives the city a pick of its own; any other reward gives none.
   //
   // The list of the challenges and of their rewards is shown to the player before he accepts any
-  // of them (the tab "Challenges" of the city window).
+  // of them (the tab "Challenges" of the city window). The end of a task is always said in the HUD
+  // and kept in the journal; a completion also stops the world in a window of its own, where the
+  // reward is read.
   "challenges": [
     {
       "id": "region_of_our_own",

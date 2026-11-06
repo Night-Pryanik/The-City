@@ -204,6 +204,42 @@ func _on_specialization_choice_offered() -> void:
         return
     specialization_popup.open()
 
+# The end of a task of the era stops the world only when the city has earned something: the reward
+# was not promised in advance, and it arrives with the era. A lost task is news, not an
+# interruption — the manager says it in the HUD and the journal, and the tab keeps the reason. The
+# window is queued, because the closing of an era judges every live task at once.
+func _on_era_challenge_completed(challenge: Dictionary) -> void:
+    _queue_challenge_news(challenge)
+
+func _queue_challenge_news(challenge: Dictionary) -> void:
+    # The words are written now, not when the window is shown: between the two the era closes, its
+    # Region is claimed for nothing, and the counter the news quotes would already be another one.
+    _challenge_news_queue.append({
+        "title": tr("Challenge completed"),
+        "text": challenge_manager.challenge_news_text(challenge, true),
+    })
+    _show_next_challenge_news()
+
+func _show_next_challenge_news() -> void:
+    if challenge_news_dialog == null or challenge_news_dialog.visible:
+        return
+    if _challenge_news_queue.is_empty():
+        return
+    var news: Dictionary = _challenge_news_queue.pop_front()
+    challenge_news_dialog.title = str(news.get("title", ""))
+    challenge_news_dialog.dialog_text = str(news.get("text", ""))
+    challenge_news_dialog.popup_centered()
+    apply_pause_state()
+
+# The window hides before the queue is read again: the flag is recomputed for the world without it,
+# and the next news stops it again if there is one left. The next window waits a frame — a popup
+# opened in the same call that closed its predecessor finds the viewport of the game still active.
+func _on_challenge_news_visibility_changed() -> void:
+    if challenge_news_dialog.visible:
+        return
+    apply_pause_state()
+    _show_next_challenge_news.call_deferred()
+
 func _on_tech_popup_go_to_techs():
     # We unpause and open the interface of the city on the tab "Technologies"
     city_ui.refresh()
@@ -234,14 +270,16 @@ func _on_pause_menu_visibility_changed():
     if active_pause != null and settings_menu and settings_menu.visible:
         pause_button.visible = false
 
-# THE OWNER of the flag of the pause of the tree. Four independent things stop the
-# simulation: the pause menu, the active pause, the journal window and the choice of a
-# specialization, and any of them may be on while the others are not. The menu therefore must not
-# switch the flag off on its own — closing it over a stopped world has to leave the world stopped.
+# THE OWNER of the flag of the pause of the tree. Five independent things stop the
+# simulation: the pause menu, the active pause, the journal window, the choice of a specialization
+# and the news of a task of the era, and any of them may be on while the others are not. The menu
+# therefore must not switch the flag off on its own — closing it over a stopped world has to leave
+# the world stopped.
 func apply_pause_state():
     get_tree().paused = (active_pause != null and active_pause.is_active()) \
             or pause_menu.visible or journal_ui.visible \
-            or (specialization_popup != null and specialization_popup.visible)
+            or (specialization_popup != null and specialization_popup.visible) \
+            or (challenge_news_dialog != null and challenge_news_dialog.visible)
 
 # The journal is a window over the map: opening it stops the simulation, because the
 # player is reading, not playing. The pause flag itself is recomputed, not written: the
