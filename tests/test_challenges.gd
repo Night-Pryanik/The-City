@@ -195,15 +195,19 @@ func _check_brand_product(state: Dictionary, pid: String, brand_id: String) -> v
     check(float(brand.get("price", 0.0)) > float(_gdata.products[base].get("price", 0.0)),
             "the prestige good %s must be dearer than the good it is made of" % brand_id, state)
 
-    # The phrase of a brand name lives in the data, with the tag <city_name> where the city belongs,
-    # and the catalog carries the phrase of its own language. What is judged here is therefore the
-    # substitution and the shape of the phrase: the good, the city, no brackets, no tag left standing.
+    # The phrase of a brand name lives in the data, with the tag <city_name> where the city
+    # belongs, and the catalog carries the phrase of its own language. It names the prestige
+    # good itself, and not the good of the rung: the fame of porcelain is earned on pottery,
+    # while the city signs "Porcelain of …". What is judged here is therefore the
+    # substitution and the shape of the phrase: the word of the good, the city standing
+    # where the tag stands, no brackets, no tag left standing.
     var saved_city := str(_cdata.city_name)
+    _cdata.city_name = ""
+    var without_city := str(_gdata.get_product_name(brand_id))
     _cdata.city_name = "Testfeld"
-    var base_name := str(_gdata.get_product_name(base))
     var shown := str(_gdata.get_product_name(brand_id))
-    check(shown.contains("Testfeld") and shown.contains(base_name),
-            "the prestige good %s must be shown by its base good and by the city: %s"
+    check(not without_city.is_empty() and shown.contains(without_city) and shown.contains("Testfeld"),
+            "the prestige good %s must be shown by its own good and by the city: %s"
                     % [brand_id, shown], state)
     check(not shown.contains("(") and not shown.contains(")"),
             "the name of a brand carries no brackets: %s" % shown, state)
@@ -212,11 +216,9 @@ func _check_brand_product(state: Dictionary, pid: String, brand_id: String) -> v
         check(_gdata.get_craft_display_name(recipe) == shown,
                 "the row of the building must carry the name of the brand, not the name of the " +
                 "workshop: %s" % str(recipe.get("name", "")), state)
-    _cdata.city_name = ""
-    var nameless := str(_gdata.get_product_name(brand_id))
-    check(not nameless.contains(_gdata.TAG_CITY_NAME) and not nameless.contains("Testfeld"),
+    check(not without_city.contains(_gdata.TAG_CITY_NAME) and not without_city.contains("Testfeld"),
             "a city without a name must leave neither the tag nor a hole in the phrase: %s"
-                    % nameless, state)
+                    % without_city, state)
     _cdata.city_name = saved_city
 
 # --- 2. THE COUNTERS ---
