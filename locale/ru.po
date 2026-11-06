@@ -1449,9 +1449,6 @@ msgstr "Язык"
 msgid "Language of the interface and of the game data. The option \"Language of the system\" follows the language of your operating system."
 msgstr "Язык интерфейса и игровых данных. Пункт «Язык системы» берёт язык вашей операционной системы."
 
-msgid "Language of the system"
-msgstr "Язык системы"
-
 msgid "Large (100×100)"
 msgstr "Большая (100×100)"
 
@@ -2261,6 +2258,9 @@ msgstr "Предложить другое название"
 
 msgid "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
 msgstr "Запасы, динамика и тултипы с ресурсами обновляются с этим интервалом (от 1 до 5 секунд). Расчёты симуляции идут как обычно, раз в секунду."
+
+msgid "System Language"
+msgstr "Язык системы"
 
 msgid "Take this construction out of the queue. Nothing has been spent yet"
 msgstr "Убрать это строительство из очереди. Затрат ещё не было"

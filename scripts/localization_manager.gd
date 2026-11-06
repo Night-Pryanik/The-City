@@ -120,7 +120,7 @@ func is_translation_loaded(code: String) -> bool:
 # the languages whose translation is loaded. If the system language is supported, it
 # is also placed at the bottom of the list — so that the choice is visible in both modes.
 func available_languages() -> Array:
-    var result: Array = [{"code": SYSTEM_LOCALE, "name": tr("Language of the system")}]
+    var result: Array = [ {"code": SYSTEM_LOCALE, "name": tr("System Language")}]
     for lang in LANGUAGES:
         if lang["code"] == DEFAULT_LOCALE or is_translation_loaded(lang["code"]):
             result.append(lang.duplicate())
@@ -135,7 +135,7 @@ func get_locale() -> String:
 # exactly the system chose — otherwise the item looks undetermined.
 func get_language_label(code: String) -> String:
     if code == SYSTEM_LOCALE:
-        return tr("Language of the system") + " (%s)" % language_display_name(resolve_system_locale())
+        return tr("System Language") + " (%s)" % language_display_name(resolve_system_locale())
     for lang in LANGUAGES:
         if lang["code"] == code:
             return str(lang["name"])

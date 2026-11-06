@@ -1449,9 +1449,6 @@ msgstr ""
 msgid "Language of the interface and of the game data. The option \"Language of the system\" follows the language of your operating system."
 msgstr ""
 
-msgid "Language of the system"
-msgstr ""
-
 msgid "Large (100×100)"
 msgstr ""
 
@@ -2260,6 +2257,9 @@ msgid "Suggest another name"
 msgstr ""
 
 msgid "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
+msgstr ""
+
+msgid "System Language"
 msgstr ""
 
 msgid "Take this construction out of the queue. Nothing has been spent yet"

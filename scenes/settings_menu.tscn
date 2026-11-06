@@ -58,7 +58,7 @@ text = "Language"
 [node name="LanguageHint" type="Label" parent="TabContainer/Игра/Scroll/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-text = "Language of the interface and of the game data. The option \"Language of the system\" follows the language of your operating system."
+text = "Language of the interface and of the game data. The option \"System Language\" follows the language of your operating system."
 autowrap_mode = 3
 
 [node name="LanguageOptionButton" type="OptionButton" parent="TabContainer/Игра/Scroll/VBoxContainer"]
