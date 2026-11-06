@@ -88,7 +88,7 @@
       "type": "product",
       "category": "drinks",
       "unlock_tech": "fermentation",
-      "icon": "cocoa.png"
+      "icon": "cocoa_drink.png"
     },
     {
       "id": "mate",

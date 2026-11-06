@@ -115,7 +115,7 @@
       "type": "product",
       "category": "material",
       "unlock_tech": "fermentation",
-      "icon": "cocoa_beans.png"
+      "icon": "cocoa.png"
     },
     {
       "id": "yerba_mate_leaves", "price": 6,
