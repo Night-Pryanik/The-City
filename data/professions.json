@@ -26,7 +26,7 @@
   //     { "resource": "<id>|@<group>", "profession": ["<id>"], "amount": N,
   //       "interval": S, "production_bonus": B }.
   //     The key "@<group>" refers to a product group from
-  //     data/product_groups.json — any suitable product
+  //     data/product_groups/ — any suitable product
   //     from the group is consumed (for example, "@boats" — "Boats" for a fisherman).
   //   * the deprecated variant for single cases — the "consumption" field of a
   //     product (data/products/*.json): { "profession": ["<id>"], "amount": N,

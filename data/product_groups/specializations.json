@@ -1,0 +1,49 @@
+{
+  // A part of the registry of product groups: the goods that stand for one another wherever a good of
+  // the data may be named. A group is addressed as "@<id>" — by the ingredient of a craft recipe, by
+  // the resource of a consumption rule, by the goods a specialization bonus acts on.
+  //
+  // The registry is split by the mechanic that reads it, and this file holds the lines of prestige a
+  // specialization branch pays for (see data/specializations.json). These groups exist for the bonus,
+  // not for a recipe: a branch of the cheese cellars is a branch of the whole line — the good the city
+  // makes and the named good its brand tier opens — and the same list has to be read by the price of a
+  // town, by the output of a building and by the line of the plate without being written three times.
+  // The identifier of a group is global, so a group lives in exactly one file even when a second
+  // mechanic names it; the file of that mechanic says so.
+  //
+  // The optional "icon" field of a group — the icon file name shown wherever the group itself is
+  // drawn as a resource: the card and tooltip on the "Trade" tab, the group rows and the headers of a
+  // composition list. If it is not specified, the icon of the FIRST member of the group that has its
+  // own icon is taken; a group needs its own icon where that member does not speak for the group.
+  "product_groups": [
+    {
+      "id": "cheese_goods",
+      "name": "Cheese",
+      "products": [ "cheese", "aged_cheese" ]
+    },
+    {
+      "id": "ceramics_goods",
+      "name": "Ceramics",
+      "products": [ "pottery", "amphora", "porcelain" ]
+    },
+    {
+      "id": "wool_goods",
+      "name": "Wool",
+      "products": [ "wool", "cashmere" ]
+    },
+    {
+      // The branch of the smiths is a branch of blades of every metal the forge knows, not of the bar,
+      // so the group is the weapons and not the iron. A weapon of a metal the data adds later joins
+      // the line only when it is written here: nothing derives the list from the "weapons" category.
+      "id": "weapons_goods",
+      "name": "Weapons",
+      "products": [
+        "copper_weapons",
+        "bronze_weapons",
+        "iron_weapons",
+        "steel_weapons",
+        "damascus_weapons"
+      ]
+    }
+  ]
+}

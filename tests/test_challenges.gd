@@ -709,6 +709,16 @@ func _test_tab(state: Dictionary) -> void:
                 "the rung \"%s\" repeats the good its fold already names" % str(rung_name), state)
     var text := _list_text(list)
     check(text.find(good_name) >= 0, "the tab names the good the ladder is about", state)
+    # A counter of "sold" alone reads as any sale, while the fame of a good counts only what a town
+    # takes from the storage of the city. The condition of a rung therefore names its good — read
+    # from the data of the good, not written into the phrase of the tier — and the market of it.
+    var rep := _gdata.products[LADDER_GOOD][_mgr.TIER_REPUTATION] as Dictionary
+    var rep_threshold := int(rep.get("threshold", 0))
+    var condition := str(_fold_body(list, ladder_name).get_child(0)
+            .get_node("Row/Body").get_child(1).text)
+    check(condition == "%s: %d/%d sold to the towns" % [good_name, rep_threshold, rep_threshold],
+            "the condition of a rung names its good and the market it counts (got \"%s\")"
+                    % condition, state)
     check(text.find(str(_cdata.format_signed_percent(
             float(_mgr.reward_at(_gdata.products[LADDER_GOOD][_mgr.TIER_REPUTATION])
                     .get("value", 0.0))))) >= 0,

@@ -481,7 +481,7 @@ func _set_icon_tooltip(icon: TextureRect, row: Dictionary, display_key: String) 
         return
     var info: Dictionary = GameData.get_product_group_icon_info(display_key)
     if bool(info.get("own", false)):
-        _set_tooltip(icon, tr("Icon of group \"%s\": %s (set in data/product_groups.json)") % [
+        _set_tooltip(icon, tr("Icon of group \"%s\": %s (set in data/product_groups/)") % [
             _row_title(row, display_key), icon_file])
     else:
         var source_pid := str(info.get("source_pid", ""))

@@ -121,6 +121,10 @@ func _init_release_state(recipe: Dictionary):
 # output_multiplier — the multiplier of the OUTPUT RATE of the result (the profession bonus:
 # 1.0 — no bonus). The ingredients are written off at the base rate meanwhile,
 # therefore the bonus does not "eat" any extra raw materials.
+# product_multipliers — the extra factor of one good of the result over that building-wide
+# multiplier (a specialization scoped to a line of goods, see CityData
+# .get_production_product_multipliers). A good absent from it is made at the ordinary rate, and a
+# recipe with several results is paid for each of them apart.
 #
 # Returns a dictionary:
 #   {
@@ -129,7 +133,9 @@ func _init_release_state(recipe: Dictionary):
 #     "missing": [String],                     # the ingredient keys that are not enough (for the UI/tooltip)
 #     "releases": [{ "pid": "...", "amount": N, "quality": "..." }]  # what to output to the storage on this tick
 #   }
-func tick(delta: float, is_active: bool, quality_priority: String = "best", output_multiplier: float = 1.0) -> Dictionary:
+func tick(delta: float, is_active: bool, quality_priority: String = "best",
+        output_multiplier: float = 1.0,
+        product_multipliers: Dictionary = {}) -> Dictionary:
     var result := {
         "completed": false,
         "consumed_breakdown": {},
@@ -237,7 +243,8 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
             var full_amount: int = int(result_products[pid])
             if full_amount <= 0:
                 continue
-            var per_release: float = float(full_amount) * delta / craft_time * output_multiplier
+            var per_release: float = float(full_amount) * delta / craft_time * output_multiplier \
+                    * float(product_multipliers.get(pid, 1.0))
             var frac: float = float(release_fractional.get(pid, 0.0)) + per_release
             var floor_amount: int = int(floor(frac))
             frac = frac - float(floor_amount)
@@ -513,7 +520,7 @@ func _build_slots_from_recipe(recipe: Dictionary) -> Array:
     return out
 
 # Fills the slot by one variant of the ingredient: a single product or an @-group
-# (the members are resolved by the id from data/product_groups.json).
+# (the members are resolved by the id from data/product_groups/).
 func _apply_variant_to_slot(slot: Dictionary, variant: Dictionary):
     var key := str(variant.get("key", ""))
     slot["required"] = int(variant.get("amount", slot.get("required", 0)))
@@ -527,7 +534,7 @@ func _apply_variant_to_slot(slot: Dictionary, variant: Dictionary):
         slot["pid"] = key
 
 func _resolve_group_members(group_key: String) -> Array:
-    # The resolution of an @-group by the id from data/product_groups.json. The reverse search by
+    # The resolution of an @-group by the id from data/product_groups/. The reverse search by
     # the human-readable name is deliberately absent: it would silently substitute the members
     # of another group with a similar name (in the data the @-keys are always ids).
     if not is_instance_valid(GameData):

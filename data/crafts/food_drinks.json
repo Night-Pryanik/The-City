@@ -14,7 +14,7 @@
       // The meats are distinct products on purpose: a diversity of meats on
       // the table is the basis of the diversity bonus system (see
       // data/bonuses.json). All the bovines share the "Beef" recipe through
-      // the @bovines group (data/product_groups.json).
+      // the @bovines group (data/product_groups/crafts.json).
       //
       // Every slaughter recipe has the same throughput: 20 heads into 120 units
       // of meat (24 per second) in 5 seconds, whatever the species, plus the

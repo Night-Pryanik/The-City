@@ -1,0 +1,124 @@
+{
+  // A part of the registry of product groups: the goods that stand for one another wherever a good of
+  // the data may be named. A group is addressed as "@<id>" — by the ingredient of a craft recipe, by
+  // the resource of a consumption rule, by the goods a specialization bonus acts on.
+  //
+  // The registry is split by the mechanic that reads it, and this file holds the groups a consumption
+  // rule writes off — the key "@<id>" of the "resource" field in data/consumption/ (see
+  // scripts/consumption_manager.gd). The identifier of a group is global, so a group lives in exactly
+  // one file even when a second mechanic names it; the file of that mechanic says so.
+  //
+  // The optional "icon" field of a group — the icon file name shown wherever the group itself is
+  // drawn as a resource: the card and tooltip on the "Trade" tab, the group rows and the headers of a
+  // composition list. If it is not specified, the icon of the FIRST member of the group that has its
+  // own icon is taken; a group needs its own icon where that member does not speak for the group.
+  "product_groups": [
+    {
+      "id": "boats",
+      "name": "Boats",
+      "products": [ "reed_boat" ]
+    },
+    {
+      "id": "fruits",
+      "name": "Fruits",
+      "products": [
+        "grapes",
+        "olives",
+        "mulberries",
+        "figs",
+        "dates",
+        "coconuts",
+        "cactus_fruit",
+        "agave",
+        "pomegranates",
+        "yucca_fruit"
+      ]
+    },
+    {
+      // The drinks the city empties. The recipe of vinegar takes the same list, but the group is
+      // drawn by what is drunk, not by what is soured.
+      "id": "alcohol",
+      "name": "Alcohol",
+      "products": [ "beer", "mead", "sake", "pulque", "toddy", "wine", "fruit_wine", "hopped_beer" ]
+    },
+    {
+      "id": "non_alcoholic_beverages",
+      "name": "Beverages",
+      "products": [ "tea", "coffee", "cocoa", "mate", "karkadeh" ]
+    },
+    {
+      "id": "tableware",
+      "name": "Tableware",
+      "products": [
+        "stone_tableware",
+        "pottery",
+        "glassware"
+        // "metal_tableware"
+      ]
+    },
+    {
+      "id": "jewelry",
+      "name": "Jewelry",
+      "products": [
+        "gold_jewelry",
+        "silver_jewelry",
+        "bronze_jewelry",
+        "iron_jewelry",
+        "lazurite_jewelry",
+        "malachite_jewelry",
+        "nephrite_jewelry",
+        "porphyry_jewelry",
+        "copper_jewelry",
+        "glass_jewelry",
+        "pearl_jewelry",
+        "coral_jewelry"
+      ]
+    },
+    {
+      "id": "clothes",
+      "name": "Clothes",
+      "products": [
+        "wool_clothes",
+        "fabric_clothes",
+        "leather_clothes",
+        "silk_clothes"
+      ]
+    },
+    {
+      "id": "spices",
+      "name": "Spices",
+      "products": [
+        //"black_pepper",
+        "sesame",
+        "cinnamon",
+        //"cloves",
+        "nutmeg",
+        "saffron",
+        "vanilla",
+        "chili"
+      ]
+    },
+    {
+      "id": "sweeteners",
+      "name": "Sweeteners",
+      "products": [ "sugar", "honey" ]
+    },
+    {
+      "id": "aux_food",
+      "name": "Additional Food",
+      "products": [ "eggs", "oyster" ]
+    },
+    {
+      "id": "consumer_goods",
+      "name": "Consumer Goods",
+      "products": [ "salt", "soap", "vegetable_oil", "sponge" ]
+    },
+    {
+      // The empty vessel a good is stored and shipped in. Tare is generic: the winemaker, the brewer
+      // and the oilmaker ask for any container, not for the ware that once held their own good.
+      "id": "tare",
+      "name": "Tare",
+      "products": [ "amphora", "glass_bottle", "wooden_barrel" ]
+    }
+  ]
+}

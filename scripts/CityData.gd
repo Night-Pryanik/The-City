@@ -978,7 +978,7 @@ func get_building_planned_consumption() -> Dictionary:
                     var res: String = str(variant.get("key", ""))
                     if res.begins_with("@"):
                         # A group resource: the demand refers to any member of the group.
-                        # The key of the "@"-group is always the id from product_groups.json.
+                        # The key of the "@"-group is always the id from the registry of data/product_groups/.
                         var group_key = res.trim_prefix("@")
                         var group_products = GameData.product_groups.get(group_key, [])
                         if group_products.is_empty():
@@ -1023,6 +1023,9 @@ func get_building_planned_production() -> Dictionary:
     # The multiplier of the profession of the citizen (worker_manager.get_building_production_bonus)
     # — so that the planned label "≈" coincides with the actual output.
     var wm = _get_worker_manager()
+    # The same per-good factors the tick of the production passes into the containers, so that the
+    # plan of a branch scoped to a line of goods is the plan of that goods only.
+    var production_multipliers := get_production_product_multipliers()
     for i in range(city_built_buildings.size()):
         var bld = city_built_buildings[i]
         var slots = bld.get("slots", [])
@@ -1058,9 +1061,11 @@ func get_building_planned_production() -> Dictionary:
                 if amount <= 0:
                     continue
                 # The bonus of the profession is applied to the output of the recipe — as the multiplier
-                # of the production at the improvements on the map.
-                if prof_multiplier != 1.0:
-                    amount = int(round(float(amount) * prof_multiplier))
+                # of the production at the improvements on the map. A branch scoped to a good multiplies
+                # the same output of that good only.
+                var good_multiplier := prof_multiplier * float(production_multipliers.get(res, 1.0))
+                if good_multiplier != 1.0:
+                    amount = int(round(float(amount) * good_multiplier))
                     if amount <= 0:
                         continue
                 _record_planned_supply(result, res, building_source, amount, craft_time)
@@ -1554,6 +1559,11 @@ func do_tick():
     science_buildings_rate_per_sec = 0.0
     var science_breakdown_buildings: Array = []
 
+    # The goods a taken branch speeds the making of, and by how much. The map is built once per tick
+    # because the loop of the buildings reads it for every slot; it is empty for a city whose branches
+    # name no good, which is the common case.
+    var production_multipliers := get_production_product_multipliers()
+
     # --- The work of the buildings (only if there is a citizen) ---
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -1621,7 +1631,8 @@ func do_tick():
             #              remainder is caught up — exactly full_amount is released
             #              over the whole cycle.
             #   completed — true if the container is full AND craft_time has passed.
-            var tick_res: Dictionary = container.tick(SIMULATION_TICK, has_worker, priority, output_multiplier)
+            var tick_res: Dictionary = container.tick(SIMULATION_TICK, has_worker, priority,
+                    output_multiplier, production_multipliers)
 
             # --- THE RECORDING OF THE EXPENSE FOR THE TICK ---
             # We record the consumption source for the tooltip of the resources and the UI label
@@ -2328,8 +2339,7 @@ func get_city_effects() -> Array:
             effects.append({
                 "group": "specializations",
                 "icon": str(spec.get("icon", "")),
-                "name": format_specialization_bonus(bonus_type, share,
-                        _bonus_improvements(bonus)),
+                "name": format_specialization_bonus_record(bonus),
                 "value": "",
                 "source": get_specialization_full_name(spec),
             })
@@ -2695,7 +2705,7 @@ func consume_additional_cost(bdata: Dictionary) -> Dictionary:
                 continue
             if GameData.is_group_key(res_id):
                 var group_key = res_id.trim_prefix("@")
-                # The key of the "@"-group is always the id from product_groups.json.
+                # The key of the "@"-group is always the id from the registry of data/product_groups/.
                 var group_products = GameData.product_groups.get(group_key, [])
                 if group_products.is_empty():
                     missing.append(res_id)
@@ -3391,6 +3401,24 @@ func _bonus_products(bonus: Dictionary) -> Array:
         return [str(targets)]
     return []
 
+# The goods a bonus acts on as identifiers of concrete goods: every "@<group>" of the record is
+# replaced by the members of the group (data/product_groups/), so that a branch written over a
+# line of goods pays for each of them. A bonus that names no good gives an empty list, which is not
+# "no goods" but "every good of its system" — see get_specialization_product_share.
+func get_bonus_product_ids(bonus: Dictionary) -> Array:
+    var out: Array = []
+    for target in _bonus_products(bonus):
+        var key := str(target)
+        var members: Array = []
+        if GameData.is_group_key(key):
+            members = GameData.product_groups.get(key.trim_prefix("@"), [])
+        else:
+            members = [key]
+        for pid in members:
+            if not out.has(str(pid)):
+                out.append(str(pid))
+    return out
+
 # The share the taken branches give to ONE good: the branches that name no good of their own plus the
 # branches that name this one. A prestige branch scopes its bonus to the goods of its line, and the
 # totals of the tab "Effects" keep saying nothing about the goods the city at large is paid for.
@@ -3402,11 +3430,33 @@ func get_specialization_product_share(bonus_type: String, pid: String) -> float:
                 continue
             if not _bonus_improvements(bonus).is_empty():
                 continue
-            var targets := _bonus_products(bonus)
+            var targets := get_bonus_product_ids(bonus)
             if not targets.is_empty() and not targets.has(pid):
                 continue
             total += float(bonus.get("value", 0.0))
     return total
+
+# The output factor of the goods a taken branch speeds the making of: product id -> the multiplier of
+# that good. The branches that name no good are already in get_specialization_multiplier, so a good
+# absent from this map is made at the ordinary rate. An empty map is the common case, and both the
+# tick of the production and the plan of the tab "Resources" read it once per tick rather than per
+# building.
+func get_production_product_multipliers() -> Dictionary:
+    var goods := {}
+    for spec in get_chosen_specializations():
+        for bonus in spec.get("bonuses", []):
+            if not (bonus is Dictionary):
+                continue
+            if str(bonus.get("type", "")) != SPEC_BUILDING_PRODUCTION:
+                continue
+            if not _bonus_improvements(bonus).is_empty():
+                continue
+            for pid in get_bonus_product_ids(bonus):
+                goods[pid] = true
+    var out := {}
+    for pid in goods:
+        out[pid] = 1.0 + get_specialization_product_share(SPEC_BUILDING_PRODUCTION, str(pid))
+    return out
 
 # What a town pays for one unit of a good of the city: the branches of trade, the branches scoped to
 # this very good, and the fame of the good itself (challenge_manager.gd). The three multiply, so a
@@ -3433,13 +3483,24 @@ func get_specialization_effects(spec: Dictionary) -> Array:
 # The wording of one bonus: what it acts on and how much it gives. The amount always names the
 # quantity it scales ("+10% to production", "+10% to the price") — a bare "+10%" says nothing about
 # what grows. A branch that names its improvements lists them, since the names are the localized
-# names of the data. An unknown type is shown as it is, so a bonus a mod adds is never dropped from
-# the window in silence.
+# names of the data. A branch that names its goods puts them first and rewords the system after them:
+# the same percentage means one thing for every good of the city and another for the goods of one
+# line of prestige, and the second is paid for those goods alone. An unknown type is shown as it is,
+# so a bonus a mod adds is never dropped from the window in silence.
 func format_specialization_bonus(bonus_type: String, share: float,
-        improvements: Array = []) -> String:
+        improvements: Array = [], products: Array = []) -> String:
     var amount := format_signed_percent(share)
     if bonus_type == SPEC_IMPROVEMENT_PRODUCTION and not improvements.is_empty():
         return tr("%s: %s to production") % [_improvement_names_text(improvements), amount]
+    var goods := _bonus_goods_text(products)
+    if goods != "":
+        match bonus_type:
+            SPEC_BUILDING_PRODUCTION:
+                return tr("%s: %s to production in city buildings") % [goods, amount]
+            SPEC_INTERNAL_MARKET_PRICE:
+                return tr("%s: %s to the price on the domestic market") % [goods, amount]
+            SPEC_TRADE_SELL_PRICE:
+                return tr("%s: %s to the price when sold to towns") % [goods, amount]
     match bonus_type:
         SPEC_IMPROVEMENT_PRODUCTION:
             return tr("Improvements on the map: %s to production") % amount
@@ -3457,11 +3518,34 @@ func format_specialization_bonus(bonus_type: String, share: float,
     # is, the way the group captions of the "Effects" tab are.
     return "%s: %s" % [bonus_type, amount]
 
-# The wording of one bonus record: the improvements it names are taken from the record itself, so
-# the windows do not have to know how a bonus is stored.
+# The wording of one bonus record: what the bonus names — its improvements or its goods — is taken
+# from the record itself, so the windows do not have to know how a bonus is stored.
 func format_specialization_bonus_record(bonus: Dictionary) -> String:
     return format_specialization_bonus(str(bonus.get("type", "")),
-            float(bonus.get("value", 0.0)), _bonus_improvements(bonus))
+            float(bonus.get("value", 0.0)), _bonus_improvements(bonus), _bonus_products(bonus))
+
+# The goods a bonus names, as the leading words of its line. A group of data/product_groups/
+# stands for its whole list and is shown by the name of the group; its key travels with the name, so
+# a view can mark it as the group reference it is and open the composition on hover.
+func get_specialization_bonus_goods(bonus: Dictionary) -> Array:
+    var out: Array = []
+    for target in _bonus_products(bonus):
+        var key := str(target)
+        out.append({"text": _bonus_goods_name(key),
+                    "group": key if GameData.is_group_key(key) else ""})
+    return out
+
+func _bonus_goods_text(products: Array) -> String:
+    var names: Array = []
+    for target in products:
+        names.append(_bonus_goods_name(str(target)))
+    return ", ".join(names)
+
+func _bonus_goods_name(key: String) -> String:
+    if GameData.is_group_key(key):
+        var group_name := GameData.get_product_group_name(key)
+        return group_name if group_name != "" else key
+    return GameData.get_product_name(key)
 
 # The names of the improvements, joined: "Farm, Plantation, Vineyard".
 func _improvement_names_text(improvements: Array) -> String:

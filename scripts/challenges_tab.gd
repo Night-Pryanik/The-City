@@ -318,14 +318,13 @@ func _is_expanded(key: String) -> bool:
     return bool(_expanded.get(key, false))
 
 func _fame_plate(record: Dictionary, manager) -> Control:
-    # The rung is named by its tier alone. The good it works stands in the name of the fold above it,
-    # and the lines under the name say what the rung asks and what it gives.
+    # The rung is named by its tier alone; the good it works and the market it works on stand in the
+    # condition line under the name, together with how far the city has come.
     var name_text := _tier_caption(str(record.get("tier", "")))
     var plate := _plate(str(record.get("icon", "")), name_text, str(record.get("description", "")))
     var body: VBoxContainer = plate.get_node("Row/Body")
 
-    var line := "%s: %d / %d" % [_trigger_label(str(record.get("trigger", "sell"))),
-            int(record.get("progress", 0)), int(record.get("threshold", 0))]
+    var line := _condition_line(record)
     var quality := str(record.get("min_quality", ""))
     if quality != "":
         line += " (%s)" % (tr("%s or better") % GameData.get_quality_name(quality))
@@ -355,8 +354,8 @@ func _add_rewards(body: VBoxContainer, rewards: Array, product_id: String, manag
         if text != "":
             body.add_child(_line("• " + text, UI_THEME.color("income")))
 
-# The rung of the ladder is named by its tier alone: the good it works stands in the name of the fold
-# above it, and the lines under the name say what the rung asks and what it gives.
+# The head of a rung says which of the three tiers it is. The name of the fold above it is the name
+# of the task the last rung gives, not the name of the good.
 func _tier_caption(tier: String) -> String:
     match tier:
         "reputation":
@@ -365,10 +364,17 @@ func _tier_caption(tier: String) -> String:
             return tr("Brand")
     return tr("Specialization")
 
-func _trigger_label(trigger: String) -> String:
-    if trigger == "produce":
-        return tr("Produced")
-    return tr("Sold")
+# The condition of a rung names the good and the market, because neither is obvious from the tier:
+# the head of the fold is named by the task of the last rung, and a counter of "sold" would read as
+# any sale while the fame of a good counts only what a town takes from the storage of the city.
+# The name of the good comes from its record, so a ladder added by a mod is titled by its own data.
+func _condition_line(record: Dictionary) -> String:
+    var product := str(record.get("product_name", ""))
+    var progress := int(record.get("progress", 0))
+    var threshold := int(record.get("threshold", 0))
+    if str(record.get("trigger", "sell")) == "produce":
+        return tr("%s: %d/%d produced") % [product, progress, threshold]
+    return tr("%s: %d/%d sold to the towns") % [product, progress, threshold]
 
 # --- The pieces of the list ---
 

@@ -1,0 +1,37 @@
+{
+  // A part of the registry of product groups: the goods that stand for one another wherever a good of
+  // the data may be named. A group is addressed as "@<id>" — by the ingredient of a craft recipe, by
+  // the resource of a consumption rule, by the goods a specialization bonus acts on.
+  //
+  // The registry is split by the mechanic that reads it, and this file holds the groups a building
+  // asks for in its "additional_cost" (see data/buildings.json). The identifier of a group is global,
+  // so a group lives in exactly one file even when a second mechanic names it; the file of that
+  // mechanic says so.
+  //
+  // The optional "icon" field of a group — the icon file name shown wherever the group itself is
+  // drawn as a resource: the card and tooltip on the "Trade" tab, the group rows and the headers of a
+  // composition list. If it is not specified, the icon of the FIRST member of the group that has its
+  // own icon is taken; a group needs its own icon where that member does not speak for the group.
+  "product_groups": [
+    {
+      // Rough stone of any kind the mason cuts. The recipe of shaped stone takes the same group, so
+      // one list feeds both the wall and the workshop that dresses it.
+      "id": "building_stone",
+      "name": "Building Stone",
+      "products": [
+        "basalt",
+        "tuff",
+        "sandstone",
+        "marble",
+        "granite",
+        "limestone",
+        "soapstone"
+      ]
+    },
+    {
+      "id": "processed_construction_materials",
+      "name": "Processed Building Materials",
+      "products": [ "processed_building_stone", "bricks" ]
+    }
+  ]
+}

@@ -112,7 +112,7 @@ const UI_THEME = preload("res://scripts/ui_theme.gd")
 const WOOD := "wood"
 const PLANKS := "planks"
 
-# A real product group (see data/product_groups.json): the purchase column can demand the
+# A real product group (see data/product_groups/): the purchase column can demand the
 # group itself instead of a concrete fruit. The key of a group in the pools carries "@".
 const FRUITS := "@fruits"
 

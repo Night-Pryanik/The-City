@@ -117,6 +117,11 @@ func _test_detector(state: Dictionary):
         # branches that wait for the tiers of "cheese" and "wool" must stay silent here, including
         # the tier whose id the data never writes.
         "specialization_challenge": [["ghost_challenge", "ghost_branch"]],
+        # The goods a bonus is scoped to. A group addressed as "@<id>" is expanded by the code over
+        # its members, so a reference to one binds as a reference to a good does; a group of the data
+        # written without its "@" is the good that does not exist.
+        "specialization_group": [["@ghost_group", "goods_branch"]],
+        "specialization_product": [["grains", "goods_branch"]],
         # The same reference read from a recipe: a work behind a task of the fame that is declared
         # nowhere is closed forever, and the row of the building only shows it as unavailable.
         "recipe_challenge": [["ghost_challenge", "bad_craft_challenge"]],
@@ -274,6 +279,21 @@ func _test_no_false_positives_on_synthetic(state: Dictionary):
         "waits for that derived id is not a breakage", state)
     check(_find(problems, "specialization_challenge", "era_chunks", "wool_branch").is_empty(),
         "a branch unlocked by a task of the era must not be considered a breakage", state)
+    # The goods a bonus is scoped to. A group is expanded by the code over its members, so a
+    # reference to one binds exactly as a reference to a good does — and a group written without its
+    # "@" is the same mistake the consumption rules make.
+    check(_find(problems, "specialization_product", "cheese", "cheese_branch").is_empty(),
+        "a bonus for an existing good must not be considered a breakage", state)
+    check(_find(problems, "specialization_group", "@grains", "cheese_branch").is_empty(),
+        "a bonus for an existing @-group must not be considered a breakage", state)
+    check(not _find(problems, "specialization_group", "@ghost_group", "goods_branch").is_empty(),
+        "a bonus that names a group declared nowhere is not reported", state)
+    var extra_at := _find(problems, "specialization_product", "grains", "goods_branch")
+    check(not extra_at.is_empty(),
+        "a group of the data written without \"@\" in a bonus is not reported", state)
+    check(str(extra_at.get("where", "")).contains("@grains"),
+        "the hint of the extra \"@\" does not name the group: %s" % str(extra_at.get("where", "")),
+        state)
     # The fame block itself is a valid record: a trigger the code knows and a reward naming a branch
     # that exists must not add a problem of their own kind.
     check(_find(problems, "fame_trigger", "sell", "cheese").is_empty(),
@@ -1109,12 +1129,24 @@ func _make_data() -> Node:
     gd.specializations = [
         # Both shapes of the unlock: one condition and a list of them.
         {"id": "cheese_branch", "name": "Cheese Branch",
-                "unlock": {"type": "challenge", "id": "cheese_challenge"}},
+                "unlock": {"type": "challenge", "id": "cheese_challenge"},
+                # The goods a bonus is scoped to: one good and one group addressed as "@<id>".
+                "bonuses": [
+                    {"type": "trade_sell_price", "value": 0.15, "products": ["cheese"]},
+                    {"type": "building_production", "value": 0.2, "products": ["@grains"]},
+                ]},
         {"id": "wool_branch", "name": "Wool Branch",
                 "unlock": [{"type": "challenge", "id": "wool_challenge"}]},
         # The breakage: no task of the era and no tier of a good carries this id.
         {"id": "ghost_branch", "name": "Ghost Branch",
                 "unlock": {"type": "challenge", "id": "ghost_challenge"}},
+        # The two mistakes of the goods list: a group declared nowhere, and a group of the data
+        # written without its "@".
+        {"id": "goods_branch", "name": "Goods Branch",
+                "bonuses": [
+                    {"type": "trade_sell_price", "value": 0.1, "products": ["@ghost_group"]},
+                    {"type": "internal_market_price", "value": 0.1, "products": ["grains"]},
+                ]},
     ]
 
     # Explicitly empty fields (null). In data/*.json, for example,

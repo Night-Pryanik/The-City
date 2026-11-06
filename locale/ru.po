@@ -18,6 +18,21 @@ msgstr ""
 msgid "%s (%s)"
 msgstr "%s (%s)"
 
+msgid "%s: %d/%d produced"
+msgstr "%s: произведено %d/%d"
+
+msgid "%s: %d/%d sold to the towns"
+msgstr "%s: продано городкам %d/%d"
+
+msgid "%s: %s to production in city buildings"
+msgstr "%s: %s к производству в городских зданиях"
+
+msgid "%s: %s to the price on the domestic market"
+msgstr "%s: %s к цене на внутреннем рынке"
+
+msgid "%s: %s to the price when sold to towns"
+msgstr "%s: %s к цене при продаже городкам"
+
 msgid "Add to storage"
 msgstr "Добавить на склад"
 
@@ -47,6 +62,9 @@ msgstr "Поиск по имени"
 
 msgid "Select a product:"
 msgstr "Выберите товар:"
+
+msgid "Specialization bonus names a nonexistent goods group"
+msgstr "Бонус специализации ссылается на несуществующую группу товаров"
 
 msgid "\n\nFound here: %s"
 msgstr "\n\nЗдесь обнаружено: %s"
@@ -1377,8 +1395,8 @@ msgstr "Огромная (150×150)"
 msgid "Icon of group \"%s\" taken from goods \"%s\""
 msgstr "Иконка группы «%s» взята у товара «%s»"
 
-msgid "Icon of group \"%s\": %s (set in data/product_groups.json)"
-msgstr "Иконка группы «%s»: %s (задана в data/product_groups.json)"
+msgid "Icon of group \"%s\": %s (set in data/product_groups/)"
+msgstr "Иконка группы «%s»: %s (задана в data/product_groups/)"
 
 msgid "Icon sets"
 msgstr "Наборы иконок"
@@ -1845,9 +1863,6 @@ msgstr "Цена за единицу: наличие на складе её не
 msgid "Price:"
 msgstr "Цена:"
 
-msgid "Produced"
-msgstr "Произведено"
-
 msgid "Produces:"
 msgstr "Производит:"
 
@@ -2213,9 +2228,6 @@ msgstr "Слот %d:"
 
 msgid "Small (30×30)"
 msgstr "Маленькая (30×30)"
-
-msgid "Sold"
-msgstr "Продано"
 
 msgid "Sold %d units of %s to %s."
 msgstr "Продано %d ед. %s в городок %s."
@@ -4620,6 +4632,22 @@ msgstr "Писчие инструменты"
 msgctxt "product_groups.name"
 msgid "Writing Materials"
 msgstr "Писчие материалы"
+
+msgctxt "product_groups.name"
+msgid "Cheese"
+msgstr "Сыр"
+
+msgctxt "product_groups.name"
+msgid "Ceramics"
+msgstr "Керамика"
+
+msgctxt "product_groups.name"
+msgid "Wool"
+msgstr "Шерсть"
+
+msgctxt "product_groups.name"
+msgid "Weapons"
+msgstr "Оружие"
 
 msgctxt "professions.description"
 msgid "A pseudo-profession that covers the whole population of the city, including employed citizens."

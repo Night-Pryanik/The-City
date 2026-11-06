@@ -35,6 +35,8 @@
 // A record that names its improvements or its products acts on those alone and is left out of the
 // totals the interface shows over all the branches, so that a bonus of one good is never read as a
 // bonus of every good.
+// An entry of "products" is the id of a good or a group of data/product_groups/ addressed as
+// "@<id>"; a group stands for every good of its list.
 //
 // "effects" are the non-numeric consequences of the branch (a new building, a recipe, a mechanic).
 // They are shown only in the tab "Specialization": the tab "Effects" carries the numbers.
@@ -152,8 +154,8 @@
       "icon": "cheese.png",
       "unlock": { "type": "challenge", "id": "cheese_challenge" },
       "bonuses": [
-        { "type": "trade_sell_price", "value": 0.15, "products": ["cheese", "aged_cheese"] },
-        { "type": "building_production", "value": 0.20, "products": ["cheese", "aged_cheese"] }
+        { "type": "trade_sell_price", "value": 0.15, "products": ["@cheese_goods"] },
+        { "type": "building_production", "value": 0.20, "products": ["@cheese_goods"] }
       ]
     },
     {
@@ -164,8 +166,8 @@
       "icon": "pottery.png",
       "unlock": { "type": "challenge", "id": "ceramics_challenge" },
       "bonuses": [
-        { "type": "trade_sell_price", "value": 0.15, "products": ["pottery", "amphora", "porcelain"] },
-        { "type": "building_production", "value": 0.20, "products": ["pottery", "amphora", "porcelain"] }
+        { "type": "trade_sell_price", "value": 0.15, "products": ["@ceramics_goods"] },
+        { "type": "building_production", "value": 0.20, "products": ["@ceramics_goods"] }
       ]
     },
     {
@@ -176,8 +178,8 @@
       "icon": "wool.png",
       "unlock": { "type": "challenge", "id": "wool_challenge" },
       "bonuses": [
-        { "type": "trade_sell_price", "value": 0.15, "products": ["wool", "cashmere"] },
-        { "type": "building_production", "value": 0.20, "products": ["wool", "cashmere"] }
+        { "type": "trade_sell_price", "value": 0.15, "products": ["@wool_goods"] },
+        { "type": "building_production", "value": 0.20, "products": ["@wool_goods"] }
       ]
     },
     {
@@ -191,8 +193,8 @@
       "icon": "iron_weapons.png",
       "unlock": { "type": "challenge", "id": "steel_challenge" },
       "bonuses": [
-        { "type": "trade_sell_price", "value": 0.15, "products": ["iron_weapons", "steel_weapons", "damascus_weapons"] },
-        { "type": "building_production", "value": 0.20, "products": ["iron_weapons", "steel_weapons", "damascus_weapons"] }
+        { "type": "trade_sell_price", "value": 0.15, "products": ["@weapons_goods"] },
+        { "type": "building_production", "value": 0.20, "products": ["@weapons_goods"] }
       ]
     }
   ]

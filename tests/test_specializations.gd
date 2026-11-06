@@ -14,11 +14,14 @@
 #      the player can always read the whole list.
 #   5. The bonuses: a bonus that names its improvements acts on those alone, a bonus that names none
 #      acts on every improvement, and the wording names what the percentage scales.
-#   6. The non-numeric effects: they are shown by the tab "Specialization" and never reach the
+#   6. The goods of a bonus: a branch that names a group of data/product_groups/ pays for every
+#      good of the group and for no other, its line leads with the goods, and the group is shown with
+#      the standard mark of a group reference.
+#   7. The non-numeric effects: they are shown by the tab "Specialization" and never reach the
 #      numeric list of the tab "Effects".
-#   7. The building production: a working building of the city really produces more with the
+#   8. The building production: a working building of the city really produces more with the
 #      industry branch — both in the planned output and in the units released by the tick.
-#   8. The live scene: the tab of the city window offers the available branches and takes a pick
+#   9. The live scene: the tab of the city window offers the available branches and takes a pick
 #      from there, keeps the unavailable ones under a disclosure; the choice window stops the
 #      simulation, may be postponed without spending the pick, and spends it on confirm.
 #
@@ -58,6 +61,7 @@ func _run() -> void:
     _test_choice(state)
     _test_prerequisites(state)
     _test_bonuses(state)
+    _test_goods_bonuses(state)
     _test_effects(state)
     await _test_live(state)
 
@@ -107,6 +111,19 @@ func _test_data(state: Dictionary) -> void:
                 check(_gdata.improvements.has(str(imp_id)),
                     "the branch \"%s\" names the improvement \"%s\", which does not exist"
                         % [id, str(imp_id)], state)
+            # The goods a bonus is scoped to live in one of two namespaces: a good of the data, or a
+            # group of data/product_groups/ addressed as "@<id>". A typo in either leaves the
+            # branch paying for nothing, and the plate still promises the bonus.
+            for target in bonus.get("products", []):
+                var key := str(target)
+                if _gdata.is_group_key(key):
+                    check(_gdata.product_groups.has(key.trim_prefix("@")),
+                        "the branch \"%s\" names the goods group \"%s\", which does not exist"
+                            % [id, key], state)
+                else:
+                    check(_gdata.products.has(key),
+                        "the branch \"%s\" names the product \"%s\", which does not exist"
+                            % [id, key], state)
 
     # Every bonus type of the base game is given by some branch: a type nothing uses is a type the
     # code carries for nothing.
@@ -480,7 +497,124 @@ func _priced_product() -> String:
             return str(pid)
     return ""
 
-# --- 6. The non-numeric effects ---
+# --- 6. The goods of a bonus ---
+
+# The prestige branches pay for the goods of one line, and a line is a group of
+# data/product_groups/: the good the city makes and the named good the fame of the line opens.
+# The code expands the group, so a branch written over one reaches every member of it and nothing
+# outside it — and the line of the plate says which goods it is about.
+func _test_goods_bonuses(state: Dictionary) -> void:
+    _reset_specs()
+    _cdata.total_population = int(_cdata.get_specialization_thresholds()[-1])
+    var scoped: Array = _goods_scoped_bonuses()
+    check(not scoped.is_empty(), "the data must declare a bonus that names its goods", state)
+
+    var outside := _good_outside(scoped)
+    check(not outside.is_empty(),
+        "the data must have a good outside every line to measure a scoped bonus against", state)
+    var seen_group := false
+    for entry in scoped:
+        var spec: Dictionary = entry[0]
+        var bonus: Dictionary = entry[1]
+        var id := str(spec.get("id", ""))
+        var type := str(bonus.get("type", ""))
+        var value := float(bonus.get("value", 0.0))
+        _reset_specs()
+        # A prestige branch is earned by the fame of a good, not by a pick, so the branch is written
+        # onto the city directly.
+        _cdata.chosen_specialization_ids.append(id)
+
+        var members: Array = _cdata.get_bonus_product_ids(bonus)
+        check(not members.is_empty(),
+            "the goods of the bonus of \"%s\" expand to nothing (got %s)"
+                % [id, str(bonus.get("products", []))], state)
+        for pid in members:
+            var share: float = _cdata.get_specialization_product_share(type, str(pid))
+            check(is_equal_approx(share, value),
+                "the good \"%s\" of the branch \"%s\" must carry its share (got %s, expected %s)"
+                    % [str(pid), id, str(share), str(value)], state)
+        if outside != "":
+            check(is_equal_approx(_cdata.get_specialization_product_share(type, outside), 0.0),
+                "the branch \"%s\" must not pay for \"%s\", which is outside its goods"
+                    % [id, outside], state)
+        # A bonus scoped to its goods stays out of the totals the interface keeps over every branch,
+        # or a bonus of one line would read as a bonus of the whole city.
+        check(is_equal_approx(_cdata.get_specialization_bonus(type), 0.0),
+            "a bonus scoped to its goods must not raise the total of \"%s\" (got %s)"
+                % [type, str(_cdata.get_specialization_bonus(type))], state)
+
+        # The line names the goods before the system they scale, and a group of the data travels with
+        # its own key so that the plate can mark it.
+        var line: String = _cdata.format_specialization_bonus_record(bonus)
+        var goods: Array = _cdata.get_specialization_bonus_goods(bonus)
+        check(not goods.is_empty(),
+            "a bonus that names its goods lists them nowhere (got \"%s\")" % line, state)
+        var first := str(goods[0].get("text", "")) if not goods.is_empty() else ""
+        check(line.begins_with(first),
+            "the line of a bonus must lead with the goods it pays for (got \"%s\")" % line, state)
+        check(line.contains(_cdata.format_signed_percent(value)),
+            "the line of a bonus must carry the amount (got \"%s\")" % line, state)
+        var group := str(goods[0].get("group", "")) if not goods.is_empty() else ""
+        if group != "":
+            seen_group = true
+            check(_gdata.product_groups.has(group.trim_prefix("@")),
+                "the goods group \"%s\" of the branch \"%s\" is declared nowhere" % [group, id], state)
+            check(members.size() > 1,
+                "a group of the data stands for a line of goods, \"%s\" expands to %s"
+                    % [group, str(members)], state)
+        match type:
+            "trade_sell_price":
+                check(line.contains("sold to towns"),
+                    "the line of the sale must say where the goods go (got \"%s\")" % line, state)
+            "internal_market_price":
+                check(line.contains("domestic market"),
+                    "the line of the price must name the market (got \"%s\")" % line, state)
+            "building_production":
+                check(line.contains("city buildings"),
+                    "the line of the production must name what produces (got \"%s\")" % line, state)
+                var multipliers: Dictionary = _cdata.get_production_product_multipliers()
+                for pid in members:
+                    check(is_equal_approx(float(multipliers.get(pid, 1.0)), 1.0 + value),
+                        "the good \"%s\" must be made faster by its branch (got %s)"
+                            % [str(pid), str(multipliers.get(pid, 1.0))], state)
+                if outside != "":
+                    check(is_equal_approx(float(multipliers.get(outside, 1.0)), 1.0),
+                        "a good outside the line must keep the ordinary rate", state)
+    check(seen_group,
+        "the data must scope a bonus to a group of data/product_groups/", state)
+
+    # A branch that names no goods is the ordinary case: its share acts on every good through the
+    # multiplier of the system, so the map of the goods stays empty and nothing is scaled twice.
+    _reset_specs()
+    var industry := str(_branch_with_type("building_production", true).get("id", ""))
+    check(_cdata.choose_specialization(industry), "the branch of the buildings must be chooseable",
+        state)
+    check(_cdata.get_production_product_multipliers().is_empty(),
+        "a branch that names no goods must leave the map of the goods empty", state)
+    _reset_specs()
+
+# Every bonus of the data that names its goods, as the pair [the branch, the bonus].
+func _goods_scoped_bonuses() -> Array:
+    var out: Array = []
+    for spec in _gdata.specializations:
+        for bonus in spec.get("bonuses", []):
+            if bonus is Dictionary and not (bonus.get("products", []) as Array).is_empty():
+                out.append([spec, bonus])
+    return out
+
+# A good no bonus of the data names: "the branch pays for nothing outside its line" is only proved
+# against a good that really is outside every line.
+func _good_outside(scoped: Array) -> String:
+    var named := {}
+    for entry in scoped:
+        for pid in _cdata.get_bonus_product_ids(entry[1]):
+            named[str(pid)] = true
+    for pid in _gdata.products:
+        if not named.has(str(pid)):
+            return str(pid)
+    return ""
+
+# --- 7. The non-numeric effects ---
 
 func _test_effects(state: Dictionary) -> void:
     _reset_specs()
@@ -513,7 +647,7 @@ func _test_effects(state: Dictionary) -> void:
 
     _reset_specs()
 
-# --- 7. The building production ---
+# --- 8. The building production ---
 
 func _test_building_production(state: Dictionary) -> void:
     var pick := _pick_production_building()
@@ -564,15 +698,20 @@ func _test_building_production(state: Dictionary) -> void:
     _cdata.city_built_buildings = []
     townsfolk.remove_townsfolk(0)
 
-# Runs one cycle of the recipe of the building and returns how many units of the result arrived.
-# The ingredients are filled with a margin, so a shortage never limits the cycle.
-func _released_over_cycle(pick: Dictionary) -> int:
+# The building of the pick opened and its ingredient stocked with a margin, so both the plan of the
+# tab "Resources" and a cycle of releases can be read from the same setup.
+func _open_production(pick: Dictionary) -> void:
     _cdata.city_built_buildings = [
         {"id": pick["building"], "slots": [pick["recipe"]], "quality_priority": "best"},
     ]
     _cdata.city_storage[str(pick["pid"])] = 0
     _cdata.city_quality_detail[str(pick["pid"])] = {}
     _cdata.add_to_storage(str(pick["ingredient"]), int(pick["ingredient_amount"]) * 20)
+
+# Runs one cycle of the recipe of the building and returns how many units of the result arrived.
+# The ingredients are filled with a margin, so a shortage never limits the cycle.
+func _released_over_cycle(pick: Dictionary) -> int:
+    _open_production(pick)
     var ticks: int = maxi(1, int(round(float(pick["time"]))))
     for _i in range(ticks):
         _cdata.do_tick()
@@ -585,10 +724,76 @@ func _planned_amount(pid: String) -> int:
         total += int(planned[pid][source].get("amount", 0))
     return total
 
+# The same measurement over the goods a branch names and over one it does not: the prestige branch
+# speeds the making of its own line, so the units of the good of the line rise while a good outside
+# it is released at the ordinary rate. This is the half of the bonus the general branch of the
+# buildings cannot show — the factor of a line is applied per good, not per building.
+func _test_group_building_production(state: Dictionary) -> void:
+    var branch := {}
+    for entry in _goods_scoped_bonuses():
+        if str((entry[1] as Dictionary).get("type", "")) != "building_production":
+            continue
+        branch = {"spec": entry[0], "bonus": entry[1]}
+        break
+    if branch.is_empty():
+        check(false, "the data must scope a production bonus to its goods", state)
+        return
+    var id := str((branch["spec"] as Dictionary).get("id", ""))
+    var step := float((branch["bonus"] as Dictionary).get("value", 0.0))
+    var line: Array = _cdata.get_bonus_product_ids(branch["bonus"])
+
+    var inside := _pick_production_building(line)
+    if inside.is_empty():
+        print("SKIP: no city building makes a good of the branch \"%s\" to measure it with" % id)
+        return
+    var outside := _pick_production_building([], line)
+    var townsfolk = _main_map.get_node("TownsfolkManager")
+    _cdata.idle_population = maxi(_cdata.idle_population, 2)
+    townsfolk.assign_townsfolk(0)
+    check(townsfolk.has_townsfolk(0), "a townsfolk must be assigned to the building", state)
+
+    _reset_specs()
+    _open_production(inside)
+    var planned_plain := _planned_amount(str(inside["pid"]))
+    _cdata.chosen_specialization_ids.append(id)
+    var planned_branch := _planned_amount(str(inside["pid"]))
+    check(planned_plain == int(inside["amount"]),
+        "without the branch the plan must be the plain result of the recipe (got %d, expected %d)"
+            % [planned_plain, int(inside["amount"])], state)
+    check(planned_branch > planned_plain,
+        "the plan of the tab \"Resources\" must carry the branch of its own good (%d -> %d)"
+            % [planned_plain, planned_branch], state)
+
+    _reset_specs()
+    var plain := _released_over_cycle(inside)
+    _cdata.chosen_specialization_ids.append(id)
+    var with_branch := _released_over_cycle(inside)
+    var expected := float(inside["amount"]) * (1.0 + step)
+    check(absf(float(with_branch) - expected) <= 1.0,
+        "the branch must raise the units of its own good over a cycle (got %d, expected ~%d)"
+            % [with_branch, int(round(expected))], state)
+    check(with_branch > plain,
+        "the branch must raise the output of its own good (%d -> %d)" % [plain, with_branch], state)
+
+    if not outside.is_empty():
+        _reset_specs()
+        var other_plain := _released_over_cycle(outside)
+        _cdata.chosen_specialization_ids.append(id)
+        var other_branch := _released_over_cycle(outside)
+        check(other_plain == other_branch,
+            "a good outside the line of \"%s\" must be made at the ordinary rate (%d -> %d)"
+                % [id, other_plain, other_branch], state)
+
+    _reset_specs()
+    _cdata.city_built_buildings = []
+    townsfolk.remove_townsfolk(0)
+
 # A recipe of a city building to measure the branch with: a single result, a single concrete
 # ingredient and a whole number of seconds, so one cycle is a whole number of ticks. Everything is
-# taken from the data — a balance edit only changes which recipe is picked.
-func _pick_production_building() -> Dictionary:
+# taken from the data — a balance edit only changes which recipe is picked. With "only" the search is
+# limited to the goods of one line, with "skip" it avoids them; the two let the same measurement be
+# made over a good a branch names and over one it does not.
+func _pick_production_building(only: Array = [], skip: Array = []) -> Dictionary:
     for recipe in _gdata.crafts:
         if not (recipe is Dictionary):
             continue
@@ -596,6 +801,10 @@ func _pick_production_building() -> Dictionary:
         if result.size() != 1:
             continue
         var pid := str(result.keys()[0])
+        if not only.is_empty() and not only.has(pid):
+            continue
+        if skip.has(pid):
+            continue
         var amount := int(result[pid])
         if amount < 8:
             continue
@@ -624,7 +833,7 @@ func _pick_production_building() -> Dictionary:
             }
     return {}
 
-# --- 8. The live scene ---
+# --- 9. The live scene ---
 
 func _test_live(state: Dictionary) -> void:
     _main_map = load("res://scenes/MainMap.tscn").instantiate()
@@ -636,6 +845,7 @@ func _test_live(state: Dictionary) -> void:
     _gdata = get_root().get_node("GameData")
 
     _test_building_production(state)
+    _test_group_building_production(state)
 
     var city_ui = _main_map.get_node_or_null("CityUI")
     check(city_ui != null, "CityUI not found in MainMap", state)
@@ -754,6 +964,41 @@ func _test_live(state: Dictionary) -> void:
         for spec in locked:
             check(locked_text.contains(_cdata.get_specialization_full_name(spec)),
                 "the disclosure must name the branch \"%s\"" % str(spec.get("id", "")), state)
+        # A bonus scoped to the goods of one line shows its group with the standard mark: the dashed
+        # line under the name and the composition of the group on hover, the same mark the recipes and
+        # the costs of a building carry. The plate of a branch that cannot be taken yet draws the same
+        # lines as the plate of a chosen one, so the mark is read before the branch is taken.
+        var marked := _first_underlined(tab.locked_list)
+        check(marked != null,
+            "no plate marks the goods of its bonus as a group of the data", state)
+        if marked != null:
+            var group_name := str(marked.underline_text)
+            check(not group_name.is_empty(), "the mark of a group covers nothing", state)
+            check(str(marked.text).begins_with(group_name),
+                "the underline must start at the name of the group (got \"%s\")" % str(marked.text),
+                state)
+            # PASS, not STOP: the label answers the hover and still leaves the events of the plate to
+            # the window under it.
+            check(marked.mouse_filter == Control.MOUSE_FILTER_PASS,
+                "the name of a group must receive the cursor", state)
+            var helpers = _main_map.get_ui_helpers()
+            check(helpers != null, "the map offers no instance of the standard tooltips", state)
+            if helpers != null:
+                marked.mouse_entered.emit()
+                check(helpers.group_tooltip_panel.visible,
+                    "the hover of a group name does not open its composition", state)
+                var members := _group_size_by_name(group_name)
+                check(members > 0
+                        and helpers.group_tooltip_content.get_child_count() == members + 1,
+                    "the tooltip must name the group and list every member of \"%s\" (got %d rows)"
+                        % [group_name, helpers.group_tooltip_content.get_child_count()], state)
+                var header_parts: Array = []
+                _collect_text(helpers.group_tooltip_content.get_child(0), header_parts)
+                check(" ".join(header_parts).contains(group_name),
+                    "the header of the tooltip must carry the name of the group", state)
+                marked.mouse_exited.emit()
+                check(not helpers.group_tooltip_panel.visible,
+                    "the tooltip of a group must go away with the cursor", state)
         # A branch that waits for a predecessor names it, and names it in full.
         var waits_for := ""
         var predecessor := ""
@@ -868,6 +1113,25 @@ func _collect_text(node: Node, parts: Array) -> void:
         parts.append(str((node as RichTextLabel).get_parsed_text()))
     for child in node.get_children():
         _collect_text(child, parts)
+
+# The first label carrying the dashed mark of a group, wherever the plate hides it.
+func _first_underlined(node: Node) -> Label:
+    if node is Label and node.get("underline_text") != null \
+            and str((node as Label).underline_text) != "":
+        return node as Label
+    for child in node.get_children():
+        var found := _first_underlined(child)
+        if found != null:
+            return found
+    return null
+
+# How many goods a group of the data holds, found by the name the plate shows: the line of the bonus
+# names the group and its tooltip lists the members, so the two must agree.
+func _group_size_by_name(group_name: String) -> int:
+    for gkey in _gdata.product_groups:
+        if str(_gdata.product_group_names.get(gkey, "")) == group_name:
+            return (_gdata.product_groups[gkey] as Array).size()
+    return -1
 
 # --- The helpers of the data ---
 

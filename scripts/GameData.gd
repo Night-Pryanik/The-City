@@ -348,7 +348,7 @@ func get_product_group_name(key: String) -> String:
 
 # The icon of the product group for the "Trade" card + the source of this icon.
 # The priority of the choice:
-#   1. the own "icon" field of the group (data/product_groups.json) — the data
+#   1. the own "icon" field of the group (data/product_groups/) — the data
 #      author has explicitly chosen a pictogram for the group;
 #   2. the icon of the FIRST member of the group that has an icon set (the old order,
 #      backward compatibility for the groups without their own "icon").
@@ -1623,7 +1623,7 @@ func _build_consumption_entry(res_key: String, rule: Dictionary) -> Dictionary:
     }
     if is_group_key(res_key):
         var gkey = res_key.trim_prefix("@")
-        # The key of an "@"-group is always the id from data/product_groups.json. A search by
+        # The key of an "@"-group is always the id from data/product_groups/. A search by
         # the human-readable name is intentionally absent here: such a fallback would silently
         # substitute the data of a similar group and would break the addressing.
         var members: Array = product_groups.get(gkey, [])
@@ -1635,7 +1635,7 @@ func _build_consumption_entry(res_key: String, rule: Dictionary) -> Dictionary:
         entry["is_group"] = true
         entry["group_members"] = members.duplicate()
         entry["display_key"] = res_key
-        # The icon of the group — its own, if it is set in data/product_groups.json,
+        # The icon of the group — its own, if it is set in data/product_groups/,
         # otherwise the first icon among the members (GameData.get_product_group_icon_info).
         # Previously there was a separate walk of the members here, duplicating the rule.
         entry["icon"] = get_product_group_icon(res_key)

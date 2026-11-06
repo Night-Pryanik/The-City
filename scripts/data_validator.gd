@@ -403,7 +403,7 @@ const CATEGORY_FIELDS := {
 }
 
 # data/groups.json — the groups for the diversity bonuses, and not the goods groups of
-# data/product_groups.json.
+# data/product_groups/.
 const GROUP_FIELDS := {
     "id": LEAF,
     "name": LEAF,
@@ -1054,6 +1054,8 @@ static func check_title(kind: String) -> String:
             return TranslationServer.translate("Recipe waits for a nonexistent challenge")
         "specialization_product":
             return TranslationServer.translate("Specialization bonus names a nonexistent product")
+        "specialization_group":
+            return TranslationServer.translate("Specialization bonus names a nonexistent goods group")
         "challenge_condition":
             return TranslationServer.translate("Challenge names a condition the game does not check")
         "road_level":
@@ -1157,6 +1159,7 @@ const CHECK_ORDER := [
     "specialization_challenge",
     "recipe_challenge",
     "specialization_product",
+    "specialization_group",
     "challenge_condition",
     "road_level",
     "road_max_speed",
@@ -1212,7 +1215,7 @@ func validate(gd: Object) -> Array:
     _validate_product_groups(product_groups, group_names, products, problems)
     _validate_consumption(gd.consumption_rules, products, product_groups, professions, problems)
     _validate_technologies(technologies, problems)
-    _validate_specializations(gd.specializations, improvements, all_resources,
+    _validate_specializations(gd.specializations, improvements, all_resources, product_groups,
             challenge_ids, problems)
     _validate_fame(all_resources, _quality_levels(gd), _index_by_id(gd.specializations),
             challenges, _known_challenge_conditions(), problems)
@@ -2219,7 +2222,8 @@ func _validate_technologies(technologies: Dictionary, problems: Array) -> void:
 # are references by identifier: a typo gives nothing at all in silence (the branch is never offered,
 # the bonus acts on nothing), so the author has to hear about it here.
 func _validate_specializations(specializations: Array, improvements: Dictionary,
-        products: Dictionary, challenge_ids: Dictionary, problems: Array) -> void:
+        products: Dictionary, groups: Dictionary, challenge_ids: Dictionary,
+        problems: Array) -> void:
     var by_id := {}
     for spec in specializations:
         if spec is Dictionary and not str(spec.get("id", "")).is_empty():
@@ -2246,13 +2250,22 @@ func _validate_specializations(specializations: Array, improvements: Dictionary,
                         _add(problems, "specialization_improvement", "improvement", str(imp_id),
                                 "specialization", name, spec_id, "bonuses")
             # The goods a bonus is scoped to: a typo here leaves the branch giving nothing, exactly
-            # as with the improvements.
+            # as with the improvements. The entry is a good or a group addressed as "@<id>" — the code
+            # expands a group over its members (CityData.get_bonus_product_ids), so a reference to one
+            # is as binding as a reference to a good.
             var goods = bonus.get("products", [])
             if goods is Array:
                 for pid in goods:
-                    if not products.has(str(pid)):
-                        _add(problems, "specialization_product", "product", str(pid),
-                                "specialization", name, spec_id, "bonuses")
+                    var key := str(pid)
+                    if key.begins_with("@"):
+                        if not groups.has(key.substr(1)):
+                            _add(problems, "specialization_group", "group", key,
+                                    "specialization", name, spec_id, "bonuses",
+                                    _at_sign_hint(key, products, groups))
+                    elif not products.has(key):
+                        _add(problems, "specialization_product", "product", key,
+                                "specialization", name, spec_id, "bonuses",
+                                _at_sign_hint(key, products, groups))
 
 
 # The "unlock" of a branch as a list, whether the author wrote one condition or a list of them.

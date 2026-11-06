@@ -63,8 +63,7 @@ static func build(spec: Dictionary, on_choose: Callable = Callable()) -> PanelCo
 
     for bonus in spec.get("bonuses", []):
         if bonus is Dictionary:
-            body.add_child(_line("• " + CityData.format_specialization_bonus_record(bonus),
-                    UI_THEME.color("income")))
+            body.add_child(_bonus_line(bonus))
 
     # The non-numeric consequences of the branch: a building, a recipe, a mechanic. Only this view
     # lists them — the tab "Effects" carries the numbers.
@@ -128,6 +127,74 @@ static func _line(text: String, color: Color) -> Label:
     label.add_theme_color_override("font_color", color)
     label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     return label
+
+# The line of one bonus. A bonus that leads with a group of data/product_groups/ carries the
+# standard mark of a group reference — the dashed line and the tooltip of the composition — so the
+# player sees that the words stand for a list of goods and not for one good. The mark is drawn from
+# x = 0 of its own label (see underlined_label.gd), therefore the bullet goes into a label of its own
+# and the text of the marked label begins with the name of the group.
+static func _bonus_line(bonus: Dictionary) -> Control:
+    var color := UI_THEME.color("income")
+    var text := CityData.format_specialization_bonus_record(bonus)
+    var goods: Array = CityData.get_specialization_bonus_goods(bonus)
+    var group := str(goods[0].get("group", "")) if not goods.is_empty() else ""
+    var group_name := str(goods[0].get("text", "")) if not goods.is_empty() else ""
+    if group == "" or not text.begins_with(group_name):
+        return _line("• " + text, color)
+
+    var row := HBoxContainer.new()
+    row.add_theme_constant_override("separation", 4)
+    row.add_child(_bullet(color))
+    # The script is taken by path: the global class cache may not be there yet in a headless
+    # --script run (the same note as in ui_helpers.make_resource_entry).
+    var link = load("res://scripts/underlined_label.gd").new()
+    link.text = text
+    link.underline_text = group_name
+    link.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    link.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    link.add_theme_color_override("font_color", color)
+    # PASS and not STOP: the label needs the cursor for the tooltip, and the window under it keeps
+    # the events the plate itself answers to.
+    link.mouse_filter = Control.MOUSE_FILTER_PASS
+    link.mouse_entered.connect(_on_group_hover.bind(link, group))
+    link.mouse_exited.connect(_on_group_exit.bind(link))
+    row.add_child(link)
+    return row
+
+static func _bullet(color: Color) -> Label:
+    var label := Label.new()
+    label.text = "•"
+    label.add_theme_color_override("font_color", color)
+    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    return label
+
+# The composition of the group opens in the standard tooltip of the map, the same panel the recipes
+# and the costs of a building use. The plates are drawn both in the tab of the city window and in the
+# choice window, and both hang under the map, so the instance is taken from there rather than copied
+# per window.
+static func _on_group_hover(label: Control, group: String) -> void:
+    var helpers := _ui_helpers(label)
+    if helpers == null:
+        return
+    helpers.show_group_tooltip(label.get_viewport().get_mouse_position(), group,
+            GameData.products, CityData.city_storage, CityData.city_quality_detail)
+
+static func _on_group_exit(label: Control) -> void:
+    var helpers := _ui_helpers(label)
+    if helpers != null:
+        helpers.hide_group_tooltip()
+
+# A plate built outside the map (a test that assembles one on its own) has no tooltip instance, and
+# the underline still says that the word is a group.
+static func _ui_helpers(from: Node) -> Node:
+    var parent := from.get_parent()
+    while parent != null:
+        if parent.has_method("get_ui_helpers"):
+            var shared = parent.get_ui_helpers()
+            if shared != null and is_instance_valid(shared):
+                return shared
+        parent = parent.get_parent()
+    return null
 
 # The icon of a branch. A branch without a picture of its own (a mod that ships none) keeps the
 # height of the plate and shows the common mark instead of collapsing the row.

@@ -1,8 +1,8 @@
 // The resource subgroups that are counted when the diversity bonus mechanic
 // runs, and when listing domesticated plant and animal species.
-// Do not confuse this with product_groups.json: this file holds groups for
-// bonuses, that one is a registry of groups used in recipes and in accounting
-// for consumption by professions
+// Do not confuse this with the goods groups of data/product_groups/: this file holds groups for
+// bonuses, that one is a registry of groups used in recipes, in the cost of a building, in
+// accounting for consumption by professions and in the bonus of a specialization
 {
   "groups": [
     {"id": "meat_animals", "name": "Meat Animals"},

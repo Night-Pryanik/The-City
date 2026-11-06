@@ -310,7 +310,7 @@ func load_all_data(mod_dirs: Array = []):
 
     # NEW: we load the registry of occupational consumption
     # (data/consumption.json). Each entry:
-    #   resource          — the product id OR the group "@<id>" from product_groups.json;
+    #   resource          — the product id OR the group "@<id>" from data/product_groups/;
     #   profession        — an array of the ids of the consuming professions;
     #   amount/interval/production_bonus — the parameters of the consumption tick.
     # The groups allow a profession to consume any suitable product from
@@ -597,8 +597,8 @@ func _find_resource_decl_line(raw_text: String, res_key: String) -> int:
     #
     # First we search for the line where the id stands next to an "id" (a compact record
     # { "id": "salt", "price": 6 }) — that is the declaration itself. If there is no such one, we take
-    # the first line where the id occurs at all: for multi-line records like
-    # product_groups.json (id on one line, "products" — on the next ones) it still
+    # the first line where the id occurs at all: for multi-line records like a goods
+    # group of data/product_groups/ (id on one line, "products" — on the next ones) it still
     # leads to the declaration line.
 func _find_decl_line(raw_text: String, id: String) -> int:
     var needle := "\"%s\"" % id

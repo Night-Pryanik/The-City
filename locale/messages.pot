@@ -18,6 +18,21 @@ msgstr ""
 msgid "%s (%s)"
 msgstr ""
 
+msgid "%s: %d/%d produced"
+msgstr ""
+
+msgid "%s: %d/%d sold to the towns"
+msgstr ""
+
+msgid "%s: %s to production in city buildings"
+msgstr ""
+
+msgid "%s: %s to the price on the domestic market"
+msgstr ""
+
+msgid "%s: %s to the price when sold to towns"
+msgstr ""
+
 msgid "Add to storage"
 msgstr ""
 
@@ -46,6 +61,9 @@ msgid "Search by name"
 msgstr ""
 
 msgid "Select a product:"
+msgstr ""
+
+msgid "Specialization bonus names a nonexistent goods group"
 msgstr ""
 
 msgid "\n\nFound here: %s"
@@ -1377,7 +1395,7 @@ msgstr ""
 msgid "Icon of group \"%s\" taken from goods \"%s\""
 msgstr ""
 
-msgid "Icon of group \"%s\": %s (set in data/product_groups.json)"
+msgid "Icon of group \"%s\": %s (set in data/product_groups/)"
 msgstr ""
 
 msgid "Icon sets"
@@ -1845,9 +1863,6 @@ msgstr ""
 msgid "Price:"
 msgstr ""
 
-msgid "Produced"
-msgstr ""
-
 msgid "Produces:"
 msgstr ""
 
@@ -2212,9 +2227,6 @@ msgid "Slot %d:"
 msgstr ""
 
 msgid "Small (30×30)"
-msgstr ""
-
-msgid "Sold"
 msgstr ""
 
 msgid "Sold %d units of %s to %s."
@@ -4619,6 +4631,22 @@ msgstr ""
 
 msgctxt "product_groups.name"
 msgid "Writing Materials"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Cheese"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Ceramics"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Wool"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Weapons"
 msgstr ""
 
 msgctxt "professions.description"

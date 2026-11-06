@@ -1,0 +1,133 @@
+{
+  // A part of the registry of product groups: the goods that stand for one another wherever a good of
+  // the data may be named. A group is addressed as "@<id>" — by the ingredient of a craft recipe, by
+  // the resource of a consumption rule, by the goods a specialization bonus acts on.
+  //
+  // The registry is split by the mechanic that reads it, and this file holds the groups a recipe
+  // accepts in place of one another: the key "@<id>" in the "resources" of a craft means "any good of
+  // the group" (see scripts/craft_container.gd). The identifier of a group is global, so a group lives
+  // in exactly one file even when a second mechanic names it; the file of that mechanic says so.
+  //
+  // The optional "icon" field of a group — the icon file name shown wherever the group itself is
+  // drawn as a resource: the card and tooltip on the "Trade" tab, the group rows and the headers of a
+  // composition list. If it is not specified, the icon of the FIRST member of the group that has its
+  // own icon is taken; a group needs its own icon where that member does not speak for the group.
+  "product_groups": [
+    {
+      "id": "bovines",
+      "name": "Bovines",
+      "products": [
+        "live_cows",
+        "live_zebu",
+        "live_banteng",
+        "live_buffalo",
+        "live_bison",
+        "live_yak"
+      ],
+      "icon": "cows.png"
+    },
+    {
+      "id": "millable_grains",
+      "name": "Millable Grains",
+      "products": [
+        "wheat",
+        "rye",
+        "barley",
+        "oats",
+        "corn",
+        "rice",
+        "millet",
+        "sorghum",
+        "buckwheat"
+      ]
+    },
+    {
+      "id": "tableware_stones",
+      "name": "Tableware Stones",
+      "products": [
+        "alabaster",
+        "nephrite",
+        "porphyry",
+        "basalt",
+        "tuff",
+        "sandstone",
+        "marble",
+        "granite",
+        "limestone",
+        "soapstone"
+      ]
+    },
+    {
+      "id": "oil_crops",
+      "name": "Oil Crops",
+      "products": [
+        "sunflower",
+        "sesame",
+        "rapeseed",
+        "flax",
+        "soybean",
+        "olives",
+        "kenaf",
+        "beech_nuts",
+        "coconuts"
+      ]
+    },
+    {
+      "id": "textile_crops",
+      "name": "Textile Crops",
+      "products": [ "cotton", "flax", "hemp", "jute", "ramie", "kenaf", "yucca" ]
+    },
+    {
+      "id": "rope_fibers",
+      "name": "Rope Fibers",
+      "products": [ "hemp", "jute", "ramie", "sisal", "papyrus", "kenaf", "yucca", "velvetleaf", "coir" ]
+    },
+    {
+      "id": "paper_fibers",
+      "name": "Paper Fibers",
+      "products": [ "mulberry_bark", "hemp", "ramie", "sisal", "kenaf", "yucca", "velvetleaf" ]
+    },
+    {
+      // all sweet fruits that don't have their own specific fermentation drinks, like grape wine, pulque etc.
+      "id": "wine_fruits",
+      "name": "Fruits",
+      "products": [
+        "mulberries",
+        "figs",
+        "dates",
+        "cactus_fruit",
+        "pomegranates",
+        "yucca_fruit"
+      ]
+    },
+    {
+      "id": "writing_materials",
+      "name": "Writing Materials",
+      "products": [
+        "clay_tablets",
+        "wax_tablets",
+        "papyrus",
+        "parchment",
+        "silk",
+        "paper"
+      ]
+    },
+    {
+      "id": "writing_instruments",
+      "name": "Writing Instruments",
+      "products": [ "wood", "papyrus_plant", "feathers" ]
+    },
+    {
+      "id": "bronze_alloys",
+      "name": "Bronze Alloys",
+      "products": [ "tin", "antimony", "arsenic" ]
+    },
+    {
+      "id": "barrel_wood",
+      "name": "Wood for Barrels",
+      // The group is cooperage wood in general, not tight-cask oak only: beech,
+      // pine and maple went to slack staves and to headings.
+      "products": [ "oak_wood", "beech_wood", "chestnut_wood", "pine_wood", "maple_wood" ]
+    }
+  ]
+}

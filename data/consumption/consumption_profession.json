@@ -8,7 +8,7 @@
   //
   // The target resource ("resource") can be:
   //   * an id of a single product from data/products/*.json — for example, "tools";
-  //   * a reference to a product group from data/product_groups.json in the format
+  //   * a reference to a product group from data/product_groups/ in the format
   //     "@<group_id>" — for example, "@boats" (the "Boats" group). In that case
   //     ANY suitable product from the group is written off: first the total
   //     stock across all group members is summed, then the list is drawn
