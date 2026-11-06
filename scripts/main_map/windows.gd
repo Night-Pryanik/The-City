@@ -4,6 +4,12 @@ extends "res://scripts/main_map/hud.gd"
 # This link — the windows over the map: the city and the town interfaces, the trade they run, the
 # journal and the pause menu with the saves.
 
+# The width of the body of the window of a reward. A wrapping text asks no width of its own, so the
+# window is given the one the news is read in.
+const CHALLENGE_NEWS_WIDTH := 660
+# The mark of a reward line, the same the tab of the challenges puts before what a task gives.
+const REWARD_MARK := "• "
+
 func open_city():
     city_ui.refresh()
     city_ui.show()
@@ -212,11 +218,9 @@ func _on_era_challenge_completed(challenge: Dictionary) -> void:
     _queue_challenge_news(challenge)
 
 func _queue_challenge_news(challenge: Dictionary) -> void:
-    # The words are written now, not when the window is shown: between the two the era closes, its
-    # Region is claimed for nothing, and the counter the news quotes would already be another one.
     _challenge_news_queue.append({
         "title": tr("Challenge completed"),
-        "text": challenge_manager.challenge_news_text(challenge, true),
+        "record": challenge,
     })
     _show_next_challenge_news()
 
@@ -227,9 +231,38 @@ func _show_next_challenge_news() -> void:
         return
     var news: Dictionary = _challenge_news_queue.pop_front()
     challenge_news_dialog.title = str(news.get("title", ""))
-    challenge_news_dialog.dialog_text = str(news.get("text", ""))
+    _set_challenge_news_body(news.get("record", {}))
     challenge_news_dialog.popup_centered()
     apply_pause_state()
+
+# The body reads as the plate of the tab that promised the task: the name of it in the colour of the
+# text, what the task asked muted, and what the city earned as the bullet of a reward. The words come
+# from the manager, the colours from the palette of the moment the window is filled.
+func _set_challenge_news_body(record: Dictionary) -> void:
+    _challenge_news_record = record
+    var lines: Array[String] = []
+    for line in challenge_manager.challenge_news_lines(record):
+        lines.append(_challenge_news_line(str(line.get("kind", "")), str(line.get("text", ""))))
+    challenge_news_body.text = "\n".join(lines)
+
+# A palette chosen while the window stands open has to reach the lines it was filled with: the colour
+# of a tag is the number of the palette of the moment the text was written.
+func _refresh_challenge_news_body() -> void:
+    if challenge_news_dialog != null and challenge_news_dialog.visible:
+        _set_challenge_news_body(_challenge_news_record)
+
+func _challenge_news_line(kind: String, text: String) -> String:
+    match kind:
+        "flavor":
+            return _colored_news_line(text, UI_THEME.color("text_muted"))
+        "reward":
+            return _colored_news_line(REWARD_MARK + text, UI_THEME.color("income"))
+        _:
+            # The name of the task wears the colour of the text, as the name of a plate on the tab.
+            return text
+
+static func _colored_news_line(text: String, color: Color) -> String:
+    return "[color=#%s]%s[/color]" % [color.to_html(false), text]
 
 # The window hides before the queue is read again: the flag is recomputed for the world without it,
 # and the next news stops it again if there is one left. The next window waits a frame — a popup

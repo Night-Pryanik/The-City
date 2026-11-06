@@ -423,7 +423,20 @@ func _ready():
     challenge_news_dialog.name = "ChallengeNewsDialog"
     challenge_news_dialog.ok_button_text = tr("OK")
     challenge_news_dialog.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+    # The lines of the body wear the colours of the tab, and the text a dialog carries itself is
+    # painted in one colour: the body is a node of its own, stretched over the content area, and the
+    # text of the dialog stays empty.
+    challenge_news_dialog.get_label().hide()
+    challenge_news_body = RichTextLabel.new()
+    challenge_news_body.name = "ChallengeNewsBody"
+    challenge_news_body.bbcode_enabled = true
+    challenge_news_body.fit_content = true
+    challenge_news_body.scroll_active = false
+    challenge_news_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    challenge_news_body.custom_minimum_size = Vector2(CHALLENGE_NEWS_WIDTH, 0)
+    challenge_news_dialog.add_child(challenge_news_body)
     challenge_news_dialog.visibility_changed.connect(_on_challenge_news_visibility_changed)
+    ThemeManager.theme_applied.connect(_refresh_challenge_news_body)
     add_child(challenge_news_dialog)
     challenge_news_dialog.hide()
     challenge_manager.challenge_completed.connect(_on_era_challenge_completed)

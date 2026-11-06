@@ -139,26 +139,25 @@ func _challenge_title(record: Dictionary) -> String:
     return name if name != "" else str(record.get("id", ""))
 
 
-# The body of the news about a task of the era: what it asked, where the city stands, and what the
-# outcome brought. The window of the result and the journal read it from here, so the two cannot
-# disagree about what was promised and what was earned.
-func challenge_news_text(record: Dictionary, completed: bool) -> String:
-    var lines: Array[String] = []
+# The body of the news about a finished task of the era: what it asked and what the city earned. The
+# standing of the city is not part of it — the window opens when the task is over, and what is left
+# to buy says nothing to a player who has just bought it.
+#
+# Every line carries the kind it is ("name", "flavor", "reward"), which says to the view how to paint
+# it: the window of the result gives a kind the shape the tab gives the same words.
+func challenge_news_lines(record: Dictionary) -> Array:
+    var lines: Array = []
     var title := _challenge_title(record)
     if title != "":
-        lines.append(title)
+        lines.append({"kind": "name", "text": title})
     var description := str(record.get("description", ""))
     if description != "":
-        lines.append(description)
-    var progress := str(era_challenge_progress(record).get("text", ""))
-    if progress != "":
-        lines.append(progress)
-    if completed:
-        for reward in rewards_of(record):
-            var text := reward_text(reward)
-            if text != "":
-                lines.append(text)
-    return "\n".join(lines)
+        lines.append({"kind": "flavor", "text": description})
+    for reward in rewards_of(record):
+        var text := reward_text(reward)
+        if text != "":
+            lines.append({"kind": "reward", "text": text})
+    return lines
 
 
 # The map owns the era and the claiming of the Region, and both are needed by the era challenges.

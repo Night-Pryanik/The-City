@@ -575,6 +575,15 @@ func _test_era(state: Dictionary) -> void:
     check(_main_map.challenge_news_dialog.visible
             and str(_main_map.challenge_news_dialog.title) == tr("Challenge completed"),
             "the winning of a task opens its window", state)
+    # The window reads as the tab that promised the task: the reward stands as the bullet of a
+    # reward. What is left to buy is not said there — the task is over, and the counter would only
+    # remind the player of the thing he has just finished doing.
+    var news_body := str(_main_map.challenge_news_body.text)
+    var counter := str(_mgr.era_challenge_progress(whole).get("text", ""))
+    check(counter != "" and not news_body.contains(counter),
+            "the window of the reward does not count what is left to buy", state)
+    check(news_body.contains("• ") and news_body.contains("[color="),
+            "the window paints the reward as the tab lists it", state)
     _main_map.challenge_news_dialog.visible = false
     _restore_region(claimed)
 
