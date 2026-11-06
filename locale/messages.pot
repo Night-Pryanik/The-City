@@ -15,6 +15,18 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "Add to storage"
+msgstr ""
+
+msgid "Product: %s"
+msgstr ""
+
+msgid "Quality:"
+msgstr ""
+
+msgid "Select a product:"
+msgstr ""
+
 msgid "\n\nFound here: %s"
 msgstr ""
 
@@ -510,7 +522,7 @@ msgstr ""
 msgid "Actual over the window: %s units/sec — that is what was really bought"
 msgstr ""
 
-msgid "Added 100 food"
+msgid "Added %d %s (%s)"
 msgstr ""
 
 msgid "Added 100000 coins"
@@ -2775,7 +2787,7 @@ msgstr ""
 msgid "[4] Toggle food consumption (now: %s)"
 msgstr ""
 
-msgid "[5] Add 100 food"
+msgid "[5] Add a resource to storage"
 msgstr ""
 
 msgid "[6] Ignore technology requirements (now: %s)"

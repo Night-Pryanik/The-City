@@ -478,50 +478,9 @@ func _ready():
     # once, before the first tick of the session. A new game has one citizen, so nothing happens.
     CityData.check_specialization_choice()
 
-func _input(event):
-    # Only the debug menu is handled here. The input of the MAP belongs to
-    # InputHandler, which is its own entry point: main_map stops processing while
-    # the active pause is on, and the map must keep receiving the input then.
-    # Both nodes are in the same _input pass; this one is the parent, so it goes
-    # first — and set_input_as_handled() above keeps the handled keys away from
-    # InputHandler.
-    #
-    # The debug menu: opening/closing on F9
-    if event is InputEventKey and event.pressed and event.keycode == KEY_F9:
-        debug_manager.toggle()
-        get_viewport().set_input_as_handled()
-        return
-
-    # ESC closes the debug menu, if it is open
-    if debug_manager.is_open:
-        if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-            debug_manager.close()
-            get_viewport().set_input_as_handled()
-            return
-        # The hotkeys of the items of the debug menu: the digit 1..9, 0 calls
-        # the corresponding item of the main menu (see debug_manager.trigger_hotkey).
-        if event is InputEventKey and event.pressed:
-            var num = _debug_hotkey_number(event.keycode)
-            if num >= 0:
-                debug_manager.trigger_hotkey(num)
-                get_viewport().set_input_as_handled()
-                return
-
-# Returns the digit for the debug hotkey by the key code, or -1, if the key
-# is not a digit (the main row + the keyboard digit 0).
-func _debug_hotkey_number(keycode: Key) -> int:
-    match keycode:
-        KEY_1: return 1
-        KEY_2: return 2
-        KEY_3: return 3
-        KEY_4: return 4
-        KEY_5: return 5
-        KEY_6: return 6
-        KEY_7: return 7
-        KEY_8: return 8
-        KEY_9: return 9
-        KEY_0: return 0
-    return -1
+# The keys of the debug menu (F9, ESC, the digits of the items) are handled by the
+# menu node itself: it stays alive during the pause, while this node stops with the
+# simulation. See debug_manager._input.
 
 func _process(delta):
     if Engine.is_editor_hint():

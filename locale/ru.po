@@ -15,6 +15,18 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "Add to storage"
+msgstr "Добавить на склад"
+
+msgid "Product: %s"
+msgstr "Товар: %s"
+
+msgid "Quality:"
+msgstr "Качество:"
+
+msgid "Select a product:"
+msgstr "Выберите товар:"
+
 msgid "\n\nFound here: %s"
 msgstr "\n\nЗдесь обнаружено: %s"
 
@@ -510,8 +522,8 @@ msgstr "Факт ниже плана: покупатели хотят больш
 msgid "Actual over the window: %s units/sec — that is what was really bought"
 msgstr "Факт за окно: %s ед./сек — столько реально купили"
 
-msgid "Added 100 food"
-msgstr "Добавлено 100 еды"
+msgid "Added %d %s (%s)"
+msgstr "Добавлено %d %s (%s)"
 
 msgid "Added 100000 coins"
 msgstr "Добавлено 100000 монет"
@@ -2775,8 +2787,8 @@ msgstr "[3] Открыть всю карту"
 msgid "[4] Toggle food consumption (now: %s)"
 msgstr "[4] Переключить потребление еды (сейчас: %s)"
 
-msgid "[5] Add 100 food"
-msgstr "[5] Добавить 100 еды"
+msgid "[5] Add a resource to storage"
+msgstr "[5] Добавить ресурс на склад"
 
 msgid "[6] Ignore technology requirements (now: %s)"
 msgstr "[6] Игнорировать требования технологий (сейчас: %s)"

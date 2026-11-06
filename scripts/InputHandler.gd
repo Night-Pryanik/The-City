@@ -108,6 +108,11 @@ func handle_input(event: InputEvent):
             return
 
     if event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
+        # ESC: the debug menu owns the key while it is open — it closes the menu and
+        # nothing else. The menu node stands later in this pass, so the chain below
+        # has to let the key through to it.
+        if debug_manager != null and debug_manager.is_open:
+            return
         # ESC: if the town interface is open — we close exactly it, even if
         # a hex is selected on the map or an action preview is active (the town window
         # is over the map).
