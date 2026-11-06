@@ -41,6 +41,8 @@ const MAX_AMOUNT_LENGTH := 9
 var _pending_product_id: String = ""
 var _pending_amount: String = DEFAULT_AMOUNT_TEXT
 var _pending_quality: String = DEFAULT_QUALITY
+# The search text of each list, keyed by the view it belongs to.
+var _pending_filters := {VIEW_RAW_LIST: "", VIEW_PRODUCT_LIST: ""}
 var _amount_edit: LineEdit
 
 # UI elements
@@ -247,22 +249,18 @@ func _show_resource_list():
     _view = VIEW_RAW_LIST
 
     _add_back_button(_show_main_menu)
+    _add_filter_field(_fill_resource_rows, VIEW_RAW_LIST)
+    _fill_resource_rows()
 
-    # The list of all resources from GameData.raw_resources,
-    # sorted alphabetically by the display name
-    var entries = []
+# The raw resources, sorted by the display name. The names are localized when the data
+# is read, so the search works in the language the player chose.
+func _fill_resource_rows() -> void:
+    _clear_rows()
+    var entries := []
     for res_id in GameData.raw_resources.keys():
-        var res_name = GameData.raw_resources[res_id].get("name", res_id)
-        entries.append([res_name.to_lower(), res_id])
-    entries.sort()
-
-    for entry in entries:
-        var res_id = entry[1]
-        var res_name = GameData.raw_resources[res_id].get("name", res_id)
-        var btn = _make_button("%s (%s)" % [res_name, res_id])
-        _set_item_icon(btn, res_id)
-        btn.pressed.connect(_on_resource_selected.bind(res_id))
-        _content_vbox.add_child(btn)
+        var res_name := str(GameData.raw_resources[res_id].get("name", res_id))
+        entries.append([res_name.to_lower(), res_name, str(res_id)])
+    _add_filtered_rows(entries, _on_resource_selected, VIEW_RAW_LIST)
 
 # The goods the city can keep on its shelves: only the records of type "product" are
 # listed, a raw resource is what a hex of the map carries, not what the town owns.
@@ -274,20 +272,63 @@ func _show_product_list():
     _view = VIEW_PRODUCT_LIST
 
     _add_back_button(_show_main_menu)
+    _add_filter_field(_fill_product_rows, VIEW_PRODUCT_LIST)
+    _fill_product_rows()
 
-    var entries = []
+func _fill_product_rows() -> void:
+    _clear_rows()
+    var entries := []
     for res_id in GameData.products.keys():
         if str(res_id).find(GameData.GENERATED_SEPARATOR) >= 0:
             continue
-        entries.append([GameData.get_product_name(res_id).to_lower(), res_id])
-    entries.sort()
+        var res_name := GameData.get_product_name(str(res_id))
+        entries.append([res_name.to_lower(), res_name, str(res_id)])
+    _add_filtered_rows(entries, _show_product_form, VIEW_PRODUCT_LIST)
 
+# One row per entry that matches the search of its own list: an entry is [the lowercased
+# name, the name, the id]. The prefix is what the player sees typed — "Ам" leaves амарант
+# and амфора, not everything with an "ам" inside. Only the rows are rebuilt on a keystroke,
+# never the field, so the caret and the focus stay where the typing happens.
+func _add_filtered_rows(entries: Array, on_pick: Callable, slot: String) -> void:
+    var needle := str(_pending_filters[slot]).to_lower()
+    var rows := []
     for entry in entries:
-        var res_id = entry[1]
-        var btn = _make_button("%s (%s)" % [GameData.get_product_name(res_id), res_id])
+        if needle == "" or str(entry[0]).begins_with(needle):
+            rows.append(entry)
+    rows.sort()
+
+    if rows.is_empty():
+        var hint := Label.new()
+        hint.text = tr("Nothing found")
+        hint.add_theme_color_override("font_color", UI_THEME.color("text_muted"))
+        _content_vbox.add_child(hint)
+        return
+
+    for row in rows:
+        var res_id := str(row[2])
+        var btn = _make_button("%s (%s)" % [row[1], res_id])
         _set_item_icon(btn, res_id)
-        btn.pressed.connect(_show_product_form.bind(res_id))
+        btn.pressed.connect(on_pick.bind(res_id))
         _content_vbox.add_child(btn)
+
+# The field of the search, fixed above the list together with the "back" button. Each
+# list keeps its own text: what was typed to find a good on the shelf does not hide the
+# stones of the map when the player goes back.
+func _add_filter_field(fill: Callable, slot: String) -> void:
+    var edit := LineEdit.new()
+    edit.placeholder_text = tr("Search by name")
+    edit.text = str(_pending_filters[slot])
+    edit.clear_button_enabled = true
+    edit.custom_minimum_size = Vector2(0, 30)
+    edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    edit.tooltip_text = tr("Only the names that begin with the typed text stay in the list")
+    edit.text_changed.connect(_on_filter_text_changed.bind(fill, slot))
+    _header_vbox.add_child(edit)
+    _header_vbox.visible = true
+
+func _on_filter_text_changed(new_text: String, fill: Callable, slot: String) -> void:
+    _pending_filters[slot] = new_text
+    fill.call()
 
 # The form of one delivery: how much of the good and of which quality arrives.
 func _show_product_form(product_id: String = ""):
@@ -608,13 +649,18 @@ func close():
     hide()
 
 func _clear_content():
-    for child in _content_vbox.get_children():
-        _content_vbox.remove_child(child)
-        child.queue_free()
+    _clear_rows()
     for child in _header_vbox.get_children():
         _header_vbox.remove_child(child)
         child.queue_free()
     _header_vbox.visible = false
+
+# The rows only: a keystroke in the search field rebuilds the list, and the field with
+# the "back" button has to survive it.
+func _clear_rows():
+    for child in _content_vbox.get_children():
+        _content_vbox.remove_child(child)
+        child.queue_free()
 
 # The button that returns to the previous screen: it stands outside the scroll, so the
 # way back stays on screen however far the list was scrolled down.

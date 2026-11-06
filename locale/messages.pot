@@ -18,10 +18,19 @@ msgstr ""
 msgid "Add to storage"
 msgstr ""
 
+msgid "Nothing found"
+msgstr ""
+
+msgid "Only the names that begin with the typed text stay in the list"
+msgstr ""
+
 msgid "Product: %s"
 msgstr ""
 
 msgid "Quality:"
+msgstr ""
+
+msgid "Search by name"
 msgstr ""
 
 msgid "Select a product:"

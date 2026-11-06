@@ -18,11 +18,20 @@ msgstr ""
 msgid "Add to storage"
 msgstr "Добавить на склад"
 
+msgid "Nothing found"
+msgstr "Ничего не найдено"
+
+msgid "Only the names that begin with the typed text stay in the list"
+msgstr "В списке остаются только названия, начинающиеся с введённого текста"
+
 msgid "Product: %s"
 msgstr "Товар: %s"
 
 msgid "Quality:"
 msgstr "Качество:"
+
+msgid "Search by name"
+msgstr "Поиск по имени"
 
 msgid "Select a product:"
 msgstr "Выберите товар:"
