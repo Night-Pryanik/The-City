@@ -2778,17 +2778,17 @@ msgstr "[0] Закрыть (F9)"
 msgid "[1] Add a resource to the map"
 msgstr "[1] Добавить ресурс на карту"
 
-msgid "[2] Go to the next era"
-msgstr "[2] Перейти в следующую эпоху"
+msgid "[2] Add a resource to storage"
+msgstr "[2] Добавить ресурс на склад"
 
-msgid "[3] Open the whole map"
-msgstr "[3] Открыть всю карту"
+msgid "[3] Go to the next era"
+msgstr "[3] Перейти в следующую эпоху"
 
-msgid "[4] Toggle food consumption (now: %s)"
-msgstr "[4] Переключить потребление еды (сейчас: %s)"
+msgid "[4] Open the whole map"
+msgstr "[4] Открыть всю карту"
 
-msgid "[5] Add a resource to storage"
-msgstr "[5] Добавить ресурс на склад"
+msgid "[5] Toggle food consumption (now: %s)"
+msgstr "[5] Переключить потребление еды (сейчас: %s)"
 
 msgid "[6] Ignore technology requirements (now: %s)"
 msgstr "[6] Игнорировать требования технологий (сейчас: %s)"

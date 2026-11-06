@@ -2778,16 +2778,16 @@ msgstr ""
 msgid "[1] Add a resource to the map"
 msgstr ""
 
-msgid "[2] Go to the next era"
+msgid "[2] Add a resource to storage"
 msgstr ""
 
-msgid "[3] Open the whole map"
+msgid "[3] Go to the next era"
 msgstr ""
 
-msgid "[4] Toggle food consumption (now: %s)"
+msgid "[4] Open the whole map"
 msgstr ""
 
-msgid "[5] Add a resource to storage"
+msgid "[5] Toggle food consumption (now: %s)"
 msgstr ""
 
 msgid "[6] Ignore technology requirements (now: %s)"

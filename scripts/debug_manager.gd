@@ -197,11 +197,17 @@ func _show_main_menu():
     add_resource_btn.pressed.connect(_on_add_resource_pressed)
     _content_vbox.add_child(add_resource_btn)
 
-    var next_era_btn = _make_button(tr("[2] Go to the next era"))
+    # The two ways of adding stand together: one puts a resource on a hex, the other
+    # sends a good to the storage.
+    var add_product_btn = _make_button(tr("[2] Add a resource to storage"))
+    add_product_btn.pressed.connect(_show_product_list)
+    _content_vbox.add_child(add_product_btn)
+
+    var next_era_btn = _make_button(tr("[3] Go to the next era"))
     next_era_btn.pressed.connect(_on_next_era_pressed)
     _content_vbox.add_child(next_era_btn)
 
-    var open_map_btn = _make_button(tr("[3] Open the whole map"))
+    var open_map_btn = _make_button(tr("[4] Open the whole map"))
     open_map_btn.pressed.connect(_on_open_whole_map_pressed)
     _content_vbox.add_child(open_map_btn)
 
@@ -211,10 +217,6 @@ func _show_main_menu():
     _food_toggle_btn = _make_button(_food_toggle_label())
     _food_toggle_btn.pressed.connect(_on_toggle_food_consumption_pressed)
     _content_vbox.add_child(_food_toggle_btn)
-
-    var add_product_btn = _make_button(tr("[5] Add a resource to storage"))
-    add_product_btn.pressed.connect(_show_product_list)
-    _content_vbox.add_child(add_product_btn)
 
     # Toggling the accounting of technology requirements: when enabled — the
     # research checks neither the prerequisites nor the era restriction.
@@ -438,13 +440,13 @@ func _trigger_hotkey(num: int) -> bool:
         1:
             _on_add_resource_pressed()
         2:
-            _on_next_era_pressed()
-        3:
-            _on_open_whole_map_pressed()
-        4:
-            _on_toggle_food_consumption_pressed()
-        5:
             _show_product_list()
+        3:
+            _on_next_era_pressed()
+        4:
+            _on_open_whole_map_pressed()
+        5:
+            _on_toggle_food_consumption_pressed()
         6:
             _on_toggle_ignore_tech_requirements_pressed()
         7:
@@ -532,7 +534,7 @@ func _on_toggle_food_consumption_pressed():
         _food_toggle_btn.text = _food_toggle_label()
 
 func _food_toggle_label() -> String:
-    return tr("[4] Toggle food consumption (now: %s)") % _on_off(CityData.food_consumption_enabled)
+    return tr("[5] Toggle food consumption (now: %s)") % _on_off(CityData.food_consumption_enabled)
 
 func _on_resource_selected(res_id: String):
     pending_resource_id = res_id
