@@ -97,7 +97,7 @@
       "type": "product",
       "category": "drinks",
       "unlock_tech": "fermentation",
-      "icon": "mate.png"
+      "icon": "mate_drink.png"
     },
     {
       "id": "karkadeh",
