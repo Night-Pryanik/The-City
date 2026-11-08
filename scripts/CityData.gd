@@ -95,6 +95,11 @@ var world_town_count: int = 16
 # resolves spawn_count; the resources are baked into the map at generation time, so the
 # setting is not part of the save — a loaded game restores its own map.
 var world_resource_density: float = 1.0
+# The climate belt the city starts in, chosen by the player in the world settings of a new
+# game ("Climate"): "random" rolls the latitude, the other values are the temperature belts
+# of the generator. Read by map_generator when it places the equator; the climate is baked
+# into the map at generation time, so the setting is not part of the save.
+var world_climate: String = "random"
 
 # The sea generation settings a new game starts from. The player changes them in the world
 # settings of a new game (the "Seas" section), and SeaManager reads the result from

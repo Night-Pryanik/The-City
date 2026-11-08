@@ -39,10 +39,16 @@ msgstr ""
 msgid "Add to storage"
 msgstr ""
 
+msgid "Boreal"
+msgstr ""
+
 msgid "Challenge completed"
 msgstr ""
 
 msgid "Challenge failed: %s"
+msgstr ""
+
+msgid "Climate"
 msgstr ""
 
 msgid "Extremely high"
@@ -73,6 +79,9 @@ msgid "Product: %s"
 msgstr ""
 
 msgid "Quality:"
+msgstr ""
+
+msgid "Random climate"
 msgstr ""
 
 msgid "Reading save..."
@@ -112,6 +121,18 @@ msgid "Specialization bonus names a nonexistent goods group"
 msgstr ""
 
 msgid "Standard"
+msgstr ""
+
+msgid "Subtropics"
+msgstr ""
+
+msgid "Temperate"
+msgstr ""
+
+msgid "The climate belt the city starts in. It decides the terrain and the resources around the city."
+msgstr ""
+
+msgid "Tropics"
 msgstr ""
 
 msgid "Very high"

@@ -56,6 +56,11 @@ const HEXES_PER_TOWN := 90
 const RESOURCE_DENSITY_PRESETS: Array[float] = [0.5, 1.0, 1.5, 2.0, 3.0, 5.0]
 const DEFAULT_RESOURCE_DENSITY := 1.0
 
+# The climate the city starts in, in the order of the dropdown. The values are the temperature
+# belts of the generator; "random" rolls the latitude of the city as usual.
+const CLIMATE_PRESETS: Array[String] = ["random", "cold", "mild", "subtropical", "tropical"]
+const DEFAULT_CLIMATE := "random"
+
 # The sea generation modes, in the order of the dropdown. The values are the "mode" field of
 # the sea configuration (CityData.world_sea); "none" leaves the map without a sea.
 const SEA_MODES: Array[String] = ["none", "edge", "noise"]
@@ -95,6 +100,8 @@ var town_count_plus: Button = null
 var proportional_check: CheckBox = null
 # How many resource specimens the world spawns, as a multiplier of the standard amount.
 var resource_density_option: OptionButton = null
+# The climate belt the city starts in.
+var climate_option: OptionButton = null
 # The "Seas" section of the world settings: the mode dropdown, one entry per sea setting
 # (keyed by its field in CityData.world_sea) and the rows with the modes they belong to.
 var sea_mode_option: OptionButton = null
@@ -446,8 +453,9 @@ func _regenerate_preview():
     _preview_seed = next_seed
     _refresh_preview()
 
-# The world settings of a new game: the map size, the number of towns, the seas and the
-# rivers. Every setting is one line of the list, and the list grows downwards.
+# The world settings of a new game: the map size, the number of towns, the climate, the
+# resource density, the seas and the rivers. Every setting is one line of the list, and the
+# list grows downwards.
 func _build_world_settings(column: VBoxContainer):
     # The map size: a preset dropdown and a custom side field that appears only when
     # "Custom size" is chosen. The map is square, so one side applies to width and height.
@@ -504,6 +512,20 @@ func _build_world_settings(column: VBoxContainer):
     towns_control.add_child(proportional_check)
     towns_control.add_child(stepper)
     _add_setting_row(column, tr("Number of towns"), towns_control)
+
+    # The climate of the city's latitude. The preview does not draw the climate, so the
+    # choice needs no refresh.
+    climate_option = OptionButton.new()
+    climate_option.add_item(tr("Random climate"))
+    climate_option.add_item(tr("Boreal"))
+    climate_option.add_item(tr("Temperate"))
+    climate_option.add_item(tr("Subtropics"))
+    climate_option.add_item(tr("Tropics"))
+    climate_option.select(CLIMATE_PRESETS.find(DEFAULT_CLIMATE))
+    climate_option.custom_minimum_size = Vector2(200, SETTING_CONTROL_HEIGHT)
+    var climate_tooltip := tr("The climate belt the city starts in. It decides the terrain and the resources around the city.")
+    WrappedTooltip.attach(climate_option, climate_tooltip)
+    _add_setting_row(column, tr("Climate"), climate_option, climate_tooltip)
 
     # How rich the map is in resources: a multiplier of the number of specimens each
     # resource spawns. The preview does not draw resources, so the choice needs no refresh.
@@ -1047,6 +1069,16 @@ func _selected_resource_density() -> float:
         return RESOURCE_DENSITY_PRESETS[index]
     return DEFAULT_RESOURCE_DENSITY
 
+# The climate belt the city will start in. Falls back to a random latitude when the settings
+# have not been built (a direct start of a new game).
+func _selected_climate() -> String:
+    if climate_option == null:
+        return DEFAULT_CLIMATE
+    var index := climate_option.selected
+    if index >= 0 and index < CLIMATE_PRESETS.size():
+        return CLIMATE_PRESETS[index]
+    return DEFAULT_CLIMATE
+
 # The set is handed over at once, so the game that starts runs exactly the data the
 # player has chosen. The data itself is rebuilt later, when something really reads it:
 # a full rebuild on every checkbox makes the list feel slow, and the set of the game is
@@ -1082,6 +1114,7 @@ func _start_new_game(city_name: String):
     CityData.world_sea = _resolved_sea_config(_preview_seed)
     CityData.world_rivers = _selected_river_config()
     CityData.world_resource_density = _selected_resource_density()
+    CityData.world_climate = _selected_climate()
     # The overlay is hung on the ROOT, not on the menu: the scene change frees the
     # menu, and the world generation runs inside MainMap. MainMap updates the very
     # same bar and removes it when the world is ready.

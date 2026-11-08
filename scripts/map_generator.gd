@@ -775,7 +775,8 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
 #
 #   temperature — belts running from the poles to the equator. The equator sits on a random row
 #     (the "climate" block of data/map_config.json), so the city in the middle of the map lands
-#     on a different latitude from game to game and the belts are built around it. The belts are
+#     on a different latitude from game to game; a climate chosen in the world settings places
+#     the equator so the city lands in the chosen belt. The belts are
 #     ordered polar → cold → mild → subtropical → tropical → subtropical → mild → cold → polar,
 #     and the order is never broken: the temperature row of a hex is shifted by a smooth noise
 #     field, but the shift is clamped so that the row never decreases down a column and never
@@ -790,7 +791,9 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
 # The polar belt is measured not from the equator but from the map edge: it is the outer part of
 # the cold region of every column ("polar_share" of data/map_config.json), so the tundra reaches
 # the pole whatever latitude the equator was rolled on, and the taiga keeps the inner part of the
-# cold region. No wooded cover grows in the tundra, so the taiga never spreads into it.
+# cold region. No wooded cover grows in the tundra, so the taiga never spreads into it. A chosen
+# cold climate puts the city first: on a map too short for the full sequence on both sides of the
+# equator, the near edge keeps whatever cold fits there and may end up warmer than the taiga.
 #
 # A pair (temperature, humidity) selects a climate zone (data/climate.json), and the zone says
 # which variety every family becomes and what grows on it. The zone id is stored in the
@@ -806,6 +809,12 @@ const TEMPERATURE_SUBTROPICAL := "subtropical"
 const TEMPERATURE_TROPICAL := "tropical"
 const HUMIDITY_WET := "wet"
 const HUMIDITY_DRY := "dry"
+
+# The climate setting of a new game that rolls the latitude of the city instead of fixing it.
+const CLIMATE_RANDOM := "random"
+# The meander of a chosen belt stops this far from its edges: the monotone clamp of the
+# temperature rows can carry a row slightly past the warp amplitude itself.
+const CLIMATE_MEANDER_MARGIN := 0.75
 
 # The families the climate turns into the varieties of its zone: the relief (a plain becomes a
 # tundra plain, a boreal plain, a steppe, a prairie, a savanna, a tropical plain) and the wetlands
@@ -878,8 +887,20 @@ func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
     var subtropical := maxf(2.0, float(rows) * float(cfg.get("subtropical_rows", 0.06)))
     var mild := maxf(2.0, float(rows) * float(cfg.get("mild_rows", 0.10)))
     var belt := tropical_half + subtropical + mild
+    var chosen: String = CityData.world_climate
+    var city_row := int(rows / 2.0)
     var equator := _roll_equator_row(rows, cfg)
-    var temperature_rows := _temperature_rows(rows, cols, cfg, equator, belt)
+    var warp_cap := INF
+    if chosen != CLIMATE_RANDOM:
+        var target := _city_latitude_target(rows, chosen, tropical_half, subtropical, mild)
+        var side := 1.0 if randf() < 0.5 else -1.0
+        equator = float(city_row) + target.x * side
+        warp_cap = maxf(0.0, target.y - CLIMATE_MEANDER_MARGIN)
+    var temperature_rows := _temperature_rows(rows, cols, cfg, equator, belt, warp_cap,
+            chosen != CLIMATE_RANDOM)
+    if chosen != CLIMATE_RANDOM:
+        _pin_city_belt(temperature_rows, rows, cols, city_row, equator, chosen, tropical_half,
+                subtropical, belt)
 
     var moisture_scale := maxf(2.0, float(mini(rows, cols)) * float(cfg.get("moisture_scale", 0.26)))
     var moisture_threshold := float(cfg.get("moisture_threshold", 0.5))
@@ -887,6 +908,9 @@ func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
 
     # The polar belt of every column: the outer share of its cold region. It is measured from the
     # edge row of the column, so the meander of the boundary can never pull the tundra off the pole.
+    # A cold region thinner than MIN_COLD_ROWS keeps no polar share: the tundra would sit next to
+    # a warm belt with no taiga between them. The random climate always keeps its edges thicker;
+    # a chosen cold climate on a short map can end up with a cold edge instead of a polar one.
     var polar_share := clampf(float(cfg.get("polar_share", 0.3)), 0.0, 1.0)
     var polar_bounds: Array = []
     for c in range(cols):
@@ -894,7 +918,9 @@ func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
         var bottom := float(temperature_rows[rows - 1][c])
         var cold_top := maxf(0.0, equator - belt - top)
         var cold_bottom := maxf(0.0, bottom - equator - belt)
-        polar_bounds.append([top + cold_top * polar_share, bottom - cold_bottom * polar_share])
+        var polar_top := top + cold_top * polar_share if cold_top >= MIN_COLD_ROWS else top - 1.0
+        var polar_bottom := bottom - cold_bottom * polar_share if cold_bottom >= MIN_COLD_ROWS else bottom + 1.0
+        polar_bounds.append([polar_top, polar_bottom])
 
     var lookup := _zone_lookup()
     for r in range(rows):
@@ -943,19 +969,71 @@ func _convert_families(tile_data: Array, rows: int, cols: int) -> void:
             if terrain_id != "":
                 tile["terrain"] = terrain_id
 
-# The row of the equator. The range of the roll keeps the full sequence of the belts on the map:
-# with the equator too close to an edge, the cold belt of that side would disappear.
+# The row of the equator of a world with a random climate. The range of the roll keeps the full
+# sequence of the belts on the map: with the equator too close to an edge, the cold belt of that
+# side would disappear. A chosen climate places the equator itself (see _city_latitude_target).
 func _roll_equator_row(rows: int, cfg: Dictionary) -> float:
     var low := clampf(float(cfg.get("equator_min", 0.33)), 0.0, 1.0)
     var high := clampf(float(cfg.get("equator_max", 0.67)), low, 1.0)
     return float(rows - 1) * randf_range(low, high)
 
+# The latitude of a city with a chosen climate: its distance from the equator (x) and the room
+# from that distance to the edges of the belt (y). The distance is the middle of the belt, so the
+# meander has the most room. The cold belt also keeps the near map edge beyond the warm belts
+# while the half map on that side of the equator is tall enough for them; a map too short for
+# that keeps the city in the cold belt and lets the near edge be warmer.
+func _city_latitude_target(rows: int, chosen: String, tropical_half: float, subtropical: float,
+        mild: float) -> Vector2:
+    var belt := tropical_half + subtropical + mild
+    match chosen:
+        TEMPERATURE_TROPICAL:
+            return Vector2(tropical_half / 2.0, tropical_half / 2.0)
+        TEMPERATURE_SUBTROPICAL:
+            return Vector2(tropical_half + subtropical / 2.0, subtropical / 2.0)
+        TEMPERATURE_MILD:
+            return Vector2(tropical_half + subtropical + mild / 2.0, mild / 2.0)
+    var middle := float(int(rows / 2.0))
+    var far_limit := middle - 1.0 - belt
+    if far_limit > belt:
+        return Vector2((belt + far_limit) / 2.0, (far_limit - belt) / 2.0)
+    return Vector2(belt + 1.0, 0.0)
+
+# The city of a chosen climate stays in its belt: if the meander has carried its temperature row
+# across a belt edge, the whole column is shifted back. A uniform shift keeps the column monotone,
+# so the order of the belts survives it.
+func _pin_city_belt(temperature_rows: Array, rows: int, cols: int, city_row: int, equator: float,
+        chosen: String, tropical_half: float, subtropical: float, belt: float) -> void:
+    var lo := 0.0
+    var hi := tropical_half
+    match chosen:
+        TEMPERATURE_SUBTROPICAL:
+            lo = tropical_half
+            hi = tropical_half + subtropical
+        TEMPERATURE_MILD:
+            lo = tropical_half + subtropical
+            hi = belt
+        TEMPERATURE_COLD:
+            lo = belt
+            hi = INF
+    var city_col := int(cols / 2.0)
+    var distance := float(temperature_rows[city_row][city_col]) - equator
+    var inside := absf(distance) <= hi and (lo == 0.0 or absf(distance) > lo)
+    if inside:
+        return
+    var magnitude := clampf(absf(distance), lo + 0.5 if lo > 0.0 else 0.0, hi)
+    var shift := (magnitude if distance >= 0.0 else -magnitude) - distance
+    for r in range(rows):
+        temperature_rows[r][city_col] = float(temperature_rows[r][city_col]) + shift
+
 # The temperature row of every hex: its own row shifted by the climate meander.
 # Down a column the value only grows and never jumps by more than MAX_TEMPERATURE_STEP, so the
 # belts keep their order; the horizontal average that follows cannot break it either, because
-# an average of monotone columns is monotone itself.
-func _temperature_rows(rows: int, cols: int, cfg: Dictionary, equator: float, belt: float) -> Array:
-    var amplitude := float(cfg.get("warp_rows", 3.0))
+# an average of monotone columns is monotone itself. A chosen climate caps the meander so the
+# city stays in its belt and leaves the edges as they fall: the edge shift of the random climate
+# would drag the city out of the belt it was placed in.
+func _temperature_rows(rows: int, cols: int, cfg: Dictionary, equator: float, belt: float,
+        warp_cap: float, fixed_climate: bool) -> Array:
+    var amplitude := minf(float(cfg.get("warp_rows", 3.0)), warp_cap)
     var scale := maxf(2.0, float(mini(rows, cols)) * float(cfg.get("warp_scale", 0.2)))
     var salt := randi()
 
@@ -995,6 +1073,8 @@ func _temperature_rows(rows: int, cols: int, cfg: Dictionary, equator: float, be
     # The polar edges are guaranteed: if the meander has brought the warm belt too close to an edge,
     # the whole column is shifted. A uniform shift keeps the column monotone and cannot create a
     # jump between the neighbouring columns.
+    if fixed_climate:
+        return smoothed
     var edge := maxi(1, int(MIN_COLD_ROWS))
     var top_limit := equator - belt - 1.0
     var bottom_limit := equator + belt + 1.0

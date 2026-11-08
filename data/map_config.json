@@ -46,7 +46,8 @@
   //     polar), therefore two hexes of the same latitude never belong to non-neighbouring belts:
   //     a tropical plain and a tundra plain cannot meet sideways. The equator sits on a random row,
   //     so the centre of the map (and the city on it) lands on a different latitude from game to
-  //     game, and the belts are built around it.
+  //     game; a climate chosen in the world settings places the equator so the city lands in the
+  //     chosen belt.
   //   moisture — large wet and dry regions that do not follow the latitudes: they lie anywhere,
   //     curve and surround each other. The moisture splits every belt in two.
   // A pair (temperature, moisture) selects a climate zone (data/climate.json), and the zone turns
@@ -56,8 +57,8 @@
   // Rows are counted from the north edge of the map. All the "rows" values below are
   // fractions of the map height, so the climate does not depend on the map size.
   "climate": {
-    "equator_min": 0.33,        // The range of the equator row: the nearer to 0.5, the more
-    "equator_max": 0.67,        // central (tropical) the city's latitude is
+    "equator_min": 0.33,        // The range of the equator row of a random climate: the nearer
+    "equator_max": 0.67,        // to 0.5, the more central (tropical) the city's latitude is
     "tropical_half_rows": 0.08, // Half of the height of the tropical belt
     "subtropical_rows": 0.06,   // The height of the subtropical belt on each side of the tropical
                                 // one (the savanna)

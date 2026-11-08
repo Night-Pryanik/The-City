@@ -39,11 +39,17 @@ msgstr "Выше среднего"
 msgid "Add to storage"
 msgstr "Добавить на склад"
 
+msgid "Boreal"
+msgstr "Бореальный"
+
 msgid "Challenge completed"
 msgstr "Испытание выполнено"
 
 msgid "Challenge failed: %s"
 msgstr "Испытание провалено: %s"
+
+msgid "Climate"
+msgstr "Климат"
 
 msgid "Extremely high"
 msgstr "Крайне высокая"
@@ -74,6 +80,9 @@ msgstr "Товар: %s"
 
 msgid "Quality:"
 msgstr "Качество:"
+
+msgid "Random climate"
+msgstr "Случайный"
 
 msgid "Reading save..."
 msgstr "Чтение сохранения..."
@@ -113,6 +122,18 @@ msgstr "Бонус специализации ссылается на несущ
 
 msgid "Standard"
 msgstr "Стандартная"
+
+msgid "Subtropics"
+msgstr "Субтропики"
+
+msgid "Temperate"
+msgstr "Умеренный"
+
+msgid "The climate belt the city starts in. It decides the terrain and the resources around the city."
+msgstr "Климатический пояс, в котором появится город. Он определяет ландшафт и ресурсы вокруг города."
+
+msgid "Tropics"
+msgstr "Тропики"
 
 msgid "Very high"
 msgstr "Очень высокая"

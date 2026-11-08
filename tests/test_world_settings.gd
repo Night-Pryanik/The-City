@@ -26,6 +26,8 @@
 #  10. The resource density scales the number of specimens a resource spawns: a density below
 #      standard never reduces a lone specimen, a density above it multiplies even a lone one,
 #      and a resource with spawn_count 0 stays unspawned at any density.
+#  11. The climate is a dropdown of the five choices (random by default), and every choice
+#      reads back the temperature belt it names.
 #
 # The generation of the world is not started here: the size is read through the dialog,
 # and test_new_game_loading covers the path from a new game to a generated map.
@@ -152,6 +154,29 @@ func _run() -> void:
     menu.resource_density_option.select(menu.RESOURCE_DENSITY_PRESETS.find(1.0))
     check(WRAPPED_TOOLTIP.find_carrier(menu.resource_density_option) != null,
             "the density dropdown has a tooltip", state)
+
+    # The climate is a dropdown of the five choices, random by default, and it lives on the
+    # world tab like the other world settings.
+    check(tabs.get_tab_control(menu.TAB_WORLD).is_ancestor_of(menu.climate_option),
+            "the climate lives on the world tab", state)
+    check(menu.climate_option.item_count == menu.CLIMATE_PRESETS.size(),
+            "the climate lists the five choices (got %d items)"
+                    % menu.climate_option.item_count, state)
+    check(menu._selected_climate() == "random",
+            "the random climate is the default (got %s)" % menu._selected_climate(), state)
+    var climate_names: Array[String] = [tr("Random climate"), tr("Boreal"), tr("Temperate"),
+            tr("Subtropics"), tr("Tropics")]
+    for index in range(menu.CLIMATE_PRESETS.size()):
+        menu.climate_option.select(index)
+        check(menu._selected_climate() == menu.CLIMATE_PRESETS[index],
+                "climate choice %d reads back its belt (got %s)"
+                        % [index, menu._selected_climate()], state)
+        check(menu.climate_option.get_item_text(index) == climate_names[index],
+                "climate choice %d shows its name (got %s)"
+                        % [index, menu.climate_option.get_item_text(index)], state)
+    menu.climate_option.select(menu.CLIMATE_PRESETS.find("random"))
+    check(WRAPPED_TOOLTIP.find_carrier(menu.climate_option) != null,
+            "the climate dropdown has a tooltip", state)
 
     var regenerate_button: Button = null
     for preview in menu.world_previews:

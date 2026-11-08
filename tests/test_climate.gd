@@ -62,6 +62,8 @@ func _run() -> void:
         _test_reef_warm_shallows(state)
     if WATCHDOG.wants_case("corals_from_reef"):
         _test_corals_from_reef(state)
+    if WATCHDOG.wants_case("chosen_climate"):
+        _test_chosen_climate(state)
 
     WATCHDOG.report_skipped()
     if state["failed"]:
@@ -94,6 +96,21 @@ func _build_map(sides: Array) -> Array:
             _gdata.raw_resources, counts)
     generator.free()
     city_data.world_sea = saved_sea
+    return tiles
+
+# A map of a chosen climate: the world setting is handed over through CityData like a new game
+# does, and the seed is the caller's so the meander is exercised on more than one field.
+func _build_climate_map(climate: String, map_seed: int) -> Array:
+    var city_data = get_root().get_node("CityData")
+    var saved_climate: String = city_data.world_climate
+    city_data.world_climate = climate
+    var generator = load("res://scripts/map_generator.gd").new()
+    seed(map_seed)
+    var counts = generator.make_terrain_counts(ROWS, COLS)
+    var tiles: Array = generator.generate_map(ROWS, COLS, int(ROWS / 2.0), int(COLS / 2.0),
+            _gdata.raw_resources, counts)
+    generator.free()
+    city_data.world_climate = saved_climate
     return tiles
 
 func _zone_id(row: int, col: int) -> String:
@@ -463,6 +480,22 @@ func _test_corals_from_reef(state: Dictionary) -> void:
                     "corals lie on a %s cover at (%d,%d)" %
                     [str(_tiles[r][c].get("cover", "none")), r, c], state)
     check(checked > 0, "the map under test has no corals to check", state)
+
+# A climate chosen in the world settings puts the city in that temperature belt: the equator is
+# placed around the centre of the map instead of being rolled, on either side of the city and on
+# more than one meander field. The order of the belts survives the placement.
+func _test_chosen_climate(state: Dictionary) -> void:
+    var main_tiles: Array = _tiles
+    var city_row := int(ROWS / 2.0)
+    var city_col := int(COLS / 2.0)
+    for climate in ["cold", "mild", "subtropical", "tropical"]:
+        for map_seed in [SEED, SEED + 1, SEED + 2]:
+            _tiles = _build_climate_map(climate, map_seed)
+            check(_belt(city_row, city_col) == climate,
+                    "the climate %s puts the city in the %s belt (seed %d)"
+                            % [climate, _belt(city_row, city_col), map_seed], state)
+            _test_neighbouring_belts(state)
+    _tiles = main_tiles
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if not condition:
