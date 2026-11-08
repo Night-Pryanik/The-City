@@ -6,7 +6,7 @@
 #      keeps ONE size: switching tabs must not resize it.
 #   2. The City tab holds the name field, the World tab the settings, the Mods tab the list.
 #   3. The map size is a preset list with "Custom size" at the end; the custom field takes
-#      only digits and is clamped to the allowed range.
+#      only digits and is clamped to the allowed range, and its buttons step the side.
 #   4. The number of towns is a plain number field: digits only, clamped to the allowed
 #      range, zero allowed. The buttons beside it step the number and stop at the bounds.
 #   5. The proportional checkbox computes the count from the map size and takes the input
@@ -18,7 +18,8 @@
 #   7. Neither the map size nor the number of towns is part of data/map_config.json: the
 #      world reads them from the player's choice (CityData.world_map_size / world_town_count).
 #   8. The "Seas" section: the mode dropdown, the rows of the chosen mode only, a tooltip on
-#      every control, the numeric fields and the ranges they are clamped to.
+#      every control, the numeric fields and the ranges they are clamped to. Every numeric
+#      field of the tab owns step buttons with the increment of its setting.
 #   9. The "Rivers" section: the four settings (also out of data/map_config.json), their
 #      fields, and the schematic main rivers on the picture — the chosen count, no tributaries,
 #      not a single point in the water, and no two rivers meeting each other or themselves.
@@ -181,6 +182,22 @@ func _run() -> void:
     check(menu._selected_map_size() == 42,
             "the filtered number is the chosen side (got %d)" % menu._selected_map_size(), state)
 
+    # The side steps by tens and stops at the bounds of the custom range.
+    var size_stepper: HBoxContainer = menu.custom_size_edit.get_parent()
+    menu.custom_size_edit.text = "60"
+    size_stepper.get_child(2).pressed.emit()
+    check(menu.custom_size_edit.text == "70" and menu._selected_map_size() == 70,
+            "the side plus button steps by ten (got %s)" % menu.custom_size_edit.text, state)
+    size_stepper.get_child(0).pressed.emit()
+    check(menu.custom_size_edit.text == "60",
+            "the side minus button steps back (got %s)" % menu.custom_size_edit.text, state)
+    menu.custom_size_edit.text = "200"
+    size_stepper.get_child(2).pressed.emit()
+    check(menu.custom_size_edit.text == "200", "the side step stops at the maximum", state)
+    menu.custom_size_edit.text = "10"
+    size_stepper.get_child(0).pressed.emit()
+    check(menu.custom_size_edit.text == "10", "the side step stops at the minimum", state)
+
     # --- 4. The number of towns and its ceiling ---
     # The ceiling is a density, not a number: it follows the map, so one field serves a 30×30
     # village map and a 200×200 world.
@@ -243,6 +260,14 @@ func _run() -> void:
     menu.town_count_edit.text = "0"
     menu._on_town_count_step(-1)
     check(menu._selected_town_count() == 0, "the step stops at zero", state)
+
+    menu.town_count_edit.text = "12"
+    menu.town_count_plus.pressed.emit()
+    check(menu._selected_town_count() == 13,
+            "the town plus button is wired to the step (got %d)" % menu._selected_town_count(), state)
+    menu.town_count_minus.pressed.emit()
+    check(menu._selected_town_count() == 12,
+            "the town minus button is wired to the step (got %d)" % menu._selected_town_count(), state)
 
     # The computed count keeps the default on the medium map and follows the map size. The
     # property is what a click on the checkbox changes; the handler is called after it in
@@ -534,6 +559,100 @@ func _run() -> void:
     check(menu._selected_sea_config()["edge_island_size"] == [9, 9],
             "the range is read back as a pair (got %s)"
                     % str(menu._selected_sea_config()["edge_island_size"]), state)
+
+    # --- 7b. The step buttons of the numeric rows ---
+    # Every numeric field owns the town-count layout: minus, field, plus. The increment is
+    # the setting's own: one for whole hexes, a fraction of the range for shares.
+    var depth_stepper: HBoxContainer = depth_edit.get_parent()
+    depth_edit.text = "28"
+    depth_stepper.get_child(2).pressed.emit()
+    check(depth_edit.text == "29", "the sea depth steps by one (got %s)" % depth_edit.text, state)
+    depth_stepper.get_child(0).pressed.emit()
+    check(depth_edit.text == "28",
+            "the sea depth steps back by one (got %s)" % depth_edit.text, state)
+    depth_edit.text = "100"
+    depth_stepper.get_child(2).pressed.emit()
+    check(depth_edit.text == "100", "the depth step stops at the upper bound", state)
+    depth_edit.text = "1"
+    depth_stepper.get_child(0).pressed.emit()
+    check(depth_edit.text == "1", "the depth step stops at the lower bound", state)
+
+    var bays_edit: LineEdit = menu.sea_controls["edge_envelope_strength"]["control"]
+    var bays_stepper: HBoxContainer = bays_edit.get_parent()
+    bays_edit.text = "0.5"
+    bays_stepper.get_child(2).pressed.emit()
+    check(bays_edit.text == "0.6", "the bays step by a tenth (got %s)" % bays_edit.text, state)
+    bays_edit.text = "0"
+    bays_stepper.get_child(0).pressed.emit()
+    check(is_zero_approx(float(bays_edit.text)),
+            "the bays step stops at zero (got %s)" % bays_edit.text, state)
+
+    var density_edit: LineEdit = menu.sea_controls["edge_island_density"]["control"]
+    density_edit.text = "0.03"
+    density_edit.get_parent().get_child(2).pressed.emit()
+    check(density_edit.text == "0.04",
+            "the island density steps by a hundredth (got %s)" % density_edit.text, state)
+
+    var attempts_edit: LineEdit = menu.sea_controls["edge_island_max_attempts"]["control"]
+    attempts_edit.text = "60"
+    attempts_edit.get_parent().get_child(2).pressed.emit()
+    check(attempts_edit.text == "70",
+            "the search attempts step by ten (got %s)" % attempts_edit.text, state)
+
+    var level_stepper: HBoxContainer = level_edit.get_parent()
+    level_edit.text = "0"
+    level_stepper.get_child(2).pressed.emit()
+    check(level_edit.text == "0.05",
+            "the sea level steps by a twentieth (got %s)" % level_edit.text, state)
+    level_stepper.get_child(0).pressed.emit()
+    level_stepper.get_child(0).pressed.emit()
+    check(level_edit.text == "-0.05",
+            "the sea level steps below zero (got %s)" % level_edit.text, state)
+
+    # Each bound of a range owns its own buttons; stepping the lower one past the upper
+    # carries the upper along, and the upper cannot drop below the lower.
+    var sides_spec: Dictionary = menu.sea_controls["sides"]
+    sides_spec["from"].text = "1"
+    sides_spec["to"].text = "2"
+    var from_stepper: HBoxContainer = sides_spec["from"].get_parent()
+    var to_stepper: HBoxContainer = sides_spec["to"].get_parent()
+    from_stepper.get_child(2).pressed.emit()
+    check(sides_spec["from"].text == "2",
+            "the range bound steps by one (got %s)" % sides_spec["from"].text, state)
+    from_stepper.get_child(2).pressed.emit()
+    check(sides_spec["from"].text == "3" and sides_spec["to"].text == "3",
+            "the lower bound carries the upper one past it (got %s – %s)"
+                    % [sides_spec["from"].text, sides_spec["to"].text], state)
+    to_stepper.get_child(0).pressed.emit()
+    check(sides_spec["to"].text == "3",
+            "the upper bound cannot step below the lower one (got %s)" % sides_spec["to"].text,
+            state)
+
+    var river_edit: LineEdit = menu.river_controls["num_main_rivers"]["control"]
+    var river_stepper: HBoxContainer = river_edit.get_parent()
+    river_edit.text = "3"
+    river_stepper.get_child(2).pressed.emit()
+    check(river_edit.text == "4", "the river count steps by one (got %s)" % river_edit.text, state)
+    river_edit.text = "20"
+    river_stepper.get_child(2).pressed.emit()
+    check(river_edit.text == "20", "the river step stops at the upper bound", state)
+    river_edit.text = "0"
+    river_stepper.get_child(0).pressed.emit()
+    check(river_edit.text == "0", "the river step stops at zero", state)
+
+    # Back to the defaults for the picture checks below.
+    depth_edit.text = "28"
+    bays_edit.text = "0.5"
+    density_edit.text = "0.03"
+    attempts_edit.text = "60"
+    level_edit.text = "0"
+    sides_spec["from"].text = "1"
+    sides_spec["to"].text = "2"
+    size_spec["from"].text = "1"
+    size_spec["to"].text = "5"
+    river_edit.text = "3"
+    menu._normalize_sea_fields()
+    menu._normalize_river_fields()
 
     # --- 8. The size and the count are not in the data ---
     var game_data = get_root().get_node("GameData")

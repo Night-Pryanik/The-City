@@ -40,6 +40,8 @@ const MAP_SIZE_PRESETS: Array[int] = [30, 60, 100, 150, 200]
 const MIN_MAP_SIZE := 10
 const MAX_MAP_SIZE := 200
 const DEFAULT_MAP_SIZE := 60
+# One hex per click would barely move a side that spans 10..200, so a click moves it by ten.
+const CUSTOM_SIZE_STEP := 10
 
 # The number of towns a new world is generated with, and the lower bound of the field. The
 # generator places as many as the map allows: a crowded map simply ends up with fewer.
@@ -61,8 +63,6 @@ const SEA_INT := "int"
 const SEA_FLOAT := "float"
 const SEA_PAIR := "pair"
 const SEA_CHECK := "check"
-
-const SEA_FIELD_WIDTH := 86
 
 @onready var continue_button = $VBoxContainer/ContinueButton
 @onready var new_game_button = $VBoxContainer/NewGameButton
@@ -458,12 +458,15 @@ func _build_world_settings(column: VBoxContainer):
             tr("The side of the square map, in hexes."))
 
     custom_size_edit = LineEdit.new()
-    custom_size_edit.custom_minimum_size = Vector2(90, SETTING_CONTROL_HEIGHT)
+    custom_size_edit.custom_minimum_size = Vector2(STEP_FIELD_WIDTH, SETTING_CONTROL_HEIGHT)
     custom_size_edit.max_length = 3
+    custom_size_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
     custom_size_edit.tooltip_text = tr("A whole number from %d to %d.") % [MIN_MAP_SIZE, MAX_MAP_SIZE]
     custom_size_edit.text_changed.connect(_on_custom_size_text_changed)
     custom_size_edit.focus_exited.connect(_normalize_custom_size)
-    custom_size_row = _add_setting_row(column, tr("Side length"), custom_size_edit)
+    custom_size_row = _add_setting_row(column, tr("Side length"),
+            _make_stepper(custom_size_edit, _on_custom_size_step.bind(-CUSTOM_SIZE_STEP),
+                    _on_custom_size_step.bind(CUSTOM_SIZE_STEP)))
     custom_size_row.visible = false
 
     # The towns: a number that can be typed or stepped with the buttons beside it. The map
@@ -476,13 +479,10 @@ func _build_world_settings(column: VBoxContainer):
     town_count_edit.text_changed.connect(_on_town_count_text_changed)
     town_count_edit.focus_exited.connect(_normalize_town_count)
 
-    var stepper := HBoxContainer.new()
-    stepper.add_theme_constant_override("separation", 4)
-    town_count_minus = _make_step_button("−", -1)
-    town_count_plus = _make_step_button("+", 1)
-    stepper.add_child(town_count_minus)
-    stepper.add_child(town_count_edit)
-    stepper.add_child(town_count_plus)
+    var stepper := _make_stepper(town_count_edit, _on_town_count_step.bind(-1),
+            _on_town_count_step.bind(1))
+    town_count_minus = stepper.get_child(0)
+    town_count_plus = stepper.get_child(2)
 
     # The checkbox ties the count to the map size. The number is then computed, and neither
     # the field nor the buttons take input.
@@ -554,26 +554,29 @@ func _build_sea_settings(column: VBoxContainer):
     islands_check.toggled.connect(_on_sea_islands_toggled)
     _add_sea_pair_row(column, "edge_island_size", tr("Island size"),
             tr("The smallest and the largest island, in hexes."), 1, 50, edge, islands_check)
+    # A hundredth per click: the default share is only 0.03, so a tenth would triple it at once.
     _add_sea_float_row(column, "edge_island_density", tr("Island density"),
             tr("The number of islands follows the area of the sea: the area times this share, plus a random spread. A small sea often gets none, a large one may get many."),
-            0.0, 1.0, edge, islands_check)
+            0.0, 1.0, edge, islands_check, 0.01)
     _add_sea_int_row(column, "edge_island_min_distance", tr("Distance between islands"),
             tr("The least distance between two islands, in hexes, so that they do not stick together."),
             0, 50, edge, islands_check)
     _add_sea_int_row(column, "edge_island_max_attempts", tr("Island search attempts"),
             tr("How many times the generator tries to find a free spot for an island before it gives up."),
-            1, 1000, edge, islands_check)
+            1, 1000, edge, islands_check, 10)
+    # A twentieth per click: the threshold decides land from sea, and a tenth flips whole
+    # coastlines at once.
     _add_sea_float_row(column, "noise_sea_level", tr("Sea level"),
-            tr("The land/sea threshold: a hex at or below it is sea."), -1.0, 1.0, noise)
+            tr("The land/sea threshold: a hex at or below it is sea."), -1.0, 1.0, noise, null, 0.05)
     _add_sea_float_row(column, "noise_strength", tr("Coast raggedness"),
             tr("The amplitude of the elevation noise: how ragged the coast is and how many islands it makes."),
-            0.0, 2.0, noise)
+            0.0, 2.0, noise, null, 0.05)
     _add_sea_float_row(column, "noise_edge_gradient", tr("Continentality"),
             tr("0 — islands everywhere, 1 — the sea strictly at the edges of the map."),
             0.0, 1.0, noise)
     _add_sea_float_row(column, "noise_city_bump", tr("Land around the city"),
             tr("The elevation hill around the city: it guarantees that the city starts on a continent."),
-            0.0, 5.0, noise)
+            0.0, 5.0, noise, null, 0.5)
     _add_sea_int_row(column, "noise_city_bump_radius", tr("Guaranteed land radius"),
             tr("The radius around the city that is always land, in hexes."), 0, 50, noise)
 
@@ -597,7 +600,8 @@ func _add_river_int_row(column: VBoxContainer, key: String, label: String, toolt
         lo: int, hi: int):
     var default := int(_river_default(key))
     var edit := _make_number_field(str(default), false, tooltip, _normalize_river_fields)
-    _add_setting_row(column, label, edit, tooltip)
+    var control := _stepped_field(edit, 1, false, lo, hi, default, _normalize_river_fields)
+    _add_setting_row(column, label, control, tooltip)
     river_controls[key] = {"kind": SEA_INT, "control": edit, "lo": lo, "hi": hi,
             "default": default}
 
@@ -627,21 +631,22 @@ func _add_sea_subheader(column: VBoxContainer, text: String, modes: Array) -> Di
 
 # A whole-number row of the "Seas" section.
 func _add_sea_int_row(column: VBoxContainer, key: String, label: String, tooltip: String,
-        lo: int, hi: int, modes: Array, gate: BaseButton = null):
-    var edit := _make_number_field(str(int(_sea_default(key))), false, tooltip,
-            _normalize_sea_fields)
-    _add_sea_row(column, key, label, edit, tooltip, modes,
-            {"kind": SEA_INT, "control": edit, "lo": lo, "hi": hi,
-                    "default": int(_sea_default(key))}, gate)
+        lo: int, hi: int, modes: Array, gate: BaseButton = null, step: int = 1):
+    var default := int(_sea_default(key))
+    var edit := _make_number_field(str(default), false, tooltip, _normalize_sea_fields)
+    var control := _stepped_field(edit, step, false, lo, hi, default, _normalize_sea_fields)
+    _add_sea_row(column, key, label, control, tooltip, modes,
+            {"kind": SEA_INT, "control": edit, "lo": lo, "hi": hi, "default": default}, gate)
 
 # A fractional row of the "Seas" section.
 func _add_sea_float_row(column: VBoxContainer, key: String, label: String, tooltip: String,
-        lo: float, hi: float, modes: Array, gate: BaseButton = null):
-    var edit := _make_number_field(_format_number(float(_sea_default(key))), true, tooltip,
+        lo: float, hi: float, modes: Array, gate: BaseButton = null, step: float = 0.1):
+    var default := float(_sea_default(key))
+    var edit := _make_number_field(_format_number(default), true, tooltip,
             _normalize_sea_fields)
-    _add_sea_row(column, key, label, edit, tooltip, modes,
-            {"kind": SEA_FLOAT, "control": edit, "lo": lo, "hi": hi,
-                    "default": float(_sea_default(key))}, gate)
+    var control := _stepped_field(edit, step, true, lo, hi, default, _normalize_sea_fields)
+    _add_sea_row(column, key, label, control, tooltip, modes,
+            {"kind": SEA_FLOAT, "control": edit, "lo": lo, "hi": hi, "default": default}, gate)
 
 # A row of two whole numbers — the bounds of a range. The two fields read as one value, so
 # they stand together in one control.
@@ -654,12 +659,16 @@ func _add_sea_pair_row(column: VBoxContainer, key: String, label: String, toolti
             _normalize_sea_fields)
 
     var box := HBoxContainer.new()
-    box.add_theme_constant_override("separation", 6)
-    box.add_child(from_edit)
+    # Wider than the stepper's own gaps: the dash must read as the range separator, not as
+    # another sign button between the two steppers.
+    box.add_theme_constant_override("separation", 10)
+    box.add_child(_stepped_field(from_edit, 1, false, lo, hi, int(default[0]),
+            _normalize_sea_fields))
     var dash := Label.new()
     dash.text = "–"
     box.add_child(dash)
-    box.add_child(to_edit)
+    box.add_child(_stepped_field(to_edit, 1, false, lo, hi, int(default[1]),
+            _normalize_sea_fields))
 
     _add_sea_row(column, key, label, box, tooltip, modes,
             {"kind": SEA_PAIR, "from": from_edit, "to": to_edit, "lo": lo, "hi": hi,
@@ -695,7 +704,7 @@ func _add_sea_row(column: VBoxContainer, key: String, label: String, control: Co
 func _make_number_field(value: String, fractional: bool, tooltip: String,
         normalizer: Callable) -> LineEdit:
     var edit := LineEdit.new()
-    edit.custom_minimum_size = Vector2(SEA_FIELD_WIDTH, SETTING_CONTROL_HEIGHT)
+    edit.custom_minimum_size = Vector2(STEP_FIELD_WIDTH, SETTING_CONTROL_HEIGHT)
     edit.max_length = 6
     edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
     edit.text = value
@@ -834,12 +843,43 @@ func _keep_number(edit: LineEdit, text: String, fractional: bool):
 
 # A square button with a sign on it. The two of them and the field between them read as one
 # control, so they share the height of the field.
-func _make_step_button(sign: String, step: int) -> Button:
+func _make_step_button(sign: String, callback: Callable) -> Button:
     var button := Button.new()
     button.text = sign
     button.custom_minimum_size = Vector2(SETTING_CONTROL_HEIGHT, SETTING_CONTROL_HEIGHT)
-    button.pressed.connect(_on_town_count_step.bind(step))
+    button.pressed.connect(callback)
     return button
+
+# The field between its two step buttons, the layout of the town count.
+func _make_stepper(edit: LineEdit, minus: Callable, plus: Callable) -> HBoxContainer:
+    var box := HBoxContainer.new()
+    box.add_theme_constant_override("separation", 4)
+    box.add_child(_make_step_button("−", minus))
+    box.add_child(edit)
+    box.add_child(_make_step_button("+", plus))
+    return box
+
+# A number field whose buttons step it by the increment of its setting.
+func _stepped_field(edit: LineEdit, step: float, fractional: bool, lo: float, hi: float,
+        fallback: float, normalizer: Callable) -> HBoxContainer:
+    return _make_stepper(edit,
+            _on_number_step.bind(edit, -step, fractional, lo, hi, fallback, normalizer),
+            _on_number_step.bind(edit, step, fractional, lo, hi, fallback, normalizer))
+
+# The buttons step the number and stop at the bounds, so a click never produces a value the
+# field would have to clamp on the next focus change. The section normalizer runs afterwards
+# because a step of one bound of a range may carry the other bound with it.
+func _on_number_step(edit: LineEdit, step: float, fractional: bool, lo: float, hi: float,
+        fallback: float, normalizer: Callable):
+    var current: float
+    if fractional:
+        current = _read_fraction(edit, lo, hi, fallback)
+    else:
+        current = float(_read_whole(edit, int(lo), int(hi), int(fallback)))
+    var value := clampf(current + step, lo, hi)
+    edit.text = _format_number(value) if fractional else str(roundi(value))
+    normalizer.call()
+    _refresh_preview()
 
 # The custom row is shown only when the player picked "Custom size" (the last item).
 func _on_map_size_selected(index: int):
@@ -868,6 +908,11 @@ func _on_custom_size_text_changed(text: String):
 # focus, so the player sees the value the game is about to use.
 func _normalize_custom_size():
     custom_size_edit.text = str(_selected_map_size())
+    _refresh_town_row()
+    _refresh_preview()
+
+func _on_custom_size_step(step: int):
+    custom_size_edit.text = str(clampi(_selected_map_size() + step, MIN_MAP_SIZE, MAX_MAP_SIZE))
     _refresh_town_row()
     _refresh_preview()
 
