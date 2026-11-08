@@ -19,6 +19,10 @@
 #  10) Escape closes an open list.
 #  11) pressing the button of an already open list of recipes closes it instead of
 #      re-opening and re-fitting it.
+#  12) a list that does not fit to the right of its opener moves to its left side.
+#  13) a radio without a stock row ("no addition") builds no tooltip at all.
+#  14) re-selecting the base recipe from the list resets the "+1" mark of the additions
+#      button, and selecting a generated recipe from the list brings the mark back.
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
@@ -66,6 +70,12 @@ func _run() -> void:
         _test_close_open_popup(state)
     if WATCHDOG.wants_case("press_open_list"):
         _test_press_open_list(state)
+    if WATCHDOG.wants_case("popup_flip"):
+        _test_popup_flip(state)
+    if WATCHDOG.wants_case("radio_tooltip"):
+        _test_radio_tooltip(state)
+    if WATCHDOG.wants_case("base_reselect"):
+        _test_base_reselect(gd, city, state)
     if WATCHDOG.wants_case("quality_rule"):
         _test_quality_rule(gd, city, state)
 
@@ -491,3 +501,150 @@ func _test_press_open_list(state: Dictionary) -> void:
 
     panel.free()
     popup.free()
+
+
+# --- 12. A list near the right edge of the screen ---
+# The opener of the additions sits at the right end of the recipe row, so with a long
+# recipe name the list opened under it would leave the screen. Like a tooltip, it moves
+# to the left side of the opener instead.
+func _test_popup_flip(state: Dictionary) -> void:
+    var panel = (load("res://scripts/building_panel.gd") as Script).new()
+    get_root().add_child(panel)
+    var viewport_width: float = panel.get_viewport_rect().size.x
+
+    var opener := Button.new()
+    panel.add_child(opener)
+    opener.size = Vector2(28, 28)
+
+    var popup := Panel.new()
+    popup.custom_minimum_size = Vector2(400, 100)
+    panel.add_child(popup)
+
+    # Room on the right: the list opens under the opener, aligned to its left edge.
+    opener.global_position = Vector2(100, 100)
+    panel._fit_popup_size(popup, opener.global_position + Vector2(0, opener.size.y), opener)
+    check(popup.global_position == Vector2(100, 128),
+        "a list with room on the right opens under its opener, got %s" % popup.global_position,
+        state)
+
+    # No room on the right: the list moves to the left side of the opener.
+    opener.global_position = Vector2(viewport_width - 40, 100)
+    panel._fit_popup_size(popup, opener.global_position + Vector2(0, opener.size.y), opener)
+    check(popup.global_position.x == viewport_width - 40 - popup.size.x,
+        "a list that overflows moves to the left of its opener, got %s" % popup.global_position,
+        state)
+    check(popup.global_position.x + popup.size.x <= viewport_width,
+        "the moved list stays inside the screen", state)
+
+    # An opener near BOTH edges: even the left side does not fit, so the list is
+    # clamped to the screen instead of leaving it through the left edge.
+    popup.custom_minimum_size = Vector2(viewport_width + 100, 100)
+    opener.global_position = Vector2(viewport_width - 40, 100)
+    panel._fit_popup_size(popup, opener.global_position + Vector2(0, opener.size.y), opener)
+    check(popup.global_position.x == 0.0,
+        "a list wider than both sides is clamped to the left edge, got %s" % popup.global_position,
+        state)
+
+    panel.free()
+
+
+# --- 13. The tooltip of a radio without a stock row ---
+# The engine asks _make_custom_tooltip even for an empty tooltip_text; returning a
+# label there would show an empty box over the "no addition" radio.
+func _test_radio_tooltip(state: Dictionary) -> void:
+    var radio = (load("res://scripts/extras_radio.gd") as Script).new()
+
+    check(radio._make_custom_tooltip("") == null,
+        "a radio with no tooltip text builds no tooltip", state)
+
+    radio.set_tooltip_amount(TranslationServer.translate("In storage: %d") % 5)
+    var tip = radio._make_custom_tooltip("")
+    check(tip is Label and tip.text == radio.tooltip_text,
+        "a radio with a stock row builds a label carrying the amount", state)
+    if tip is Label:
+        tip.free()
+    radio.free()
+
+
+# --- 14. The "+1" mark follows a recipe chosen from the list ---
+# The selection handler used to emit city_updated while the recipe list was still
+# open; _on_assignments_changed skips the rebuild with an open popup, so the row kept
+# the additions mark of the previous recipe.
+func _test_base_reselect(gd, city, state: Dictionary) -> void:
+    if not city.unlocked_technologies.has("jewelry"):
+        city.unlocked_technologies.append("jewelry")
+    city.city_storage.clear()
+    city.add_to_storage("pearl", 5, "common")
+    city.city_built_buildings = [{"id": "jeweler_house", "slots": ["copper_jewelry+pearl"],
+            "quality_priority": "best"}]
+    var generated: Dictionary = gd.get_craft("copper_jewelry+pearl")
+    check(not generated.is_empty(), "the recipe with pearl is materialised for the test", state)
+    if generated.is_empty():
+        return
+
+    var panel = (load("res://scripts/building_panel.gd") as Script).new()
+    get_root().add_child(panel)
+    var helpers = (load("res://scripts/ui_helpers.gd") as Script).new()
+    get_root().add_child(helpers)
+    var host := Control.new()
+    get_root().add_child(host)
+    helpers.setup(host, Label.new())
+    panel.ui_helpers = helpers
+    panel.building_id = "jeweler_house"
+    panel._setup_assignments_listener()
+    panel._refresh()
+
+    var extras_btn = _find_extras_button(panel)
+    check(extras_btn != null and extras_btn.text == "+1",
+        "a slot with an addition shows the +1 mark", state)
+
+    # Re-select the base recipe through the real list handler.
+    var popup = panel.popup_map.get("0:0")
+    check(popup != null, "the recipe list of the slot exists", state)
+    if popup != null and extras_btn != null:
+        popup.show()
+        panel.open_popup = popup
+        panel._on_craft_item_selected(0, 0, "copper_jewelry", popup, _find_recipe_button(panel))
+        check(str(city.city_built_buildings[0]["slots"][0]) == "copper_jewelry",
+            "the slot falls back to the base recipe", state)
+        var new_btn = _find_extras_button(panel)
+        check(new_btn != null and new_btn.text == "+",
+            "the additions mark returns to + after the base recipe is re-selected, got \"%s\""
+                % (new_btn.text if new_btn != null else "<no button>"), state)
+
+        # And back: a generated recipe chosen from the list brings the mark back.
+        popup = panel.popup_map.get("0:0")
+        popup.show()
+        panel.open_popup = popup
+        panel._on_craft_item_selected(0, 0, "copper_jewelry+pearl", popup,
+                _find_recipe_button(panel))
+        new_btn = _find_extras_button(panel)
+        check(new_btn != null and new_btn.text == "+1",
+            "a generated recipe chosen from the list shows the +1 mark", state)
+
+    if city.city_updated.is_connected(panel._on_assignments_changed):
+        city.city_updated.disconnect(panel._on_assignments_changed)
+    panel.free()
+    host.free()
+    helpers.free()
+
+
+# The rows of a rebuild are freed with queue_free, so within one frame the container
+# holds both the old and the new buttons: a button whose row is on its way out is skipped.
+func _find_extras_button(panel) -> Button:
+    for b in panel.slots_container.find_children("*", "Button", true, false):
+        if _button_live(b) \
+                and b.tooltip_text == TranslationServer.translate("Additional ingredients"):
+            return b
+    return null
+
+
+func _find_recipe_button(panel) -> Button:
+    for b in panel.slots_container.find_children("*", "Button", true, false):
+        if _button_live(b) and b.tooltip_text == "" and b.custom_minimum_size.y >= 32:
+            return b
+    return null
+
+
+func _button_live(b: Button) -> bool:
+    return not b.is_queued_for_deletion() and not b.get_parent().is_queued_for_deletion()

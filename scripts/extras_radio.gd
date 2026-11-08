@@ -10,6 +10,10 @@ extends CheckBox
 var _tooltip_label: Label
 
 func _make_custom_tooltip(_for_text: String) -> Object:
+    # The "no addition" radio carries no stock row: without this guard the engine
+    # would still show the custom tooltip as an empty box.
+    if tooltip_text.is_empty():
+        return null
     var label := Label.new()
     label.theme_type_variation = &"TooltipLabel"
     label.text = tooltip_text

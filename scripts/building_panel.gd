@@ -1197,7 +1197,7 @@ func _on_slot_button_pressed(_b_index: int, _slot_idx: int, popup, button):
     for p in popups_list:
         if is_instance_valid(p) and p != popup and p.visible:
             _close_popup(p)
-    _fit_popup_size(popup, button.global_position + Vector2(0, button.size.y))
+    _fit_popup_size(popup, button.global_position + Vector2(0, button.size.y), button)
     popup.set_meta("opener", button)
     popup.show()
     open_popup = popup
@@ -1207,8 +1207,10 @@ func _on_slot_button_pressed(_b_index: int, _slot_idx: int, popup, button):
 # minimum from an anchored child the way a popup window does, so the content is
 # measured here and written into the minimum size of the panel. On overflow the
 # ScrollContainer inside shows a vertical scrollbar, whose width is reserved so
-# that the recipe rows do not shrink under it.
-func _fit_popup_size(popup, pos: Vector2) -> void:
+# that the recipe rows do not shrink under it. A list that does not fit to the
+# right of its opener moves to the left side of it, the same rule the tooltips
+# follow.
+func _fit_popup_size(popup, pos: Vector2, opener: Control = null) -> void:
     # The counting starts from the width _refresh() gave the list, not from its
     # current minimum: otherwise the scrollbar allowance reserved here would be
     # added again on every next opening.
@@ -1237,6 +1239,10 @@ func _fit_popup_size(popup, pos: Vector2) -> void:
         tallest = available_height
     popup.custom_minimum_size = Vector2(widest, tallest)
     popup.reset_size()
+    var viewport_width := get_viewport_rect().size.x
+    if pos.x + popup.size.x > viewport_width and opener != null:
+        pos.x = opener.global_position.x - popup.size.x
+    pos.x = clampf(pos.x, 0.0, maxf(0.0, viewport_width - popup.size.x))
     popup.global_position = pos
 
 # Closing a list: the recipe lists stay in popup_map and are reused by _refresh(),
@@ -1273,6 +1279,9 @@ func _on_craft_item_selected(b_index: int, slot_idx: int, craft_id: String, popu
         # "finished off".
         CityData.reset_slot_progress(b_index, slot_idx)
         _update_slot_button(button, craft_id)
+    # The list closes BEFORE the signal: _on_assignments_changed skips the rebuild
+    # while a popup is open, and the row would keep the look of the previous recipe
+    # (the "+1" mark of the additions, the progress bar of the old craft time).
     _close_popup(popup)
     if ui_helpers:
         ui_helpers.hide_group_tooltip()
@@ -1555,7 +1564,8 @@ func _on_extras_pressed(b_index: int, slot_idx: int, recipe_button, extras_butto
             grid.add_child(radio)
 
     popups_list.append(popup)
-    _fit_popup_size(popup, extras_button.global_position + Vector2(0, extras_button.size.y))
+    _fit_popup_size(popup, extras_button.global_position + Vector2(0, extras_button.size.y),
+            extras_button)
     popup.set_meta("opener", extras_button)
     popup.show()
     open_popup = popup
