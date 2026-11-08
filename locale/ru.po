@@ -33,6 +33,9 @@ msgstr "%s: %s к цене на внутреннем рынке"
 msgid "%s: %s to the price when sold to towns"
 msgstr "%s: %s к цене при продаже городкам"
 
+msgid "Above average"
+msgstr "Выше среднего"
+
 msgid "Add to storage"
 msgstr "Добавить на склад"
 
@@ -42,11 +45,23 @@ msgstr "Испытание выполнено"
 msgid "Challenge failed: %s"
 msgstr "Испытание провалено: %s"
 
+msgid "Extremely high"
+msgstr "Крайне высокая"
+
 msgid "Failed"
 msgstr "Провалено"
 
+msgid "High"
+msgstr "Высокая"
+
+msgid "How many resource deposits the map gets: a low density halves their number, a high density doubles it. A resource that appears only once is never reduced below one."
+msgstr "Сколько месторождений ресурсов появится на карте: низкая плотность уменьшает их число вдвое, высокая — увеличивает вдвое. Ресурс, который появляется лишь один раз, никогда не уменьшается."
+
 msgid "Loading game..."
 msgstr "Загрузка игры..."
+
+msgid "Low"
+msgstr "Низкая"
 
 msgid "Nothing found"
 msgstr "Ничего не найдено"
@@ -62,6 +77,9 @@ msgstr "Качество:"
 
 msgid "Reading save..."
 msgstr "Чтение сохранения..."
+
+msgid "Resource density"
+msgstr "Плотность ресурсов"
 
 msgid "Restoring buildings..."
 msgstr "Восстановление построек..."
@@ -92,6 +110,12 @@ msgstr "Выберите товар:"
 
 msgid "Specialization bonus names a nonexistent goods group"
 msgstr "Бонус специализации ссылается на несуществующую группу товаров"
+
+msgid "Standard"
+msgstr "Стандартная"
+
+msgid "Very high"
+msgstr "Очень высокая"
 
 msgid "\n\nFound here: %s"
 msgstr "\n\nЗдесь обнаружено: %s"

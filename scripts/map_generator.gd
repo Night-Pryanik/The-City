@@ -1419,8 +1419,15 @@ func _remove_hex_from_index_key(hex_index: Dictionary, row: int, col: int, key: 
 # of "a number or [min, max]" for spawn_count and produces (see scripts/range_utils.gd).
 func _resolve_spawn_count(data: Dictionary) -> int:
     var res_id: String = str(data.get("id", "?"))
-    return RangeUtils.roll_value(data.get("spawn_count", 1),
+    var count := RangeUtils.roll_value(data.get("spawn_count", 1),
             tr("spawn_count of resource '%s'") % res_id, 1)
+    # The world's resource density scales the number of specimens. A lone specimen cannot
+    # be halved, so a density below standard only touches resources that spawn more than
+    # once; a resource with spawn_count 0 stays unspawned at any density.
+    var density: float = CityData.world_resource_density
+    if count > 1 or (count == 1 and density > 1.0):
+        count = maxi(1, roundi(count * density))
+    return count
 
 func _place_resources(tile_data: Array, res_dict: Dictionary, _rows: int, _cols: int, _city_row: int, _city_col: int, hex_index: Dictionary):
     if res_dict.size() == 0:

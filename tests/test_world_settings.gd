@@ -23,6 +23,9 @@
 #   9. The "Rivers" section: the four settings (also out of data/map_config.json), their
 #      fields, and the schematic main rivers on the picture — the chosen count, no tributaries,
 #      not a single point in the water, and no two rivers meeting each other or themselves.
+#  10. The resource density scales the number of specimens a resource spawns: a density below
+#      standard never reduces a lone specimen, a density above it multiplies even a lone one,
+#      and a resource with spawn_count 0 stays unspawned at any density.
 #
 # The generation of the world is not started here: the size is read through the dialog,
 # and test_new_game_loading covers the path from a new game to a generated map.
@@ -119,6 +122,36 @@ func _run() -> void:
                     % menu.world_previews.size(), state)
     check(menu._selected_town_count() == 16,
             "the default town count is 16 (got %d)" % menu._selected_town_count(), state)
+
+    # The resource density is a dropdown of the six presets, standard by default, and it
+    # lives on the world tab like the other world settings.
+    check(tabs.get_tab_control(menu.TAB_WORLD).is_ancestor_of(menu.resource_density_option),
+            "the resource density lives on the world tab", state)
+    check(menu.resource_density_option.item_count == menu.RESOURCE_DENSITY_PRESETS.size(),
+            "the density lists the six presets (got %d items)"
+                    % menu.resource_density_option.item_count, state)
+    check(is_equal_approx(menu._selected_resource_density(), 1.0),
+            "the standard density is the default (got %s)"
+                    % str(menu._selected_resource_density()), state)
+    check(menu.resource_density_option.get_item_text(
+            menu.RESOURCE_DENSITY_PRESETS.find(1.0)) == tr("Standard") + " (1x)",
+            "the default item reads as the standard density with its multiplier", state)
+    var density_names: Array[String] = [tr("Low"), tr("Standard"), tr("Above average"),
+            tr("High"), tr("Very high"), tr("Extremely high")]
+    var density_coefs: Array[String] = ["0.5x", "1x", "1.5x", "2x", "3x", "5x"]
+    for index in range(menu.RESOURCE_DENSITY_PRESETS.size()):
+        menu.resource_density_option.select(index)
+        check(is_equal_approx(menu._selected_resource_density(),
+                menu.RESOURCE_DENSITY_PRESETS[index]),
+                "density preset %d reads back its multiplier (got %s)"
+                        % [index, str(menu._selected_resource_density())], state)
+        check(menu.resource_density_option.get_item_text(index)
+                == "%s (%s)" % [density_names[index], density_coefs[index]],
+                "density preset %d shows its name and multiplier (got %s)"
+                        % [index, menu.resource_density_option.get_item_text(index)], state)
+    menu.resource_density_option.select(menu.RESOURCE_DENSITY_PRESETS.find(1.0))
+    check(WRAPPED_TOOLTIP.find_carrier(menu.resource_density_option) != null,
+            "the density dropdown has a tooltip", state)
 
     var regenerate_button: Button = null
     for preview in menu.world_previews:
@@ -775,6 +808,43 @@ func _run() -> void:
     menu.river_controls["num_tributaries"]["control"].text = "5"
     menu._normalize_river_fields()
     menu._refresh_preview()
+
+    # --- 10. The density scales the spawn count ---
+    # The multiplier is applied where the generator resolves spawn_count, so it reaches every
+    # resource (the ordinary, the one-off and the wild plants) through the one helper.
+    var generator = load("res://scripts/map_generator.gd").new()
+    var saved_density: float = city_data.world_resource_density
+    var specimen := func(base: int) -> int:
+        return generator._resolve_spawn_count({"id": "test", "spawn_count": base})
+
+    city_data.world_resource_density = 1.0
+    check(specimen.call(0) == 0 and specimen.call(1) == 1 and specimen.call(4) == 4,
+            "the standard density leaves the spawn count unchanged", state)
+
+    city_data.world_resource_density = 0.5
+    check(specimen.call(1) == 1,
+            "a lone specimen is not halved at a low density (got %d)" % specimen.call(1), state)
+    check(specimen.call(4) == 2,
+            "a low density halves a repeated spawn (got %d)" % specimen.call(4), state)
+    check(specimen.call(0) == 0, "a zero spawn stays zero at a low density", state)
+
+    city_data.world_resource_density = 2.0
+    check(specimen.call(1) == 2,
+            "a high density doubles even a lone specimen (got %d)" % specimen.call(1), state)
+    check(specimen.call(3) == 6,
+            "a high density doubles a repeated spawn (got %d)" % specimen.call(3), state)
+
+    city_data.world_resource_density = 1.5
+    check(specimen.call(2) == 3,
+            "an above-average density scales by 1.5 (got %d)" % specimen.call(2), state)
+
+    city_data.world_resource_density = 5.0
+    check(specimen.call(1) == 5,
+            "an extreme density multiplies a lone specimen fivefold (got %d)"
+                    % specimen.call(1), state)
+
+    city_data.world_resource_density = saved_density
+    generator.free()
 
     get_root().remove_child(menu)
     menu.free()

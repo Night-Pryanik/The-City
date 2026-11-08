@@ -90,6 +90,11 @@ var world_map_size: int = 60
 # The number of towns the world is generated with, chosen by the player in the world settings
 # of a new game. Read by town_manager.generate_towns; a loaded game restores its own towns.
 var world_town_count: int = 16
+# The multiplier of the number of specimens each resource spawns, chosen by the player in
+# the world settings of a new game ("Resource density"). Read by map_generator when it
+# resolves spawn_count; the resources are baked into the map at generation time, so the
+# setting is not part of the save — a loaded game restores its own map.
+var world_resource_density: float = 1.0
 
 # The sea generation settings a new game starts from. The player changes them in the world
 # settings of a new game (the "Seas" section), and SeaManager reads the result from

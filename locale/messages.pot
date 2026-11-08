@@ -33,6 +33,9 @@ msgstr ""
 msgid "%s: %s to the price when sold to towns"
 msgstr ""
 
+msgid "Above average"
+msgstr ""
+
 msgid "Add to storage"
 msgstr ""
 
@@ -42,10 +45,22 @@ msgstr ""
 msgid "Challenge failed: %s"
 msgstr ""
 
+msgid "Extremely high"
+msgstr ""
+
 msgid "Failed"
 msgstr ""
 
+msgid "High"
+msgstr ""
+
+msgid "How many resource deposits the map gets: a low density halves their number, a high density doubles it. A resource that appears only once is never reduced below one."
+msgstr ""
+
 msgid "Loading game..."
+msgstr ""
+
+msgid "Low"
 msgstr ""
 
 msgid "Nothing found"
@@ -61,6 +76,9 @@ msgid "Quality:"
 msgstr ""
 
 msgid "Reading save..."
+msgstr ""
+
+msgid "Resource density"
 msgstr ""
 
 msgid "Restoring buildings..."
@@ -91,6 +109,12 @@ msgid "Select a product:"
 msgstr ""
 
 msgid "Specialization bonus names a nonexistent goods group"
+msgstr ""
+
+msgid "Standard"
+msgstr ""
+
+msgid "Very high"
 msgstr ""
 
 msgid "\n\nFound here: %s"

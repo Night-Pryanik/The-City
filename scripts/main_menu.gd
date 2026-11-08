@@ -51,6 +51,11 @@ const MIN_TOWN_COUNT := 0
 # 111 on a 100×100 one. A fixed ceiling would either choke a giant map or flood a small one.
 const HEXES_PER_TOWN := 90
 
+# The resource density presets, in the order of the dropdown: the multiplier applied to the
+# number of specimens each resource spawns. The default is the standard density.
+const RESOURCE_DENSITY_PRESETS: Array[float] = [0.5, 1.0, 1.5, 2.0, 3.0, 5.0]
+const DEFAULT_RESOURCE_DENSITY := 1.0
+
 # The sea generation modes, in the order of the dropdown. The values are the "mode" field of
 # the sea configuration (CityData.world_sea); "none" leaves the map without a sea.
 const SEA_MODES: Array[String] = ["none", "edge", "noise"]
@@ -88,6 +93,8 @@ var town_count_plus: Button = null
 # The count of towns can follow the map size instead of being chosen. While it does, the
 # field is read-only and the step buttons are off.
 var proportional_check: CheckBox = null
+# How many resource specimens the world spawns, as a multiplier of the standard amount.
+var resource_density_option: OptionButton = null
 # The "Seas" section of the world settings: the mode dropdown, one entry per sea setting
 # (keyed by its field in CityData.world_sea) and the rows with the modes they belong to.
 var sea_mode_option: OptionButton = null
@@ -497,6 +504,21 @@ func _build_world_settings(column: VBoxContainer):
     towns_control.add_child(proportional_check)
     towns_control.add_child(stepper)
     _add_setting_row(column, tr("Number of towns"), towns_control)
+
+    # How rich the map is in resources: a multiplier of the number of specimens each
+    # resource spawns. The preview does not draw resources, so the choice needs no refresh.
+    resource_density_option = OptionButton.new()
+    resource_density_option.add_item(tr("Low") + " (0.5x)")
+    resource_density_option.add_item(tr("Standard") + " (1x)")
+    resource_density_option.add_item(tr("Above average") + " (1.5x)")
+    resource_density_option.add_item(tr("High") + " (2x)")
+    resource_density_option.add_item(tr("Very high") + " (3x)")
+    resource_density_option.add_item(tr("Extremely high") + " (5x)")
+    resource_density_option.select(RESOURCE_DENSITY_PRESETS.find(DEFAULT_RESOURCE_DENSITY))
+    resource_density_option.custom_minimum_size = Vector2(200, SETTING_CONTROL_HEIGHT)
+    var density_tooltip := tr("How many resource deposits the map gets: a low density halves their number, a high density doubles it. A resource that appears only once is never reduced below one.")
+    WrappedTooltip.attach(resource_density_option, density_tooltip)
+    _add_setting_row(column, tr("Resource density"), resource_density_option, density_tooltip)
 
     _build_sea_settings(column)
     _build_river_settings(column)
@@ -1015,6 +1037,16 @@ func _selected_town_count() -> int:
         return DEFAULT_TOWN_COUNT
     return clampi(int(raw), MIN_TOWN_COUNT, _max_town_count(_selected_map_size()))
 
+# The resource density multiplier the world will be generated with. Falls back to the
+# standard density when the settings have not been built (a direct start of a new game).
+func _selected_resource_density() -> float:
+    if resource_density_option == null:
+        return DEFAULT_RESOURCE_DENSITY
+    var index := resource_density_option.selected
+    if index >= 0 and index < RESOURCE_DENSITY_PRESETS.size():
+        return RESOURCE_DENSITY_PRESETS[index]
+    return DEFAULT_RESOURCE_DENSITY
+
 # The set is handed over at once, so the game that starts runs exactly the data the
 # player has chosen. The data itself is rebuilt later, when something really reads it:
 # a full rebuild on every checkbox makes the list feel slow, and the set of the game is
@@ -1049,6 +1081,7 @@ func _start_new_game(city_name: String):
     CityData.world_town_count = _selected_town_count()
     CityData.world_sea = _resolved_sea_config(_preview_seed)
     CityData.world_rivers = _selected_river_config()
+    CityData.world_resource_density = _selected_resource_density()
     # The overlay is hung on the ROOT, not on the menu: the scene change frees the
     # menu, and the world generation runs inside MainMap. MainMap updates the very
     # same bar and removes it when the world is ready.
