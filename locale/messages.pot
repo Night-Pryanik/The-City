@@ -45,6 +45,9 @@ msgstr ""
 msgid "Failed"
 msgstr ""
 
+msgid "Loading game..."
+msgstr ""
+
 msgid "Nothing found"
 msgstr ""
 
@@ -55,6 +58,30 @@ msgid "Product: %s"
 msgstr ""
 
 msgid "Quality:"
+msgstr ""
+
+msgid "Reading save..."
+msgstr ""
+
+msgid "Restoring buildings..."
+msgstr ""
+
+msgid "Restoring city..."
+msgstr ""
+
+msgid "Restoring map..."
+msgstr ""
+
+msgid "Restoring roads and rivers..."
+msgstr ""
+
+msgid "Restoring towns..."
+msgstr ""
+
+msgid "Restoring trade..."
+msgstr ""
+
+msgid "Restoring workers..."
 msgstr ""
 
 msgid "Search by name"

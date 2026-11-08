@@ -169,11 +169,20 @@ func _check_game_data():
 # The fast path: no window and no questions. The tooltip has already told the player
 # which save the click takes.
 func _on_continue_game():
+    # The screen goes up before the read: restoring the save freezes the tree for a
+    # while, and without the screen the click looks like a hang.
+    var overlay := LoadingOverlay.present(get_tree(), tr("Loading game..."))
+    overlay.set_status(tr("Reading save..."))
+    # The first yield resumes in the same frame as the click, before its draw; only the
+    # second one guarantees the screen is drawn before the read freezes the tree.
+    await get_tree().process_frame
+    await get_tree().process_frame
     if SaveManager.load_game():
         get_tree().change_scene_to_file("res://scenes/MainMap.tscn")
     else:
         # The save vanished between the refresh and the click: the menu must not keep
         # offering a game that cannot be loaded.
+        overlay.queue_free()
         _refresh_save_buttons()
 
 # A new game is one window with three tabs: the city, the world, the mods. The tab that
@@ -998,59 +1007,9 @@ func _start_new_game(city_name: String):
     # The overlay is hung on the ROOT, not on the menu: the scene change frees the
     # menu, and the world generation runs inside MainMap. MainMap updates the very
     # same bar and removes it when the world is ready.
-    _show_loading_overlay()
+    LoadingOverlay.present(get_tree(), tr("Creating a new world..."))
     await get_tree().process_frame
     get_tree().change_scene_to_file("res://scenes/MainMap.tscn")
-
-# The loading screen of a new game: a dimmed background, a caption, a progress bar and
-# the name of the current stage of the generation. It lives on a high CanvasLayer,
-# because MainMap draws its own HUD layers while the world is being built.
-func _show_loading_overlay() -> CanvasLayer:
-    var overlay = CanvasLayer.new()
-    overlay.name = "LoadingOverlay"
-    overlay.layer = 128
-
-    var bg := Scrim.new()
-    # The overlay swallows the input of the whole screen while the world is generated.
-    bg.mouse_filter = Control.MOUSE_FILTER_STOP
-    overlay.add_child(bg)
-
-    var vbox = VBoxContainer.new()
-    vbox.name = "VBoxContainer"
-    vbox.set_anchors_preset(Control.PRESET_CENTER)
-    # The preset alone puts the top left corner at the centre of the screen and the box
-    # would grow down and to the right of it. Growing around the anchor point is what
-    # actually centres it.
-    vbox.grow_horizontal = Control.GROW_DIRECTION_BOTH
-    vbox.grow_vertical = Control.GROW_DIRECTION_BOTH
-    vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-    vbox.add_theme_constant_override("separation", 12)
-    overlay.add_child(vbox)
-
-    var title = Label.new()
-    title.name = "TitleLabel"
-    title.text = tr("Creating a new world...")
-    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    title.add_theme_font_size_override("font_size", 28)
-    vbox.add_child(title)
-
-    var bar = ProgressBar.new()
-    bar.name = "ProgressBar"
-    bar.custom_minimum_size = Vector2(400, 24)
-    bar.min_value = 0.0
-    bar.max_value = 1.0
-    bar.value = 0.0
-    vbox.add_child(bar)
-
-    var status = Label.new()
-    status.name = "StatusLabel"
-    status.text = tr("Preparing...")
-    status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    status.add_theme_font_size_override("font_size", 16)
-    vbox.add_child(status)
-
-    get_tree().root.add_child(overlay)
-    return overlay
 
 func _on_load_game():
     if not SaveManager.has_save():
@@ -1063,10 +1022,16 @@ func _on_load_game():
     save_load_window.open_load()
 
 func _on_load_requested(slot_id: String):
+    var overlay := LoadingOverlay.present(get_tree(), tr("Loading game..."))
+    overlay.set_status(tr("Reading save..."))
+    # Two yields: the first resumes before the draw of the click's frame (see _on_continue_game).
+    await get_tree().process_frame
+    await get_tree().process_frame
     if SaveManager.load_game(slot_id):
         save_load_window.close()
         get_tree().change_scene_to_file("res://scenes/MainMap.tscn")
     else:
+        overlay.queue_free()
         print("Save loading error")
 
 func _on_settings():

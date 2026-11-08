@@ -5,9 +5,9 @@ extends "res://scripts/main_map/knowledge.gd"
 # Region, the transition to the next era, the state of the map in the save and the debug reveal
 # of the whole map.
 
-# The loading bar of a new game. It lives on the ROOT (see main_menu._show_loading_overlay):
-# the scene change frees the menu, while the world is still being built here. Without an
-# overlay (a loaded save, the editor) the calls do nothing.
+# The loading bar of a new game or a loaded save. It lives on the ROOT (see LoadingOverlay):
+# the scene change frees the menu, while the world is still being built or restored here.
+# Without an overlay (a test, the editor, a direct scene run) the calls do nothing.
 func _update_loading_progress(value: float, status: String = "") -> void:
     if _loading_overlay == null:
         return

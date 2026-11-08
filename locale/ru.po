@@ -45,6 +45,9 @@ msgstr "Испытание провалено: %s"
 msgid "Failed"
 msgstr "Провалено"
 
+msgid "Loading game..."
+msgstr "Загрузка игры..."
+
 msgid "Nothing found"
 msgstr "Ничего не найдено"
 
@@ -56,6 +59,30 @@ msgstr "Товар: %s"
 
 msgid "Quality:"
 msgstr "Качество:"
+
+msgid "Reading save..."
+msgstr "Чтение сохранения..."
+
+msgid "Restoring buildings..."
+msgstr "Восстановление построек..."
+
+msgid "Restoring city..."
+msgstr "Восстановление города..."
+
+msgid "Restoring map..."
+msgstr "Восстановление карты..."
+
+msgid "Restoring roads and rivers..."
+msgstr "Восстановление дорог и рек..."
+
+msgid "Restoring towns..."
+msgstr "Восстановление городов..."
+
+msgid "Restoring trade..."
+msgstr "Восстановление торговли..."
+
+msgid "Restoring workers..."
+msgstr "Восстановление рабочих..."
 
 msgid "Search by name"
 msgstr "Поиск по имени"

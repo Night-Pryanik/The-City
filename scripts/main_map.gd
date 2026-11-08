@@ -79,6 +79,13 @@ func _ready():
     challenge_manager.bind_map(self)
 
     if SaveManager.is_loaded:
+        # The loading screen the menu put on the root survives the scene change. The
+        # restore runs in stages with a frame between them so the bar can advance;
+        # without a screen (a test, the editor, a direct scene run) it runs in one go.
+        _loading_overlay = get_tree().root.get_node_or_null("LoadingOverlay")
+        world_generating = true
+        _update_loading_progress(0.05, tr("Restoring city..."))
+        await _yield_loading_frame()
         GameData.load_all_data()
         map_renderer.load_icons()
         SaveManager.apply_loaded_data()
@@ -86,6 +93,8 @@ func _ready():
         # We restore the state of the world/window from the save BEFORE the building of tile_data.
         _apply_saved_map_state()
 
+        _update_loading_progress(0.20, tr("Restoring map..."))
+        await _yield_loading_frame()
         tile_data = []
         road_manager.initialize(city_row, city_col)
         var saved_tiles = SaveManager.saved_data.get("tile_data", [])
@@ -149,6 +158,8 @@ func _ready():
         _ensure_city_valid_terrain()
         _mark_city_hex()
 
+        _update_loading_progress(0.40, tr("Restoring buildings..."))
+        await _yield_loading_frame()
         # We restore the builds of the improvements, the buildings and the claiming of the territory
         build_manager.restore_builds(SaveManager.saved_data.get("active_builds", {}))
         build_manager.restore_building_builds(SaveManager.saved_data.get("active_building_builds", {}))
@@ -161,6 +172,8 @@ func _ready():
         # segments continues to be completed.
         project_manager.restore_projects(SaveManager.saved_data.get("active_projects", {}))
 
+        _update_loading_progress(0.50, tr("Restoring workers..."))
+        await _yield_loading_frame()
         # We restore the assignments of the workers and the citizens
         worker_manager.load_assignments(SaveManager.saved_data.get("worker_assignments", []))
         # The timers of the occupational consumption — after the assignments, so that
@@ -198,6 +211,8 @@ func _ready():
 
         _update_population_hud()
 
+        _update_loading_progress(0.60, tr("Restoring roads and rivers..."))
+        await _yield_loading_frame()
         road_manager.rebuild_roads_from_existing(tile_data, map_rows, map_cols,
                 Callable(self, "_skip_improvement_road_restore"))
 
@@ -217,6 +232,8 @@ func _ready():
         # We restore the towns from the save and mirror them into town_hexes for the renderer.
         # town_manager.load_towns fills the master list towns, and the derived
         # town_hexes — inside the manager; plus we manually set tile.has_town
+        _update_loading_progress(0.72, tr("Restoring towns..."))
+        await _yield_loading_frame()
         town_manager.load_towns(SaveManager.saved_data.get("towns", []))
         towns = town_manager.towns
         town_hexes = []
@@ -252,6 +269,8 @@ func _ready():
         # The cargo that was on the road and in the queues at the moment of the save.
         # It is restored after the roads and the towns: a route is recomputed from the
         # road network, and the towns take part in the route of a town source.
+        _update_loading_progress(0.88, tr("Restoring trade..."))
+        await _yield_loading_frame()
         delivery_manager.deserialize(SaveManager.saved_data.get("delivery", {}))
 
         # The standing contracts with the towns. They are restored after the towns:
@@ -273,6 +292,7 @@ func _ready():
         highlight_layer.initialize(self)
         progress_bar_layer.initialize(tile_data, self)
         improvement_state_layer.initialize(tile_data, self, map_renderer)
+        world_generating = false
     else:
         randomize()
         # The world is built in stages with a frame between them (see _initialize_map):

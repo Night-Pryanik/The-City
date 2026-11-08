@@ -139,13 +139,13 @@ const CARTOGRAPHY_TECH_ID := "cartography"
 const EMPORIA_TECH_ID := "emporia"
 
 var tile_data = []
-# The world is being built right now (a new game). The generation runs in stages with
-# a frame between them so that the loading bar can advance, and those frames must not
-# run the simulation, the drawing of a half-built map or the input of the map.
+# The world is being built or restored right now (a new game or a loaded save). The work
+# runs in stages with a frame between them so that the loading bar can advance, and those
+# frames must not run the simulation, the drawing of a half-built map or the input of the map.
 var world_generating := false
-# The loading screen of the new game, put on the root by the main menu (see
-# main_menu._show_loading_overlay). While it is absent — a test, the editor, a direct
-# scene run — the world is built in one go, exactly as before.
+# The loading screen put on the root by the main menu or the pause menu (see LoadingOverlay).
+# While it is absent — a test, the editor, a direct scene run — the world is built or
+# restored in one go.
 var _loading_overlay: CanvasLayer = null
 var offset_x: float = 0.0
 var offset_y: float = 0.0

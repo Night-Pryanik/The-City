@@ -56,6 +56,12 @@ func _process(delta):
     if Engine.is_editor_hint():
         return
 
+    # The world is being built or restored: the frames of the loading screen must not
+    # advance the builds (see main_map.world_generating).
+    var main_map = get_parent()
+    if main_map != null and main_map.get("world_generating") == true:
+        return
+
     # We collect the active (not paused) builds of improvements, buildings and claims
     var active_builds_list = []
     for key in active_builds.keys():

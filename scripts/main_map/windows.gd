@@ -384,7 +384,16 @@ func _on_save_requested(slot_id: String, save_name: String):
     hud.show_message(tr("Game saved."), GameData.HUD_MESSAGE_NORMAL)
 
 func _on_load_requested(slot_id: String):
+    # The screen goes up before the read: restoring the save freezes the tree for a
+    # while, and without the screen the choice looks like a hang. It lives on the root
+    # and survives the scene reload (see LoadingOverlay).
+    var overlay := LoadingOverlay.present(get_tree(), tr("Loading game..."))
+    # Two yields: the first resumes before the draw of the click's frame, so only the
+    # second guarantees the screen is drawn before the read freezes the tree.
+    await get_tree().process_frame
+    await get_tree().process_frame
     if not SaveManager.load_game(slot_id):
+        overlay.queue_free()
         hud.show_message(tr("Could not load the game."), GameData.HUD_MESSAGE_IMPORTANT)
         return
     save_load_window.close()
