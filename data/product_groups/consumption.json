@@ -35,6 +35,16 @@
       ]
     },
     {
+      // Nuts are a group of their own although the warehouse shelf already
+      // separates them from fruits: one consumption rule writes off one group,
+      // so pooling the two would let a town pay the same demand out of either
+      // harvest. Walnuts stand in "@tannins" as well — the nut is eaten and is
+      // a tanning material at once, and the two demands compete for it.
+      "id": "nuts",
+      "name": "Nuts",
+      "products": [ "walnuts", "pistachio", "beech_nuts" ]
+    },
+    {
       // The drinks the city empties. The recipe of vinegar takes the same list, but the group is
       // drawn by what is drunk, not by what is soured.
       "id": "alcohol",

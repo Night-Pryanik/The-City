@@ -3337,6 +3337,10 @@ msgctxt "categories.name"
 msgid "Writing Materials"
 msgstr "Письменные принадлежности"
 
+msgctxt "categories.name"
+msgid "Nuts"
+msgstr "Орехи"
+
 msgctxt "challenges.description"
 msgid "Buy every chunk of the Region that is open for claiming in the current era."
 msgstr "Выкупите в текущую эпоху каждый чанк Региона, который ещё можно присвоить."
@@ -4425,6 +4429,10 @@ msgctxt "groups.name"
 msgid "Wool Animals"
 msgstr "Шерстяные животные"
 
+msgctxt "groups.name"
+msgid "Nuts"
+msgstr "Орехи"
+
 msgctxt "improvements.name"
 msgid "Apiary"
 msgstr "Пасека"
@@ -4648,6 +4656,14 @@ msgstr "Шерсть"
 msgctxt "product_groups.name"
 msgid "Weapons"
 msgstr "Оружие"
+
+msgctxt "product_groups.name"
+msgid "Nuts"
+msgstr "Орехи"
+
+msgctxt "product_groups.name"
+msgid "Tannins"
+msgstr "Дубильные вещества"
 
 msgctxt "professions.description"
 msgid "A pseudo-profession that covers the whole population of the city, including employed citizens."
@@ -6044,6 +6060,22 @@ msgstr "Зебу"
 msgctxt "resources.name"
 msgid "Pottery of <city_name>"
 msgstr "Глиняная посуда <city_name>"
+
+msgctxt "resources.name"
+msgid "Walnut Tree"
+msgstr "Грецкий орех"
+
+msgctxt "resources.name"
+msgid "Walnuts"
+msgstr "Грецкие орехи"
+
+msgctxt "resources.name"
+msgid "Walnut Wood"
+msgstr "Древесина ореха"
+
+msgctxt "resources.name"
+msgid "Oak Bark"
+msgstr "Дубовая кора"
 
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."

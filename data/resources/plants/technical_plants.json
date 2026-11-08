@@ -352,10 +352,10 @@
         "temperate_rainforest_sparse", "temperate_dry_forest_sparse"
       ],
       "improved_by": "lumberjack_hut",
-      // The camp is the harvest point of the hex: the oak gives its timber as
-      // well as its galls, no felling implied (docs.md, "Improvement types are
-      // a convention").
-      "produces": { "galls": 10, "wood": 10, "oak_wood": 10 },
+      // The camp is the harvest point of the hex: the oak gives its timber, its
+      // bark and its galls without felling, and both the bark and the galls are
+      // tannin (docs.md, "Improvement types are a convention").
+      "produces": { "galls": 10, "oak_bark": 10, "wood": 10, "oak_wood": 10 },
       "icon": "oak_tree.png",
       "color": [ 200, 255, 200 ]
     },
@@ -444,6 +444,29 @@
       "produces": { "chestnut_bark": 10, "wood": 10, "chestnut_wood": 10 },
       "icon": "chestnut_tree.png",
       "color": [ 220, 200, 150 ]
+    },
+    {
+      // The orchard nut of Persia and Central Asia: it stands on a hill slope
+      // and in an oasis alike. The camp takes the nuts without felling, and the
+      // nut is eaten and is a tannin source at once; the timber is a specialty
+      // stave wood a cooper works where oak does not grow (docs.md,
+      // "Improvement types are a convention").
+      "id": "walnut_tree", "price": 8,
+      "name": "Walnut Tree",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "nuts",
+      "tech_required": "wood_processing",
+      "allowed_terrain": [ "plain", "hill", "mountain" ],
+      "allowed_cover": [
+        "temperate_dry_forest", "temperate_dry_forest_sparse"
+      ],
+      "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
+      "improved_by": "lumberjack_hut",
+      "produces": { "walnuts": 10, "wood": 10, "walnut_wood": 10 },
+      "icon": "walnut_tree.png",
+      "color": [ 175, 200, 120 ]
     },
     {
       "id": "velvetleaf_field", "price": 6,

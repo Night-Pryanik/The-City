@@ -21,6 +21,7 @@
     {"id": "technical_plants", "name": "Technical Plants"},
     {"id": "spices", "name": "Spices"},
     {"id": "fruits", "name": "Fruits"},
+    {"id": "nuts", "name": "Nuts"},
     {"id": "construction_materials", "name": "Construction Materials"},
     {"id": "dye_minerals", "name": "Dye Minerals"},
     {"id": "jewelry_minerals", "name": "Jewelry Minerals"},

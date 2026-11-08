@@ -1,0 +1,25 @@
+{
+  // Nuts are eaten but they are not the city's food supply: only the "food"
+  // category is pooled as Food in storage (data/categories.json), so they keep
+  // their own shelf and are consumed through the @nuts rule
+  // (data/consumption/consumption_all.json).
+  "resources": [
+    {
+      "id": "walnuts", "price": 10,
+      "name": "Walnuts",
+      "type": "product",
+      "category": "nuts",
+      "unlock_tech": "wood_processing",
+      "icon": "walnuts.png"
+    },
+    { "id": "pistachio", "price": 12, "name": "Pistachio", "type": "product", "category": "nuts", "icon": "pistachio.png" },
+    {
+      "id": "beech_nuts", "price": 4,
+      "name": "Beech Nuts",
+      "type": "product",
+      "category": "nuts",
+      "unlock_tech": "wood_processing",
+      "icon": "beech_nuts.png"
+    }
+  ]
+}

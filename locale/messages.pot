@@ -3337,6 +3337,10 @@ msgctxt "categories.name"
 msgid "Writing Materials"
 msgstr ""
 
+msgctxt "categories.name"
+msgid "Nuts"
+msgstr ""
+
 msgctxt "challenges.description"
 msgid "Buy every chunk of the Region that is open for claiming in the current era."
 msgstr ""
@@ -4425,6 +4429,10 @@ msgctxt "groups.name"
 msgid "Wool Animals"
 msgstr ""
 
+msgctxt "groups.name"
+msgid "Nuts"
+msgstr ""
+
 msgctxt "improvements.name"
 msgid "Apiary"
 msgstr ""
@@ -4647,6 +4655,14 @@ msgstr ""
 
 msgctxt "product_groups.name"
 msgid "Weapons"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Nuts"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Tannins"
 msgstr ""
 
 msgctxt "professions.description"
@@ -6043,6 +6059,22 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Pottery of <city_name>"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Walnut Tree"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Walnuts"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Walnut Wood"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Oak Bark"
 msgstr ""
 
 msgctxt "roads.description"

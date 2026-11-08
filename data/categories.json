@@ -8,6 +8,7 @@
     { "id": "food", "name": "Food" },
     { "id": "livestock", "name": "Livestock" },
     { "id": "fruits", "name": "Fruits" },
+    { "id": "nuts", "name": "Nuts" },
     { "id": "drinks", "name": "Drinks" },
     { "id": "tobacco", "name": "Tobacco Products" },
     { "id": "spices", "name": "Spices" },

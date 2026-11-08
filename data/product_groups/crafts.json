@@ -126,8 +126,18 @@
       "id": "barrel_wood",
       "name": "Wood for Barrels",
       // The group is cooperage wood in general, not tight-cask oak only: beech,
-      // pine and maple went to slack staves and to headings.
-      "products": [ "oak_wood", "beech_wood", "chestnut_wood", "pine_wood", "maple_wood" ]
+      // pine and maple went to slack staves and to headings, and walnut is the
+      // specialty timber a cooper splits where oak does not grow.
+      "products": [ "oak_wood", "beech_wood", "chestnut_wood", "pine_wood", "maple_wood", "walnut_wood" ]
+    },
+    {
+      // The tanning materials: the barks, the galls, the nut and the dye wood
+      // all spend their astringent liquor the same way, so a tanner takes
+      // whichever the surroundings yield. No recipe names the group yet — the
+      // tanner's house still works hides alone.
+      "id": "tannins",
+      "name": "Tannins",
+      "products": [ "oak_bark", "chestnut_bark", "walnuts", "galls", "campeche_wood" ]
     }
   ]
 }

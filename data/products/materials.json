@@ -436,12 +436,12 @@
       "icon": "maple_wood.png"
     },
     {
-      "id": "beech_nuts", "price": 4,
-      "name": "Beech Nuts",
+      "id": "walnut_wood", "price": 8,
+      "name": "Walnut Wood",
       "type": "product",
       "category": "material",
       "unlock_tech": "wood_processing",
-      "icon": "beech_nuts.png"
+      "icon": "walnut_wood.png"
     },
     {
       "id": "resin", "price": 4,
@@ -452,7 +452,16 @@
       "icon": "resin.png"
     },
     {
-      // A tannin source; no consumer in the data yet.
+      // The tan barks of the "@tannins" group. No recipe spends tannin yet:
+      // the tanner's house still works hides alone.
+      "id": "oak_bark", "price": 5,
+      "name": "Oak Bark",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "oak_bark.png"
+    },
+    {
       "id": "chestnut_bark", "price": 5,
       "name": "Chestnut Bark",
       "type": "product",
