@@ -1,0 +1,49 @@
+{
+    "id": "warmstone",
+    "name_key": "Theme: Warm Stone",
+    "chrome": {
+        "panel_bg": "#C9C2B7F5",
+        "panel_border": "#8C8071",
+        "control_bg": "#D4CDC1",
+        "control_hover": "#C3BAAA",
+        "control_pressed": "#AEA392",
+        "control_disabled": "#CCC5B9",
+        "control_border": "#7E7161",
+        "control_border_disabled": "#A69A88",
+        "text": "#2A2621",
+        "text_secondary": "#4A4238",
+        "text_muted": "#6B6154",
+        "info": "#2E5F70",
+        "accent": "#8A5A3C",
+        "accent_hover": "#75492F",
+        "accent_text": "#FAF4EA",
+        "field_bg": "#C0B8AA",
+        "field_border": "#A69A88",
+        "focus_border": "#8A5A3C",
+        "track": "#B2A897",
+        "fill": "#9A7B62",
+        "tab_active_bg": "#DBD3C6",
+        "tab_active_text": "#2A2621",
+        "tooltip_bg": "#D2CABC",
+        "tooltip_border": "#8C8071",
+        "scrollbar": "#A69A88",
+        "scrollbar_hover": "#7E7161",
+        "hairline": "#A99C89",
+        "row_hover": "#C2B9A9",
+        "row_selected": "#AFA390",
+        "scrim": "#40382E8C",
+        "row_dim": "#9E9E9E"
+    },
+    "data": {
+        "price": "#8A4716",
+        "price_amount": "#2A2621",
+        "quality": "#1A635D",
+        "income": "#3F6329",
+        "expense": "#962F27",
+        "warning": "#74590A"
+    },
+    "metrics": {
+        "panel_radius": 8,
+        "control_radius": 6
+    }
+}

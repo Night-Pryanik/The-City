@@ -1,0 +1,49 @@
+{
+    "id": "dusk",
+    "name_key": "Theme: Dusk",
+    "chrome": {
+        "panel_bg": "#1E1A26F5",
+        "panel_border": "#6E6186",
+        "control_bg": "#2E2739",
+        "control_hover": "#40364E",
+        "control_pressed": "#16121E",
+        "control_disabled": "#272131",
+        "control_border": "#9A8CB4",
+        "control_border_disabled": "#544968",
+        "text": "#EFEAF6",
+        "text_secondary": "#CBC1DC",
+        "text_muted": "#9C90B1",
+        "info": "#9FB6EE",
+        "accent": "#B49AE0",
+        "accent_hover": "#C9B4EE",
+        "accent_text": "#1E1A26",
+        "field_bg": "#262032",
+        "field_border": "#40364E",
+        "focus_border": "#C9B4EE",
+        "track": "#16121E",
+        "fill": "#6C5A93",
+        "tab_active_bg": "#332B41",
+        "tab_active_text": "#EFEAF6",
+        "tooltip_bg": "#262032",
+        "tooltip_border": "#9A8CB4",
+        "scrollbar": "#40364E",
+        "scrollbar_hover": "#6E6186",
+        "hairline": "#6B5D85",
+        "row_hover": "#382F47",
+        "row_selected": "#493D5C",
+        "scrim": "#0B081299",
+        "row_dim": "#B3B3B3"
+    },
+    "data": {
+        "price": "#E8A45C",
+        "price_amount": "#EFEAF6",
+        "quality": "#5FD9CC",
+        "income": "#83CC83",
+        "expense": "#EE7A80",
+        "warning": "#EACB72"
+    },
+    "metrics": {
+        "panel_radius": 5,
+        "control_radius": 4
+    }
+}

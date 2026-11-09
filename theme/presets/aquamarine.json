@@ -1,0 +1,49 @@
+{
+    "id": "aquamarine",
+    "name_key": "Theme: Soft Aquamarine",
+    "chrome": {
+        "panel_bg": "#B1CEBEF5",
+        "panel_border": "#6C9A7E",
+        "control_bg": "#BFD8C9",
+        "control_hover": "#A5C6B4",
+        "control_pressed": "#94B8A4",
+        "control_disabled": "#B7D2C2",
+        "control_border": "#54816A",
+        "control_border_disabled": "#93B7A3",
+        "text": "#1B3A2E",
+        "text_secondary": "#355747",
+        "text_muted": "#4E7060",
+        "info": "#1E6A4E",
+        "accent": "#2E7B5E",
+        "accent_hover": "#24634C",
+        "accent_text": "#F4FAF7",
+        "field_bg": "#A4C3B2",
+        "field_border": "#87AF99",
+        "focus_border": "#2C8A64",
+        "track": "#9DBEAB",
+        "fill": "#4C9C74",
+        "tab_active_bg": "#C1DACB",
+        "tab_active_text": "#1B3A2E",
+        "tooltip_bg": "#B9D3C3",
+        "tooltip_border": "#6C9A7E",
+        "scrollbar": "#8FB5A0",
+        "scrollbar_hover": "#54816A",
+        "hairline": "#97BCA6",
+        "row_hover": "#A5C6B4",
+        "row_selected": "#91B5A0",
+        "scrim": "#2C4A3A8C",
+        "row_dim": "#9E9E9E"
+    },
+    "data": {
+        "price": "#7A4015",
+        "price_amount": "#1B3A2E",
+        "quality": "#12604A",
+        "income": "#216337",
+        "expense": "#8C2F2C",
+        "warning": "#6A5510"
+    },
+    "metrics": {
+        "panel_radius": 10,
+        "control_radius": 6
+    }
+}

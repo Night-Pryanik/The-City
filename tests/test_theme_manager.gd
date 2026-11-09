@@ -148,6 +148,12 @@ func _run() -> void:
         var id := str(entry["id"])
         manager.apply_preset(id)
         _check_contrast(manager, id, state)
+        # The hovered item of a popup is the one band the code derives rather than reads
+        # from the preset: check the wiring, not only the formula, on every palette.
+        var hover_box := ThemeDB.get_project_theme().get_stylebox("hover", "PopupMenu") as StyleBoxFlat
+        check(hover_box != null and hover_box.bg_color.is_equal_approx(THEME_SCRIPT.popup_hover_color(
+            manager.color("panel_bg"), manager.color("row_hover"), manager.color("text"))),
+            "%s: the popup hover takes the derived fill" % id, state)
     manager.apply_preset(DEFAULT_PRESET)
 
     # --- 6. The factories and the fallback palette ---
@@ -268,6 +274,12 @@ func _run() -> void:
     var popup := theme.get_stylebox("panel", "PopupMenu") as StyleBoxFlat
     check(popup != null and popup.bg_color.is_equal_approx(manager.color("panel_bg")),
         "the popup surface is the panel colour", state)
+    # A dark plate already separates row_hover from the panel, so the derivation must
+    # leave the authored colour alone there — only light plates need the extra step.
+    var dark_hover := THEME_SCRIPT.popup_hover_color(
+        manager.color("panel_bg"), manager.color("row_hover"), manager.color("text"))
+    check(dark_hover.is_equal_approx(manager.color("row_hover")),
+        "a dark plate keeps its authored hover-row colour", state)
     var tooltip_style := theme.get_stylebox("panel", "TooltipPanel") as StyleBoxFlat
     check(tooltip_style != null
         and tooltip_style.bg_color.is_equal_approx(manager.color("tooltip_bg")),
@@ -597,6 +609,20 @@ func _check_contrast(manager, id: String, state: Dictionary) -> void:
         check(ratio >= float(pair[2]),
             "%s: %s on %s is readable (%.1f:1, min %.1f)"
                 % [id, pair[0], pair[1], ratio, pair[2]], state)
+
+    # A hovered popup item is a band on the plate itself, not text on a plate: it needs a
+    # visible step away from panel_bg. The caption on that band is still body text.
+    var plate: Color = manager.color("panel_bg")
+    var hover := THEME_SCRIPT.popup_hover_color(
+        plate, manager.color("row_hover"), manager.color("text"))
+    var separation := THEME_SCRIPT.luminance_separation(hover, plate)
+    check(separation >= THEME_SCRIPT.POPUP_HOVER_SEPARATION,
+        "%s: a hovered popup item stands out from the plate (%.2fx, min %.2fx)"
+            % [id, separation, THEME_SCRIPT.POPUP_HOVER_SEPARATION], state)
+    var caption := THEME_SCRIPT.contrast_ratio(manager.color("text"), hover)
+    check(caption >= THEME_SCRIPT.POPUP_HOVER_MIN_TEXT_CONTRAST,
+        "%s: the caption on a hovered popup item stays readable (%.1f:1)"
+            % [id, caption], state)
 
 func _count_presets() -> int:
     var dir := DirAccess.open(PRESET_DIR)

@@ -1,0 +1,49 @@
+{
+    "id": "overcast",
+    "name_key": "Theme: Overcast",
+    "chrome": {
+        "panel_bg": "#C4C9C3F5",
+        "panel_border": "#7E8A83",
+        "control_bg": "#D0D5CE",
+        "control_hover": "#BEC5BD",
+        "control_pressed": "#AAB3AA",
+        "control_disabled": "#C7CCC5",
+        "control_border": "#6E7A72",
+        "control_border_disabled": "#9AA49B",
+        "text": "#232A26",
+        "text_secondary": "#3E4841",
+        "text_muted": "#5C675F",
+        "info": "#2A5F74",
+        "accent": "#3F6F6B",
+        "accent_hover": "#335E5A",
+        "accent_text": "#F2F6F3",
+        "field_bg": "#BFC5BD",
+        "field_border": "#9AA49B",
+        "focus_border": "#2F6F77",
+        "track": "#AEB6AD",
+        "fill": "#6E8F88",
+        "tab_active_bg": "#D5DAD3",
+        "tab_active_text": "#232A26",
+        "tooltip_bg": "#CFD4CD",
+        "tooltip_border": "#7E8A83",
+        "scrollbar": "#9AA49B",
+        "scrollbar_hover": "#6E7A72",
+        "hairline": "#9BA49C",
+        "row_hover": "#BEC5BD",
+        "row_selected": "#9FACA2",
+        "scrim": "#3A413C8C",
+        "row_dim": "#9E9E9E"
+    },
+    "data": {
+        "price": "#8A4A14",
+        "price_amount": "#232A26",
+        "quality": "#12655F",
+        "income": "#2E6631",
+        "expense": "#9A2F2C",
+        "warning": "#77600A"
+    },
+    "metrics": {
+        "panel_radius": 3,
+        "control_radius": 3
+    }
+}

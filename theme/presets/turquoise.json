@@ -1,0 +1,49 @@
+{
+    "id": "turquoise",
+    "name_key": "Theme: Light Turquoise",
+    "chrome": {
+        "panel_bg": "#A6C9C8F5",
+        "panel_border": "#568486",
+        "control_bg": "#B4D1CF",
+        "control_hover": "#9BC1BF",
+        "control_pressed": "#8DB4B2",
+        "control_disabled": "#ACC8C6",
+        "control_border": "#4A7C7E",
+        "control_border_disabled": "#83A9A8",
+        "text": "#123639",
+        "text_secondary": "#2E5456",
+        "text_muted": "#41686A",
+        "info": "#165B6B",
+        "accent": "#1E7076",
+        "accent_hover": "#145C62",
+        "accent_text": "#F1FAF9",
+        "field_bg": "#98BDBB",
+        "field_border": "#7BA3A1",
+        "focus_border": "#15787E",
+        "track": "#91B6B4",
+        "fill": "#2F8085",
+        "tab_active_bg": "#B8D4D2",
+        "tab_active_text": "#123639",
+        "tooltip_bg": "#ADCCCA",
+        "tooltip_border": "#568486",
+        "scrollbar": "#7EA5A3",
+        "scrollbar_hover": "#4A7C7E",
+        "hairline": "#86ACAC",
+        "row_hover": "#9BC1BF",
+        "row_selected": "#83ACAC",
+        "scrim": "#24494B8C",
+        "row_dim": "#9E9E9E"
+    },
+    "data": {
+        "price": "#7B3C0E",
+        "price_amount": "#123639",
+        "quality": "#0E6062",
+        "income": "#1F6337",
+        "expense": "#8E2C2A",
+        "warning": "#6B5310"
+    },
+    "metrics": {
+        "panel_radius": 6,
+        "control_radius": 4
+    }
+}

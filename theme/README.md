@@ -2,7 +2,7 @@
 
 This guide describes the JSON files of `theme/presets/`: what each field means, which
 rules make a preset loadable and what a colour actually changes on screen.
-The eight shipped presets are the working examples.
+The presets shipped in `presets/` are the working examples.
 
 ---
 
@@ -95,7 +95,8 @@ token but a small formula over two or three of them: a plate is `panel_bg` behin
 `panel_border` frame, a button is `control_bg` behind a `control_border` frame. A handful
 of tints are produced by lightening, darkening or lowering the alpha of a token — which
 is why a colour already close to pure white or pure black leaves the interface nowhere to
-go for its hover and pressed states.
+go for its hover and pressed states. One surface goes further and is **derived from the
+whole palette** rather than tinted from one token: the hovered item of a popup menu, §10.1.
 
 The engine draws some marks as textures rather than as colours — the checkbox box and
 its tick, the on/off switch, the slider knob. Those are rasterised from the palette when
@@ -164,7 +165,7 @@ tokens and `info` (a construction bar, a scout bar), not from these two.
 | `scrollbar` | The grabber of a scrollbar (the part you drag). |
 | `scrollbar_hover` | The grabber under the cursor or held. |
 | `hairline` | The thinnest marks in the interface: a separator line, the rules of a category header, the column rules of the action panel, the era dividers of the tech tree. |
-| `row_hover` | A row under the cursor: a menu item, a building card, a row of the town trade columns. |
+| `row_hover` | A row under the cursor: a building card, a row of the town trade columns. A popup menu starts from this token for its own hover band, but does not use it verbatim — see §10.1. |
 | `row_selected` | The row the player has picked in the town trade columns — the one solid fill among the rows, so it has to stay clearly apart from `row_hover`. |
 
 ### 5.7. What sits over something else
@@ -263,6 +264,30 @@ are requirements, not advice:
 
 4.5 : 1 is body text, 3.0 : 1 is a large mark or a coloured number. Keep `text_muted`
 legible but clearly quieter than `text`: it has to read as secondary at a glance.
+
+### 10.1 The hovered item of a popup menu
+
+The band under the cursor in a dropdown has no frame of its own: it is laid directly on
+`panel_bg`, next to the very plate it has to stand out from. The WCAG text ratio is the
+wrong measure for that — what matters is how far the band's linear luminance moves away
+from the plate. On a dark plate the shipped `row_hover` tokens are several times brighter
+than `panel_bg` and read at a glance. On a light plate they sit only 5–12 % away, so the
+same band is light-on-light and practically invisible.
+
+`ThemeManager` therefore derives the fill instead of using `row_hover` verbatim.
+`popup_hover_color()` blends `row_hover` towards `text` — the contrasting direction in
+every palette — in 4 % steps until `luminance_separation(fill, panel_bg)` reaches
+**1.5x**. That separation is `max(L1, L2) / min(L1, L2)` of the two linear luminances,
+without the WCAG `+0.05` offset. Blending stops early if the caption on the band would
+drop below **4.5 : 1** against `text`, and after at most 24 steps. A palette that already
+clears 1.5x — every dark preset does — keeps its authored `row_hover` unchanged.
+
+Only `PopupMenu/hover` is derived. The rows built by hand in the town trade columns, the
+building lists and the specialization cards still take `row_hover` as written, so the
+token keeps its meaning everywhere except the one place where it cannot be seen.
+
+`tests/test_theme_manager.gd` checks both numbers on every preset on disk, and checks
+that the stylebox installed in the project theme really is the derived fill.
 
 Run the test headless while tuning a palette:
 

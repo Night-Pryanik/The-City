@@ -402,7 +402,8 @@ func _style_scrollbars(theme: Theme) -> void:
 
 func _style_popups(theme: Theme) -> void:
     theme.set_stylebox("panel", "PopupMenu", UI_THEME.panel())
-    theme.set_stylebox("hover", "PopupMenu", _flat(color("row_hover"), 3))
+    theme.set_stylebox("hover", "PopupMenu", _flat(popup_hover_color(
+        color("panel_bg"), color("row_hover"), color("text")), 3))
     theme.set_color("font_color", "PopupMenu", color("text"))
     theme.set_color("font_hover_color", "PopupMenu", color("text"))
     theme.set_color("font_disabled_color", "PopupMenu", color("text_muted"))
@@ -600,6 +601,39 @@ func _redraw_hand_drawn(node: Node) -> void:
         (node as CanvasItem).queue_redraw()
     for child in node.get_children():
         _redraw_hand_drawn(child)
+
+# A hovered item of a popup is a band laid on the SAME plate as its neighbours, with no
+# frame of its own to mark it. On a dark plate `row_hover` is a lighter band and reads
+# even as a small step; on a light plate it is a darker one, and a step of a few percent
+# disappears — the caption stays dark on a nearly unchanged background. The fill is
+# therefore derived from the palette: blend `row_hover` towards `text` (the contrasting
+# direction in every palette) until the two linear luminances differ by 1.5x. A dark
+# palette already clears that step, so its authored `row_hover` is used as written.
+# Blending stops before the caption on the band drops below body-text contrast.
+const POPUP_HOVER_SEPARATION := 1.5
+const POPUP_HOVER_STEP := 0.04
+const POPUP_HOVER_MAX_STEPS := 24
+const POPUP_HOVER_MIN_TEXT_CONTRAST := 4.5
+
+static func popup_hover_color(panel: Color, row_hover: Color, text: Color) -> Color:
+    var fill := row_hover
+    for i in POPUP_HOVER_MAX_STEPS:
+        if luminance_separation(fill, panel) >= POPUP_HOVER_SEPARATION:
+            break
+        var next := fill.lerp(text, POPUP_HOVER_STEP)
+        if contrast_ratio(next, text) < POPUP_HOVER_MIN_TEXT_CONTRAST:
+            break
+        fill = next
+    return fill
+
+# How far apart two surfaces are in linear luminance, without the +0.05 offset of the
+# WCAG ratio. A highlight is a step BETWEEN two plates, not text on one plate: darkening
+# a light plate by 10% reads as nothing, while the same ratio on a near-black plate means
+# a band several times brighter than its background.
+static func luminance_separation(a: Color, b: Color) -> float:
+    var la := maxf(_linear_luminance(a), 0.000001)
+    var lb := maxf(_linear_luminance(b), 0.000001)
+    return maxf(la, lb) / minf(la, lb)
 
 # The WCAG contrast ratio of two colours, (L1 + 0.05) / (L2 + 0.05). The alpha is
 # ignored: the panels are near-opaque, and a translucent texture behind them is not
