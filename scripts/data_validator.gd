@@ -547,23 +547,22 @@ const SUBGROUP_BONUS_FIELDS := {
     "tiers": {"array": {"min_species": LEAF, "value": LEAF}},
 }
 
-# A water bonus block (fresh_water / water_power). Both id maps are optional: a
-# branch may speed up only improvements, only city buildings, or both.
-# requires_tech gates water-driven machinery by a researched technology;
-# irrigation (fresh_water) has no gate of its own — the water_access scheme is it.
-const WATER_BONUS_FIELDS := {
-    "requires_tech": LEAF,
+# A bonus block of a source that is NOT a technology (fresh_water). Both id maps
+# are optional: a block may speed up only improvements, only city buildings, or
+# both. A block has no technology of its own — the effect of a technology lives
+# in the record of that technology in "tech_modifiers".
+const BONUS_BLOCK_FIELDS := {
     "production_multiplier": IMPROVEMENT_MAP,
     "building_production_multiplier": BUILDING_MAP,
 }
 
 const MODIFIER_FIELDS := {
-    "fresh_water": WATER_BONUS_FIELDS,
-    "water_power": WATER_BONUS_FIELDS,
+    "fresh_water": BONUS_BLOCK_FIELDS,
     "tech_modifiers": {"array": {
         "tech_id": LEAF,
         "icon": LEAF,
         "name": LEAF,
+        "requires_water": LEAF,
         "production_multiplier": IMPROVEMENT_MAP,
         "building_production_multiplier": BUILDING_MAP,
         "modifiers": {"array": {"target": LEAF, "type": LEAF, "value": LEAF}},
@@ -1237,7 +1236,7 @@ func validate(gd: Object) -> Array:
     _validate_product_groups(product_groups, group_names, products, problems)
     _validate_consumption(gd.consumption_rules, products, product_groups, professions, problems)
     _validate_technologies(technologies, problems)
-    _validate_water_bonuses(gd.modifiers, technologies, problems)
+    _validate_tech_modifiers(gd.modifiers, technologies, problems)
     _validate_specializations(gd.specializations, improvements, all_resources, product_groups,
             challenge_ids, problems)
     _validate_fame(all_resources, _quality_levels(gd), _index_by_id(gd.specializations),
@@ -2241,18 +2240,22 @@ func _validate_technologies(technologies: Dictionary, problems: Array) -> void:
                         "technology", tname, tid, "prerequisites")
 
 
-# The technology gate of a water bonus (water_power.requires_tech). A misspelled
-# technology silently switches the whole branch off: the water is there, the
-# technology is not, and no row ever appears in a tooltip. The same silent
+# The technology of every record of "tech_modifiers": the effect belongs to it,
+# and an effect of a technology that does not exist is never in force. A
+# misspelled technology silently switches the whole record off: the technology
+# is never researched, and no row ever appears in a tooltip. The same silent
 # failure the other reference checks of the model are here to prevent.
-func _validate_water_bonuses(modifiers: Dictionary, technologies: Dictionary,
+func _validate_tech_modifiers(modifiers: Dictionary, technologies: Dictionary,
         problems: Array) -> void:
-    for block_id in ["fresh_water", "water_power"]:
-        var block = modifiers.get(block_id, null)
-        if not (block is Dictionary):
+    for mod in modifiers.get("tech_modifiers", []):
+        if not (mod is Dictionary):
             continue
-        _check_tech_ref(block.get("requires_tech", ""), technologies, problems,
-                "modifier_block", block_id, block_id, block_id + ".requires_tech")
+        var tech_id := str(mod.get("tech_id", ""))
+        if tech_id == "":
+            continue
+        _check_tech_ref(tech_id, technologies, problems,
+                "modifier", str(mod.get("name", tech_id)), tech_id,
+                "tech_modifiers.tech_id")
 
 
 # --- THE SPECIALIZATIONS OF THE CITY ----------------------------------------------

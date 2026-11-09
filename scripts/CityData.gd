@@ -2110,6 +2110,14 @@ func _get_tech_data(tech_id: String):
             return t
     return null
 
+# The icon of the technology by its id (the file name the tree draws it with).
+# Empty when the technology is not found — the caller simply draws no icon.
+func get_tech_icon(tech_id: String) -> String:
+    var tech_data = _get_tech_data(tech_id)
+    if tech_data == null:
+        return ""
+    return str(tech_data.get("icon", ""))
+
 # Are the prerequisites of the technology met.
 # The format: [ [A, B], [C] ] => (A AND B) OR C
 func are_prerequisites_met(tech_id: String) -> bool:
@@ -2312,7 +2320,8 @@ func get_city_effects() -> Array:
     # helper, so the requirement of a building and the water bonuses below cannot
     # disagree with this row about whether the city has water at all.
     var water_access := get_city_water_access()
-    if water_access != "":
+    var city_water := water_access != ""
+    if city_water:
         effects.append({
             "group": "environment",
             "icon": "water_chain.png",
@@ -2322,25 +2331,35 @@ func get_city_effects() -> Array:
             "source": "",
         })
 
-        # The water bonuses that actually change the output of BUILT buildings.
-        # Only built ones are listed: a bonus on a building the city does not
-        # have is not an effect yet. The Buildings tab shows the same rows for a
-        # building that has not been built, so the two panels agree.
-        var listed := {}
-        for bld in city_built_buildings:
-            var building_id := str(bld.get("id", ""))
-            if building_id == "" or listed.has(building_id):
-                continue
-            listed[building_id] = true
-            for row in get_water_production_modifiers(building_id, true, true):
-                effects.append({
-                    "group": "environment",
-                    "icon": "water_chain.png",
-                    "name": GameData.get_building_display_name(building_id),
-                    "value": "+%d%%" % int(round(
-                            (float(row.get("multiplier", 1.0)) - 1.0) * 100.0)),
-                    "source": str(row.get("bonus", "")),
-                })
+    # The bonuses that actually change the output of BUILT buildings: the water
+    # ones (the water of the CITY hex) and the ones of the technologies. Only
+    # built ones are listed: a bonus on a building the city does not have is not
+    # an effect yet. The Buildings tab shows the same rows for a building that
+    # has not been built, so the two panels agree.
+    var listed := {}
+    for bld in city_built_buildings:
+        var building_id := str(bld.get("id", ""))
+        if building_id == "" or listed.has(building_id):
+            continue
+        listed[building_id] = true
+        for row in get_water_production_modifiers(building_id, true, city_water):
+            effects.append({
+                "group": "environment",
+                "icon": "water_chain.png",
+                "name": GameData.get_building_display_name(building_id),
+                "value": "+%d%%" % int(round(
+                        (float(row.get("multiplier", 1.0)) - 1.0) * 100.0)),
+                "source": str(row.get("bonus", "")),
+            })
+        for row in get_tech_production_modifiers(building_id, true, city_water):
+            effects.append({
+                "group": "technologies",
+                "icon": get_tech_icon(str(row.get("tech", ""))),
+                "name": GameData.get_building_display_name(building_id),
+                "value": "+%d%%" % int(round(
+                        (float(row.get("multiplier", 1.0)) - 1.0) * 100.0)),
+                "source": str(row.get("bonus", "")),
+            })
 
     # The researched technologies. The records of data/modifiers.json carry the icon and the
     # already localized caption, so the row repeats the record instead of wording the effect a
@@ -3002,14 +3021,18 @@ func is_product_available(product_id: String) -> bool:
 # --- THE WATER AND TECHNOLOGY PRODUCTION BONUSES -------------------------------
 #
 # ONE bonus mechanic for TWO kinds of producers: an improvement on the map and a
-# building in the city. Every block of data/modifiers.json carries two id maps —
+# building in the city. Every record of data/modifiers.json carries two id maps —
 # production_multiplier for improvements and building_production_multiplier for
-# buildings — and the resolvers below read the one matching the caller. A water
-# block additionally needs fresh water: on the hex for an improvement, on the
-# city hex for a building. water_power is gated by its technology, fresh_water
-# (irrigation / water as a material) is not.
+# buildings — and the resolvers below read the one matching the caller.
+#
+# The records of data/modifiers.json are of two kinds: the blocks (a source that
+# is not a technology — the water as a material) and the records of
+# "tech_modifiers" (the effect of a technology). A block needs the fresh water;
+# a technology record needs its technology, and a record marked "requires_water"
+# needs the fresh water as well — the water-driven machinery only works where
+# the water runs.
 
-const WATER_BONUS_BLOCKS := ["fresh_water", "water_power"]
+const WATER_BONUS_BLOCKS := ["fresh_water"]
 
 # The map node the city water is read from, or null when there is no map to
 # read: CityData outside the tree (the counters of the headless tests), the menu
@@ -3045,11 +3068,10 @@ func has_city_fresh_water() -> bool:
     return get_city_water_access() != ""
 
 # The active water bonuses of one producer. owner_id is an improvement id or a
-# building id; is_building selects which id map of the block is read. Each row:
-#   { "label": String, "multiplier": float, "bonus": String }
-# "bonus" is the short name of the source (for the Effects tab), while "label" is
-# the row of the preview/tooltip. A gated block names its technology in the
-# label, so a new water-driven machine needs no new translation key.
+# building id; is_building selects which id map of the block is read. A block
+# is a source without a technology of its own, so the water is its only
+# requirement: fresh_water (irrigation / water as a material) is gated by it
+# alone.
 func get_water_production_modifiers(owner_id: String, is_building: bool,
         has_fresh_water: bool) -> Array:
     var result: Array = []
@@ -3060,9 +3082,6 @@ func get_water_production_modifiers(owner_id: String, is_building: bool,
         var block: Dictionary = GameData.modifiers.get(block_id, {})
         if block.is_empty():
             continue
-        var tech_id := str(block.get("requires_tech", ""))
-        if tech_id != "" and not is_tech_unlocked(tech_id):
-            continue
         var multipliers: Dictionary = block.get(field, {})
         if not multipliers.has(owner_id):
             continue
@@ -3070,18 +3089,20 @@ func get_water_production_modifiers(owner_id: String, is_building: bool,
         if m == 1.0:
             continue
         var pct := int(round((m - 1.0) * 100.0))
-        var bonus_name := tr("Fresh water")
-        var label := tr("+%d%% (Fresh water access)") % pct
-        if tech_id != "":
-            bonus_name = get_tech_name(tech_id)
-            label = "+%d%% (%s)" % [pct, bonus_name]
-        result.append({"label": label, "multiplier": m, "bonus": bonus_name})
+        result.append({
+            "label": tr("+%d%% (Fresh water access)") % pct,
+            "multiplier": m,
+            "bonus": tr("Fresh water")
+        })
     return result
 
 # The production bonuses from the researched technologies. The same two id maps
 # as the water blocks, so a technology may speed up an improvement, a building
-# or both. The obsolete target "<id>_production" is kept for improvements only.
-func get_tech_production_modifiers(owner_id: String, is_building: bool) -> Array:
+# or both. A record marked "requires_water" needs the fresh water as well: the
+# water-driven machinery only works where the water runs.
+# The obsolete target "<id>_production" is kept for improvements only.
+func get_tech_production_modifiers(owner_id: String, is_building: bool,
+        has_fresh_water: bool) -> Array:
     var result: Array = []
     if owner_id == "":
         return result
@@ -3090,6 +3111,8 @@ func get_tech_production_modifiers(owner_id: String, is_building: bool) -> Array
         var tech_id = tm.get("tech_id", "")
         if tech_id == "" or not is_tech_unlocked(tech_id):
             continue
+        if bool(tm.get("requires_water", false)) and not has_fresh_water:
+            continue
         var tech_name := get_tech_name(tech_id)
         var multipliers = tm.get(field, {})
         if multipliers.has(owner_id):
@@ -3097,7 +3120,9 @@ func get_tech_production_modifiers(owner_id: String, is_building: bool) -> Array
             if m != 1.0:
                 result.append({
                     "label": "+%d%% (%s)" % [int(round((m - 1.0) * 100.0)), tech_name],
-                    "multiplier": m
+                    "multiplier": m,
+                    "bonus": tech_name,
+                    "tech": tech_id
                 })
         if is_building:
             continue
@@ -3113,7 +3138,9 @@ func get_tech_production_modifiers(owner_id: String, is_building: bool) -> Array
                 multiplier = value
             result.append({
                 "label": "+%d%% (%s)" % [int(value), tech_name],
-                "multiplier": multiplier
+                "multiplier": multiplier,
+                "bonus": tech_name,
+                "tech": tech_id
             })
     return result
 
@@ -3139,9 +3166,8 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
     if imp_id == null or imp_id == "":
         return result
 
-    # The water bonuses: irrigation (fresh_water) and, after the Water Wheel,
-    # water-driven machinery (water_power). The very same resolver serves the
-    # city buildings, so a hex and a workshop cannot drift apart.
+    # The water bonuses: irrigation (fresh_water). The very same resolver serves
+    # the city buildings, so a hex and a workshop cannot drift apart.
     result.append_array(get_water_production_modifiers(imp_id, false, has_fresh_water))
 
     # The modifiers by the type of the terrain (terrain_modifiers).
@@ -3165,7 +3191,7 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
 
     # The modifiers from the learned technologies (the same resolver a city
     # building uses, with the obsolete "<imp_id>_production" format included).
-    result.append_array(get_tech_production_modifiers(imp_id, false))
+    result.append_array(get_tech_production_modifiers(imp_id, false, has_fresh_water))
 
     # The specializations of the city act on the improvements of the map, therefore they close the
     # list: the panel and the tooltip show them beside the other multipliers, one row per branch.
@@ -3182,7 +3208,7 @@ func get_building_production_modifiers(building_id: String, has_fresh_water: boo
     if building_id == "":
         return result
     result.append_array(get_water_production_modifiers(building_id, true, has_fresh_water))
-    result.append_array(get_tech_production_modifiers(building_id, true))
+    result.append_array(get_tech_production_modifiers(building_id, true, has_fresh_water))
     return result
 
 # The product of the rows above — the share of the output the water/technology

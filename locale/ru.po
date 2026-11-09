@@ -4616,6 +4616,14 @@ msgid "Fresh water passes through in a chain (up to 4 tiles)"
 msgstr "Передача пресной воды по цепочке (до 4 гексов)"
 
 msgctxt "modifiers.tech_modifiers.name"
+msgid "Mine, quarry, animal mill, oil press, weaver's and silkmaker's house, mason's, carpenter's and jeweler's workshop: +25% production"
+msgstr "Шахта, каменоломня, мельница с животной тягой, маслобойня, дом ткача и шелковода, мастерская каменщика, плотника и ювелира: +25% к производству"
+
+msgctxt "modifiers.tech_modifiers.name"
+msgid "Mine, quarry, bloomery, smelter, forge: +25% production"
+msgstr "Шахта, каменоломня, кузница, плавильня, кузница: +25% к производству"
+
+msgctxt "modifiers.tech_modifiers.name"
 msgid "Plantations: +30% production"
 msgstr "Плантации: +30% к производству"
 
@@ -6536,6 +6544,10 @@ msgid "Unlocks the recipe for hopped beer."
 msgstr "Открывает рецепт хмелевого пива."
 
 msgctxt "technologies.description"
+msgid "Unlocks the toothed wheel: the gears that pass a rotation on to the working tool.\n+25% to the production of mines, quarries, animal mills, oil presses, weaver's and silkmaker's houses, and of the mason's, carpenter's and jeweler's workshops."
+msgstr "Открывает зубчатое колесо: шестерни, передающие вращение рабочему инструменту.\n+25% к производству шахт и каменоломен, мельницы с животной тягой, ручной маслодавки, дома ткача и шелкопряда, а также мастерских каменотёса, плотника и ювелира."
+
+msgctxt "technologies.description"
 msgid "Unlocks the use of draft animals to turn millstones."
 msgstr "Открывает использование тягловых животных для вращения мельничных жерновов."
 
@@ -6550,6 +6562,10 @@ msgstr "Плуг, запряжённый волами, позволил обра
 msgctxt "technologies.flavor"
 msgid "A protoscience of attempts to turn base metals into gold."
 msgstr "Протонаука о попытках превращения неблагородных металлов в золото."
+
+msgctxt "technologies.flavor"
+msgid "A wheel that rolls is not yet a machine; the teeth are. They turn one turn of the axle into a turn of the millstone, a pull of the press or a lift of the winch, and they hold the load instead of letting it fall back. Vitruvius described a mill whose upright wheel drove a horizontal one through a row of teeth, and a marble saw driven the same way is known from a sarcophagus in Hierapolis."
+msgstr "Колесо, которое катится, ещё не машина; машину делают зубья. Они превращают один оборот вала в оборот жернова, в тягу пресса или в подъём лебёдки и держат груз, не давая ему сорваться. Витривий описал мельницу, у которой вертикальное колесо через ряд зубьев приводило горизонтальное, а такой же мраморный пильный станок известен по саркофагу из Иераполя."
 
 msgctxt "technologies.flavor"
 msgid "An emporion was neither a colony nor a city: a foothold on a foreign shore where the road met the sea and goods changed hands."
@@ -6782,6 +6798,10 @@ msgstr "Гончарное дело"
 msgctxt "technologies.name"
 msgid "Cheese Making"
 msgstr "Сыроварение"
+
+msgctxt "technologies.name"
+msgid "Cog Wheel"
+msgstr "Зубчатое колесо"
 
 msgctxt "technologies.name"
 msgid "Draft Animals"

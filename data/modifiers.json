@@ -1,9 +1,14 @@
 {
   "modifiers": {
-    // The water bonuses are ONE mechanic with two branches. Every branch carries
+    // The bonus blocks of a source that is NOT a technology. Every block carries
     // two id maps: production_multiplier for the improvements of the map and
-    // building_production_multiplier for the buildings of the city. CityData reads
-    // both through the same resolver, so a bonus may target either kind of producer.
+    // building_production_multiplier for the buildings of the city, so a bonus
+    // may target either kind of producer.
+    //
+    // The effects of the technologies live in "tech_modifiers": every record there
+    // belongs to one technology, and the bonus follows the technology. A record
+    // marked "requires_water" needs the fresh water as well — the water-driven
+    // machinery only works where the water runs.
     //
     // fresh_water is water as a MATERIAL: irrigation of cultivated plants (farm,
     // plantation) and washing/soaking in a workshop (the tanner). No technology is
@@ -12,18 +17,6 @@
     "fresh_water": {
       "production_multiplier": { "farm": 1.5, "plantation": 1.5 },
       "building_production_multiplier": { "leatherworker_house": 1.25 }
-    },
-    // water_power is water as a source of MECHANICAL MOTION: hoists and ore washing
-    // at a mine/quarry, water-driven bellows in metallurgy. It needs running water
-    // AND the Water Wheel technology — unlike irrigation, which needs water only.
-    // The Water Mill is not listed: its own recipe already encodes the gain from
-    // the wheel, a second multiplier would pay for the same millstones twice.
-    "water_power": {
-      "requires_tech": "water_wheel",
-      "production_multiplier": { "mine": 1.25, "quarry": 1.25 },
-      "building_production_multiplier": {
-        "bloomery": 1.25, "smelter": 1.25, "forge": 1.25
-      }
     },
     "tech_modifiers": [
       {
@@ -61,6 +54,40 @@
         "icon": "production_bonus.png",
         "name": "Plantations: +30% production",
         "production_multiplier": { "plantation": 1.3 }
+      },
+      {
+        // Water as a source of MECHANICAL MOTION: ore washing at a mine/quarry,
+        // water-driven bellows in metallurgy. The record needs the running water
+        // AND the Water Wheel technology — unlike irrigation, which needs the
+        // water only. The Water Mill is not listed: its own recipe already
+        // encodes the gain from the wheel, a second multiplier would pay for the
+        // same millstones twice.
+        "tech_id": "water_wheel",
+        "icon": "water_chain.png",
+        "name": "Mine, quarry, bloomery, smelter, forge: +25% production",
+        "requires_water": true,
+        "production_multiplier": { "mine": 1.25, "quarry": 1.25 },
+        "building_production_multiplier": {
+          "bloomery": 1.25, "smelter": 1.25, "forge": 1.25
+        }
+      },
+      {
+        // The gears are the TRANSMISSION of a rotation, not its source: toothed
+        // wheels that pass the turn of a crank, a ratchet or an axle on to the
+        // working tool. No water is needed — a water wheel, an animal, a treadle
+        // or a human arm may turn the same gears.
+        // The hoists of the mine and the quarry belong here, not to the water: a
+        // ratchet and a geared winch lift the ore, the water only washes it.
+        // The Hand Mill is not listed either: it is turned by hand.
+        "tech_id": "cogwheel",
+        "icon": "production_bonus.png",
+        "name": "Mine, quarry, animal mill, oil press, weaver's and silkmaker's house, mason's, carpenter's and jeweler's workshop: +25% production",
+        "production_multiplier": { "mine": 1.25, "quarry": 1.25 },
+        "building_production_multiplier": {
+          "animal_mill": 1.25, "hand_oil_press": 1.25, "weaver_house": 1.25,
+          "silk_maker_house": 1.25, "mason_workshop": 1.25, "jeweler_house": 1.25,
+          "carpenter_workshop": 1.25
+        }
       }
     ],
     "terrain_modifiers": [
