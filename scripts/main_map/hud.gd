@@ -42,6 +42,19 @@ func update_extended_tooltip(row: int, col: int):
 func clear_extended_tooltip():
     map_tooltip.clear_extended_tooltip()
 
+# Updates the HUD label that shows the era the player is currently in.
+# The era name is read from GameData.eras and translated via tr(); no year is shown,
+# since the game has no calendar mechanic yet.
+func _update_era_label() -> void:
+    var year_label = hud.get_node_or_null("VBoxContainer/YearLabel")
+    if not year_label:
+        return
+    var era_index = CityData.current_era_index
+    var era_name = ""
+    if era_index >= 0 and era_index < GameData.eras.size():
+        era_name = str(GameData.eras[era_index].get("name", ""))
+    year_label.text = tr(era_name)
+
 func _setup_research_hud():
     # We create the panel of the research: a button with the icon of the technology + a progress bar.
     # We place it between the label of the date and the "City" button.
@@ -104,6 +117,7 @@ func _setup_research_hud():
     vbox.move_child(research_hbox, year_label.get_index() + 1)
 
     _update_research_progress()
+    _update_era_label()
 
 func _update_research_progress():
     if research_button == null or research_progress_bar == null:
@@ -308,6 +322,7 @@ func _on_locale_changed(_locale: String) -> void:
     _update_research_progress()
     _update_population_hud()
     _update_treasury_hud()
+    _update_era_label()
     map_renderer.queue_redraw()
 
 func _on_population_changed(_new_pop: int):
@@ -493,6 +508,10 @@ func _show_treasury_tooltip(mouse_pos: Vector2, keep_position: bool = false) -> 
 # everything is subordinated to one era (CityData.resource_display_epoch), so that all
 # the resource places are updated simultaneously, by one "jerk" per interval.
 func _on_city_data_updated():
+    # The era of the player may have changed (advance_era() emits city_updated) —
+    # refresh the era label on the HUD so that it always shows the current era.
+    _update_era_label()
+
     if CityData.resource_display_due(_treasury_display_epoch):
         _treasury_display_epoch = CityData.resource_display_epoch
         _update_treasury_hud()
