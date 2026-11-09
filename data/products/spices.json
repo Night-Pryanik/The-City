@@ -5,6 +5,7 @@
     { "id": "cinnamon", "price": 14, "name": "Cinnamon", "type": "product", "category": "spices", "icon": "cinnamon.png" },
     { "id": "nutmeg", "price": 18, "name": "Nutmeg", "type": "product", "category": "spices", "icon": "nutmeg.png" },
     { "id": "vanilla", "price": 25, "name": "Vanilla", "type": "product", "category": "spices", "icon": "vanilla.png" },
-    { "id": "chili", "price": 10, "name": "Chili", "type": "product", "category": "spices", "icon": "chili.png" }
+    { "id": "chili", "price": 10, "name": "Chili", "type": "product", "category": "spices", "icon": "chili.png" },
+    { "id": "sumac", "price": 12, "name": "Sumac", "type": "product", "category": "spices", "icon": "sumac.png" }
   ]
 }

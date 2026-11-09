@@ -2655,20 +2655,35 @@ msgstr "Тема: бронза"
 msgid "Theme: Classic"
 msgstr "Тема: классическая"
 
+msgid "Theme: Dusk"
+msgstr "Тема: сумерки"
+
 msgid "Theme: Earth and Olive"
 msgstr "Тема: земля и оливы"
 
 msgid "Theme: Graphite and Brass"
 msgstr "Тема: графит и латунь"
 
+msgid "Theme: Light Turquoise"
+msgstr "Тема: светлая бирюза"
+
 msgid "Theme: Mediterranean"
 msgstr "Тема: средиземноморская"
+
+msgid "Theme: Overcast"
+msgstr "Тема: пасмурный день"
 
 msgid "Theme: Parchment"
 msgstr "Тема: пергамент"
 
+msgid "Theme: Soft Aquamarine"
+msgstr "Тема: мягкий аквамарин"
+
 msgid "Theme: Soft Modern"
 msgstr "Тема: мягкий модерн"
+
+msgid "Theme: Warm Stone"
+msgstr "Тема: тёплый камень"
 
 msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."
 msgstr "Различия в написании нет, но для игры это РАЗНЫЕ идентификаторы: всё, что ссылается на «%s», не попадёт в «%s» и наоборот. При этом ссылка на «%s» ссылки НЕ ломает — он объявлен и выглядит правильно, поэтому обычные проверки битых ссылок эту опечатку и не видели. Оставьте один идентификатор и переименуйте второй во всех файлах."
@@ -3905,6 +3920,10 @@ msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
 msgstr "Ткёт одежду из шерсти"
 
+msgctxt "crafts.description"
+msgid "Makes a dye (sumac yellow) from sumac leaves."
+msgstr "Создает краситель (сумаховый жёлтый) из листьев сумаха"
+
 msgctxt "crafts.name"
 msgid "Aged Cheese"
 msgstr "Выдержанный сыр"
@@ -4392,6 +4411,10 @@ msgstr "Шерстяная одежда"
 msgctxt "crafts.name"
 msgid "Writing Set"
 msgstr "Письменный набор"
+
+msgctxt "crafts.name"
+msgid "Sumac Yellow"
+msgstr "Сумаховый жёлтый"
 
 msgctxt "eras.name"
 msgid "Ancient"
@@ -6148,6 +6171,18 @@ msgstr "Древесина ореха"
 msgctxt "resources.name"
 msgid "Oak Bark"
 msgstr "Дубовая кора"
+
+msgctxt "resources.name"
+msgid "Sumac"
+msgstr "Сумах"
+
+msgctxt "resources.name"
+msgid "Sumac Leaves"
+msgstr "Листья сумаха"
+
+msgctxt "resources.name"
+msgid "Sumac Yellow"
+msgstr "Сумаховый жёлтый"
 
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."

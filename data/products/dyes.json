@@ -116,6 +116,15 @@
       "category": "material",
       "unlock_tech": "dyeing",
       "icon": "malachite.png"
+    },
+    {
+      "id": "sumac_yellow",
+      "price": 10,
+      "name": "Sumac Yellow",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "sumac_yellow.png"
     }
   ]
 }

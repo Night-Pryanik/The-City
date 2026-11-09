@@ -3905,6 +3905,10 @@ msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
 msgstr ""
 
+msgctxt "crafts.description"
+msgid "Makes a dye (sumac yellow) from sumac leaves."
+msgstr ""
+
 msgctxt "crafts.name"
 msgid "Aged Cheese"
 msgstr ""
@@ -4391,6 +4395,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Writing Set"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Sumac Yellow"
 msgstr ""
 
 msgctxt "eras.name"
@@ -6147,6 +6155,18 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Oak Bark"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Sumac"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Sumac Leaves"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Sumac Yellow"
 msgstr ""
 
 msgctxt "roads.description"

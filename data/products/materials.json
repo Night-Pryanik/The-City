@@ -377,6 +377,16 @@
       "icon": "safflower_leaves.png"
     },
     {
+      // The leaf carries the tannin and the dye; the fruit of the same shrub is
+      // the spice "sumac".
+      "id": "sumac_leaves", "price": 6,
+      "name": "Sumac Leaves",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "sumac_leaves.png"
+    },
+    {
       "id": "cochineal", "price": 12,
       "name": "Cochineal",
       "type": "product",

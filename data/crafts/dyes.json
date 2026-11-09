@@ -129,6 +129,16 @@
       "time": 5.0,
       "unlock_tech": "dyeing",
       "description": "Makes a dye (malachite) from ore."
+    },
+    {
+      "id": "sumac_yellow",
+      "name": "Sumac Yellow",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "sumac_leaves": 20 },
+      "result": { "sumac_yellow": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Makes a dye (sumac yellow) from sumac leaves."
     }
   ]
 }
