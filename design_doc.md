@@ -26,6 +26,169 @@ The author's old notes (2014–2019) described a more "urban-planning" variant (
 
 ---
 
+## Worldview and Historical Context
+
+### 1. The World of The City
+
+The City is an economic strategy game about the development of human civilization as a whole. Its world is built around an intentionally alternate geography, an alternate historical context, and a flexible cultural identity.
+
+The game does not represent any particular real-world geographical region or civilization. It is neither a simulation of Europe nor a reconstruction of the Mediterranean, the Middle East, or any other specific part of the world. There are no direct equivalents of real-world historical or geographical regions on the game map.
+
+Most importantly, **Europe is not the historical, geographical, or cultural center of The City**. European history is one source of historical knowledge among many, but it does not provide the universal framework through which the game's world is understood.
+
+The project does not depict the story of European civilization gradually discovering, adopting, and incorporating the achievements of other peoples. Instead, it explores the development of human society through a broader perspective in which different parts of the world, their knowledge, resources, and practices have equal historical significance.
+
+This principle influences the game's geography, chronology, technology progression, resource availability, cultural references, and naming conventions.
+
+### 2. Alternate Geography
+
+The geographical setting of The City is deliberately independent of the actual arrangement of continents, ecosystems, and biogeographical regions on Earth.
+
+Plants, animals, and natural resources originating in different parts of the real world may coexist within a single game map. For example, South American llamas may share their surroundings with Chinese ramie and tropical coconut palms.
+
+Such combinations are a natural part of the game's setting rather than geographical inaccuracies within it. The map represents an alternate world with its own distribution of natural resources and environmental conditions.
+
+Consequently, the presence of a particular resource in a region does not imply that the region corresponds to the real-world location from which that resource originated. Real-world geographical origins are useful for understanding the nature and properties of resources, but they do not define their mandatory placement in the game.
+
+The game's geography is therefore best understood as a functional and ecological setting rather than a reconstruction of Earth. Climate, terrain, vegetation, and resource distribution provide the framework for economic development, while the specific combinations found in the world remain deliberately fictional.
+
+### 3. Alternate History and the Development of Humanity
+
+The historical context of The City is similarly alternate.
+
+The game does not reproduce the actual chronological development of any particular civilization. It draws inspiration from the technological achievements, material culture, agricultural practices, and production methods of humanity across different periods and geographical regions.
+
+Historical developments are considered in a broader context: discoveries, inventions, and practices are part of humanity's shared technological heritage, regardless of where they originated.
+
+This perspective is particularly important for technologies and products whose history is associated with different regions at different times. The introduction of an item to Europe, for example, is not equivalent to its invention, origin, or first use. Many resources and practices were familiar to the populations of their places of origin long before they became known elsewhere.
+
+The game does not treat the spread of knowledge toward Europe as the culmination of historical development. The histories of the Americas, Africa, Asia, and Oceania are independent and significant parts of humanity's technological and cultural history.
+
+The resulting setting is not intended to be a precise historical simulation. It is an alternate representation of the development of human civilization, drawing on real-world achievements without being bound to their exact historical sequence.
+
+### 4. Game Eras as a Technological Framework
+
+The eras in The City are abstract stages of technological development. Their names are primarily chosen for familiarity and ease of recognition, rather than for strict correspondence with real-world historical periodization.
+
+The boundaries and duration of game eras correlate only approximately with the actual historical eras whose names they use. In particular, the game's Ancient Era should not be interpreted as a direct representation of European Antiquity, nor should the game's Medieval Era be understood as a reconstruction of the European Middle Ages.
+
+Different civilizations followed their own historical trajectories. Their periods of development, technological achievements, and cultural transformations did not necessarily coincide with European chronology. Many of these historical periods have no direct equivalent in conventional European periodization.
+
+Game eras provide a shared framework for describing the approximate technological capabilities of humanity at different stages of the game. They are not intended to establish a universal historical calendar or to imply that all regions of the world followed the same sequence of events.
+
+Within this framework, the availability of a resource, product, or production process is determined primarily by its technological feasibility at the corresponding level of development.
+
+An item that was already used by people in one part of the world may therefore be available in an early game era, even if it became familiar to Europeans much later.
+
+### 5. Historical Origins, Adoption, and Technological Feasibility
+
+An important distinction in the historical approach of The City is the difference between the origin of something, its earliest known use, its spread between regions, and its eventual adoption by European societies.
+
+These events are not interchangeable and often occurred at very different times.
+
+The historical record is also incomplete. The earliest surviving written reference or archaeological evidence does not necessarily indicate the actual beginning of a practice. The absence of known evidence from an earlier period is not, by itself, proof that the practice did not exist.
+
+This distinction is particularly relevant to agricultural products, food and beverages, medicinal and recreational plants, textiles, and other materials that originated outside Europe.
+
+#### Coffee
+
+Coffee is an example of the distinction between documented historical use and technological feasibility.
+
+Its historical spread and the emergence of established coffee-drinking traditions are associated with particular periods and regions. However, the operations involved in processing coffee beans — drying, roasting, grinding, and preparing an infusion — do not inherently require sophisticated technologies.
+
+The existence of later historical records of coffee consumption does not automatically establish that its use was technologically impossible in earlier periods.
+
+In the context of The City, the relevant question is not simply when coffee became a familiar beverage in a particular region, but when humanity possessed the practical means to process and consume it.
+
+#### Tobacco
+
+Tobacco illustrates the geographical dimension of this distinction.
+
+Originating in the Americas, tobacco was used by Indigenous peoples long before European contact. Its introduction to Europe in the sixteenth century represents the spread of an already existing plant and established practices to another part of the world.
+
+The European adoption of tobacco is therefore a later chapter in its history, not the beginning of its use by humanity.
+
+Its availability in an early game era can be justified by the much earlier history of its cultivation and consumption in the Americas.
+
+#### Technological Feasibility
+
+Historical dates alone are insufficient to determine when something can appear in the game. The actual technological requirements of a product or process are equally important.
+
+Some products became widely known or commercially significant only at a relatively late date, despite relying on operations and materials that had been available much earlier. Conversely, other products genuinely depend on specialized knowledge, tools, materials, or production methods that emerged only after significant technological advances.
+
+The game's progression therefore considers the practical complexity of production:
+
+- the materials and resources involved;
+- the tools and equipment required;
+- the processing operations and production techniques;
+- the knowledge necessary to perform those operations;
+- the existence of comparable methods in other parts of the world.
+
+This approach allows the game to maintain technological coherence without mistaking the chronology of one region for the chronology of humanity as a whole.
+
+### 6. Cultural Identity and Toponymy
+
+The cultural identity of The City is not tied to any single historical civilization, language family, or geographical region.
+
+Names of cities, regions, products, and other elements of the game world may draw inspiration from different cultural and linguistic traditions. Elements from otherwise unrelated traditions may appear together within the same name.
+
+For example, **"Qasr-al-Midgard"** combines Middle Eastern and Norse-inspired elements. Such combinations are entirely consistent with the alternate cultural setting of the game.
+
+This flexibility reflects the fictional nature of the world and its independent cultural identity. Names are not required to reproduce real-world historical naming conventions or follow the geographical distribution of actual languages.
+
+At the same time, cultural blending is not synonymous with arbitrary word combinations. Names should remain recognizable, reasonably pronounceable, and internally coherent within their immediate context.
+
+The resulting toponymy contributes to the game's identity as a fictional world rather than a geographically disguised version of a particular region on Earth.
+
+### 7. Historical Research as a Source of Inspiration
+
+Real-world history remains an important foundation for the game's resources, technologies, production processes, and cultural references.
+
+Historical research helps establish what materials were available, how people processed them, what tools they used, and what technological knowledge was required. It also provides examples of production practices and economic relationships that can inspire game mechanics.
+
+However, historical information is considered within the broader perspective of humanity's development rather than through the chronology of any single region.
+
+In particular, historical research distinguishes between:
+
+- the origin of a resource or technology;
+- its earliest known use;
+- its adoption by different populations;
+- its spread to other regions;
+- its introduction to Europe;
+- its eventual industrialization or mass production.
+
+These distinctions provide a more accurate understanding of historical development and prevent the dates associated with one region from being mistaken for universal milestones.
+
+When historical evidence is incomplete or disputed, the game may rely on a reasonable interpretation of technological feasibility rather than imposing an arbitrary historical date.
+
+The objective is not to reproduce every historical detail, but to create a coherent alternate world grounded in the actual achievements and capabilities of humanity.
+
+### 8. Design Implications
+
+The historical and geographical philosophy described above has several direct consequences for the design of The City.
+
+**Resource availability** is not restricted by the real-world geographical distribution of plants, animals, and materials. Their placement is determined by the fictional geography and the game's ecological and economic systems.
+
+**Technological progression** represents the approximate development of humanity as a whole. Game eras are not tied to the historical milestones of a particular civilization.
+
+**Product and resource introduction** is based on historical origins and technological feasibility, rather than the date when a product became known in Europe.
+
+**Production chains** draw on real-world material properties and historical techniques, while allowing alternate combinations and sequences consistent with the game's technological framework.
+
+**Cultural and geographical references** are not required to conform to a single historical or regional identity. The world has its own alternate cultural and geographical context.
+
+These principles allow The City to combine historical inspiration with creative freedom while maintaining a consistent view of technological and economic development.
+
+### Conclusion
+
+The City presents an alternate world in which human civilization develops as a whole, rather than through the historical perspective of any single region.
+
+Its geography is fictional, its chronology is an approximate technological framework, and its cultural identity is deliberately eclectic. Real-world history provides the knowledge and inspiration behind its resources, technologies, and production systems, but no single civilization or regional chronology defines the entire world.
+
+**The City is not a story of Europe discovering the rest of the world. It is a story of humanity developing its knowledge, industries, and societies in an alternate world.**
+
+---
+
 ## 2. Design principles (mandatory)
 
 1. **95% / 5%** — most of the time the system runs itself (auto-filling slots, sensible defaults). Manual configuration is rare and optional.
