@@ -1,8 +1,30 @@
 {
   "modifiers": {
-    // Irrigation raises the yield of cultivated plants: the farm grows food crops,
-    // the plantation grows technical, auxiliary and ornamental ones.
-    "fresh_water": { "production_multiplier": { "farm": 1.5, "plantation": 1.5 } },
+    // The water bonuses are ONE mechanic with two branches. Every branch carries
+    // two id maps: production_multiplier for the improvements of the map and
+    // building_production_multiplier for the buildings of the city. CityData reads
+    // both through the same resolver, so a bonus may target either kind of producer.
+    //
+    // fresh_water is water as a MATERIAL: irrigation of cultivated plants (farm,
+    // plantation) and washing/soaking in a workshop (the tanner). No technology is
+    // needed — the water_access scheme itself decides whether the hex or the city
+    // has water. The vineyard is deliberately absent: its grapes are dry-farmed.
+    "fresh_water": {
+      "production_multiplier": { "farm": 1.5, "plantation": 1.5 },
+      "building_production_multiplier": { "leatherworker_house": 1.25 }
+    },
+    // water_power is water as a source of MECHANICAL MOTION: hoists and ore washing
+    // at a mine/quarry, water-driven bellows in metallurgy. It needs running water
+    // AND the Water Wheel technology — unlike irrigation, which needs water only.
+    // The Water Mill is not listed: its own recipe already encodes the gain from
+    // the wheel, a second multiplier would pay for the same millstones twice.
+    "water_power": {
+      "requires_tech": "water_wheel",
+      "production_multiplier": { "mine": 1.25, "quarry": 1.25 },
+      "building_production_multiplier": {
+        "bloomery": 1.25, "smelter": 1.25, "forge": 1.25
+      }
+    },
     "tech_modifiers": [
       {
         "tech_id": "plow",

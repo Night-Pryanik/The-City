@@ -1036,6 +1036,9 @@ func get_building_planned_production() -> Dictionary:
     # The same per-good factors the tick of the production passes into the containers, so that the
     # plan of a branch scoped to a line of goods is the plan of that goods only.
     var production_multipliers := get_production_product_multipliers()
+    # The water of the city hex is derived on the fly; read it once for the whole
+    # plan, exactly as do_tick() does for the actual output.
+    var city_water := has_city_fresh_water()
     for i in range(city_built_buildings.size()):
         var bld = city_built_buildings[i]
         var slots = bld.get("slots", [])
@@ -1053,6 +1056,11 @@ func get_building_planned_production() -> Dictionary:
         # The same specialization multiplier the tick of the production applies, so that the
         # planned "≈" of the tab "Resources" matches what the building really gives.
         prof_multiplier *= get_specialization_multiplier(SPEC_BUILDING_PRODUCTION)
+        # The water/technology bonuses of THIS building (a tanner washing hides,
+        # water-driven bellows at a bloomery): the same rows do_tick() folds into
+        # output_multiplier, so the plan cannot promise more than the craft gives.
+        var water_multiplier := get_building_production_multiplier(
+                str(bld.get("id", "")), city_water)
         # The identifier of the building is the source of the output (it coincides with the source of
         # the actual production in do_tick, so that in the tooltip it is one and
         # the same subject).
@@ -1073,7 +1081,8 @@ func get_building_planned_production() -> Dictionary:
                 # The bonus of the profession is applied to the output of the recipe — as the multiplier
                 # of the production at the improvements on the map. A branch scoped to a good multiplies
                 # the same output of that good only.
-                var good_multiplier := prof_multiplier * float(production_multipliers.get(res, 1.0))
+                var good_multiplier := prof_multiplier * water_multiplier \
+                        * float(production_multipliers.get(res, 1.0))
                 if good_multiplier != 1.0:
                     amount = int(round(float(amount) * good_multiplier))
                     if amount <= 0:
@@ -1573,6 +1582,9 @@ func do_tick():
     # because the loop of the buildings reads it for every slot; it is empty for a city whose branches
     # name no good, which is the common case.
     var production_multipliers := get_production_product_multipliers()
+    # The fresh water of the city hex: the water bonuses of the buildings are
+    # derived from the map, so the access is read once per tick for all of them.
+    var city_water := has_city_fresh_water()
 
     # --- The work of the buildings (only if there is a citizen) ---
     var main_map = get_tree().root.find_child("MainMap", true, false)
@@ -1614,7 +1626,11 @@ func do_tick():
         # The specialization of the city speeds up every working building. It is folded into the
         # output of the recipe and not into prof_multiplier: the science of a library is not a
         # good of the city, and the rate of the research has a branch of its own.
-        var output_multiplier := prof_multiplier * get_specialization_multiplier(SPEC_BUILDING_PRODUCTION)
+        # The water/technology bonuses of the building go into the output for the same reason:
+        # a wheel at the bellows makes iron, not science, and the scholars keep prof_multiplier.
+        var output_multiplier := prof_multiplier \
+                * get_specialization_multiplier(SPEC_BUILDING_PRODUCTION) \
+                * get_building_production_multiplier(str(bld.get("id", "")), city_water)
 
         # --- THE CONTINUOUS CRAFTING (CraftContainer) ---
         # The priority of the quality of the raw material: from the building or the default. It is passed into the container
@@ -2274,17 +2290,11 @@ func check_building_additional_req(building_id: String) -> Dictionary:
         return {"ok": true, "reason": ""}
 
     if requirement == "running_water":
-        var main_map = get_tree().root.find_child("MainMap", true, false)
-        if main_map == null or main_map.tile_data.is_empty():
+        # The same derived value the Effects tab and the water bonuses of the
+        # buildings read: the panel and the requirement cannot disagree.
+        if _get_city_map_node() == null:
             return {"ok": false, "reason": tr("No access to fresh water")}
-        var water_access = MapHelpers.get_hex_water_access(
-            main_map.city_row,
-            main_map.city_col,
-            main_map.tile_data,
-            main_map.map_rows,
-            main_map.map_cols
-        )
-        if water_access != "":
+        if has_city_fresh_water():
             return {"ok": true, "reason": ""}
         return {"ok": false, "reason": tr("The city needs access to fresh water")}
 
@@ -2298,27 +2308,39 @@ func check_building_additional_req(building_id: String) -> Dictionary:
 func get_city_effects() -> Array:
     var effects: Array = []
 
-    # The hex of the city. The water access is derived on the fly, so the row is assembled from
-    # the same call the requirement of a building uses — the panel and the requirement cannot
-    # disagree about whether the city has water.
-    var main_map = get_tree().root.find_child("MainMap", true, false)
-    if main_map != null and not main_map.tile_data.is_empty():
-        var water_access = MapHelpers.get_hex_water_access(
-            main_map.city_row,
-            main_map.city_col,
-            main_map.tile_data,
-            main_map.map_rows,
-            main_map.map_cols
-        )
-        if water_access != "":
-            effects.append({
-                "group": "environment",
-                "icon": "water_chain.png",
-                "name": tr("Fresh water"),
-                "value": tr("direct access") if water_access == "direct" \
-                        else tr("by a chain of conductors"),
-                "source": "",
-            })
+    # The hex of the city. The water access is derived on the fly by the common
+    # helper, so the requirement of a building and the water bonuses below cannot
+    # disagree with this row about whether the city has water at all.
+    var water_access := get_city_water_access()
+    if water_access != "":
+        effects.append({
+            "group": "environment",
+            "icon": "water_chain.png",
+            "name": tr("Fresh water"),
+            "value": tr("direct access") if water_access == "direct" \
+                    else tr("by a chain of conductors"),
+            "source": "",
+        })
+
+        # The water bonuses that actually change the output of BUILT buildings.
+        # Only built ones are listed: a bonus on a building the city does not
+        # have is not an effect yet. The Buildings tab shows the same rows for a
+        # building that has not been built, so the two panels agree.
+        var listed := {}
+        for bld in city_built_buildings:
+            var building_id := str(bld.get("id", ""))
+            if building_id == "" or listed.has(building_id):
+                continue
+            listed[building_id] = true
+            for row in get_water_production_modifiers(building_id, true, true):
+                effects.append({
+                    "group": "environment",
+                    "icon": "water_chain.png",
+                    "name": GameData.get_building_display_name(building_id),
+                    "value": "+%d%%" % int(round(
+                            (float(row.get("multiplier", 1.0)) - 1.0) * 100.0)),
+                    "source": str(row.get("bonus", "")),
+                })
 
     # The researched technologies. The records of data/modifiers.json carry the icon and the
     # already localized caption, so the row repeats the record instead of wording the effect a
@@ -2977,6 +2999,124 @@ func return_livestock_for(res_id: String) -> void:
 func is_product_available(product_id: String) -> bool:
     return _is_product_available(product_id)
 
+# --- THE WATER AND TECHNOLOGY PRODUCTION BONUSES -------------------------------
+#
+# ONE bonus mechanic for TWO kinds of producers: an improvement on the map and a
+# building in the city. Every block of data/modifiers.json carries two id maps —
+# production_multiplier for improvements and building_production_multiplier for
+# buildings — and the resolvers below read the one matching the caller. A water
+# block additionally needs fresh water: on the hex for an improvement, on the
+# city hex for a building. water_power is gated by its technology, fresh_water
+# (irrigation / water as a material) is not.
+
+const WATER_BONUS_BLOCKS := ["fresh_water", "water_power"]
+
+# The map node the city water is read from, or null when there is no map to
+# read: CityData outside the tree (the counters of the headless tests), the menu
+# before the scene is created, or a bare Node stub without tile_data. All of
+# these mean "no water", not an invalid property access.
+func _get_city_map_node() -> Node:
+    if not is_inside_tree():
+        return null
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map == null:
+        return null
+    var tiles = main_map.get("tile_data")
+    if not (tiles is Array) or tiles.is_empty():
+        return null
+    return main_map
+
+# The type of the fresh water access of the CITY hex: "direct", "chain" or "".
+# The single source of truth for the requirement "running_water", the row of the
+# Effects tab and the water bonuses of the city buildings.
+func get_city_water_access() -> String:
+    var main_map = _get_city_map_node()
+    if main_map == null:
+        return ""
+    return MapHelpers.get_hex_water_access(
+        main_map.city_row,
+        main_map.city_col,
+        main_map.tile_data,
+        main_map.map_rows,
+        main_map.map_cols
+    )
+
+func has_city_fresh_water() -> bool:
+    return get_city_water_access() != ""
+
+# The active water bonuses of one producer. owner_id is an improvement id or a
+# building id; is_building selects which id map of the block is read. Each row:
+#   { "label": String, "multiplier": float, "bonus": String }
+# "bonus" is the short name of the source (for the Effects tab), while "label" is
+# the row of the preview/tooltip. A gated block names its technology in the
+# label, so a new water-driven machine needs no new translation key.
+func get_water_production_modifiers(owner_id: String, is_building: bool,
+        has_fresh_water: bool) -> Array:
+    var result: Array = []
+    if owner_id == "" or not has_fresh_water:
+        return result
+    var field := "building_production_multiplier" if is_building else "production_multiplier"
+    for block_id in WATER_BONUS_BLOCKS:
+        var block: Dictionary = GameData.modifiers.get(block_id, {})
+        if block.is_empty():
+            continue
+        var tech_id := str(block.get("requires_tech", ""))
+        if tech_id != "" and not is_tech_unlocked(tech_id):
+            continue
+        var multipliers: Dictionary = block.get(field, {})
+        if not multipliers.has(owner_id):
+            continue
+        var m := float(multipliers[owner_id])
+        if m == 1.0:
+            continue
+        var pct := int(round((m - 1.0) * 100.0))
+        var bonus_name := tr("Fresh water")
+        var label := tr("+%d%% (Fresh water access)") % pct
+        if tech_id != "":
+            bonus_name = get_tech_name(tech_id)
+            label = "+%d%% (%s)" % [pct, bonus_name]
+        result.append({"label": label, "multiplier": m, "bonus": bonus_name})
+    return result
+
+# The production bonuses from the researched technologies. The same two id maps
+# as the water blocks, so a technology may speed up an improvement, a building
+# or both. The obsolete target "<id>_production" is kept for improvements only.
+func get_tech_production_modifiers(owner_id: String, is_building: bool) -> Array:
+    var result: Array = []
+    if owner_id == "":
+        return result
+    var field := "building_production_multiplier" if is_building else "production_multiplier"
+    for tm in GameData.modifiers.get("tech_modifiers", []):
+        var tech_id = tm.get("tech_id", "")
+        if tech_id == "" or not is_tech_unlocked(tech_id):
+            continue
+        var tech_name := get_tech_name(tech_id)
+        var multipliers = tm.get(field, {})
+        if multipliers.has(owner_id):
+            var m = float(multipliers[owner_id])
+            if m != 1.0:
+                result.append({
+                    "label": "+%d%% (%s)" % [int(round((m - 1.0) * 100.0)), tech_name],
+                    "multiplier": m
+                })
+        if is_building:
+            continue
+        for mod in tm.get("modifiers", []):
+            if mod.get("target", "") != owner_id + "_production":
+                continue
+            var mod_type = mod.get("type", "percent")
+            var value = float(mod.get("value", 0))
+            var multiplier = 1.0
+            if mod_type == "percent":
+                multiplier = 1.0 + value / 100.0
+            else:
+                multiplier = value
+            result.append({
+                "label": "+%d%% (%s)" % [int(value), tech_name],
+                "multiplier": multiplier
+            })
+    return result
+
 # Returns the total multiplier of the production for the improvement imp_id.
 # has_fresh_water is whether there is access to the fresh running water on the hex.
 # terrain_id is the type of the terrain of the hex (for the modifiers by the terrain,
@@ -2999,17 +3139,10 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
     if imp_id == null or imp_id == "":
         return result
 
-    # The modifier of the access to the fresh running water
-    if has_fresh_water:
-        var fw = GameData.modifiers.get("fresh_water", {})
-        var multipliers = fw.get("production_multiplier", {})
-        if multipliers.has(imp_id):
-            var m = float(multipliers[imp_id])
-            if m != 1.0:
-                result.append({
-                    "label": tr("+%d%% (Fresh water access)") % int(round((m - 1.0) * 100.0)),
-                    "multiplier": m
-                })
+    # The water bonuses: irrigation (fresh_water) and, after the Water Wheel,
+    # water-driven machinery (water_power). The very same resolver serves the
+    # city buildings, so a hex and a workshop cannot drift apart.
+    result.append_array(get_water_production_modifiers(imp_id, false, has_fresh_water))
 
     # The modifiers by the type of the terrain (terrain_modifiers).
     # They are applied, when the specified resource_id is extracted on a hex
@@ -3030,50 +3163,35 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
                     "multiplier": m
                 })
 
-    # The modifiers from the learned technologies
-    for tm in GameData.modifiers.get("tech_modifiers", []):
-        var tech_id = tm.get("tech_id", "")
-        if tech_id == "" or not is_tech_unlocked(tech_id):
-            continue
-        var tech_name = tech_id
-        for t in GameData.technologies:
-            if t["id"] == tech_id:
-                tech_name = t["name"]
-                break
-
-        # The universal format: "production_multiplier": { "<imp_id>": 1.05 }
-        # (by analogy with the bonus of the fresh water).
-        var multipliers = tm.get("production_multiplier", {})
-        if multipliers.has(imp_id):
-            var m = float(multipliers[imp_id])
-            if m != 1.0:
-                result.append({
-                    "label": "+%d%% (%s)" % [int(round((m - 1.0) * 100.0)), tech_name],
-                    "multiplier": m
-                })
-
-        # The obsolete format with the field "modifiers" (target == "<imp_id>_production").
-        for mod in tm.get("modifiers", []):
-            var target = mod.get("target", "")
-            if target != imp_id + "_production":
-                continue
-            var mod_type = mod.get("type", "percent")
-            var value = float(mod.get("value", 0))
-            var multiplier = 1.0
-            if mod_type == "percent":
-                multiplier = 1.0 + value / 100.0
-            else:
-                multiplier = value
-            result.append({
-                "label": "+%d%% (%s)" % [int(value), tech_name],
-                "multiplier": multiplier
-            })
+    # The modifiers from the learned technologies (the same resolver a city
+    # building uses, with the obsolete "<imp_id>_production" format included).
+    result.append_array(get_tech_production_modifiers(imp_id, false))
 
     # The specializations of the city act on the improvements of the map, therefore they close the
     # list: the panel and the tooltip show them beside the other multipliers, one row per branch.
     for mod in get_improvement_specialization_modifiers(imp_id):
         result.append(mod)
     return result
+
+# The active production modifiers of a CITY BUILDING: the water bonuses (water
+# of the CITY hex, not of a hex of its own) and the technology bonuses. The
+# profession, the specialization and the per-good branch multipliers are applied
+# separately in get_building_planned_production() / do_tick().
+func get_building_production_modifiers(building_id: String, has_fresh_water: bool) -> Array:
+    var result: Array = []
+    if building_id == "":
+        return result
+    result.append_array(get_water_production_modifiers(building_id, true, has_fresh_water))
+    result.append_array(get_tech_production_modifiers(building_id, true))
+    return result
+
+# The product of the rows above — the share of the output the water/technology
+# bonuses add to one working building.
+func get_building_production_multiplier(building_id: String, has_fresh_water: bool) -> float:
+    var multiplier := 1.0
+    for mod in get_building_production_modifiers(building_id, has_fresh_water):
+        multiplier *= float(mod.get("multiplier", 1.0))
+    return multiplier
 
 # --- THE SPECIALIZATIONS OF THE CITY ---
 #

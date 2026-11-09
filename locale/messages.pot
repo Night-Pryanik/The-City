@@ -15,135 +15,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "%s (%s)"
-msgstr ""
-
-msgid "%s: %d/%d produced"
-msgstr ""
-
-msgid "%s: %d/%d sold to the towns"
-msgstr ""
-
-msgid "%s: %s to production in city buildings"
-msgstr ""
-
-msgid "%s: %s to the price on the domestic market"
-msgstr ""
-
-msgid "%s: %s to the price when sold to towns"
-msgstr ""
-
-msgid "Above average"
-msgstr ""
-
-msgid "Add to storage"
-msgstr ""
-
-msgid "Boreal"
-msgstr ""
-
-msgid "Challenge completed"
-msgstr ""
-
-msgid "Challenge failed: %s"
-msgstr ""
-
-msgid "Climate"
-msgstr ""
-
-msgid "Climate: %s"
-msgstr ""
-
-msgid "Extremely high"
-msgstr ""
-
-msgid "Failed"
-msgstr ""
-
-msgid "High"
-msgstr ""
-
-msgid "How many resource deposits the map gets: a low density halves their number, a high density doubles it. A resource that appears only once is never reduced below one."
-msgstr ""
-
-msgid "Loading game..."
-msgstr ""
-
-msgid "Low"
-msgstr ""
-
-msgid "Nothing found"
-msgstr ""
-
-msgid "Only the names that begin with the typed text stay in the list"
-msgstr ""
-
-msgid "Product: %s"
-msgstr ""
-
-msgid "Quality:"
-msgstr ""
-
-msgid "Random climate"
-msgstr ""
-
-msgid "Reading save..."
-msgstr ""
-
-msgid "Resource density"
-msgstr ""
-
-msgid "Restoring buildings..."
-msgstr ""
-
-msgid "Restoring city..."
-msgstr ""
-
-msgid "Restoring map..."
-msgstr ""
-
-msgid "Restoring roads and rivers..."
-msgstr ""
-
-msgid "Restoring towns..."
-msgstr ""
-
-msgid "Restoring trade..."
-msgstr ""
-
-msgid "Restoring workers..."
-msgstr ""
-
-msgid "Search by name"
-msgstr ""
-
-msgid "Select a product:"
-msgstr ""
-
-msgid "Specialization bonus names a nonexistent goods group"
-msgstr ""
-
-msgid "Standard"
-msgstr ""
-
-msgid "Subtropics"
-msgstr ""
-
-msgid "Temperate"
-msgstr ""
-
-msgid "The climate belt the city starts in. It decides the terrain and the resources around the city."
-msgstr ""
-
-msgid "Tropics"
-msgstr ""
-
-msgid "Tundra"
-msgstr ""
-
-msgid "Very high"
-msgstr ""
-
 msgid "\n\nFound here: %s"
 msgstr ""
 
@@ -516,6 +387,12 @@ msgstr ""
 msgid "%s: %d units every %s per person × %d = %d per cycle"
 msgstr ""
 
+msgid "%s: %d/%d produced"
+msgstr ""
+
+msgid "%s: %d/%d sold to the towns"
+msgstr ""
+
 msgid "%s: %s / sec"
 msgstr ""
 
@@ -523,6 +400,15 @@ msgid "%s: %s coins/sec"
 msgstr ""
 
 msgid "%s: %s to production"
+msgstr ""
+
+msgid "%s: %s to production in city buildings"
+msgstr ""
+
+msgid "%s: %s to the price on the domestic market"
+msgstr ""
+
+msgid "%s: %s to the price when sold to towns"
 msgstr ""
 
 msgid "%s: consumption priority — %s"
@@ -597,9 +483,6 @@ msgstr ""
 msgid "300 px/s"
 msgstr ""
 
-msgid "A challenge of the era is completed."
-msgstr ""
-
 msgid "A citizen has died of starvation. Population: %d"
 msgstr ""
 
@@ -630,6 +513,9 @@ msgstr ""
 msgid "A whole number from %d to %d. Zero leaves the map without towns."
 msgstr ""
 
+msgid "Above average"
+msgstr ""
+
 msgid "Active bonuses: (coming later)"
 msgstr ""
 
@@ -637,6 +523,9 @@ msgid "Actual is below plan: buyers want more than what is in storage."
 msgstr ""
 
 msgid "Actual over the window: %s units/sec — that is what was really bought"
+msgstr ""
+
+msgid "Add to storage"
 msgstr ""
 
 msgid "Added %d %s (%s)"
@@ -742,6 +631,9 @@ msgid "Beaches"
 msgstr ""
 
 msgid "Blacklist names a nonexistent entity"
+msgstr ""
+
+msgid "Boreal"
 msgstr ""
 
 msgid "Brand"
@@ -909,7 +801,13 @@ msgstr ""
 msgid "Carving rivers..."
 msgstr ""
 
+msgid "Challenge completed"
+msgstr ""
+
 msgid "Challenge completed: %s"
+msgstr ""
+
+msgid "Challenge failed: %s"
 msgstr ""
 
 msgid "Challenge names a condition the game does not check"
@@ -996,6 +894,9 @@ msgstr ""
 msgid "Click: sort the list; a repeated click reverses the order"
 msgstr ""
 
+msgid "Climate"
+msgstr ""
+
 msgid "Climate zone %s does not map the family \"%s\" to a terrain."
 msgstr ""
 
@@ -1009,6 +910,9 @@ msgid "Climate zone: the family is not mapped to a terrain of that family"
 msgstr ""
 
 msgid "Climate zone: unknown climate axis value"
+msgstr ""
+
+msgid "Climate: %s"
 msgstr ""
 
 msgid "Clock"
@@ -1317,7 +1221,13 @@ msgstr ""
 msgid "Extra output:"
 msgstr ""
 
+msgid "Extremely high"
+msgstr ""
+
 msgid "FPS: 60"
+msgstr ""
+
+msgid "Failed"
 msgstr ""
 
 msgid "Failed to build the road"
@@ -1455,6 +1365,9 @@ msgstr ""
 msgid "Hide the editor"
 msgstr ""
 
+msgid "High"
+msgstr ""
+
 msgid "Historical background:"
 msgstr ""
 
@@ -1462,6 +1375,9 @@ msgid "How far the sea may reach from the map edge, in hexes, so that it does no
 msgstr ""
 
 msgid "How many map edges get a sea: from the minimum to the maximum. Zero leaves the map without a sea."
+msgstr ""
+
+msgid "How many resource deposits the map gets: a low density halves their number, a high density doubles it. A resource that appears only once is never reduced below one."
 msgstr ""
 
 msgid "How many times the generator tries to find a free spot for an island before it gives up."
@@ -1575,7 +1491,7 @@ msgstr ""
 msgid "Language"
 msgstr ""
 
-msgid "Language of the interface and of the game data. The option \"Language of the system\" follows the language of your operating system."
+msgid "Language of the interface and of the game data. The option \"System Language\" follows the language of your operating system."
 msgstr ""
 
 msgid "Large (100×100)"
@@ -1591,6 +1507,12 @@ msgid "Load game"
 msgstr ""
 
 msgid "Load order"
+msgstr ""
+
+msgid "Loading game..."
+msgstr ""
+
+msgid "Low"
 msgstr ""
 
 msgid "Main rivers"
@@ -1794,6 +1716,9 @@ msgstr ""
 msgid "Not in storage"
 msgstr ""
 
+msgid "Nothing found"
+msgstr ""
+
 msgid "Nothing to upgrade"
 msgstr ""
 
@@ -1822,6 +1747,9 @@ msgid "Only Latin letters a-z, digits and \"_\" are allowed. Disallowed: %s Such
 msgstr ""
 
 msgid "Only areas within the Region can be claimed"
+msgstr ""
+
+msgid "Only the names that begin with the typed text stay in the list"
 msgstr ""
 
 msgid "Only whole positive numbers are accepted"
@@ -1953,7 +1881,13 @@ msgstr ""
 msgid "Product is unlocked by a nonexistent improvement"
 msgstr ""
 
+msgid "Product: %s"
+msgstr ""
+
 msgid "Production (planned):"
+msgstr ""
+
+msgid "Production bonuses:"
 msgstr ""
 
 msgid "Production slots:"
@@ -1989,6 +1923,9 @@ msgstr ""
 msgid "Quality priority: use best/worst"
 msgstr ""
 
+msgid "Quality:"
+msgstr ""
+
 msgid "Quality: %s"
 msgstr ""
 
@@ -2001,7 +1938,13 @@ msgstr ""
 msgid "Quit"
 msgstr ""
 
+msgid "Random climate"
+msgstr ""
+
 msgid "Reached"
+msgstr ""
+
+msgid "Reading save..."
 msgstr ""
 
 msgid "Really exit the game?\nUnsaved progress will be lost."
@@ -2121,6 +2064,9 @@ msgstr ""
 msgid "Resource data refresh interval"
 msgstr ""
 
+msgid "Resource density"
+msgstr ""
+
 msgid "Resource is improved by a nonexistent improvement"
 msgstr ""
 
@@ -2131,6 +2077,27 @@ msgid "Resource quality levels: %s"
 msgstr ""
 
 msgid "Resources"
+msgstr ""
+
+msgid "Restoring buildings..."
+msgstr ""
+
+msgid "Restoring city..."
+msgstr ""
+
+msgid "Restoring map..."
+msgstr ""
+
+msgid "Restoring roads and rivers..."
+msgstr ""
+
+msgid "Restoring towns..."
+msgstr ""
+
+msgid "Restoring trade..."
+msgstr ""
+
+msgid "Restoring workers..."
 msgstr ""
 
 msgid "Resume "
@@ -2241,6 +2208,9 @@ msgstr ""
 msgid "Sea: %d%%"
 msgstr ""
 
+msgid "Search by name"
+msgstr ""
+
 msgid "Seas"
 msgstr ""
 
@@ -2248,6 +2218,9 @@ msgid "Section %d/%d"
 msgstr ""
 
 msgid "Select a hex on the map (LMB) to see information and available actions."
+msgstr ""
+
+msgid "Select a product:"
 msgstr ""
 
 msgid "Select a resource:"
@@ -2319,6 +2292,9 @@ msgstr ""
 msgid "Specialization"
 msgstr ""
 
+msgid "Specialization bonus names a nonexistent goods group"
+msgstr ""
+
 msgid "Specialization bonus names a nonexistent improvement"
 msgstr ""
 
@@ -2338,6 +2314,9 @@ msgid "Specializations"
 msgstr ""
 
 msgid "Spent work (%.0f/%d) will be lost."
+msgstr ""
+
+msgid "Standard"
 msgstr ""
 
 msgid "Start"
@@ -2374,6 +2353,9 @@ msgid "Storage"
 msgstr ""
 
 msgid "Storage:"
+msgstr ""
+
+msgid "Subtropics"
 msgstr ""
 
 msgid "Suggest another name"
@@ -2425,6 +2407,9 @@ msgid "Technology requires a nonexistent technology"
 msgstr ""
 
 msgid "Technology researched: %s"
+msgstr ""
+
+msgid "Temperate"
 msgstr ""
 
 msgid "Terrain cover %s names the temperature belt \"%s\", which does not exist."
@@ -2494,6 +2479,9 @@ msgid "The city is not on the map yet."
 msgstr ""
 
 msgid "The city needs access to fresh water"
+msgstr ""
+
+msgid "The climate belt the city starts in. It decides the terrain and the resources around the city."
 msgstr ""
 
 msgid "The colours of every window, panel and control. The choice applies at once and is remembered; a theme file put into the presets folder appears here without restarting the game."
@@ -2661,19 +2649,34 @@ msgstr ""
 msgid "Theme: Classic"
 msgstr ""
 
+msgid "Theme: Dusk"
+msgstr ""
+
 msgid "Theme: Earth and Olive"
 msgstr ""
 
 msgid "Theme: Graphite and Brass"
 msgstr ""
 
+msgid "Theme: Light Turquoise"
+msgstr ""
+
 msgid "Theme: Mediterranean"
+msgstr ""
+
+msgid "Theme: Overcast"
 msgstr ""
 
 msgid "Theme: Parchment"
 msgstr ""
 
+msgid "Theme: Soft Aquamarine"
+msgstr ""
+
 msgid "Theme: Soft Modern"
+msgstr ""
+
+msgid "Theme: Warm Stone"
 msgstr ""
 
 msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."
@@ -2763,6 +2766,12 @@ msgstr ""
 msgid "Tributaries"
 msgstr ""
 
+msgid "Tropics"
+msgstr ""
+
+msgid "Tundra"
+msgstr ""
+
 msgid "Turn a one-time deal into a standing contract"
 msgstr ""
 
@@ -2836,6 +2845,9 @@ msgid "Upgrading the road to the city: %d sections"
 msgstr ""
 
 msgid "Upgrading to \"%s\""
+msgstr ""
+
+msgid "Very high"
 msgstr ""
 
 msgid "Video"
@@ -3384,6 +3396,10 @@ msgid "Minerals"
 msgstr ""
 
 msgctxt "categories.name"
+msgid "Nuts"
+msgstr ""
+
+msgctxt "categories.name"
 msgid "Other"
 msgstr ""
 
@@ -3413,10 +3429,6 @@ msgstr ""
 
 msgctxt "categories.name"
 msgid "Writing Materials"
-msgstr ""
-
-msgctxt "categories.name"
-msgid "Nuts"
 msgstr ""
 
 msgctxt "challenges.description"
@@ -3700,6 +3712,10 @@ msgid "Makes a dye (sepia) from cuttlefish."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Makes a dye (sumac yellow) from sumac leaves."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Makes a dye (ultramarine) from ore."
 msgstr ""
 
@@ -3909,10 +3925,6 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
-msgstr ""
-
-msgctxt "crafts.description"
-msgid "Makes a dye (sumac yellow) from sumac leaves."
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4336,6 +4348,10 @@ msgid "Sugar"
 msgstr ""
 
 msgctxt "crafts.name"
+msgid "Sumac Yellow"
+msgstr ""
+
+msgctxt "crafts.name"
 msgid "Tar"
 msgstr ""
 
@@ -4401,10 +4417,6 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Writing Set"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Sumac Yellow"
 msgstr ""
 
 msgctxt "eras.name"
@@ -4480,6 +4492,10 @@ msgid "Medicinal Plants"
 msgstr ""
 
 msgctxt "groups.name"
+msgid "Nuts"
+msgstr ""
+
+msgctxt "groups.name"
 msgid "Oil Plants"
 msgstr ""
 
@@ -4513,10 +4529,6 @@ msgstr ""
 
 msgctxt "groups.name"
 msgid "Wool Animals"
-msgstr ""
-
-msgctxt "groups.name"
-msgid "Nuts"
 msgstr ""
 
 msgctxt "improvements.name"
@@ -4652,15 +4664,19 @@ msgid "Building Stone"
 msgstr ""
 
 msgctxt "product_groups.name"
+msgid "Ceramics"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Cheese"
+msgstr ""
+
+msgctxt "product_groups.name"
 msgid "Clothes"
 msgstr ""
 
 msgctxt "product_groups.name"
 msgid "Consumer Goods"
-msgstr ""
-
-msgctxt "product_groups.name"
-msgid "Dyes"
 msgstr ""
 
 msgctxt "product_groups.name"
@@ -4673,6 +4689,10 @@ msgstr ""
 
 msgctxt "product_groups.name"
 msgid "Millable Grains"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Nuts"
 msgstr ""
 
 msgctxt "product_groups.name"
@@ -4708,6 +4728,10 @@ msgid "Tableware Stones"
 msgstr ""
 
 msgctxt "product_groups.name"
+msgid "Tannins"
+msgstr ""
+
+msgctxt "product_groups.name"
 msgid "Tare"
 msgstr ""
 
@@ -4716,7 +4740,15 @@ msgid "Textile Crops"
 msgstr ""
 
 msgctxt "product_groups.name"
+msgid "Weapons"
+msgstr ""
+
+msgctxt "product_groups.name"
 msgid "Wood for Barrels"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Wool"
 msgstr ""
 
 msgctxt "product_groups.name"
@@ -4725,30 +4757,6 @@ msgstr ""
 
 msgctxt "product_groups.name"
 msgid "Writing Materials"
-msgstr ""
-
-msgctxt "product_groups.name"
-msgid "Cheese"
-msgstr ""
-
-msgctxt "product_groups.name"
-msgid "Ceramics"
-msgstr ""
-
-msgctxt "product_groups.name"
-msgid "Wool"
-msgstr ""
-
-msgctxt "product_groups.name"
-msgid "Weapons"
-msgstr ""
-
-msgctxt "product_groups.name"
-msgid "Nuts"
-msgstr ""
-
-msgctxt "product_groups.name"
-msgid "Tannins"
 msgstr ""
 
 msgctxt "professions.description"
@@ -5628,6 +5636,10 @@ msgid "Nutmeg"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Oak Bark"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Oak Tree"
 msgstr ""
 
@@ -5976,6 +5988,18 @@ msgid "Sugar Cane"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Sumac"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Sumac Leaves"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Sumac Yellow"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Sunflower"
 msgstr ""
 
@@ -6068,6 +6092,18 @@ msgid "Vinegar"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Walnut Tree"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Walnut Wood"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Walnuts"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Wax"
 msgstr ""
 
@@ -6141,38 +6177,6 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Zebu"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Pottery of <city_name>"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Walnut Tree"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Walnuts"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Walnut Wood"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Oak Bark"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Sumac"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Sumac Leaves"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Sumac Yellow"
 msgstr ""
 
 msgctxt "roads.description"
@@ -6263,10 +6267,6 @@ msgctxt "specializations.description"
 msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
 msgstr ""
 
-msgctxt "specializations.description"
-msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
-msgstr ""
-
 msgctxt "specializations.full_name"
 msgid "Specialization of ceramics"
 msgstr ""
@@ -6289,10 +6289,6 @@ msgstr ""
 
 msgctxt "specializations.full_name"
 msgid "Specialization of wool"
-msgstr ""
-
-msgctxt "specializations.full_name"
-msgid "Specialization of pottery"
 msgstr ""
 
 msgctxt "specializations.name"
@@ -6337,10 +6333,6 @@ msgstr ""
 
 msgctxt "specializations.name"
 msgid "Wool"
-msgstr ""
-
-msgctxt "specializations.name"
-msgid "Pottery"
 msgstr ""
 
 msgctxt "technologies.description"
@@ -7135,6 +7127,10 @@ msgctxt "validator_entity_ref_improvement"
 msgid "this improvement"
 msgstr ""
 
+msgctxt "validator_entity_ref_modifier_block"
+msgid "this modifier block"
+msgstr ""
+
 msgctxt "validator_entity_ref_priority_option"
 msgid "this quality priority option"
 msgstr ""
@@ -7231,6 +7227,10 @@ msgctxt "validator_entity_source_improvement"
 msgid "improvement"
 msgstr ""
 
+msgctxt "validator_entity_source_modifier_block"
+msgid "modifier block"
+msgstr ""
+
 msgctxt "validator_entity_source_priority_option"
 msgid "quality priority option"
 msgstr ""
@@ -7325,6 +7325,10 @@ msgstr ""
 
 msgctxt "validator_entity_title_improvement"
 msgid "Improvement"
+msgstr ""
+
+msgctxt "validator_entity_title_modifier_block"
+msgid "Modifier block"
 msgstr ""
 
 msgctxt "validator_entity_title_priority_option"

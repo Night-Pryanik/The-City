@@ -76,6 +76,7 @@ The author's old notes (2014–2019) described a more "urban-planning" variant (
 - Parameters such as `sides`, `edge_width_*`, `edge_envelope_strength`, `max_sea_depth` control the shape; the target UX is "we found an outlet to the sea", not "the entire eastern border is ocean".
 - `move_cost` for sea/lake is high (impassable for land-based logic).
 - **Fresh water / irrigation** — from lakes, rivers, canals, conduit farms; **not** from the sea.
+- **Two uses of water in production** — as a *material* (irrigation of cultivated plants, washing/soaking hides at a tanner's) and as *motive power* (hoists and ore washing at a mine/quarry, water-driven bellows in metallurgy). The first needs water access only, the second also needs the "Water Wheel" technology. Both are data-driven and can target map improvements as well as city buildings. The vineyard stays dry-farmed, and the Water Mill is paid for by its own recipe rather than a second multiplier.
 
 ### 3.5. Rivers
 

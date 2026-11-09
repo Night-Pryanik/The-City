@@ -234,11 +234,14 @@ const KEY_TERRAINS := "terrains"
 # The terrain families (the field "family" of a terrain record): the keys of a zone's terrain map.
 const KEY_TERRAIN_FAMILIES := "terrain_families"
 const KEY_IMPROVEMENTS := "improvements"
+const KEY_BUILDINGS := "buildings"
 const KEY_PRIORITIES := "priorities"
 
 # The registries that are simply the ids of one collection of records: the name of the registry is
 # the name of the collection. The other two are assembled from several places (_key_registries).
-const PLAIN_REGISTRIES := [KEY_RESOURCES, KEY_COVERS, KEY_TERRAINS, KEY_IMPROVEMENTS]
+# KEY_BUILDINGS is here for the production bonuses of the city buildings (see BUILDING_MAP).
+const PLAIN_REGISTRIES := [KEY_RESOURCES, KEY_COVERS, KEY_TERRAINS,
+        KEY_IMPROVEMENTS, KEY_BUILDINGS]
 
 # The kind of the entity a key of the registry has to name — for the text of the problem. The
 # @-group reference of KEY_GROUP_REFS is decided per key: "planks" is a resource, "@planks" a group.
@@ -248,6 +251,7 @@ const REGISTRY_TARGETS := {
     KEY_TERRAINS: "terrain",
     KEY_TERRAIN_FAMILIES: "terrain_family",
     KEY_IMPROVEMENTS: "improvement",
+    KEY_BUILDINGS: "building",
     KEY_PRIORITIES: "priority_option",
 }
 
@@ -269,11 +273,13 @@ const OWNER_KINDS := {
 #   additional_cost — a resource OR an @-group of products;
 #   cover_chance — the covers that may grow on a terrain;
 #   production_multiplier — the improvement whose output is multiplied;
+#   building_production_multiplier — the CITY BUILDING whose output is multiplied;
 #   priority_names — the labels of the quality priority options.
 const RESOURCE_MAP := {"id_map": LEAF, "keys": KEY_RESOURCES}
 const COST_MAP := {"id_map": LEAF, "keys": KEY_GROUP_REFS}
 const COVER_MAP := {"id_map": LEAF, "keys": KEY_COVERS}
 const IMPROVEMENT_MAP := {"id_map": LEAF, "keys": KEY_IMPROVEMENTS}
+const BUILDING_MAP := {"id_map": LEAF, "keys": KEY_BUILDINGS}
 const PRIORITY_MAP := {"id_map": LEAF, "keys": KEY_PRIORITIES}
 
 # The field that identifies a record, where it is not "id": a consumption rule is addressed by the
@@ -541,13 +547,25 @@ const SUBGROUP_BONUS_FIELDS := {
     "tiers": {"array": {"min_species": LEAF, "value": LEAF}},
 }
 
+# A water bonus block (fresh_water / water_power). Both id maps are optional: a
+# branch may speed up only improvements, only city buildings, or both.
+# requires_tech gates water-driven machinery by a researched technology;
+# irrigation (fresh_water) has no gate of its own — the water_access scheme is it.
+const WATER_BONUS_FIELDS := {
+    "requires_tech": LEAF,
+    "production_multiplier": IMPROVEMENT_MAP,
+    "building_production_multiplier": BUILDING_MAP,
+}
+
 const MODIFIER_FIELDS := {
-    "fresh_water": {"production_multiplier": IMPROVEMENT_MAP},
+    "fresh_water": WATER_BONUS_FIELDS,
+    "water_power": WATER_BONUS_FIELDS,
     "tech_modifiers": {"array": {
         "tech_id": LEAF,
         "icon": LEAF,
         "name": LEAF,
         "production_multiplier": IMPROVEMENT_MAP,
+        "building_production_multiplier": BUILDING_MAP,
         "modifiers": {"array": {"target": LEAF, "type": LEAF, "value": LEAF}},
     }},
     "terrain_modifiers": {"array": {
@@ -859,7 +877,7 @@ const ENTITIES := [
     "category", "group", "recipe", "road", "terrain", "terrain_family", "cover", "climate_zone", "era",
     "quality_level", "priority_option", "special_action", "consumption_rule",
     "craft_extra", "craft_extra_kind", "specialization",
-    "challenge", "trigger", "condition",
+    "challenge", "trigger", "condition", "modifier_block",
 ]
 
 
@@ -919,6 +937,10 @@ static func entity_forms(kind: String, fallback: String = "product") -> Dictiona
             return {"title": TranslationServer.translate("Recipe", "validator_entity_title_recipe"),
                 "ref": TranslationServer.translate("this recipe", "validator_entity_ref_recipe"),
                 "source": TranslationServer.translate("recipe", "validator_entity_source_recipe")}
+        "modifier_block":
+            return {"title": TranslationServer.translate("Modifier block", "validator_entity_title_modifier_block"),
+                "ref": TranslationServer.translate("this modifier block", "validator_entity_ref_modifier_block"),
+                "source": TranslationServer.translate("modifier block", "validator_entity_source_modifier_block")}
         "road":
             return {"title": TranslationServer.translate("Road level", "validator_entity_title_road"),
                 "ref": TranslationServer.translate("this road level", "validator_entity_ref_road"),
@@ -1215,6 +1237,7 @@ func validate(gd: Object) -> Array:
     _validate_product_groups(product_groups, group_names, products, problems)
     _validate_consumption(gd.consumption_rules, products, product_groups, professions, problems)
     _validate_technologies(technologies, problems)
+    _validate_water_bonuses(gd.modifiers, technologies, problems)
     _validate_specializations(gd.specializations, improvements, all_resources, product_groups,
             challenge_ids, problems)
     _validate_fame(all_resources, _quality_levels(gd), _index_by_id(gd.specializations),
@@ -1360,7 +1383,9 @@ func _check_dict_key(problems: Array, context: Dictionary, registry: String, key
 #                  products of the city lie in one list (they differ by the field "type"), and the
 #                  game looks both of them up in one space (GameData.products + raw_resources);
 #   group_refs   — the same plus "@<group>": additional_cost accepts both;
-#   covers, terrains, improvements — the ids of the collections of the same name;
+#   covers, terrains, improvements, buildings — the ids of the collections of the
+#                   same name; "buildings" is needed by the production bonuses that
+#                   target a city building (building_production_multiplier);
 #   priorities   — the VALUES of priority_options, not ids: the options are declared by a list.
 func _key_registries(data: Dictionary) -> Dictionary:
     var sets := {}
@@ -2214,6 +2239,20 @@ func _validate_technologies(technologies: Dictionary, problems: Array) -> void:
             if not technologies.has(required):
                 _add(problems, "prerequisite", "technology", required,
                         "technology", tname, tid, "prerequisites")
+
+
+# The technology gate of a water bonus (water_power.requires_tech). A misspelled
+# technology silently switches the whole branch off: the water is there, the
+# technology is not, and no row ever appears in a tooltip. The same silent
+# failure the other reference checks of the model are here to prevent.
+func _validate_water_bonuses(modifiers: Dictionary, technologies: Dictionary,
+        problems: Array) -> void:
+    for block_id in ["fresh_water", "water_power"]:
+        var block = modifiers.get(block_id, null)
+        if not (block is Dictionary):
+            continue
+        _check_tech_ref(block.get("requires_tech", ""), technologies, problems,
+                "modifier_block", block_id, block_id, block_id + ".requires_tech")
 
 
 # --- THE SPECIALIZATIONS OF THE CITY ----------------------------------------------

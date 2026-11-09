@@ -933,6 +933,23 @@ func _show_building_details(bdata: Dictionary):
     slots_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(slots_label)
 
+    # The production bonuses of this building type that act RIGHT NOW: the water
+    # of the city hex (tanners) or a water wheel at the bellows (metallurgy),
+    # plus any technology multiplier. The rows come from the very same resolver
+    # the production tick uses, so the tooltip cannot promise a bonus the craft
+    # does not apply.
+    var bonus_rows = CityData.get_building_production_modifiers(
+            str(bdata.get("id", "")), CityData.has_city_fresh_water())
+    if not bonus_rows.is_empty():
+        var bonuses_header = Label.new()
+        bonuses_header.text = tr("Production bonuses:")
+        bonuses_header.add_theme_font_size_override("font_size", 14)
+        bonuses_header.add_theme_color_override("font_color", UI_THEME.color("text_secondary"))
+        bonuses_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        content.add_child(bonuses_header)
+        for bonus in bonus_rows:
+            content.add_child(_make_bullet_row("•", str(bonus.get("label", ""))))
+
     build_button.disabled = false
     _refresh_recipes_list(bdata)
 

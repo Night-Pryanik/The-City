@@ -15,135 +15,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "%s (%s)"
-msgstr "%s (%s)"
-
-msgid "%s: %d/%d produced"
-msgstr "%s: произведено %d/%d"
-
-msgid "%s: %d/%d sold to the towns"
-msgstr "%s: продано городкам %d/%d"
-
-msgid "%s: %s to production in city buildings"
-msgstr "%s: %s к производству в городских зданиях"
-
-msgid "%s: %s to the price on the domestic market"
-msgstr "%s: %s к цене на внутреннем рынке"
-
-msgid "%s: %s to the price when sold to towns"
-msgstr "%s: %s к цене при продаже городкам"
-
-msgid "Above average"
-msgstr "Выше среднего"
-
-msgid "Add to storage"
-msgstr "Добавить на склад"
-
-msgid "Boreal"
-msgstr "Бореальный"
-
-msgid "Challenge completed"
-msgstr "Испытание выполнено"
-
-msgid "Challenge failed: %s"
-msgstr "Испытание провалено: %s"
-
-msgid "Climate"
-msgstr "Климат"
-
-msgid "Climate: %s"
-msgstr "Климат: %s"
-
-msgid "Extremely high"
-msgstr "Крайне высокая"
-
-msgid "Failed"
-msgstr "Провалено"
-
-msgid "High"
-msgstr "Высокая"
-
-msgid "How many resource deposits the map gets: a low density halves their number, a high density doubles it. A resource that appears only once is never reduced below one."
-msgstr "Сколько месторождений ресурсов появится на карте: низкая плотность уменьшает их число вдвое, высокая — увеличивает вдвое. Ресурс, который появляется лишь один раз, никогда не уменьшается."
-
-msgid "Loading game..."
-msgstr "Загрузка игры..."
-
-msgid "Low"
-msgstr "Низкая"
-
-msgid "Nothing found"
-msgstr "Ничего не найдено"
-
-msgid "Only the names that begin with the typed text stay in the list"
-msgstr "В списке остаются только названия, начинающиеся с введённого текста"
-
-msgid "Product: %s"
-msgstr "Товар: %s"
-
-msgid "Quality:"
-msgstr "Качество:"
-
-msgid "Random climate"
-msgstr "Случайный"
-
-msgid "Reading save..."
-msgstr "Чтение сохранения..."
-
-msgid "Resource density"
-msgstr "Плотность ресурсов"
-
-msgid "Restoring buildings..."
-msgstr "Восстановление построек..."
-
-msgid "Restoring city..."
-msgstr "Восстановление города..."
-
-msgid "Restoring map..."
-msgstr "Восстановление карты..."
-
-msgid "Restoring roads and rivers..."
-msgstr "Восстановление дорог и рек..."
-
-msgid "Restoring towns..."
-msgstr "Восстановление городов..."
-
-msgid "Restoring trade..."
-msgstr "Восстановление торговли..."
-
-msgid "Restoring workers..."
-msgstr "Восстановление рабочих..."
-
-msgid "Search by name"
-msgstr "Поиск по имени"
-
-msgid "Select a product:"
-msgstr "Выберите товар:"
-
-msgid "Specialization bonus names a nonexistent goods group"
-msgstr "Бонус специализации ссылается на несуществующую группу товаров"
-
-msgid "Standard"
-msgstr "Стандартная"
-
-msgid "Subtropics"
-msgstr "Субтропики"
-
-msgid "Temperate"
-msgstr "Умеренный"
-
-msgid "The climate belt the city starts in. It decides the terrain and the resources around the city."
-msgstr "Климатический пояс, в котором появится город. Он определяет ландшафт и ресурсы вокруг города."
-
-msgid "Tropics"
-msgstr "Тропики"
-
-msgid "Tundra"
-msgstr "Тундра"
-
-msgid "Very high"
-msgstr "Очень высокая"
-
 msgid "\n\nFound here: %s"
 msgstr "\n\nЗдесь обнаружено: %s"
 
@@ -516,6 +387,12 @@ msgstr "%s: участков %d, строится по одному"
 msgid "%s: %d units every %s per person × %d = %d per cycle"
 msgstr "%s: %d ед. раз в %s на человека × %d = %d за цикл"
 
+msgid "%s: %d/%d produced"
+msgstr "%s: произведено %d/%d"
+
+msgid "%s: %d/%d sold to the towns"
+msgstr "%s: продано городкам %d/%d"
+
 msgid "%s: %s / sec"
 msgstr "%s: %s / сек"
 
@@ -524,6 +401,15 @@ msgstr "%s: %s монет/сек"
 
 msgid "%s: %s to production"
 msgstr "%s: %s к производству"
+
+msgid "%s: %s to production in city buildings"
+msgstr "%s: %s к производству в городских зданиях"
+
+msgid "%s: %s to the price on the domestic market"
+msgstr "%s: %s к цене на внутреннем рынке"
+
+msgid "%s: %s to the price when sold to towns"
+msgstr "%s: %s к цене при продаже городкам"
 
 msgid "%s: consumption priority — %s"
 msgstr "%s: приоритет потребления — %s"
@@ -597,9 +483,6 @@ msgstr "3,0 сек"
 msgid "300 px/s"
 msgstr "300 пикс/с"
 
-msgid "A challenge of the era is completed."
-msgstr "Испытание эпохи выполнено."
-
 msgid "A citizen has died of starvation. Population: %d"
 msgstr "Житель погиб от голода. Население: %d"
 
@@ -630,6 +513,9 @@ msgstr "Целое число от %d до %d."
 msgid "A whole number from %d to %d. Zero leaves the map without towns."
 msgstr "Целое число от %d до %d. Ноль — карта без городков."
 
+msgid "Above average"
+msgstr "Выше среднего"
+
 msgid "Active bonuses: (coming later)"
 msgstr "Активные бонусы: (будут позже)"
 
@@ -638,6 +524,9 @@ msgstr "Факт ниже плана: покупатели хотят больш
 
 msgid "Actual over the window: %s units/sec — that is what was really bought"
 msgstr "Факт за окно: %s ед./сек — столько реально купили"
+
+msgid "Add to storage"
+msgstr "Добавить на склад"
 
 msgid "Added %d %s (%s)"
 msgstr "Добавлено %d %s (%s)"
@@ -743,6 +632,9 @@ msgstr "Пляжи"
 
 msgid "Blacklist names a nonexistent entity"
 msgstr "Чёрный список называет несуществующую сущность"
+
+msgid "Boreal"
+msgstr "Бореальный"
 
 msgid "Brand"
 msgstr "Бренд"
@@ -909,8 +801,14 @@ msgstr "Освоить нельзя: территория чужого горо�
 msgid "Carving rivers..."
 msgstr "Проведение рек..."
 
+msgid "Challenge completed"
+msgstr "Испытание выполнено"
+
 msgid "Challenge completed: %s"
 msgstr "Испытание выполнено: %s"
+
+msgid "Challenge failed: %s"
+msgstr "Испытание провалено: %s"
 
 msgid "Challenge names a condition the game does not check"
 msgstr "Испытание называет условие, которое игра не проверяет"
@@ -996,6 +894,9 @@ msgstr "Клик — панель управления зданием"
 msgid "Click: sort the list; a repeated click reverses the order"
 msgstr "Нажмите чтобы отсортировать список; повторное нажатие меняет порядок"
 
+msgid "Climate"
+msgstr "Климат"
+
 msgid "Climate zone %s does not map the family \"%s\" to a terrain."
 msgstr "Климатическая зона %s не сопоставляет семейство \"%s\" никакой местности."
 
@@ -1010,6 +911,9 @@ msgstr "Климатическая зона: семейство не сопос�
 
 msgid "Climate zone: unknown climate axis value"
 msgstr "Климатическая зона: неизвестное значение оси климата"
+
+msgid "Climate: %s"
+msgstr "Климат: %s"
 
 msgid "Clock"
 msgstr "Часы"
@@ -1317,8 +1221,14 @@ msgstr "Дополнительные материалы:"
 msgid "Extra output:"
 msgstr "Дополнительный выход:"
 
+msgid "Extremely high"
+msgstr "Крайне высокая"
+
 msgid "FPS: 60"
 msgstr "FPS: 60"
+
+msgid "Failed"
+msgstr "Провалено"
 
 msgid "Failed to build the road"
 msgstr "Дорогу построить не удалось"
@@ -1455,6 +1365,9 @@ msgstr "Скрыть подтверждение"
 msgid "Hide the editor"
 msgstr "Скрыть редактор"
 
+msgid "High"
+msgstr "Высокая"
+
 msgid "Historical background:"
 msgstr "Историческая справка:"
 
@@ -1463,6 +1376,9 @@ msgstr "Насколько далеко море может зайти от кр
 
 msgid "How many map edges get a sea: from the minimum to the maximum. Zero leaves the map without a sea."
 msgstr "Сколько краёв карты получат море: от минимума до максимума. Ноль оставляет карту без моря."
+
+msgid "How many resource deposits the map gets: a low density halves their number, a high density doubles it. A resource that appears only once is never reduced below one."
+msgstr "Сколько месторождений ресурсов появится на карте: низкая плотность уменьшает их число вдвое, высокая — увеличивает вдвое. Ресурс, который появляется лишь один раз, никогда не уменьшается."
 
 msgid "How many times the generator tries to find a free spot for an island before it gives up."
 msgstr "Сколько раз генератор пытается найти свободное место для острова, прежде чем сдаться."
@@ -1575,7 +1491,7 @@ msgstr "Земля рядом с морем становится пляжем."
 msgid "Language"
 msgstr "Язык"
 
-msgid "Language of the interface and of the game data. The option \"Language of the system\" follows the language of your operating system."
+msgid "Language of the interface and of the game data. The option \"System Language\" follows the language of your operating system."
 msgstr "Язык интерфейса и игровых данных. Пункт «Язык системы» берёт язык вашей операционной системы."
 
 msgid "Large (100×100)"
@@ -1592,6 +1508,12 @@ msgstr "Загрузить игру"
 
 msgid "Load order"
 msgstr "Порядок загрузки"
+
+msgid "Loading game..."
+msgstr "Загрузка игры..."
+
+msgid "Low"
+msgstr "Низкая"
 
 msgid "Main rivers"
 msgstr "Главные реки"
@@ -1794,6 +1716,9 @@ msgstr "Недостаточно скота: для закладки стада 
 msgid "Not in storage"
 msgstr "Нет на складе"
 
+msgid "Nothing found"
+msgstr "Ничего не найдено"
+
 msgid "Nothing to upgrade"
 msgstr "Улучшать нечего"
 
@@ -1823,6 +1748,9 @@ msgstr "Разрешены только латинские буквы a-z, ци�
 
 msgid "Only areas within the Region can be claimed"
 msgstr "Осваивать можно только области в Регионе"
+
+msgid "Only the names that begin with the typed text stay in the list"
+msgstr "В списке остаются только названия, начинающиеся с введённого текста"
 
 msgid "Only whole positive numbers are accepted"
 msgstr "Принимаются только целые положительные числа"
@@ -1953,8 +1881,14 @@ msgstr "Продукт не имеет источника (его не прои�
 msgid "Product is unlocked by a nonexistent improvement"
 msgstr "Продукт открывается несуществующим улучшением"
 
+msgid "Product: %s"
+msgstr "Товар: %s"
+
 msgid "Production (planned):"
 msgstr "Производство (плановое):"
+
+msgid "Production bonuses:"
+msgstr "Бонусы к производству:"
 
 msgid "Production slots:"
 msgstr "Слоты производства:"
@@ -1989,6 +1923,9 @@ msgstr "Приоритет качества: %s (нажмите чтобы пе�
 msgid "Quality priority: use best/worst"
 msgstr "Приоритет качества: используйте лучшее/худшее"
 
+msgid "Quality:"
+msgstr "Качество:"
+
 msgid "Quality: %s"
 msgstr "Качество: %s"
 
@@ -2001,8 +1938,14 @@ msgstr "В очереди на исследование: %s — симуляци
 msgid "Quit"
 msgstr "Выйти"
 
+msgid "Random climate"
+msgstr "Случайный"
+
 msgid "Reached"
 msgstr "Достигнуто"
+
+msgid "Reading save..."
+msgstr "Чтение сохранения..."
 
 msgid "Really exit the game?\nUnsaved progress will be lost."
 msgstr "Действительно выйти из игры?\nНесохранённый прогресс будет потерян."
@@ -2121,6 +2064,9 @@ msgstr "Ресурс %s размещён на гексе (%d, %d)"
 msgid "Resource data refresh interval"
 msgstr "Интервал обновления данных о ресурсах"
 
+msgid "Resource density"
+msgstr "Плотность ресурсов"
+
 msgid "Resource is improved by a nonexistent improvement"
 msgstr "Ресурс улучшается несуществующим улучшением"
 
@@ -2132,6 +2078,27 @@ msgstr "Уровни качества ресурса: %s"
 
 msgid "Resources"
 msgstr "Ресурсы"
+
+msgid "Restoring buildings..."
+msgstr "Восстановление построек..."
+
+msgid "Restoring city..."
+msgstr "Восстановление города..."
+
+msgid "Restoring map..."
+msgstr "Восстановление карты..."
+
+msgid "Restoring roads and rivers..."
+msgstr "Восстановление дорог и рек..."
+
+msgid "Restoring towns..."
+msgstr "Восстановление городов..."
+
+msgid "Restoring trade..."
+msgstr "Восстановление торговли..."
+
+msgid "Restoring workers..."
+msgstr "Восстановление рабочих..."
 
 msgid "Resume "
 msgstr "Возобновить "
@@ -2241,6 +2208,9 @@ msgstr "Уровень моря"
 msgid "Sea: %d%%"
 msgstr "Море: %d%%"
 
+msgid "Search by name"
+msgstr "Поиск по имени"
+
 msgid "Seas"
 msgstr "Моря"
 
@@ -2249,6 +2219,9 @@ msgstr "Участок %d/%d"
 
 msgid "Select a hex on the map (LMB) to see information and available actions."
 msgstr "Выберите гекс на карте (ЛКМ), чтобы увидеть информацию и доступные действия."
+
+msgid "Select a product:"
+msgstr "Выберите товар:"
 
 msgid "Select a resource:"
 msgstr "Выберите ресурс:"
@@ -2319,6 +2292,9 @@ msgstr "Особые действия"
 msgid "Specialization"
 msgstr "Специализация"
 
+msgid "Specialization bonus names a nonexistent goods group"
+msgstr "Бонус специализации ссылается на несуществующую группу товаров"
+
 msgid "Specialization bonus names a nonexistent improvement"
 msgstr "Бонус специализации ссылается на несуществующее улучшение"
 
@@ -2339,6 +2315,9 @@ msgstr "Специализации"
 
 msgid "Spent work (%.0f/%d) will be lost."
 msgstr "Потраченный труд (%.0f/%d) будет потерян."
+
+msgid "Standard"
+msgstr "Стандартная"
 
 msgid "Start"
 msgstr "Начать"
@@ -2375,6 +2354,9 @@ msgstr "Склад"
 
 msgid "Storage:"
 msgstr "Склад:"
+
+msgid "Subtropics"
+msgstr "Субтропики"
 
 msgid "Suggest another name"
 msgstr "Предложить другое название"
@@ -2426,6 +2408,9 @@ msgstr "Технология требует несуществующую тех�
 
 msgid "Technology researched: %s"
 msgstr "Технология изучена: %s"
+
+msgid "Temperate"
+msgstr "Умеренный"
 
 msgid "Terrain cover %s names the temperature belt \"%s\", which does not exist."
 msgstr "У покрова %s указан температурный пояс \"%s\", которого не существует."
@@ -2495,6 +2480,9 @@ msgstr "Города ещё нет на карте."
 
 msgid "The city needs access to fresh water"
 msgstr "Нужен доступ города к пресной воде"
+
+msgid "The climate belt the city starts in. It decides the terrain and the resources around the city."
+msgstr "Климатический пояс, в котором появится город. Он определяет ландшафт и ресурсы вокруг города."
 
 msgid "The colours of every window, panel and control. The choice applies at once and is remembered; a theme file put into the presets folder appears here without restarting the game."
 msgstr "Цвета всех окон, панелей и элементов управления. Выбор применяется сразу и запоминается; файл темы, положенный в папку presets, появится в этом списке без перезапуска игры."
@@ -2778,6 +2766,12 @@ msgstr "Казна: 0"
 msgid "Tributaries"
 msgstr "Притоки"
 
+msgid "Tropics"
+msgstr "Тропики"
+
+msgid "Tundra"
+msgstr "Тундра"
+
 msgid "Turn a one-time deal into a standing contract"
 msgstr "Превращает разовую сделку в долговременный контракт"
 
@@ -2852,6 +2846,9 @@ msgstr "Улучшение дороги до города: %d участков"
 
 msgid "Upgrading to \"%s\""
 msgstr "Идёт улучшение до «%s»"
+
+msgid "Very high"
+msgstr "Очень высокая"
 
 msgid "Video"
 msgstr "Видео"
@@ -3399,6 +3396,10 @@ msgid "Minerals"
 msgstr "Минералы"
 
 msgctxt "categories.name"
+msgid "Nuts"
+msgstr "Орехи"
+
+msgctxt "categories.name"
 msgid "Other"
 msgstr "Прочее"
 
@@ -3429,10 +3430,6 @@ msgstr "Оружие"
 msgctxt "categories.name"
 msgid "Writing Materials"
 msgstr "Письменные принадлежности"
-
-msgctxt "categories.name"
-msgid "Nuts"
-msgstr "Орехи"
 
 msgctxt "challenges.description"
 msgid "Buy every chunk of the Region that is open for claiming in the current era."
@@ -3715,6 +3712,10 @@ msgid "Makes a dye (sepia) from cuttlefish."
 msgstr "Создает краситель (сепию) из каракатиц"
 
 msgctxt "crafts.description"
+msgid "Makes a dye (sumac yellow) from sumac leaves."
+msgstr "Создает краситель (сумаховый жёлтый) из листьев сумаха"
+
+msgctxt "crafts.description"
 msgid "Makes a dye (ultramarine) from ore."
 msgstr "Создает краситель (ультрамарин) из руды"
 
@@ -3925,10 +3926,6 @@ msgstr "Ткёт одежду из шёлка"
 msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
 msgstr "Ткёт одежду из шерсти"
-
-msgctxt "crafts.description"
-msgid "Makes a dye (sumac yellow) from sumac leaves."
-msgstr "Создает краситель (сумаховый жёлтый) из листьев сумаха"
 
 msgctxt "crafts.name"
 msgid "Aged Cheese"
@@ -4351,6 +4348,10 @@ msgid "Sugar"
 msgstr "Сахар"
 
 msgctxt "crafts.name"
+msgid "Sumac Yellow"
+msgstr "Сумаховый жёлтый"
+
+msgctxt "crafts.name"
 msgid "Tar"
 msgstr "Смола"
 
@@ -4417,10 +4418,6 @@ msgstr "Шерстяная одежда"
 msgctxt "crafts.name"
 msgid "Writing Set"
 msgstr "Письменный набор"
-
-msgctxt "crafts.name"
-msgid "Sumac Yellow"
-msgstr "Сумаховый жёлтый"
 
 msgctxt "eras.name"
 msgid "Ancient"
@@ -4495,6 +4492,10 @@ msgid "Medicinal Plants"
 msgstr "Лекарственные растения"
 
 msgctxt "groups.name"
+msgid "Nuts"
+msgstr "Орехи"
+
+msgctxt "groups.name"
 msgid "Oil Plants"
 msgstr "Масличные растения"
 
@@ -4529,10 +4530,6 @@ msgstr "Текстильные растения"
 msgctxt "groups.name"
 msgid "Wool Animals"
 msgstr "Шерстяные животные"
-
-msgctxt "groups.name"
-msgid "Nuts"
-msgstr "Орехи"
 
 msgctxt "improvements.name"
 msgid "Apiary"
@@ -4667,16 +4664,20 @@ msgid "Building Stone"
 msgstr "Строительный камень"
 
 msgctxt "product_groups.name"
+msgid "Ceramics"
+msgstr "Керамика"
+
+msgctxt "product_groups.name"
+msgid "Cheese"
+msgstr "Сыр"
+
+msgctxt "product_groups.name"
 msgid "Clothes"
 msgstr "Одежда"
 
 msgctxt "product_groups.name"
 msgid "Consumer Goods"
 msgstr "Потребительские товары"
-
-msgctxt "product_groups.name"
-msgid "Dyes"
-msgstr "Красители"
 
 msgctxt "product_groups.name"
 msgid "Fruits"
@@ -4689,6 +4690,10 @@ msgstr "Украшения"
 msgctxt "product_groups.name"
 msgid "Millable Grains"
 msgstr "Зерновые культуры"
+
+msgctxt "product_groups.name"
+msgid "Nuts"
+msgstr "Орехи"
 
 msgctxt "product_groups.name"
 msgid "Oil Crops"
@@ -4723,6 +4728,10 @@ msgid "Tableware Stones"
 msgstr "Камни для посуды"
 
 msgctxt "product_groups.name"
+msgid "Tannins"
+msgstr "Дубильные вещества"
+
+msgctxt "product_groups.name"
 msgid "Tare"
 msgstr "Тара"
 
@@ -4731,8 +4740,16 @@ msgid "Textile Crops"
 msgstr "Текстильные культуры"
 
 msgctxt "product_groups.name"
+msgid "Weapons"
+msgstr "Оружие"
+
+msgctxt "product_groups.name"
 msgid "Wood for Barrels"
 msgstr "Древесина для бочек"
+
+msgctxt "product_groups.name"
+msgid "Wool"
+msgstr "Шерсть"
 
 msgctxt "product_groups.name"
 msgid "Writing Instruments"
@@ -4741,30 +4758,6 @@ msgstr "Писчие инструменты"
 msgctxt "product_groups.name"
 msgid "Writing Materials"
 msgstr "Писчие материалы"
-
-msgctxt "product_groups.name"
-msgid "Cheese"
-msgstr "Сыр"
-
-msgctxt "product_groups.name"
-msgid "Ceramics"
-msgstr "Керамика"
-
-msgctxt "product_groups.name"
-msgid "Wool"
-msgstr "Шерсть"
-
-msgctxt "product_groups.name"
-msgid "Weapons"
-msgstr "Оружие"
-
-msgctxt "product_groups.name"
-msgid "Nuts"
-msgstr "Орехи"
-
-msgctxt "product_groups.name"
-msgid "Tannins"
-msgstr "Дубильные вещества"
 
 msgctxt "professions.description"
 msgid "A pseudo-profession that covers the whole population of the city, including employed citizens."
@@ -5643,6 +5636,10 @@ msgid "Nutmeg"
 msgstr "Мускатный орех"
 
 msgctxt "resources.name"
+msgid "Oak Bark"
+msgstr "Дубовая кора"
+
+msgctxt "resources.name"
 msgid "Oak Tree"
 msgstr "Дуб"
 
@@ -5991,6 +5988,18 @@ msgid "Sugar Cane"
 msgstr "Сахарный тростник"
 
 msgctxt "resources.name"
+msgid "Sumac"
+msgstr "Сумах"
+
+msgctxt "resources.name"
+msgid "Sumac Leaves"
+msgstr "Листья сумаха"
+
+msgctxt "resources.name"
+msgid "Sumac Yellow"
+msgstr "Сумаховый жёлтый"
+
+msgctxt "resources.name"
 msgid "Sunflower"
 msgstr "Подсолнечник"
 
@@ -6083,6 +6092,18 @@ msgid "Vinegar"
 msgstr "Уксус"
 
 msgctxt "resources.name"
+msgid "Walnut Tree"
+msgstr "Грецкий орех"
+
+msgctxt "resources.name"
+msgid "Walnut Wood"
+msgstr "Древесина ореха"
+
+msgctxt "resources.name"
+msgid "Walnuts"
+msgstr "Грецкие орехи"
+
+msgctxt "resources.name"
 msgid "Wax"
 msgstr "Воск"
 
@@ -6157,38 +6178,6 @@ msgstr "Плоды юкки"
 msgctxt "resources.name"
 msgid "Zebu"
 msgstr "Зебу"
-
-msgctxt "resources.name"
-msgid "Pottery of <city_name>"
-msgstr "Глиняная посуда <city_name>"
-
-msgctxt "resources.name"
-msgid "Walnut Tree"
-msgstr "Грецкий орех"
-
-msgctxt "resources.name"
-msgid "Walnuts"
-msgstr "Грецкие орехи"
-
-msgctxt "resources.name"
-msgid "Walnut Wood"
-msgstr "Древесина ореха"
-
-msgctxt "resources.name"
-msgid "Oak Bark"
-msgstr "Дубовая кора"
-
-msgctxt "resources.name"
-msgid "Sumac"
-msgstr "Сумах"
-
-msgctxt "resources.name"
-msgid "Sumac Leaves"
-msgstr "Листья сумаха"
-
-msgctxt "resources.name"
-msgid "Sumac Yellow"
-msgstr "Сумаховый жёлтый"
 
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
@@ -6278,10 +6267,6 @@ msgctxt "specializations.description"
 msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
 msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше."
 
-msgctxt "specializations.description"
-msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
-msgstr "Печи города знают за его стенами. Керамика приносит больше, а мастерские наполняют её быстрее."
-
 msgctxt "specializations.full_name"
 msgid "Specialization of ceramics"
 msgstr "Специализация керамики"
@@ -6305,10 +6290,6 @@ msgstr "Специализация оружия"
 msgctxt "specializations.full_name"
 msgid "Specialization of wool"
 msgstr "Специализация шерсти"
-
-msgctxt "specializations.full_name"
-msgid "Specialization of pottery"
-msgstr "Специализация керамики"
 
 msgctxt "specializations.name"
 msgid "Agrarian"
@@ -6353,10 +6334,6 @@ msgstr "Оружейная"
 msgctxt "specializations.name"
 msgid "Wool"
 msgstr "Шерсть"
-
-msgctxt "specializations.name"
-msgid "Pottery"
-msgstr "Глиняная посуда"
 
 msgctxt "technologies.description"
 msgid "+30% to resource production on plantations."
@@ -7150,6 +7127,10 @@ msgctxt "validator_entity_ref_improvement"
 msgid "this improvement"
 msgstr "это улучшение"
 
+msgctxt "validator_entity_ref_modifier_block"
+msgid "this modifier block"
+msgstr "этот блок модификаторов"
+
 msgctxt "validator_entity_ref_priority_option"
 msgid "this quality priority option"
 msgstr "этот вариант приоритета качества"
@@ -7246,6 +7227,10 @@ msgctxt "validator_entity_source_improvement"
 msgid "improvement"
 msgstr "улучшении"
 
+msgctxt "validator_entity_source_modifier_block"
+msgid "modifier block"
+msgstr "блоке модификаторов"
+
 msgctxt "validator_entity_source_priority_option"
 msgid "quality priority option"
 msgstr "варианте приоритета качества"
@@ -7341,6 +7326,10 @@ msgstr "Группы"
 msgctxt "validator_entity_title_improvement"
 msgid "Improvement"
 msgstr "Улучшения"
+
+msgctxt "validator_entity_title_modifier_block"
+msgid "Modifier block"
+msgstr "Блока модификаторов"
 
 msgctxt "validator_entity_title_priority_option"
 msgid "Quality priority option"
