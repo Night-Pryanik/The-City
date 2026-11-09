@@ -130,7 +130,7 @@ func _initialize_map():
     # start of a new game and ONLY inside the starting Influence Ring.
     # We pass the explicit boundaries of the starting Ring, so that these functions never
     # go beyond its limits (even if the Ring expands later).
-    _ensure_food_plant(influence_start_row, influence_end_row, influence_start_col, influence_end_col, city_row, city_col)
+    var food_plant_terrain: String = _ensure_food_plant(influence_start_row, influence_end_row, influence_start_col, influence_end_col, city_row, city_col)
     generator.place_wild_food(tile_data,
             influence_start_row, influence_end_row, influence_start_col, influence_end_col,
             city_row, city_col)
@@ -162,13 +162,12 @@ func _initialize_map():
     _ensure_minimum_resource({"category": "metals"})
     _ensure_minimum_resource({"category": "minerals", "subgroup": "construction_materials"})
 
-    # --- The post-processing: we guarantee a sufficient number of FREE hexes ---
-    # After the placement of all the resources of each terrain type in the Influence Ring
-    # there must remain at least FREE_TERRAIN_HEXES free (resource == null)
-    # hexes. This excludes a soft-lock: if a resource (for example, quinoa — only the mountains)
-    # has got into the ring, the player will always have a place for the additional farms/pastures.
-    # The method converts ONLY the free hexes and NEVER destroys the resources.
-    generator.ensure_free_terrain_hexes(tile_data, terrain_counts,
+    # --- The terrain-scarcity repair for the guaranteed food plant ---
+    # If the random relief left the plant's terrain with too few hexes inside the starting
+    # Ring, the player would have no place to build farms for that plant. The deficit is
+    # made up with free hexes only; the resources are never destroyed. When the terrain
+    # is abundant enough, nothing changes.
+    generator.ensure_free_terrain_hexes(tile_data, food_plant_terrain,
             influence_start_row, influence_end_row, influence_start_col, influence_end_col,
             city_row, city_col)
 
@@ -281,8 +280,9 @@ func _ensure_minimum_resource(filter: Dictionary):
 # The boundaries (min_row..max_row, min_col..max_col) are the starting Ring,
 # therefore the food_plant is guaranteed not to appear beyond its limits
 # and is not recreated after the start.
-func _ensure_food_plant(min_row: int, max_row: int, min_col: int, max_col: int, city_row_arg: int = -1, city_col_arg: int = -1):
-    MapHelpers.ensure_food_plant(tile_data, min_row, max_row, min_col, max_col, city_row_arg, city_col_arg)
+# Returns the terrain of the guaranteed plant's hex, for the terrain-scarcity repair.
+func _ensure_food_plant(min_row: int, max_row: int, min_col: int, max_col: int, city_row_arg: int = -1, city_col_arg: int = -1) -> String:
+    return MapHelpers.ensure_food_plant(tile_data, min_row, max_row, min_col, max_col, city_row_arg, city_col_arg)
 
 # The final safety-check: it guarantees that on the hex of the city there is no resource
 # and the terrain is valid. It is called after all the stages of the generation of the map.

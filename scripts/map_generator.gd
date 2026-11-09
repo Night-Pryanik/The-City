@@ -2,17 +2,13 @@
 @tool
 extends Node
 
-# The minimum number of FREE (without a resource) hexes of each terrain type,
-# which must remain inside the Influence Ring after the placement of all the resources.
-# It guarantees that the player will always have enough space to build
-# several farms/pastures of one resource (for example, quinoa grows only
-# in the mountains — at least 2 free mountain hexes are needed to build at least 2 farms).
-const FREE_TERRAIN_HEXES := 2
-
-# The threshold of the "excess" of a terrain type: if there are more than this
-# number of a type inside the Influence Ring, its free hexes can be converted
-# into the missing types.
-const OVER_REP_THRESHOLD := 3
+# The minimum number of hexes of the guaranteed food plant's terrain that must fit
+# inside the starting Influence Ring. The plant itself occupies one of them; the rest
+# give the player room to build farms for it (quinoa grows only in the mountains — a
+# single mountain hex would leave no place for a farm). This repairs an actual soft-lock
+# left by the random relief, so it fires only when the plant's terrain is this scarce,
+# not on every generation.
+const FOOD_PLANT_TERRAIN_HEXES := 3
 
 # The radius of the "safe yard" around the city: all the hexes within this radius
 # forcibly become a plain (plain). The cover is generated as that of
@@ -1393,81 +1389,50 @@ func place_one_time_resources(tile_data: Array, raw_res: Dictionary, rows: int, 
         one_time[rid] = r
     _place_resources(tile_data, one_time, rows, cols, city_row, city_col, hex_index)
 
-func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
+# Repairs an actual soft-lock of the starting area: the guaranteed food plant may land
+# on a terrain the random relief gave too few hexes (quinoa grows only in the mountains —
+# with a single mountain hex the player could never build a farm for it). `plant_terrain`
+# is the terrain of the hex the food-plant guarantee settled on (MapHelpers.ensure_food_plant),
+# whether that plant already stood there or was forcibly spawned. If the starting Ring holds
+# fewer than FOOD_PLANT_TERRAIN_HEXES hexes of that terrain, the deficit is made up by
+# converting free hexes next to the existing ones. A resource is never destroyed and the
+# city hex with its neighbours is never touched. With enough hexes present it does nothing.
+func ensure_free_terrain_hexes(tile_data: Array, plant_terrain: String,
         min_row: int, max_row: int, min_col: int, max_col: int,
         city_row: int = -1, city_col: int = -1) -> void:
-    var free_count: Dictionary = {}
-    for terrain_id in terrain_counts.keys():
-        free_count[terrain_id] = 0
-    for r in range(min_row, max_row + 1):
-        for c in range(min_col, max_col + 1):
-            # The hex of the city and its neighbours (3×3) are excluded from the counting and
-            # the conversion — the terrain of the city must not change after
-            # _ensure_city_valid_terrain, and the neighbours are needed for the starting construction.
-            if city_row >= 0 and abs(r - city_row) <= 1 and abs(c - city_col) <= 1:
-                continue
-            var tile = tile_data[r][c]
-            if tile.get("resource", null) != null:
-                continue
-            var bucket := _count_bucket(str(tile.get("terrain", "")), terrain_counts)
-            if bucket != "":
-                free_count[bucket] += 1
+    if plant_terrain == "":
+        return
+    # The farms accept the whole family of the relief (GameData.terrain_matches), so the
+    # climate varieties of one terrain count together. A terrain without a family (a unique
+    # one) is counted by its exact id.
+    var key := GameData.terrain_family(plant_terrain)
+    if key == "":
+        key = plant_terrain
 
-    for terrain_id in terrain_counts.keys():
-        var deficit = FREE_TERRAIN_HEXES - free_count.get(terrain_id, 0)
-        if deficit <= 0:
-            continue
-        var converted = _convert_free_terrain_near_cluster(tile_data, terrain_id, deficit,
-                min_row, max_row, min_col, max_col, free_count, terrain_counts,
-                city_row, city_col)
-        free_count[terrain_id] += converted
-
-# The key of terrain_counts a hex belongs to: the exact terrain (a lake, a desert), or the family of
-# it — a tundra plain, a boreal plain, a steppe, a savanna … all count as the plain they are, and a
-# bog of any belt counts as the swamp.
-func _count_bucket(terrain_id: String, terrain_counts: Dictionary) -> String:
-    if terrain_counts.has(terrain_id):
-        return terrain_id
-    var family := GameData.terrain_family(terrain_id)
-    if family != "" and terrain_counts.has(family):
-        return family
-    return ""
-
-# The terrain a key of terrain_counts becomes in this hex: the key itself, or the variety of the
-# family in the climate zone the hex stands in (the plain of the boreal zone is a boreal plain).
-func _terrain_for_key(key: String, tile: Dictionary) -> String:
-    var zone_id := str(tile.get("climate", ""))
-    if zone_id != "":
-        var variant := GameData.zone_terrain(zone_id, key)
-        if variant != "":
-            return variant
-    return key
-
-func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, deficit: int,
-        min_row: int, max_row: int, min_col: int, max_col: int,
-        free_count: Dictionary, terrain_counts: Dictionary,
-        city_row: int = -1, city_col: int = -1) -> int:
-    var converted = 0
+    # Count every hex of the terrain inside the starting Ring (the plant's own hex included)
+    # and keep them as the seed of the cluster the addition grows onto.
+    var count := 0
     var cluster: Array = []
-    var visited := {}
     for r in range(min_row, max_row + 1):
         for c in range(min_col, max_col + 1):
-            # The hex of the city and its neighbours (3×3) do not enter the cluster and are not
-            # converted — the terrain of the city is fixed.
-            if city_row >= 0 and abs(r - city_row) <= 1 and abs(c - city_col) <= 1:
-                continue
-            var tile = tile_data[r][c]
-            if tile.get("resource", null) != null:
-                continue
-            if _count_bucket(str(tile.get("terrain", "")), terrain_counts) == terrain_id:
+            if GameData.terrain_matches(str(tile_data[r][c].get("terrain", "")), key):
+                count += 1
                 cluster.append({"row": r, "col": c})
-                visited["%d_%d" % [r, c]] = true
+    var deficit := FOOD_PLANT_TERRAIN_HEXES - count
+    if deficit <= 0:
+        return
 
-    var candidates: Array = []
-    var frontier = cluster.duplicate()
-    var distance = 0
+    # Grow the cluster outward: a multi-source BFS visits the Ring in order of distance from
+    # the existing hexes, so the nearest free hexes are converted first. The walk expands
+    # through every hex (even resource-bearing ones) to stay able to reach the whole Ring.
+    var visited := {}
+    for hex in cluster:
+        visited["%d_%d" % [hex.row, hex.col]] = true
+    var frontier := cluster.duplicate()
+    var converted := 0
+    var distance := 0
     var max_distance = (max_row - min_row + 1) + (max_col - min_col + 1)
-    while frontier.size() > 0 and distance < max_distance:
+    while frontier.size() > 0 and converted < deficit and distance < max_distance:
         distance += 1
         var next_frontier: Array = []
         for hex in frontier:
@@ -1475,69 +1440,38 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
             for n in neighbors:
                 if n.row < min_row or n.row > max_row or n.col < min_col or n.col > max_col:
                     continue
-                # The hex of the city and its neighbours are not visited and do not become candidates.
+                var nk = "%d_%d" % [n.row, n.col]
+                if visited.has(nk):
+                    continue
+                visited[nk] = true
+                next_frontier.append(n)
+                var tile = tile_data[n.row][n.col]
+                if GameData.terrain_matches(str(tile.get("terrain", "")), key):
+                    continue
+                # The city hex and its neighbours are reserved for the starting construction;
+                # a hex with a resource is never overwritten.
                 if city_row >= 0 and abs(n.row - city_row) <= 1 and abs(n.col - city_col) <= 1:
                     continue
-                var key = "%d_%d" % [n.row, n.col]
-                if visited.has(key):
+                if tile.get("resource", null) != null:
                     continue
-                visited[key] = true
-                if tile_data[n.row][n.col].get("resource", null) != null:
+                if converted >= deficit:
                     continue
-                var n_terrain = str(tile_data[n.row][n.col].get("terrain", ""))
-                if _count_bucket(n_terrain, terrain_counts) == terrain_id:
-                    next_frontier.append(n)
-                else:
-                    candidates.append({"row": n.row, "col": n.col, "terrain": n_terrain, "dist": distance})
+                tile["terrain"] = _terrain_for_key(key, tile)
+                tile["cover"] = _roll_cover(tile)
+                tile["_is_marsh"] = false
+                tile["_is_sea"] = false
+                tile["_is_shallow_sea"] = false
+                tile["_is_beach"] = false
+                converted += 1
         frontier = next_frontier
 
-    if cluster.size() == 0 and candidates.size() == 0:
-        for r in range(min_row, max_row + 1):
-            for c in range(min_col, max_col + 1):
-                if city_row >= 0 and abs(r - city_row) <= 1 and abs(c - city_col) <= 1:
-                    continue
-                if tile_data[r][c].get("resource", null) != null:
-                    continue
-                var terrain_here := str(tile_data[r][c].get("terrain", ""))
-                if _count_bucket(terrain_here, terrain_counts) != terrain_id:
-                    candidates.append({"row": r, "col": c,
-                            "terrain": terrain_here, "dist": 0})
-
-    candidates.sort_custom(func(a, b):
-        var a_over = free_count.get(_count_bucket(a.terrain, terrain_counts), 0) > OVER_REP_THRESHOLD
-        var b_over = free_count.get(_count_bucket(b.terrain, terrain_counts), 0) > OVER_REP_THRESHOLD
-        if a.dist != b.dist:
-            return a.dist < b.dist
-        if a_over != b_over:
-            return a_over and not b_over
-        return a.terrain < b.terrain)
-
-    for cand in candidates:
-        if converted >= deficit:
-            break
-        # The hex of the city and its neighbours are not converted into a terrain.
-        if city_row >= 0 and abs(cand.row - city_row) <= 1 and abs(cand.col - city_col) <= 1:
-            continue
-        var old_terrain = cand.terrain
-        var row = cand.row
-        var col = cand.col
-        var tile = tile_data[row][col]
-        if str(tile.get("terrain", "")) != old_terrain:
-            continue
-        if tile.get("resource", null) != null:
-            continue
-        var donor_min = FREE_TERRAIN_HEXES
-        if cluster.size() == 0:
-            donor_min = FREE_TERRAIN_HEXES - 1
-        var old_bucket := _count_bucket(old_terrain, terrain_counts)
-        if free_count.get(old_bucket, 0) <= donor_min:
-            continue
-        var target := _terrain_for_key(terrain_id, tile)
-        tile["terrain"] = target
-        tile["cover"] = _roll_cover(tile)
-        if free_count.has(old_bucket):
-            free_count[old_bucket] = max(0, free_count[old_bucket] - 1)
-        free_count[terrain_id] = free_count.get(terrain_id, 0) + 1
-        converted += 1
-
-    return converted
+# The terrain a family key becomes in this hex: the variety of the family in the climate
+# zone the hex stands in (the plain of the boreal zone is a boreal plain), or the key itself
+# when the zone does not map it (a unique terrain, an unknown zone).
+func _terrain_for_key(key: String, tile: Dictionary) -> String:
+    var zone_id := str(tile.get("climate", ""))
+    if zone_id != "":
+        var variant := GameData.zone_terrain(zone_id, key)
+        if variant != "":
+            return variant
+    return key

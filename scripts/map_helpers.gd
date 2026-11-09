@@ -1178,12 +1178,15 @@ static func calc_offsets(
 ## and its neighbours (3×3) are excluded from the search, so that the resource does
 ## not spawn on the city.
 ## This agrees with the exclusion in _build_hex_index / _place_resources.
+## Returns the terrain of the hex the guaranteed plant stands on (an existing one or the
+## forcibly spawned one), so the caller can repair a scarcity of that terrain; "" if no
+## plant could be guaranteed.
 static func ensure_food_plant(
     tile_data: Array,
     min_row: int, max_row: int,
     min_col: int, max_col: int,
     city_row: int = -1, city_col: int = -1
-) -> void:
+) -> String:
     for row in range(min_row, max_row + 1):
         for col in range(min_col, max_col + 1):
             if city_row >= 0 and abs(row - city_row) <= 1 and abs(col - city_col) <= 1:
@@ -1192,7 +1195,7 @@ static func ensure_food_plant(
             if res != null:
                 var res_data: Dictionary = GameData.raw_resources.get(res, {})
                 if res_data.get("group") == "food_plants":
-                    return
+                    return str(tile_data[row][col].get("terrain", ""))
     var possible := []
     for row in range(min_row, max_row + 1):
         for col in range(min_col, max_col + 1):
@@ -1217,6 +1220,8 @@ static func ensure_food_plant(
         var chosen = possible[randi() % possible.size()]
         tile_data[chosen.row][chosen.col]["resource"] = chosen.id
         tile_data[chosen.row][chosen.col]["quality"] = GameData.roll_quality()
+        return str(tile_data[chosen.row][chosen.col].get("terrain", ""))
+    return ""
 
 
 ## Guarantees the presence of at least one resource that matches the filter in the
