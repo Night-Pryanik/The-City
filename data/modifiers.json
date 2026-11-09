@@ -1,6 +1,8 @@
 {
   "modifiers": {
-    "fresh_water": { "production_multiplier": { "farm": 1.5 } },
+    // Irrigation raises the yield of cultivated plants: the farm grows food crops,
+    // the plantation grows technical, auxiliary and ornamental ones.
+    "fresh_water": { "production_multiplier": { "farm": 1.5, "plantation": 1.5 } },
     "tech_modifiers": [
       {
         "tech_id": "plow",

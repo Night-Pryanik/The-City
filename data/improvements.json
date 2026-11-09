@@ -26,8 +26,9 @@
       // The farm works the MAIN FOOD PLANTS only — the crops of
       // data/resources/plants/food_plants.json. No animals (they have the
       // pasture, the farmstead and the pigsty) and no technical or auxiliary
-      // crops (the plantation): the farm is what feeds the city, and its
-      // fresh-water and "Plow" bonuses are exactly why the split matters.
+      // crops (the plantation): the farm is what feeds the city, and the
+      // "Plow" bonus applies to it alone. Both improvements grow plants, so
+      // both take the fresh-water bonus (data/modifiers.json).
 
       // The profession of the worker on this improvement. The label is set/cleared
       // automatically in worker_manager.gd on assignment/dismissal.
@@ -129,7 +130,8 @@
       "profession": "planter",
       // A conductor of fresh water: after the technology "Irrigation" is
       // researched, the plantation spreads fresh water to neighbouring hexes
-      // (the water_access scheme: chain).
+      // (the water_access scheme: chain). As a grower of plants it also takes
+      // the fresh-water production bonus itself.
       "conducts_water": true
     },
     {
