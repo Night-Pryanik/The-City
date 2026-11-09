@@ -404,7 +404,7 @@ func _make_preview() -> Control:
 
     var preview = WorldPreview.new()
     preview.name = "WorldPreview"
-    preview.custom_minimum_size = Vector2(PREVIEW_WIDTH, 240)
+    preview.custom_minimum_size = Vector2(PREVIEW_WIDTH, 260)
     preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
     preview.max_map_size = MAX_MAP_SIZE
@@ -442,7 +442,7 @@ func _refresh_preview():
     var side := _selected_map_size()
     var towns := _selected_town_count()
     var picture := WorldPreview.build(side, _resolved_sea_config(_preview_seed),
-            _preview_seed, _selected_river_config())
+            _preview_seed, _selected_river_config(), _selected_climate())
     for preview in world_previews:
         preview.set_world(side, towns, picture)
 
@@ -451,6 +451,11 @@ func _regenerate_preview():
     if next_seed == _preview_seed:
         next_seed += 1
     _preview_seed = next_seed
+    _refresh_preview()
+
+# The belts of the chosen climate are drawn on the picture, so the climate moves it like any other
+# setting of the world.
+func _on_climate_selected(_index: int) -> void:
     _refresh_preview()
 
 # The world settings of a new game: the map size, the number of towns, the climate, the
@@ -513,8 +518,8 @@ func _build_world_settings(column: VBoxContainer):
     towns_control.add_child(stepper)
     _add_setting_row(column, tr("Number of towns"), towns_control)
 
-    # The climate of the city's latitude. The preview does not draw the climate, so the
-    # choice needs no refresh.
+    # The climate of the city's latitude. The preview draws the belts of the chosen climate, so
+    # the choice refreshes it.
     climate_option = OptionButton.new()
     climate_option.add_item(tr("Random climate"))
     climate_option.add_item(tr("Boreal"))
@@ -523,6 +528,7 @@ func _build_world_settings(column: VBoxContainer):
     climate_option.add_item(tr("Tropics"))
     climate_option.select(CLIMATE_PRESETS.find(DEFAULT_CLIMATE))
     climate_option.custom_minimum_size = Vector2(200, SETTING_CONTROL_HEIGHT)
+    climate_option.item_selected.connect(_on_climate_selected)
     var climate_tooltip := tr("The climate belt the city starts in. It decides the terrain and the resources around the city.")
     WrappedTooltip.attach(climate_option, climate_tooltip)
     _add_setting_row(column, tr("Climate"), climate_option, climate_tooltip)

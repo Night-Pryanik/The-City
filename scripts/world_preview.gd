@@ -26,6 +26,13 @@
 # on an island moves to the nearest free cell of that land, so the picture keeps the count of
 # the setting. The gold point in the middle is the player's city: MainMap puts it at half the
 # rows and half the columns, so that mark is exact. The numbers are printed under the square.
+#
+# The belts of the chosen climate are drawn on the land as well. Their arithmetic is the one of
+# the generator (ClimateLayout), so the picture shows the belts the world will have — but the
+# field itself is the preview's own: the equator falls on one side of the city or on the other
+# and the meander has its own salt, exactly as the coastline has its own roll of the dice. A
+# random climate draws no belts: its equator is rolled, so the city may land in any belt and
+# there is nothing to promise.
 extends Control
 
 const PANEL_COLOR := Color(0.12, 0.12, 0.12)
@@ -43,6 +50,17 @@ const RIVER_COLOR := Color(0.36, 0.62, 0.90)
 const TITLE_COLOR := Color(0.90, 0.90, 0.90)
 const CAPTION_COLOR := Color(0.62, 0.62, 0.62)
 
+# The colours of the belts on the picture, from the pole to the equator. They are picked for the
+# picture and not for the game: the five belts have to be told apart at a glance, and the towns
+# (pale) and the city (gold) have to stay readable on every one of them.
+const BELT_COLORS: Array[Color] = [
+    Color(0.80, 0.83, 0.85),   # polar: the tundra, the palest belt
+    Color(0.25, 0.42, 0.38),   # cold: the taiga, a dark blue-green
+    Color(0.66, 0.70, 0.32),   # mild: the steppe and the prairie
+    Color(0.76, 0.56, 0.22),   # subtropical: the savanna
+    Color(0.24, 0.62, 0.24),   # tropical: the deepest green
+]
+
 # The kinds of a cell of the picture. The codes are what build() puts into the byte array and
 # what the palette above turns into colours.
 const CELL_LAND := 0
@@ -51,10 +69,17 @@ const CELL_SHALLOW_SEA := 2
 const CELL_BEACH := 3
 
 const PADDING := 14.0
-const CAPTION_HEIGHT := 64.0
+const CAPTION_HEIGHT := 100.0
 const MIN_SIDE := 30.0
 const TITLE_FONT_SIZE := 17
 const CAPTION_FONT_SIZE := 12
+const LEGEND_FONT_SIZE := 11
+const LEGEND_SWATCH := Vector2(12.0, 10.0)
+const LEGEND_GAP := 5.0
+# The legend of the belts is laid out in rows of this many items: the names of the five belts do
+# not fit on one line of the panel.
+const LEGEND_ROW_ITEMS := 3
+const LEGEND_ROW_STEP := 16.0
 const TOWN_RADIUS := 3.0
 const CITY_RADIUS := 4.5
 # The river line keeps a visible width on a small map and a proportional one on a large map.
@@ -72,6 +97,20 @@ const GOLDEN_ANGLE := 2.399963229
 # on, so a finer grid would cost time and show nothing.
 const GRID_MAX := 120
 
+# The caption and the legend of the picture are drawn on a layer of their own.
+#
+# The picture of the world is a texture and it wants the nearest sampling: a smoothed cell would
+# blur the coast into a gradient. The same filter on the text breaks the letters, because the
+# atlas of the font is a texture as well and the window scales the interface by a fraction — the
+# glyphs come out streaked and stretched. The layer samples the atlas the way the rest of the
+# interface does.
+class CaptionLayer extends Control:
+    var render: Callable
+
+    func _draw() -> void:
+        if render.is_valid():
+            render.call(self)
+
 # The largest map the preview can show. The game hands its own limit over, so the picture
 # and the dropdown cannot drift apart.
 var max_map_size := 200
@@ -82,15 +121,22 @@ var town_count := 16
 var _picture: Dictionary = {}
 var _texture: ImageTexture = null
 var _panel := StyleBoxFlat.new()
+var _caption_layer: CaptionLayer
 
 func _init() -> void:
     _panel.bg_color = PANEL_COLOR
     _panel.border_color = PANEL_BORDER_COLOR
     _panel.set_border_width_all(1)
     _panel.set_corner_radius_all(6)
-    # The picture is a grid of cells of the world, not a photograph: a smoothed cell would
-    # blur the coast into a gradient and the bays would be lost.
+    # The picture is a grid of cells of the world, not a photograph: a smoothed cell would blur
+    # the coast into a gradient and the bays would be lost.
     texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+    _caption_layer = CaptionLayer.new()
+    _caption_layer.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+    _caption_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _caption_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+    _caption_layer.render = Callable(self, "_draw_caption")
+    add_child(_caption_layer)
 
 # The world the settings describe, on a grid of the preview: the sea and the main rivers.
 #
@@ -103,7 +149,7 @@ func _init() -> void:
 # through the cells the picture draws as land: it never crosses the sea it is drawn on, and it
 # never crosses a river already drawn.
 static func build(size: int, sea: Dictionary, preview_seed: int = 20261026,
-        rivers: Dictionary = {}) -> Dictionary:
+        rivers: Dictionary = {}, climate: String = ClimateLayout.CLIMATE_RANDOM) -> Dictionary:
     var grid := mini(maxi(size, 1), GRID_MAX)
     var city := int(size / 2.0)
 
@@ -151,13 +197,41 @@ static func build(size: int, sea: Dictionary, preview_seed: int = 20261026,
 
     # The city sits at the same row and column, so one number names its cell.
     var city_cell := clampi(int(float(city) * float(grid) / float(size)), 0, grid - 1)
+    var belts := PackedByteArray()
+    var city_belt := ""
+    if climate != ClimateLayout.CLIMATE_RANDOM:
+        var layout := _climate_layout(size, grid, preview_seed, climate)
+        belts = layout["belts"]
+        if belts.size() == grid * grid:
+            city_belt = ClimateLayout.belt_name(belts[city_cell * grid + city_cell])
     return {
         "grid": grid,
         "cells": cells,
+        "belts": belts,
+        "city_belt": city_belt,
         "reachable": _reachable_cells(cells, grid, city_cell * grid + city_cell),
         "sea_share": float(sea_cells) / float(maxi(size * size, 1)),
         "rivers": _build_rivers(grid, water, size, rivers, preview_seed),
     }
+
+# The belts of the chosen climate on the grid of the picture.
+#
+# The picture is coarser than the world, so the belts are computed on the grid of the picture and
+# the geometry is scaled to it: a belt is a share of the height of the map, and it keeps that
+# share on the picture. The equator falls on one side of the city or on the other, and the
+# meander has its own salt — both are rolled from the seed of the picture, so the picture never
+# tells more than the settings do.
+static func _climate_layout(size: int, grid: int, preview_seed: int, climate: String) -> Dictionary:
+    var cfg: Dictionary = GameData.map_config.get("climate", {})
+    if cfg.is_empty():
+        return {"belts": PackedByteArray()}
+    var scale := float(grid) / float(maxi(size, 1))
+    var geo := ClimateLayout.geometry(cfg, grid, scale)
+    var rng := RandomNumberGenerator.new()
+    rng.seed = preview_seed
+    var side := 1.0 if rng.randf() < 0.5 else -1.0
+    var equator := ClimateLayout.equator_of(grid, geo, climate, side)
+    return ClimateLayout.layout(grid, grid, geo, climate, rng.randi(), equator)
 
 # The land a town can stand on: the cells of the picture connected to the cell of the city over
 # land. The world places a town only where it can reach the player's city by land, so an island
@@ -678,6 +752,7 @@ func set_world(size: int, towns: int, picture: Dictionary) -> void:
     _picture = picture
     _texture = _make_texture(picture)
     queue_redraw()
+    _caption_layer.queue_redraw()
 
 func _draw() -> void:
     draw_style_box(_panel, Rect2(Vector2.ZERO, size))
@@ -701,7 +776,6 @@ func _draw() -> void:
     _draw_rivers(square)
     _draw_towns(square)
     _draw_city(square)
-    _draw_caption()
 
 func _square(area: Rect2, side_in_hexes: int) -> Rect2:
     var full := minf(area.size.x, area.size.y)
@@ -814,18 +888,89 @@ func _draw_city(square: Rect2) -> void:
     draw_circle(centre, CITY_RADIUS + 1.5, Color(0.0, 0.0, 0.0, 0.5))
     draw_circle(centre, CITY_RADIUS, CITY_COLOR)
 
-func _draw_caption() -> void:
-    var font := get_theme_font("font", "Label")
-    var top := size.y - CAPTION_HEIGHT
+func _draw_caption(layer: Control) -> void:
+    var font := layer.get_theme_font("font", "Label")
+    var width := layer.size.x
+    var top := layer.size.y - CAPTION_HEIGHT
     var title_y := top + float(TITLE_FONT_SIZE) + 6.0
-    draw_string(font, Vector2(0.0, title_y), "%d × %d" % [map_size, map_size],
-            HORIZONTAL_ALIGNMENT_CENTER, size.x, TITLE_FONT_SIZE, TITLE_COLOR)
+    layer.draw_string(font, Vector2(0.0, title_y), "%d × %d" % [map_size, map_size],
+            HORIZONTAL_ALIGNMENT_CENTER, width, TITLE_FONT_SIZE, TITLE_COLOR)
     var caption := tr("Hexes: %s · Towns: %d") % [_grouped(map_size * map_size), town_count]
-    draw_string(font, Vector2(0.0, title_y + float(CAPTION_FONT_SIZE) + 7.0), caption,
-            HORIZONTAL_ALIGNMENT_CENTER, size.x, CAPTION_FONT_SIZE, CAPTION_COLOR)
-    draw_string(font, Vector2(0.0, title_y + float(CAPTION_FONT_SIZE) * 2.0 + 13.0),
-            _sea_caption(), HORIZONTAL_ALIGNMENT_CENTER, size.x, CAPTION_FONT_SIZE,
+    layer.draw_string(font, Vector2(0.0, title_y + float(CAPTION_FONT_SIZE) + 7.0), caption,
+            HORIZONTAL_ALIGNMENT_CENTER, width, CAPTION_FONT_SIZE, CAPTION_COLOR)
+    layer.draw_string(font, Vector2(0.0, title_y + float(CAPTION_FONT_SIZE) * 2.0 + 13.0),
+            _facts_caption(), HORIZONTAL_ALIGNMENT_CENTER, width, CAPTION_FONT_SIZE,
             CAPTION_COLOR)
+    _draw_legend(layer, font, title_y + float(CAPTION_FONT_SIZE) * 3.0 + 18.0)
+
+# What the picture cannot show itself: how much of the map the water takes and in which belt the
+# city stands. The two share one line, so the caption keeps its height.
+func _facts_caption() -> String:
+    var facts := _sea_caption()
+    var climate := _climate_caption()
+    if climate.is_empty():
+        return facts
+    return "%s · %s" % [facts, climate]
+
+# The belt of the city: the one number that says in which climate the player starts.
+func _climate_caption() -> String:
+    var belt := str(_picture.get("city_belt", ""))
+    if belt.is_empty():
+        return ""
+    return tr("Climate: %s") % _belt_label(belt)
+
+# The legend of the belts: a swatch of every belt and its name. The land of the picture is tinted
+# with the colours of the belts, so the player has to know which colour is which. The names of the
+# five belts do not fit on one line of the panel, so the legend is laid out in rows of three.
+func _draw_legend(layer: Control, font: Font, first_baseline: float) -> void:
+    var belts: PackedByteArray = _picture.get("belts", PackedByteArray())
+    if belts.is_empty():
+        return
+    var labels: Array[String] = []
+    for code in range(ClimateLayout.BELTS.size()):
+        labels.append(_belt_label(ClimateLayout.BELTS[code]))
+    var row := 0
+    var index := 0
+    while index < labels.size():
+        var row_labels := labels.slice(index, mini(index + LEGEND_ROW_ITEMS, labels.size()))
+        _draw_legend_row(layer, font, row_labels, index,
+                first_baseline + float(row) * LEGEND_ROW_STEP)
+        index += LEGEND_ROW_ITEMS
+        row += 1
+
+func _draw_legend_row(layer: Control, font: Font, labels: Array[String], first_code: int,
+        baseline: float) -> void:
+    var widths: Array[float] = []
+    var total := 0.0
+    for label in labels:
+        var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1,
+                LEGEND_FONT_SIZE).x
+        widths.append(width)
+        total += LEGEND_SWATCH.x + LEGEND_GAP + width + LEGEND_GAP
+    var x := (layer.size.x - total + LEGEND_GAP) * 0.5
+    for offset in range(labels.size()):
+        layer.draw_rect(Rect2(Vector2(x, baseline - float(LEGEND_FONT_SIZE) + 1.0), LEGEND_SWATCH),
+                BELT_COLORS[first_code + offset])
+        x += LEGEND_SWATCH.x + LEGEND_GAP
+        layer.draw_string(font, Vector2(x, baseline), labels[offset], HORIZONTAL_ALIGNMENT_LEFT, -1,
+                LEGEND_FONT_SIZE, CAPTION_COLOR)
+        x += widths[offset] + LEGEND_GAP
+
+# The name of a belt: the names the dropdown of the climate uses, and the polar belt, which is
+# not a choice of the player but a part of every map.
+func _belt_label(belt: String) -> String:
+    match belt:
+        ClimateLayout.TEMPERATURE_POLAR:
+            return tr("Tundra")
+        ClimateLayout.TEMPERATURE_COLD:
+            return tr("Boreal")
+        ClimateLayout.TEMPERATURE_MILD:
+            return tr("Temperate")
+        ClimateLayout.TEMPERATURE_SUBTROPICAL:
+            return tr("Subtropics")
+        ClimateLayout.TEMPERATURE_TROPICAL:
+            return tr("Tropics")
+    return belt
 
 # The share of the map the water takes: the one number that says what the sea settings do to
 # the world before the world is built.
@@ -840,19 +985,23 @@ func _sea_caption() -> String:
 func _make_texture(picture: Dictionary) -> ImageTexture:
     var grid: int = picture.get("grid", 0)
     var cells: PackedByteArray = picture.get("cells", PackedByteArray())
+    var belts: PackedByteArray = picture.get("belts", PackedByteArray())
     if grid <= 0 or cells.size() != grid * grid:
         return null
     var rgb := PackedByteArray()
     rgb.resize(grid * grid * 3)
     for index in range(cells.size()):
-        var color := _cell_color(cells[index])
+        var color := _cell_color(cells[index], belts, index)
         rgb[index * 3] = int(color.r * 255.0)
         rgb[index * 3 + 1] = int(color.g * 255.0)
         rgb[index * 3 + 2] = int(color.b * 255.0)
     return ImageTexture.create_from_image(
             Image.create_from_data(grid, grid, false, Image.FORMAT_RGB8, rgb))
 
-static func _cell_color(code: int) -> Color:
+# The colour of a cell of the picture: the colour of the water, the sand of the beach, and the
+# colour of the belt the land lies in. A picture without belts (a random climate) keeps the flat
+# colour of the land.
+static func _cell_color(code: int, belts: PackedByteArray, index: int) -> Color:
     match code:
         CELL_DEEP_SEA:
             return DEEP_SEA_COLOR
@@ -860,6 +1009,8 @@ static func _cell_color(code: int) -> Color:
             return SHALLOW_SEA_COLOR
         CELL_BEACH:
             return BEACH_COLOR
+    if index < belts.size():
+        return BELT_COLORS[clampi(belts[index], 0, BELT_COLORS.size() - 1)]
     return LAND_COLOR
 
 # A thin space between the thousands, so that a huge map does not read as one long number.

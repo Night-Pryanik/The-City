@@ -207,3 +207,11 @@ Files ignored only by the working-tree `.gitignore` are local by design and must
 `docs.md` is the detailed design document, and source comments reference it by section name. It stays on disk and remains valid for local work, although the file is absent from the repository — the references are not a reason to re-add it.
 
 To keep a file local, list it in the working-tree `.gitignore` and drop it from the index with `git rm --cached <file>`, which leaves the file itself untouched on disk.
+
+## Text and the Texture Filter of a Canvas Item
+
+The atlas of a font is a texture, and a `CanvasItem` samples it with its own `texture_filter`. A text drawn with `draw_string` on an item whose filter is `TEXTURE_FILTER_NEAREST` comes out streaked and stretched as soon as the window scales the interface by a fraction (`window/stretch/mode = "canvas_items"` with a base smaller than the window), because the glyph bitmap is then magnified by a nearest sampling. The letters of a small size suffer first.
+
+Keep hand-drawn text on a layer of its own with the default filter, and reserve the nearest filter for the picture that needs the hard edges. `scripts/world_preview.gd` does this: the map texture is drawn on the nearest filter, the caption and the legend on a layer of their own.
+
+Check it in the real window, not in a screenshot of the viewport: a viewport rendered at its own size shows no scaling and therefore no artefact at all. `DisplayServer.screen_get_image()` captures what the player sees.

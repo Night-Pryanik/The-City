@@ -51,6 +51,9 @@ msgstr "Испытание провалено: %s"
 msgid "Climate"
 msgstr "Климат"
 
+msgid "Climate: %s"
+msgstr "Климат: %s"
+
 msgid "Extremely high"
 msgstr "Крайне высокая"
 
@@ -134,6 +137,9 @@ msgstr "Климатический пояс, в котором появится 
 
 msgid "Tropics"
 msgstr "Тропики"
+
+msgid "Tundra"
+msgstr "Тундра"
 
 msgid "Very high"
 msgstr "Очень высокая"

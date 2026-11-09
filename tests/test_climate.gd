@@ -64,6 +64,8 @@ func _run() -> void:
         _test_corals_from_reef(state)
     if WATCHDOG.wants_case("chosen_climate"):
         _test_chosen_climate(state)
+    if WATCHDOG.wants_case("preview_belts"):
+        _test_preview_belts(state)
 
     WATCHDOG.report_skipped()
     if state["failed"]:
@@ -496,6 +498,53 @@ func _test_chosen_climate(state: Dictionary) -> void:
                             % [climate, _belt(city_row, city_col), map_seed], state)
             _test_neighbouring_belts(state)
     _tiles = main_tiles
+
+# The preview of the new game window draws the belts of the chosen climate: the city stands in the
+# belt the player chose, the belts keep their order on the picture, and the picture of the same
+# settings is the same picture.
+func _test_preview_belts(state: Dictionary) -> void:
+    var WorldPreview = load("res://scripts/world_preview.gd")
+    var ClimateLayout = load("res://scripts/climate_layout.gd")
+    var city_data = get_root().get_node("CityData")
+    var sea: Dictionary = city_data.DEFAULT_SEA.duplicate(true)
+    for climate in ["cold", "mild", "subtropical", "tropical"]:
+        var picture: Dictionary = WorldPreview.build(60, sea, SEED, {}, climate)
+        var grid: int = picture["grid"]
+        var belts: PackedByteArray = picture["belts"]
+        check(belts.size() == grid * grid,
+                "the picture of the %s climate carries a belt for every cell" % climate, state)
+        var city_cell := clampi(int(float(int(60 / 2.0)) * float(grid) / float(60)), 0, grid - 1)
+        check(ClimateLayout.belt_name(belts[city_cell * grid + city_cell]) == climate,
+                "the preview puts the city in the %s belt (got %s)" %
+                [climate, ClimateLayout.belt_name(belts[city_cell * grid + city_cell])], state)
+        check(str(picture["city_belt"]) == climate,
+                "the caption of the preview names the %s belt (got %s)" %
+                [climate, str(picture["city_belt"])], state)
+        for row in range(grid):
+            for col in range(grid):
+                var here: int = ClimateLayout.belt_code(
+                        ClimateLayout.belt_name(belts[row * grid + col]))
+                for neighbour in [[row - 1, col], [row + 1, col], [row, col - 1], [row, col + 1]]:
+                    var n_row: int = neighbour[0]
+                    var n_col: int = neighbour[1]
+                    if n_row < 0 or n_row >= grid or n_col < 0 or n_col >= grid:
+                        continue
+                    var there: int = ClimateLayout.belt_code(
+                            ClimateLayout.belt_name(belts[n_row * grid + n_col]))
+                    check(absi(here - there) <= 1,
+                            "two belts meet on the picture at (%d,%d)-(%d,%d)" %
+                            [row, col, n_row, n_col], state)
+        var again: Dictionary = WorldPreview.build(60, sea, SEED, {}, climate)
+        check(again["belts"] == belts,
+                "the same climate draws the same belts", state)
+
+    # A random climate rolls the latitude of the city: there is no belt to show, so the picture
+    # keeps the flat land.
+    var random_picture: Dictionary = WorldPreview.build(60, sea, SEED, {}, "random")
+    check((random_picture["belts"] as PackedByteArray).is_empty(),
+            "a random climate draws no belts", state)
+    check(str(random_picture["city_belt"]).is_empty(),
+            "a random climate names no belt in the caption", state)
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if not condition:

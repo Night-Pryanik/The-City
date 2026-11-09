@@ -51,6 +51,9 @@ msgstr ""
 msgid "Climate"
 msgstr ""
 
+msgid "Climate: %s"
+msgstr ""
+
 msgid "Extremely high"
 msgstr ""
 
@@ -133,6 +136,9 @@ msgid "The climate belt the city starts in. It decides the terrain and the resou
 msgstr ""
 
 msgid "Tropics"
+msgstr ""
+
+msgid "Tundra"
 msgstr ""
 
 msgid "Very high"
