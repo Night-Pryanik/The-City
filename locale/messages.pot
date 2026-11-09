@@ -3927,6 +3927,10 @@ msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
 msgstr ""
 
+msgctxt "crafts.description"
+msgid "Makes a dye (quebracho brown) from quebracho wood."
+msgstr ""
+
 msgctxt "crafts.name"
 msgid "Aged Cheese"
 msgstr ""
@@ -4417,6 +4421,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Writing Set"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Quebracho Brown"
 msgstr ""
 
 msgctxt "eras.name"
@@ -6185,6 +6193,22 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Zebu"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Pottery of <city_name>"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Quebracho Tree"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Quebracho Wood"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Quebracho Brown"
 msgstr ""
 
 msgctxt "roads.description"

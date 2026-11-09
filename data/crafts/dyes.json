@@ -139,6 +139,16 @@
       "time": 5.0,
       "unlock_tech": "dyeing",
       "description": "Makes a dye (sumac yellow) from sumac leaves."
+    },
+    {
+      "id": "quebracho_brown",
+      "name": "Quebracho Brown",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "quebracho_wood": 20 },
+      "result": { "quebracho_brown": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Makes a dye (quebracho brown) from quebracho wood."
     }
   ]
 }

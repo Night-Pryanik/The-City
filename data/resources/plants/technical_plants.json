@@ -383,6 +383,30 @@
       "color": [ 200, 255, 200 ]
     },
     {
+      // The tannin sits in the heartwood, not in the bark: the chips themselves
+      // are the tanning material, so the special timber joins the tannins. The
+      // wood has no cooperage tradition and is not a barrel wood. The camp is
+      // the harvest point of the hex (docs.md, "Improvement types are a
+      // convention").
+      "id": "quebracho_tree", "price": 10,
+      "name": "Quebracho Tree",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "dye_plants",
+      "tech_required": "dyeing",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [
+        "tropical_dry_forest", "tropical_dry_forest_sparse",
+        "temperate_dry_forest_sparse"
+      ],
+      "allowed_climate_zones": [ "savanna_dry", "tropical_dry" ],
+      "improved_by": "lumberjack_hut",
+      "produces": { "wood": 10, "quebracho_wood": 10 },
+      "icon": "quebracho_tree.png",
+      "color": [ 150, 70, 50 ]
+    },
+    {
       // The camp is the harvest point of the hex: the beech gives its timber as
       // well as its nuts, no felling implied (docs.md, "Improvement types are a
       // convention").

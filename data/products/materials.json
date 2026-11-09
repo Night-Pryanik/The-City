@@ -454,6 +454,16 @@
       "icon": "walnut_wood.png"
     },
     {
+      // The heartwood carries the tannin, so the timber is both the tanning
+      // material and the dyer's red-brown.
+      "id": "quebracho_wood", "price": 10,
+      "name": "Quebracho Wood",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "quebracho_wood.png"
+    },
+    {
       "id": "resin", "price": 4,
       "name": "Resin",
       "type": "product",

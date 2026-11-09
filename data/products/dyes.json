@@ -125,6 +125,15 @@
       "category": "material",
       "unlock_tech": "dyeing",
       "icon": "sumac_yellow.png"
+    },
+    {
+      "id": "quebracho_brown",
+      "price": 10,
+      "name": "Quebracho Brown",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "quebracho_brown.png"
     }
   ]
 }

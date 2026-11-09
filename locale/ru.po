@@ -3927,6 +3927,10 @@ msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
 msgstr "Ткёт одежду из шерсти"
 
+msgctxt "crafts.description"
+msgid "Makes a dye (quebracho brown) from quebracho wood."
+msgstr "Создает краситель (кебраховый бурый) из древесины кебрачо"
+
 msgctxt "crafts.name"
 msgid "Aged Cheese"
 msgstr "Выдержанный сыр"
@@ -4418,6 +4422,10 @@ msgstr "Шерстяная одежда"
 msgctxt "crafts.name"
 msgid "Writing Set"
 msgstr "Письменный набор"
+
+msgctxt "crafts.name"
+msgid "Quebracho Brown"
+msgstr "Кебраховый бурый"
 
 msgctxt "eras.name"
 msgid "Ancient"
@@ -6186,6 +6194,22 @@ msgstr "Плоды юкки"
 msgctxt "resources.name"
 msgid "Zebu"
 msgstr "Зебу"
+
+msgctxt "resources.name"
+msgid "Pottery of <city_name>"
+msgstr "Глиняная посуда <city_name>"
+
+msgctxt "resources.name"
+msgid "Quebracho Tree"
+msgstr "Кебрачо"
+
+msgctxt "resources.name"
+msgid "Quebracho Wood"
+msgstr "Древесина кебрачо"
+
+msgctxt "resources.name"
+msgid "Quebracho Brown"
+msgstr "Кебраховый бурый"
 
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
