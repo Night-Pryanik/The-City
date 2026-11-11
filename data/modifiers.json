@@ -76,8 +76,8 @@
         // wheels that pass the turn of a crank, a ratchet or an axle on to the
         // working tool. No water is needed — a water wheel, an animal, a treadle
         // or a human arm may turn the same gears.
-        // The hoists of the mine and the quarry belong here, not to the water: a
-        // ratchet and a geared winch lift the ore, the water only washes it.
+        // The hoists of the mine and the quarry are a technology of their own
+        // (the hoisting mechanisms): the gears pass the turn on, the winch lifts.
         // The Hand Mill is not listed either: it is turned by hand.
         "tech_id": "cogwheel",
         "icon": "production_bonus.png",
@@ -88,6 +88,26 @@
           "silk_maker_house": 1.25, "mason_workshop": 1.25, "jeweler_house": 1.25,
           "carpenter_workshop": 1.25
         }
+      },
+      {
+        // The winch and the pulley: the machinery that lifts the ore out of the
+        // shaft. The gears may turn it, the water may turn it, an animal may walk
+        // round it — the hoist itself is the machine.
+        "tech_id": "hoisting_mechanisms",
+        "icon": "production_bonus.png",
+        "name": "Mine, quarry: +10% production",
+        "production_multiplier": { "mine": 1.1, "quarry": 1.1 }
+      },
+      {
+        // The craft of the machine itself: the frame that holds the parts, the
+        // crank and the connecting rod that turn one motion into another. The
+        // mills get a second run of stones, the forest camp a saw that cuts
+        // without stopping.
+        "tech_id": "mechanics",
+        "icon": "production_bonus.png",
+        "name": "Woodcutter's camp: +10% production",
+        "production_multiplier": { "lumberjack_hut": 1.1 },
+        "building_production_slots": { "animal_mill": 1, "water_mill": 1 }
       },
       {
         // Blacklisted buildings remain in the map but receive no effect.

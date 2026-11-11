@@ -4667,11 +4667,19 @@ msgid "Mine, quarry, bloomery, smelter, forge: +25% production"
 msgstr ""
 
 msgctxt "modifiers.tech_modifiers.name"
+msgid "Mine, quarry: +10% production"
+msgstr ""
+
+msgctxt "modifiers.tech_modifiers.name"
 msgid "Plantations: +30% production"
 msgstr ""
 
 msgctxt "modifiers.tech_modifiers.name"
 msgid "Reduces the effect of distance from the city on labor cost when building improvements by 30%"
+msgstr ""
+
+msgctxt "modifiers.tech_modifiers.name"
+msgid "Woodcutter's camp: +10% production"
 msgstr ""
 
 msgctxt "priority_names"
@@ -6423,6 +6431,10 @@ msgid "Pottery"
 msgstr ""
 
 msgctxt "technologies.description"
+msgid "+10% to the production of mines and quarries."
+msgstr ""
+
+msgctxt "technologies.description"
 msgid "+30% to resource production on plantations."
 msgstr ""
 
@@ -6432,6 +6444,10 @@ msgstr ""
 
 msgctxt "technologies.description"
 msgid "-10% to the work cost of construction."
+msgstr ""
+
+msgctxt "technologies.description"
+msgid "Adds one production slot to the animal mill and the water mill.\n+10% to the production of the woodcutter's camp."
 msgstr ""
 
 msgctxt "technologies.description"
@@ -6631,11 +6647,11 @@ msgid "Unlocks the use of draft animals to turn millstones."
 msgstr ""
 
 msgctxt "technologies.description"
-msgid "Unlocks the use of the water wheel to set millstones in motion."
+msgid "Adds one production slot to the winemaker's house, the oilmaker's house, the dairy, the paper workshop and the jeweler's house."
 msgstr ""
 
 msgctxt "technologies.description"
-msgid "Adds one production slot to the winemaker's house, the oilmaker's house, the dairy, the paper workshop and the jeweler's house."
+msgid "Unlocks the water mill: the running water sets the millstones in motion.\n+25% to the production of mines, quarries, the bloomery, the smelter and the forge, where the water runs: the ore is washed and the bellows are driven by the water."
 msgstr ""
 
 msgctxt "technologies.flavor"
@@ -6644,6 +6660,10 @@ msgstr ""
 
 msgctxt "technologies.flavor"
 msgid "A protoscience of attempts to turn base metals into gold."
+msgstr ""
+
+msgctxt "technologies.flavor"
+msgid "A shaft is only as deep as the rope that serves it. A drum on a windlass, a rope over a pulley, a capstan walked round by men or oxen — and in the Chinese mines a treadwheel the size of a house, turning all day like the water wheel it resembles. What the hoist brings up is what the mine is worth: the ore that cannot be lifted stays in the rock."
 msgstr ""
 
 msgctxt "technologies.flavor"
@@ -6827,6 +6847,10 @@ msgid "The wheel is one of humanity's greatest inventions, and it changed trade 
 msgstr ""
 
 msgctxt "technologies.flavor"
+msgid "The workshops knew the lever and the pulley long before anyone wrote them down. Heron of Alexandria set the pieces in order in his Mechanics, and later al-Khazini weighed the same pieces of rope and iron in the Book of the Balance of Wisdom. A machine, they wrote, is what moves a load we could not lift: a wheel on an axle, a crank, a connecting rod, a frame to hold it all. From this the hoist, the press and the mill stop being clever tricks and become craft — they can be built again, and then improved."
+msgstr ""
+
+msgctxt "technologies.flavor"
 msgid "This revolutionary invention made it possible to create an affordable, practical material for writing."
 msgstr ""
 
@@ -6923,6 +6947,10 @@ msgid "Glassmaking"
 msgstr ""
 
 msgctxt "technologies.name"
+msgid "Hoisting Mechanisms"
+msgstr ""
+
+msgctxt "technologies.name"
 msgid "Hopping"
 msgstr ""
 
@@ -6940,6 +6968,10 @@ msgstr ""
 
 msgctxt "technologies.name"
 msgid "Leatherworking"
+msgstr ""
+
+msgctxt "technologies.name"
+msgid "Mechanics"
 msgstr ""
 
 msgctxt "technologies.name"

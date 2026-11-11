@@ -51,6 +51,12 @@ const ERA_LABEL_HEIGHT: int = 64 # the height of the strip above the columns und
 const ERA_LABEL_WIDTH: int = 200 # the fixed width of the heading of the era
 const ERA_LINE_WIDTH: float = 2.0 # the thickness of the vertical separator of the eras
 
+# --- The tooltip of a technology ---
+# The width of the text of the tooltip. The built-in tooltip of Godot does not wrap
+# the text — a long description runs off the screen — so the line breaks are put by
+# hand, by this width (see _wrap_tooltip_text).
+const TOOLTIP_MAX_WIDTH: int = 460
+
 # --- The external references (filled in in setup) ---
 var current_label: Label # "Researching: ..." (the Label at the top of the panel)
 var science_pool_label: Label # "Science: X/sec" (the rate of the research of the city)
@@ -875,11 +881,8 @@ func _create_tech_button(tech_data: Dictionary) -> Button:
 
     # Tooltip — the built-in mechanism of Godot. It will be shown on hover
     # after the system delay (Project Settings → gui/timets/tooltip_delay_sec).
-    var description: String = tech_data.get("description", "")
-    if description.is_empty():
-        description = tr("No description available.")
-    var cost: int = int(tech_data.get("science_cost", 3))
-    btn.tooltip_text = tr("%s\n\nScience: %d") % [description, cost]
+    # The text is wrapped by the width of the tooltip (see _wrap_tooltip_text).
+    btn.tooltip_text = _tech_tooltip_text(tech_data["id"])
 
     # The click — upwards, through the signal.
     var tech_id: String = tech_data["id"]
@@ -1325,34 +1328,69 @@ func _update_states():
                 progress.visible = false
 
         # The tooltip with the actual state
-        var tech_data = _get_tech_data(tech_id)
-        if not tech_data.is_empty():
-            var desc: String = tech_data.get("description", "")
-            if desc.is_empty():
-                desc = tr("No description available.")
-            var cost: int = int(tech_data.get("science_cost", 3))
-            var extra := ""
-            if is_unlocked:
-                extra = tr("\n\n[Researched]")
-            elif is_current:
-                extra = tr("\n\n[Researching]")
-            elif not is_available:
-                if CityData.is_tech_era_allowed(tech_id):
-                    var prereq: String = CityData.get_tech_prerequisites_text(tech_id)
-                    if not prereq.is_empty():
-                        extra = tr("\n\n[Required: %s]") % prereq
-                else:
-                    # Prereq may be met, but the era of the technology is above the current one.
-                    var era_idx: int = CityData.get_tech_era_index(tech_id)
-                    var era_name: String = ""
-                    if era_idx >= 0 and era_idx < GameData.eras.size():
-                        era_name = GameData.eras[era_idx].get("name", "")
-                    if era_name.is_empty():
-                        extra = tr("\n\n[Unavailable: requires advancing to the next era]")
-                    else:
-                        extra = tr("\n\n[Era: %s — advance to it first]") % era_name
-            btn.tooltip_text = tr("%s\nScience: %d%s") % [desc, cost, extra]
+        btn.tooltip_text = _tech_tooltip_text(tech_id)
     
+func _tech_tooltip_text(tech_id: String) -> String:
+    # The text of the tooltip of the technology: the description, the cost of the
+    # research and the state of the technology. It is wrapped by the width of the
+    # tooltip — the built-in tooltip of Godot does not wrap the text.
+    var tech_data := _get_tech_data(tech_id)
+    if tech_data.is_empty():
+        return ""
+    var desc: String = tech_data.get("description", "")
+    if desc.is_empty():
+        desc = tr("No description available.")
+    var cost: int = int(tech_data.get("science_cost", 3))
+    return _wrap_tooltip_text(tr("%s\nScience: %d%s") % [desc, cost, _tech_state_text(tech_id)])
+
+# The state of the technology, as it is shown at the end of the tooltip.
+func _tech_state_text(tech_id: String) -> String:
+    if tech_id in CityData.unlocked_technologies:
+        return tr("\n\n[Researched]")
+    if tech_id == CityData.current_research_tech_id:
+        return tr("\n\n[Researching]")
+    if CityData.is_tech_available(tech_id):
+        return ""
+    if CityData.is_tech_era_allowed(tech_id):
+        var prereq: String = CityData.get_tech_prerequisites_text(tech_id)
+        if not prereq.is_empty():
+            return tr("\n\n[Required: %s]") % prereq
+        return ""
+    # The prerequisites are met, but the era of the technology is above the current one.
+    var era_idx: int = CityData.get_tech_era_index(tech_id)
+    var era_name: String = ""
+    if era_idx >= 0 and era_idx < GameData.eras.size():
+        era_name = GameData.eras[era_idx].get("name", "")
+    if era_name.is_empty():
+        return tr("\n\n[Unavailable: requires advancing to the next era]")
+    return tr("\n\n[Era: %s — advance to it first]") % era_name
+
+# Wraps the text of the tooltip by the width of the tooltip. The built-in tooltip
+# of Godot does not wrap the text — a long description runs off the screen — so
+# the line breaks are put here, by the width of the font of the tooltip.
+func _wrap_tooltip_text(text: String) -> String:
+    var font: Font = get_theme_font("font", "TooltipLabel")
+    if font == null:
+        return text
+    var font_size: int = get_theme_font_size("font_size", "TooltipLabel")
+    var lines: Array[String] = []
+    for paragraph in text.split("\n"):
+        if paragraph.is_empty():
+            lines.append("")
+            continue
+        var line := ""
+        for word in paragraph.split(" "):
+            var candidate := word if line.is_empty() else line + " " + word
+            if line.is_empty() \
+                    or font.get_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, -1,
+                            font_size).x <= TOOLTIP_MAX_WIDTH:
+                line = candidate
+            else:
+                lines.append(line)
+                line = word
+        lines.append(line)
+    return "\n".join(lines)
+
 func _find_progress_in_button(btn: Button) -> ProgressBar:
     for child in btn.get_children():
         if child is ProgressBar and child.name == "TechProgress":

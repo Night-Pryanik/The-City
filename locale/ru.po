@@ -4667,12 +4667,20 @@ msgid "Mine, quarry, bloomery, smelter, forge: +25% production"
 msgstr "Шахта, каменоломня, сыродутная печь, плавильня, кузница: +25% к производству"
 
 msgctxt "modifiers.tech_modifiers.name"
+msgid "Mine, quarry: +10% production"
+msgstr "Шахта, каменоломня: +10% к производству"
+
+msgctxt "modifiers.tech_modifiers.name"
 msgid "Plantations: +30% production"
 msgstr "Плантации: +30% к производству"
 
 msgctxt "modifiers.tech_modifiers.name"
 msgid "Reduces the effect of distance from the city on labor cost when building improvements by 30%"
 msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%"
+
+msgctxt "modifiers.tech_modifiers.name"
+msgid "Woodcutter's camp: +10% production"
+msgstr "Лесная делянка: +10% к производству"
 
 msgctxt "priority_names"
 msgid "Best quality"
@@ -6423,6 +6431,10 @@ msgid "Pottery"
 msgstr "Глиняная посуда"
 
 msgctxt "technologies.description"
+msgid "+10% to the production of mines and quarries."
+msgstr "+10% к производству шахт и каменоломен."
+
+msgctxt "technologies.description"
 msgid "+30% to resource production on plantations."
 msgstr "+30% к производству ресурсов на плантациях."
 
@@ -6433,6 +6445,10 @@ msgstr "+50% к производству ресурсов на фермах."
 msgctxt "technologies.description"
 msgid "-10% to the work cost of construction."
 msgstr "-10% к затратам труда на строительство."
+
+msgctxt "technologies.description"
+msgid "Adds one production slot to the animal mill and the water mill.\n+10% to the production of the woodcutter's camp."
+msgstr "Добавляет один слот производства мельнице с животной тягой и водяной мельнице.\n+10% к производству лесной делянки."
 
 msgctxt "technologies.description"
 msgid "Allows scouts to explore areas in the fog of war."
@@ -6631,12 +6647,12 @@ msgid "Unlocks the use of draft animals to turn millstones."
 msgstr "Открывает использование тягловых животных для вращения мельничных жерновов."
 
 msgctxt "technologies.description"
-msgid "Unlocks the use of the water wheel to set millstones in motion."
-msgstr "Открывает использование водяного колеса для приведения в движение мельничных жерновов."
-
-msgctxt "technologies.description"
 msgid "Adds one production slot to the winemaker's house, the oilmaker's house, the dairy, the paper workshop and the jeweler's house."
 msgstr "Добавляет один слот производства дому винодела, дому маслодела, сыроварне, бумажной мастерской и дому ювелира."
+
+msgctxt "technologies.description"
+msgid "Unlocks the water mill: the running water sets the millstones in motion.\n+25% to the production of mines, quarries, the bloomery, the smelter and the forge, where the water runs: the ore is washed and the bellows are driven by the water."
+msgstr "Открывает водяную мельницу: течение воды приводит в движение мельничные жернова.\n+25% к производству шахт и каменоломен, сыродутной печи, плавильни и кузницы, где течёт вода: руду промывают, а горны приводят в движение водой."
 
 msgctxt "technologies.flavor"
 msgid "A plow yoked to oxen made it possible to work heavy soils and raised yields."
@@ -6645,6 +6661,10 @@ msgstr "Плуг, запряжённый волами, позволил обра
 msgctxt "technologies.flavor"
 msgid "A protoscience of attempts to turn base metals into gold."
 msgstr "Протонаука о попытках превращения неблагородных металлов в золото."
+
+msgctxt "technologies.flavor"
+msgid "A shaft is only as deep as the rope that serves it. A drum on a windlass, a rope over a pulley, a capstan walked round by men or oxen — and in the Chinese mines a treadwheel the size of a house, turning all day like the water wheel it resembles. What the hoist brings up is what the mine is worth: the ore that cannot be lifted stays in the rock."
+msgstr "Шахта так глубока, насколько глубок канат, который её обслуживает. Барабан на лебедке, канат через блок, канатный ворот, вокруг которого ходят люди или быки, — а в китайских рудниках педальное колесо размером с дом, которое крутится весь день, как похожее на него водяное колесо. Что поднимает лебёдка, столько и стоит рудник: руда, которую нельзя поднять, остаётся в породе."
 
 msgctxt "technologies.flavor"
 msgid "A wheel that rolls is not yet a machine; the teeth are. They turn one turn of the axle into a turn of the millstone, a pull of the press or a lift of the winch, and they hold the load instead of letting it fall back. Vitruvius described a mill whose upright wheel drove a horizontal one through a row of teeth, and a marble saw driven the same way is known from a sarcophagus in Hierapolis."
@@ -6827,6 +6847,10 @@ msgid "The wheel is one of humanity's greatest inventions, and it changed trade 
 msgstr "Колесо — одно из величайших изобретений человечества, изменившее торговлю и войну."
 
 msgctxt "technologies.flavor"
+msgid "The workshops knew the lever and the pulley long before anyone wrote them down. Heron of Alexandria set the pieces in order in his Mechanics, and later al-Khazini weighed the same pieces of rope and iron in the Book of the Balance of Wisdom. A machine, they wrote, is what moves a load we could not lift: a wheel on an axle, a crank, a connecting rod, a frame to hold it all. From this the hoist, the press and the mill stop being clever tricks and become craft — they can be built again, and then improved."
+msgstr "Мастерские знали рычаг и блок задолго до того, как их кто-то записал. Герон Александрийский привёл части в порядок в своей «Механике», а позже аль-Хазини взвешивал те же куски верёвки и железа в «Книге о весах мудрости». Машина, писали они, — это то, что двигает груз, который мы не поднимем: колесо на оси, кривошип, шатун и рама, всё держащее. С этого момента лебёдка, пресс и мельница перестают быть хитростями и становятся ремеслом: их можно собрать снова — и улучшить."
+
+msgctxt "technologies.flavor"
 msgid "This revolutionary invention made it possible to create an affordable, practical material for writing."
 msgstr "Революционное изобретение позволило создать доступный и практичный материал для письма."
 
@@ -6923,6 +6947,10 @@ msgid "Glassmaking"
 msgstr "Стеклоделие"
 
 msgctxt "technologies.name"
+msgid "Hoisting Mechanisms"
+msgstr "Подъёмные механизмы"
+
+msgctxt "technologies.name"
 msgid "Hopping"
 msgstr "Хмелеварение"
 
@@ -6941,6 +6969,10 @@ msgstr "Ювелирное дело"
 msgctxt "technologies.name"
 msgid "Leatherworking"
 msgstr "Кожевенное дело"
+
+msgctxt "technologies.name"
+msgid "Mechanics"
+msgstr "Механика"
 
 msgctxt "technologies.name"
 msgid "Mineral Firing"

@@ -47,7 +47,7 @@
       "science_cost": 5.0,
       "prerequisites": [ [ "irrigation", "wheel" ] ],
       "icon": "water_wheel.png",
-      "description": "Unlocks the use of the water wheel to set millstones in motion.",
+      "description": "Unlocks the water mill: the running water sets the millstones in motion.\n+25% to the production of mines, quarries, the bloomery, the smelter and the forge, where the water runs: the ore is washed and the bellows are driven by the water.",
       "flavor": "The water wheel became an important source of power in the ancient world, automating the processing of grain and other materials."
     },
     {
@@ -69,6 +69,26 @@
       "icon": "screw_press.png",
       "description": "Adds one production slot to the winemaker's house, the oilmaker's house, the dairy, the paper workshop and the jeweler's house.",
       "flavor": "A threaded spindle turns many easy turns of a long handle into one slow, enormous squeeze. The press no longer waits on the weight of a beam, and a second batch can be worked beside the first."
+    },
+    {
+      "id": "hoisting_mechanisms",
+      "name": "Hoisting Mechanisms",
+      "era": "antiquity",
+      "science_cost": 4.0,
+      "prerequisites": [ [ "rope_making", "wheel" ] ],
+      "icon": "hoisting_mechanisms.png",
+      "description": "+10% to the production of mines and quarries.",
+      "flavor": "A shaft is only as deep as the rope that serves it. A drum on a windlass, a rope over a pulley, a capstan walked round by men or oxen — and in the Chinese mines a treadwheel the size of a house, turning all day like the water wheel it resembles. What the hoist brings up is what the mine is worth: the ore that cannot be lifted stays in the rock."
+    },
+    {
+      "id": "mechanics",
+      "name": "Mechanics",
+      "era": "antiquity",
+      "science_cost": 5.0,
+      "prerequisites": [ [ "screw_press" ], [ "cogwheel" ], [ "hoisting_mechanisms" ] ],
+      "icon": "mechanics.png",
+      "description": "Adds one production slot to the animal mill and the water mill.\n+10% to the production of the woodcutter's camp.",
+      "flavor": "The workshops knew the lever and the pulley long before anyone wrote them down. Heron of Alexandria set the pieces in order in his Mechanics, and later al-Khazini weighed the same pieces of rope and iron in the Book of the Balance of Wisdom. A machine, they wrote, is what moves a load we could not lift: a wheel on an axle, a crank, a connecting rod, a frame to hold it all. From this the hoist, the press and the mill stop being clever tricks and become craft — they can be built again, and then improved."
     },
     {
       "id": "paper",
