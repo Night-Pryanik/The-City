@@ -21,6 +21,10 @@
 #   7. Installing a table changes what the game shows (path and texture), and an empty
 #      table gives the vanilla icons back.
 #   8. The example itself is healthy: every file of it names a vanilla icon.
+#   9. Extra variants: a numbered file of a vanilla family the data never names is
+#      published as a replacement AND as an extra picture; the map renderer grows its
+#      lists at draw time, picks the extras deterministically, and never writes one
+#      into the tile data. Turning the set off puts the short lists back.
 #
 # The test does not create folders on disk: it reads the shipped example and feeds
 # synthetic records to the table builder, so it cannot leave anything behind.
@@ -91,6 +95,7 @@ func _run() -> void:
     _check_types(state)
     _check_table(state)
     _check_entities(state)
+    _check_extra_variants(state)
     _check_one_tileset_per_type(state)
     _check_choices(state)
     _check_installing(state)
@@ -340,6 +345,155 @@ func _check_entities(state: Dictionary) -> void:
         "an icon of a declared type is not replaced: %s" % str(clash_buildings_table), state)
 
     _registry.set_entity_pictures(before)
+
+# --- 4.2. Extra variants: more pictures than the data declares ---
+# A numbered file whose family the vanilla game knows, but whose number it never named,
+# is an extra variant. It goes into the replacement table (so path_of() can find the file)
+# AND into the `extras` OUT parameter (so the map can choose it). The data keeps its short
+# list, and nothing an extra is called is ever written into a save.
+func _check_extra_variants(state: Dictionary) -> void:
+    var saved_table: Dictionary = _registry.overrides.duplicate(true)
+    var saved_extras: Dictionary = _registry.extra_variants.duplicate(true)
+    var dir := EXAMPLE + "/icons/terrains/"
+    var declared := ["coral_reef_1.png", "coral_reef_2.png", "coral_reef_3.png"]
+
+    var with_extras := {
+        "id": "synthetic_extras",
+        "name": "Synthetic",
+        "description": "A set for the test.",
+        "types": ["terrains"],
+        "icons": {
+            "coral_reef_4": dir + "coral_reef_4.png",
+            "coral_reef_5": dir + "coral_reef_5.png"
+        },
+        "error": ""
+    }
+    var extras: Dictionary = {}
+    var table: Dictionary = _tilesets.build_overrides([with_extras], {}, extras)
+    check(extras == {"coral_reef": ["coral_reef_4.png", "coral_reef_5.png"]},
+        "the extra variants were not published: %s" % str(extras), state)
+    check(table.has("coral_reef_4") and table.has("coral_reef_5"),
+        "an extra picture cannot be resolved by path_of(): %s" % str(table), state)
+    check(not table.has("coral_reef_1"),
+        "an extra file redrew a vanilla variant it did not name", state)
+
+    # The OUT parameter is cleared on every call, so no caller can see a stale list.
+    _tilesets.build_overrides([], {}, extras)
+    check(extras.is_empty(), "the OUT parameter kept the extras of the previous call", state)
+
+    # A set that does not declare the type of the family offers nothing.
+    var elsewhere: Dictionary = with_extras.duplicate(true)
+    elsewhere["types"] = ["buildings"]
+    var elsewhere_extras: Dictionary = {}
+    check(_tilesets.build_overrides([elsewhere], {}, elsewhere_extras).is_empty()
+            and elsewhere_extras.is_empty(),
+        "an extra variant of an undeclared type was offered", state)
+
+    # A family the vanilla game does not know is not extended: _warn_unmatched() still
+    # reports such files (marsh_1..3 and swamp_1..3 of tilesets/iso are exactly that).
+    var unknown: Dictionary = with_extras.duplicate(true)
+    unknown["icons"] = {"marsh_4": dir + "marsh_4.png"}
+    var unknown_extras: Dictionary = {}
+    check(_tilesets.build_overrides([unknown], {}, unknown_extras).is_empty()
+            and unknown_extras.is_empty(),
+        "a file extended a family the vanilla game does not have", state)
+
+    # A vanilla icon is an EXACT replacement, never an extra.
+    var exact: Dictionary = with_extras.duplicate(true)
+    exact["icons"] = {"coral_reef_1": dir + "coral_reef_1.png"}
+    var exact_extras: Dictionary = {}
+    var exact_table: Dictionary = _tilesets.build_overrides([exact], {}, exact_extras)
+    check(exact_table.has("coral_reef_1") and exact_extras.is_empty(),
+        "a vanilla icon was counted as an extra variant", state)
+
+    # A family file draws 1..3 and the numbered files extend the SAME family with 4..5.
+    var mixed: Dictionary = with_extras.duplicate(true)
+    mixed["icons"]["coral_reef"] = dir + "boreal_hill.svg"
+    var mixed_extras: Dictionary = {}
+    var mixed_table: Dictionary = _tilesets.build_overrides([mixed], {}, mixed_extras)
+    check(mixed_table.size() == 5 and mixed_table.has("coral_reef_1")
+            and mixed_table.has("coral_reef_5"),
+        "a family file and its extra variants did not work together: %s"
+            % str(mixed_table), state)
+    check(mixed_extras == {"coral_reef": ["coral_reef_4.png", "coral_reef_5.png"]},
+        "the family file swallowed the extra variants: %s" % str(mixed_extras), state)
+
+    # One tileset per type: only the WINNER of a type offers extra variants.
+    var last: Dictionary = with_extras.duplicate(true)
+    last["id"] = "z_last_extras"
+    last["icons"] = {"coral_reef_6": dir + "coral_reef_6.png"}
+    var two_extras: Dictionary = {}
+    var two_table: Dictionary = _tilesets.build_overrides([with_extras, last], {},
+            two_extras)
+    check(two_extras == {"coral_reef": ["coral_reef_6.png"]},
+        "the loser of a type offered extra variants: %s" % str(two_extras), state)
+    check(two_table.has("coral_reef_6") and not two_table.has("coral_reef_4"),
+        "the loser of a type replaced an extra picture", state)
+
+    # --- The renderer: the grown lists are built once, picked at draw time, never saved ---
+    # GameData must be loaded for load_icons() to walk the terrains and the covers; the
+    # autoloads are addressed through the tree because the script is compiled before them.
+    var gdata = get_root().get_node("GameData")
+    if gdata != null and not gdata.data_loaded:
+        gdata.load_all_data()
+    var install_extras: Dictionary = {}
+    var install_table: Dictionary = _tilesets.build_overrides([with_extras], {},
+            install_extras)
+    # Real vanilla files behind the extra names, so get_texture() can actually load them.
+    _registry.set_overrides({
+        "coral_reef_4": "res://icons/terrain/coral_reef_1.png",
+        "coral_reef_5": "res://icons/terrain/coral_reef_2.png"
+    }, install_extras)
+    check(_registry.extra_variants == install_extras,
+        "the registry does not know the extras of the installed set", state)
+    check(_registry.expand_variants(declared).size() == 5,
+        "the installed set does not grow the list of the data", state)
+
+    var grown := declared + ["coral_reef_4.png", "coral_reef_5.png"]
+    var renderer = load("res://scripts/map_renderer.gd").new()
+    renderer.load_icons()
+    check(renderer.extra_icon_lists.get("cover:coral_reef", []) == grown,
+        "load_icons did not cache the grown cover list: %s"
+            % str(renderer.extra_icon_lists.get("cover:coral_reef", [])), state)
+    for icon_name in grown:
+        check(renderer.icon_textures.has(icon_name),
+            "load_icons did not cache the texture of %s" % icon_name, state)
+    var cover := {"id": "coral_reef", "icons": declared}
+    var cover_picks := {}
+    for row in range(0, 8):
+        for col in range(0, 8):
+            cover_picks[renderer._pick_cover_icon(cover, row, col)] = true
+    check(cover_picks.has("coral_reef_4.png") and cover_picks.has("coral_reef_5.png"),
+        "the map never picked an extra cover variant: %s" % str(cover_picks.keys()), state)
+    check(renderer._pick_cover_icon(cover, 3, 7) == renderer._pick_cover_icon(cover, 3, 7),
+        "the choice of a cover variant is not deterministic", state)
+
+    var tile := {"terrain": "coral_reef", "terrain_icon": "coral_reef_1.png"}
+    renderer.extra_icon_lists["terrain:coral_reef"] = grown
+    var terrain_picks := {}
+    for row in range(0, 8):
+        for col in range(0, 8):
+            terrain_picks[renderer._pick_terrain_icon(row, col, tile)] = true
+    check(terrain_picks.has("coral_reef_4.png") and terrain_picks.has("coral_reef_5.png"),
+        "the map never picked an extra terrain variant: %s" % str(terrain_picks.keys()),
+        state)
+    check(tile["terrain_icon"] == "coral_reef_1.png",
+        "an extra variant was written into the tile data (a save would keep it)", state)
+    renderer.free()
+
+    # Turning the set off: the grown lists disappear and the saved name is drawn again.
+    _registry.set_overrides({}, {})
+    var vanilla_renderer = load("res://scripts/map_renderer.gd").new()
+    vanilla_renderer.load_icons()
+    check(vanilla_renderer.extra_icon_lists.is_empty(),
+        "the renderer kept grown lists after the set was turned off", state)
+    check(vanilla_renderer._pick_cover_icon(cover, 3, 7) in declared,
+        "a cover picked a name the vanilla data does not declare", state)
+    check(vanilla_renderer._pick_terrain_icon(3, 7, tile) == "coral_reef_1.png",
+        "a terrain did not fall back to the name baked into the save", state)
+    vanilla_renderer.free()
+
+    _registry.set_overrides(saved_table, saved_extras)
 
 # --- 5. One tileset per type ---
 func _check_one_tileset_per_type(state: Dictionary) -> void:

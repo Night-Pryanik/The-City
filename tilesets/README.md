@@ -7,9 +7,11 @@ lives next to this file:
   whole mechanism can be seen at once. It is switched **off** by its folder name (see §2.1)
   — rename the folder to `example` and restart the game to see it work.
 
-A tileset **replaces icons, it does not add them**: the game keeps its own icon names and
-the data (`data/*.json`) keeps pointing at the vanilla file names. A tileset only decides
-which *picture* is shown for a name.
+A tileset **replaces icons, it does not add new entities**: the game keeps its own icon
+names and the data (`data/*.json`) keeps pointing at the vanilla file names. A tileset
+decides which *picture* is shown for a name. The one thing it may add is **extra numbered
+variants of a family the vanilla game already knows** — a fourth, fifth or sixth picture
+of a cover (§4.2).
 
 ---
 
@@ -178,8 +180,9 @@ PNG replaces an SVG. The name must match **exactly**, including case:
 Two rules follow from this:
 
 - **A file that names no icon replaces nothing** — unless it is named after an entity of the
-  data or after a family of variants, see §4.1. The game prints the list of such files to
-  the log — that is the fastest way to find a typo.
+  data, after a family of variants (§4.1), or is an extra numbered variant of a vanilla
+  family (§4.2). The game prints the list of such files to the log — that is the fastest way
+  to find a typo.
 - **The set does not have to be complete.** An icon the set does not ship keeps its vanilla
   picture, so a set may re-draw three buildings and leave the rest of the game alone.
 
@@ -254,11 +257,67 @@ TilesetManager: "my_set": reeds (1 of 3 pictures) — a file named after the ent
 of them at once.
 ```
 
-### 4.2. What a set cannot do
+### 4.2. More pictures than the data declares
 
-- It cannot **add** a new icon name: a name exists only if the data refers to it — the
-  vanilla data, or the data of a mod. An icon a mod adds is a target like any other, so a
-  set may redraw it; but a file naming nothing the data uses replaces nothing.
+A cover and a terrain are drawn from a **list** of pictures, and the vanilla data decides
+how long it is:
+
+```
+data/covers.json:  { "id": "coral_reef", "icons": [ "coral_reef_1.png",
+                                                    "coral_reef_2.png",
+                                                    "coral_reef_3.png" ] }
+```
+
+A set may draw **more** of them. Add a numbered file whose family the vanilla game already
+knows but whose number it never named:
+
+```
+tilesets/my_set/coral_reef_4.png     ->   a FOURTH picture of the same reef
+tilesets/my_set/coral_reef_5.png
+tilesets/my_set/coral_reef_6.png
+```
+
+The map then picks from all six pictures while this set is applied. Nothing in the data
+changes, and no save ever stores `coral_reef_4.png`: choosing **Original icons** returns to
+the three vanilla pictures, so a save made with the set on still opens in the vanilla game
+— and a missing picture can never leave a black hex behind.
+
+The rules:
+
+- **The family must exist in the vanilla game.** `coral_reef_1..3.png` lie in
+  `icons/terrain/`, so `coral_reef` is a family the game knows. A set of `marsh_1..3.png`
+  has no vanilla `marsh` family (the vanilla art is `cold_marsh_*` / `warm_marsh_*`), so
+  those files name nothing and the game reports them as ignored. To add a new **entity** a
+  mod is needed (`mods/README.md` §4.5) — a set draws only what the vanilla game has.
+- **The number must be unused.** A file named after an existing vanilla picture
+  (`coral_reef_2.png`) is an ordinary exact replacement (§4), not an extra variant.
+- The set must **declare the type of the family** (`terrains` for covers and terrains), and
+  only the set that **wins** that type offers extras (§3.4).
+- Extras are numbered pictures in any format: `coral_reef_4.svg` works as well. The family
+  is the name without its trailing `_<number>` (§4.1).
+- The picture is chosen **at draw time**, from a fixed seed made of the hex coordinates, so a
+  redraw does not flicker and a save/load cycle does not reshuffle the map.
+- Extras combine with a family file (§4.1): one `coral_reef.svg` redraws the three vanilla
+  pictures and `coral_reef_4..6.png` add three more.
+- **Terrain pictures are baked into the save** as `terrain_icon`. An extra is folded in only
+  while the map is drawn, so the save keeps a vanilla name; world generation, tooltips and
+  the UI never see an extra name. Covers are chosen at draw time anyway.
+
+Under the hood: `TilesetManager.build_overrides()` puts the file into the replacement table
+(so `IconRegistry.path_of()` can load it) and publishes its name in
+`IconRegistry.extra_variants`; `IconRegistry.expand_variants()` folds those names into the
+data's list. `map_renderer.gd` caches the grown lists in `load_icons()` and drops them when
+`overrides_changed` fires — that is why switching a set repaints the map at once (§5).
+
+`tilesets/iso` uses this today: `coral_reef_4..6`, `beach_2..3` and `oasis_3` give those
+covers and the beach terrain more variety than the vanilla data declares.
+
+### 4.3. What a set cannot do
+
+- It cannot **add a new icon name or a new entity**: apart from the numbered extra variants
+  of §4.2, a name exists only if the data refers to it — the vanilla data, or the data of a
+  mod. An icon a mod adds is a target like any other, so a set may redraw it; but a file
+  naming nothing the data uses replaces nothing.
 - It cannot **group entities the data does not group**: two covers are two ids, so one picture
   for both needs two files (or two names). The data decides what a group is, the set only
   draws it.
@@ -344,6 +403,8 @@ icon each picture stands for.
 - [ ] One picture for an entity drawn from several pictures is named after the **id of the
       entity** (`temperate_rainforest.svg`), or after its family of names (`forest.svg`),
       see §4.1.
+- [ ] Extra pictures of a family use an **unused number of a vanilla family**
+      (`coral_reef_4.png`), see §4.2 — never a name the data has to be edited to declare.
 - [ ] The images are imported (the project was opened in the editor after the files were
       added).
 - [ ] No other tileset declares the same type — or this one is meant to win.

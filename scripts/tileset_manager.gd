@@ -20,6 +20,11 @@
 # An icon is addressed by its bare name, so the author may draw an SVG where the vanilla
 # set has a PNG: "hand_mill.svg" replaces "hand_mill.png".
 #
+# A set may also offer MORE pictures of a family than the data declares: a numbered file
+# ("coral_reef_4.png") whose family the vanilla game knows but whose number it never used
+# is an extra variant. The data keeps its own list and no save ever names the extra; the
+# map draws it only while this set is applied (see build_overrides and IconRegistry).
+#
 # WHICH SET OWNS A TYPE is the player's choice, one per type, made in the settings and
 # kept in user://settings.cfg: the types of one game may come from different sets. Until
 # a type is chosen the folder rule decides (the set that sorts last wins it whole), so an
@@ -166,17 +171,18 @@ func _save_choices() -> void:
 # The replacement table of the installed tilesets: the bare name of an icon -> the res://
 # path of the file that replaces it.
 #
-# A table identical to the installed one is left alone: the icons of the mods of the running
-# game are indexed after the first apply, and a rebuild that changes nothing must not reload
-# every texture of the interface.
+# A table (and a list of extra variants) identical to the installed one is left alone: the
+# icons of the mods of the running game are indexed after the first apply, and a rebuild that
+# changes nothing must not reload every texture of the interface.
 func apply() -> void:
     var registry = _icon_registry()
     if registry == null:
         return
-    var table := build_overrides(tilesets, choices)
-    if table == registry.overrides:
+    var extras := {}
+    var table := build_overrides(tilesets, choices, extras)
+    if table == registry.overrides and extras == registry.extra_variants:
         return
-    registry.set_overrides(table)
+    registry.set_overrides(table, extras)
     _warn_unmatched(tilesets)
     _warn_partial_entities(tilesets)
 
@@ -208,9 +214,16 @@ func _on_icons_indexed() -> void:
 # carry one name, and the name alone says nothing: a name that is an icon of a type this set
 # does not draw is read as the id of the entity of a type it DOES draw. A set that declares
 # both types means both with one name, which is what it asked for.
-func build_overrides(records: Array, chosen: Dictionary = {}) -> Dictionary:
+#
+# A file numbered beyond the vanilla pictures of a family is an EXTRA variant: the set
+# draws the same entity with more pictures than the data declares. Its name goes into the
+# table so IconRegistry can load the file, and into `extras` (an OUT parameter, family base
+# -> the file names) so the map can choose it. The data and the saves keep the vanilla
+# names, so turning the set off leaves nothing the vanilla game cannot draw.
+func build_overrides(records: Array, chosen: Dictionary = {}, extras: Dictionary = {}) -> Dictionary:
     var registry = _icon_registry()
     var table := {}
+    extras.clear()
     if registry == null:
         return table
     var owners := resolve(records, chosen)
@@ -245,7 +258,42 @@ func build_overrides(records: Array, chosen: Dictionary = {}) -> Dictionary:
             for variant in registry.vanilla_variants(bare_name):
                 if registry.vanilla_type_of(variant) == type_name and not table.has(variant):
                     table[variant] = record["icons"][bare_name]
+    # Then the EXTRA variants: a numbered picture of a vanilla family whose number the
+    # vanilla game never used. Only the winning set of a type offers them, like every
+    # other replacement above; the exact / entity / family passes keep their priority.
+    for type_name in owners:
+        var record: Dictionary = owners[type_name]
+        for bare_name in record["icons"]:
+            if table.has(bare_name):
+                continue
+            var base := _extra_family(registry, record, bare_name)
+            if base.is_empty():
+                continue
+            table[bare_name] = record["icons"][bare_name]
+            if not extras.has(base):
+                extras[base] = []
+            (extras[base] as Array).append(str(record["icons"][bare_name]).get_file())
+    for base in extras:
+        (extras[base] as Array).sort()
     return table
+
+# The family a file extends, or "" when the file is not an extra variant. A file is one
+# when it is named like a variant (`family_4`), the vanilla game knows that family but
+# not this number, and the set declares the type of the family. build_overrides() asks
+# about the ACTIVE sets, the warning about every installed set, so both use this answer.
+func _extra_family(registry, record: Dictionary, bare_name: String) -> String:
+    if not registry.vanilla_type_of(bare_name).is_empty():
+        return ""
+    var base: String = registry.family_base(bare_name)
+    if base.is_empty():
+        return ""
+    var variants: Array = registry.vanilla_variants(base)
+    if variants.is_empty():
+        return ""
+    var declared: Array = record.get("types", [])
+    if not declared.has(registry.vanilla_type_of(str(variants[0]))):
+        return ""
+    return base
 
 # The type -> the record that draws it. A type resolved to the vanilla icons is absent from
 # the result.
@@ -389,7 +437,8 @@ func _is_image(file_name: String) -> bool:
     return false
 
 # Tells the author about the files that replace nothing: a misnamed picture is invisible in
-# the game otherwise. The names are the vanilla ones — an icon a mod adds is not a target.
+# the game otherwise. The names are the vanilla ones — an icon a mod adds is not a target,
+# while an extra variant of a vanilla family is one (see _extra_family).
 func _warn_unmatched(records: Array) -> void:
     var registry = _icon_registry()
     if registry == null:
@@ -407,8 +456,9 @@ func _warn_unmatched(records: Array) -> void:
                 % [record["id"], ", ".join(PackedStringArray(unknown))])
 
 # Whether a file of a set replaces at least one icon of a type the set declares: the icon it
-# is named after, the entity of the data it is named after, or the family when it is named
-# after one. A name that is an icon of ANOTHER type draws nothing here — see build_overrides.
+# is named after, the entity of the data it is named after, the family when it is named
+# after one, or an extra variant of a family. A name that is an icon of ANOTHER type draws
+# nothing here — see build_overrides.
 func _draws_anything(registry, record: Dictionary, bare_name: String) -> bool:
     var declared: Array = record.get("types", [])
     var own: String = registry.vanilla_type_of(bare_name)
@@ -420,6 +470,8 @@ func _draws_anything(registry, record: Dictionary, bare_name: String) -> bool:
     for variant in registry.vanilla_variants(bare_name):
         if declared.has(registry.vanilla_type_of(variant)):
             return true
+    if not _extra_family(registry, record, bare_name).is_empty():
+        return true
     return false
 
 # A set that draws only some pictures of an entity is not an error — one variant may be meant

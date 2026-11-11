@@ -32,6 +32,9 @@
 #  9. The entities the data draws with several pictures are published by GameData,
 #     so a tileset may name a file after the id instead of after the pictures. The
 #     truth is the data: every record with more than one picture in its "icons".
+# 10. family_base() and the extra variants of the active tileset: expand_variants()
+#     grows a list of pictures without changing the data's own array, and turning the
+#     set off puts the short list back.
 #
 # NOT checked: that an icon exists for every reference in data/*.json. The data
 # deliberately contains references to icons not drawn yet (future goods and
@@ -206,6 +209,7 @@ func _run() -> void:
     _print_missing_references(state)
 
     _check_entity_pictures(registry, state)
+    _check_extra_variants(registry, state)
 
     _finish(state)
 
@@ -251,6 +255,72 @@ func _check_entity_pictures(registry, state: Dictionary) -> void:
     registry.set_entity_pictures(expected)
     check(fired[0] == 2, "the map of pictures did not come back", state)
     registry.entity_pictures_changed.disconnect(counter)
+
+# --- 10. The extra variants of the active tileset ---
+# A tileset may ship more numbered pictures of a family than the vanilla data names.
+# expand_variants() folds them in at DRAW time: the data's own list stays short (so a save
+# can never keep a name the vanilla game cannot draw), and turning the set off puts it back.
+func _check_extra_variants(registry, state: Dictionary) -> void:
+    var saved_table: Dictionary = registry.overrides.duplicate(true)
+    var saved_extras: Dictionary = registry.extra_variants.duplicate(true)
+
+    # family_base() is the public spelling of the grouping rule the index already uses.
+    check(registry.family_base("coral_reef_4.png") == "coral_reef",
+        "family_base did not strip the extension and the number", state)
+    check(registry.family_base("coral_reef_10") == "coral_reef",
+        "family_base did not read a two-digit number", state)
+    check(registry.family_base("bakery.png") == "",
+        "a plain name was read as a family variant", state)
+    check(registry.family_base("coral_reef_4x.png") == "",
+        "a non-numeric tail was read as a variant number", state)
+
+    var declared := ["coral_reef_1.png", "coral_reef_2.png", "coral_reef_3.png"]
+    var declared_copy := declared.duplicate()
+    registry.set_overrides({}, {})
+    check(registry.expand_variants(declared) == declared,
+        "expand_variants changed the list of the data with no extras installed", state)
+    check(declared == declared_copy,
+        "expand_variants changed the array of the data itself", state)
+    check(registry.expand_variants([]).is_empty(),
+        "an empty list grew extras", state)
+
+    var extras := {
+        "coral_reef": ["coral_reef_4.png", "coral_reef_5.png"],
+        "beach": ["beach_2.png"]
+    }
+    registry.set_overrides({}, extras)
+    check(registry.extra_variants == extras,
+        "set_overrides did not publish the extra variants", state)
+    var grown: Array = registry.expand_variants(declared)
+    check(grown == declared + ["coral_reef_4.png", "coral_reef_5.png"],
+        "the extras were not appended to the declared list: %s" % str(grown), state)
+    check(registry.expand_variants(["beach_1.png"]) == ["beach_1.png", "beach_2.png"],
+        "the extras of another family were not appended", state)
+    check(registry.expand_variants(["oasis_1.png"]) == ["oasis_1.png"],
+        "a family with no extras was grown", state)
+    check(registry.expand_variants(["coral_reef_1.png", "beach_1.png"])
+            == ["coral_reef_1.png", "beach_1.png", "coral_reef_4.png",
+                "coral_reef_5.png", "beach_2.png"],
+        "a list of two families did not grow both of them", state)
+
+    # A name the data already declares, or one repeated in the extras, is not offered twice.
+    registry.set_overrides({}, {"coral_reef": ["coral_reef_1.png",
+            "coral_reef_4.png", "coral_reef_4.png"]})
+    check(registry.expand_variants(declared)
+            == ["coral_reef_1.png", "coral_reef_2.png", "coral_reef_3.png",
+                "coral_reef_4.png"],
+        "a declared or repeated extra got into the list twice", state)
+
+    # Clearing the table drops the extras too: a caller that puts the vanilla icons back
+    # needs only an empty table.
+    registry.set_overrides({})
+    check(registry.extra_variants.is_empty(),
+        "set_overrides({}) kept the extra variants of the previous set", state)
+    check(registry.expand_variants(declared) == declared,
+        "the extras survived turning the set off", state)
+
+    registry.set_overrides(saved_table, saved_extras)
+
 # Recursive directory walk with the same skip rules as the registry.
 func _scan_disk(folder_path: String, out: Dictionary) -> void:
     var dir := DirAccess.open(folder_path)

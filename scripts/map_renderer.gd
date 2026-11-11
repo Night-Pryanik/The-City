@@ -76,6 +76,13 @@ var tile_data = []
 # no index of its own for the renderer any more.
 var icon_textures = {}
 
+# The lists of pictures grown by the EXTRA variants of the active tileset, keyed by
+# "terrain:<id>" / "cover:<id>". Only entities whose list actually grew are here: with
+# no extras the data's own list (or the name baked into the save) is used as before.
+# Rebuilt together with the textures on IconRegistry.overrides_changed, so the hot path
+# of the drawing does not expand a list for every hex.
+var extra_icon_lists = {}
+
 # A reference to the main node for the access to build_manager, CityData, the map bounds
 # and the camera (the drawn area depends on the scrollable range).
 var main_map: Node
@@ -243,6 +250,7 @@ func _is_rect_visible(rect: Rect2) -> bool:
 
 func load_icons():
     icon_textures.clear()
+    extra_icon_lists.clear()
     for res_id in GameData.raw_resources.keys():
         var res = GameData.raw_resources[res_id]
         if res.has("icon"):
@@ -256,7 +264,13 @@ func load_icons():
         if t.has("icon"):
             _cache_icon(t.icon)
         if t.has("icons"):
-            for icon_name in t.icons:
+            # The active tileset may offer more pictures of a family than the data
+            # declares; their textures have to be here before a hex can pick one.
+            var declared: Array = t.get("icons", [])
+            var expanded := IconRegistry.expand_variants(declared)
+            if expanded.size() > declared.size():
+                extra_icon_lists["terrain:" + str(t_id)] = expanded
+            for icon_name in expanded:
                 _cache_icon(icon_name)
     for tech in GameData.technologies:
         if tech.has("icon"):
@@ -265,7 +279,11 @@ func load_icons():
     for c_id in GameData.covers.keys():
         var c = GameData.covers[c_id]
         if c.has("icons"):
-            for icon_name in c.icons:
+            var declared: Array = c.get("icons", [])
+            var expanded := IconRegistry.expand_variants(declared)
+            if expanded.size() > declared.size():
+                extra_icon_lists["cover:" + str(c_id)] = expanded
+            for icon_name in expanded:
                 _cache_icon(icon_name)
     _cache_icon("city.png")
     # The marker of an outpost is not referenced by any data file: the hex carries an ordinary
@@ -417,7 +435,7 @@ func _draw_hex(row: int, col: int):
 
     var terrain_color = Color.BLACK
     var terrain = tile.terrain
-    var terrain_icon_name = tile.get("terrain_icon", "")
+    var terrain_icon_name = _pick_terrain_icon(row, col, tile)
     if row == main_map.city_row and col == main_map.city_col:
         if GameData.terrains.has(terrain):
             var t = GameData.terrains[terrain]
@@ -839,15 +857,34 @@ func _draw_cover_overlay(row: int, col: int, center: Vector2, vertices: PackedVe
         var alpha = float(cover.get("alpha", 0.45))
         draw_colored_polygon(vertices, Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0, alpha))
 
-    # Returns the name of the icon of the cover for the hex (row, col) - a deterministic choice.
+    # Returns the name of the cover picture for the hex (row, col) - a deterministic choice.
+    # The list is the one of the data, grown by the extra variants of the active tileset.
 func _pick_cover_icon(cover: Dictionary, row: int, col: int) -> String:
-    var icons: Array = cover.get("icons", [])
+    var icons: Array = extra_icon_lists.get("cover:" + str(cover.get("id", "")), [])
+    if icons.is_empty():
+        icons = cover.get("icons", [])
     if icons.is_empty():
         return ""
     var icon_rng = RandomNumberGenerator.new()
     icon_rng.seed = row * 1000 + col
     var idx = icon_rng.randi() % icons.size()
-    return icons[idx]
+    return str(icons[idx])
+
+# The picture a hex was generated with is kept in the SAVE (world.gd bakes terrain_icon),
+# so it always names a vanilla icon. A tileset may offer more pictures of that family:
+# they are folded in here, at draw time, and never written into the save. Turning the set
+# off therefore cannot leave a name the vanilla game cannot draw (a black hex).
+func _pick_terrain_icon(row: int, col: int, tile: Dictionary) -> String:
+    var saved_name := str(tile.get("terrain_icon", ""))
+    if saved_name.is_empty():
+        return saved_name
+    var icons: Array = extra_icon_lists.get(
+            "terrain:" + str(tile.get("terrain", "")), [])
+    if icons.is_empty():
+        return saved_name
+    var icon_rng = RandomNumberGenerator.new()
+    icon_rng.seed = row * 1000 + col
+    return str(icons[icon_rng.randi() % icons.size()])
 
     # The resource is visible to the player if BOTH conditions are met:
     #   1) the hex belongs to the Influence Ring (the territory is claimed) or the area

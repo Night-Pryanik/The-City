@@ -92,6 +92,12 @@ var types: Dictionary = {}
 # by TilesetManager; empty when no tileset is installed.
 var overrides: Dictionary = {}
 
+# The family base -> the icon file names of the EXTRA variants the active tileset ships:
+# numbered pictures of a vanilla family that the vanilla data never names. Filled by
+# TilesetManager together with `overrides`; empty when no set is applied. The data keeps
+# its own (short) list, and expand_variants() folds these names in at draw time only.
+var extra_variants: Dictionary = {}
+
 # The bare name of a FAMILY -> the bare names of its variants, sorted. A terrain and a cover
 # are drawn from a list of variants ("tundra_moss_1.png", "_2", "_3" in data/covers.json),
 # so a tileset may draw the whole family with one picture (see tilesets/README.md). The
@@ -293,6 +299,41 @@ func vanilla_variants(bare_name: String) -> Array:
     _ensure_built()
     return vanilla_families.get(bare_name, [])
 
+# The family of a name: "tundra_moss_2.png" -> "tundra_moss"; "" when the name has no
+# trailing number. Public because TilesetManager decides by it whether a file of a set
+# is an extra variant of a family the vanilla game knows.
+func family_base(icon_name: String) -> String:
+    return _family_base(_bare_name(icon_name))
+
+# The pictures the game may draw for a list of variant names: the names the DATA declares,
+# followed by the extra variants the ACTIVE tileset ships for the same families.
+#
+# The data is never changed and no save ever stores an extra name: a name the vanilla game
+# cannot draw therefore cannot survive switching the set off. The extra names are the real
+# file names of the set; path_of() resolves them through `overrides` by their bare name.
+func expand_variants(icons: Array) -> Array:
+    _ensure_built()
+    var out: Array = []
+    var seen: Dictionary = {}
+    var bases: Dictionary = {}
+    for icon in icons:
+        var icon_name := str(icon)
+        out.append(icon_name)
+        seen[icon_name] = true
+        var base := family_base(icon_name)
+        if not base.is_empty():
+            bases[base] = true
+    if extra_variants.is_empty():
+        return out
+    for base in bases:
+        for extra in extra_variants.get(base, []):
+            var extra_name := str(extra)
+            if seen.has(extra_name):
+                continue
+            seen[extra_name] = true
+            out.append(extra_name)
+    return out
+
 # Whether there is an icon with such a file name.
 func has(icon_name: String) -> bool:
     _ensure_built()
@@ -390,10 +431,14 @@ func set_mod_dirs(dirs: Array) -> void:
     build()
     overrides_changed.emit()
 
-# Installs the replacement table of the tilesets (see TilesetManager). The texture cache is
-# dropped: a texture loaded before the table was installed belongs to the vanilla file.
-func set_overrides(table: Dictionary) -> void:
+# Installs the replacement table of the tilesets (see TilesetManager) and the extra variants
+# they offer. The texture cache is dropped: a texture loaded before the table was installed
+# belongs to the vanilla file, and the map picks its pictures again now that the lists of
+# variants may have grown. `extras` is optional so the callers that restore the vanilla
+# icons need only an empty table.
+func set_overrides(table: Dictionary, extras: Dictionary = {}) -> void:
     overrides = table.duplicate()
+    extra_variants = extras.duplicate(true)
     _textures.clear()
     overrides_changed.emit()
 
