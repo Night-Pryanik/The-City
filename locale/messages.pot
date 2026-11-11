@@ -15,33 +15,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "%s (%s)"
-msgstr ""
-
-msgid "+%d production slot"
-msgstr ""
-
-msgid "A challenge of the era is completed."
-msgstr ""
-
-msgid "Beach"
-msgstr ""
-
-msgid "Extra production slots:"
-msgstr ""
-
-msgid "Lake"
-msgstr ""
-
-msgid "Sea"
-msgstr ""
-
-msgid "Shallows"
-msgstr ""
-
-msgid "Wetland"
-msgstr ""
-
 msgid "\n\nFound here: %s"
 msgstr ""
 
@@ -333,9 +306,6 @@ msgstr ""
 msgid "%d/%d (%.1f sec)"
 msgstr ""
 
-msgid "%s\n\nScience: %d"
-msgstr ""
-
 msgid "%s\nScience: %d%s"
 msgstr ""
 
@@ -459,6 +429,9 @@ msgstr ""
 msgid "+%d (Ctrl: +10, Shift: +100)"
 msgstr ""
 
+msgid "+%d production slot"
+msgstr ""
+
 msgid "+%d%% (Fresh water access)"
 msgstr ""
 
@@ -499,9 +472,6 @@ msgid "1 sec"
 msgstr ""
 
 msgid "1.00 sec"
-msgstr ""
-
-msgid "1250 (Middle Ages)"
 msgstr ""
 
 msgid "3.0 sec"
@@ -652,6 +622,9 @@ msgid "Base: %.1f/sec"
 msgstr ""
 
 msgid "Bays"
+msgstr ""
+
+msgid "Beach"
 msgstr ""
 
 msgid "Beaches"
@@ -1248,6 +1221,9 @@ msgstr ""
 msgid "Extra output:"
 msgstr ""
 
+msgid "Extra production slots:"
+msgstr ""
+
 msgid "Extremely high"
 msgstr ""
 
@@ -1507,6 +1483,9 @@ msgid "Keep the deal"
 msgstr ""
 
 msgid "Key of a dictionary names a nonexistent entity"
+msgstr ""
+
+msgid "Lake"
 msgstr ""
 
 msgid "Land around the city"
@@ -2229,6 +2208,9 @@ msgstr ""
 msgid "Scouts sent... (%d coins paid from the treasury)"
 msgstr ""
 
+msgid "Sea"
+msgstr ""
+
 msgid "Sea level"
 msgstr ""
 
@@ -2278,6 +2260,9 @@ msgid "Settings"
 msgstr ""
 
 msgid "Shallow water depth"
+msgstr ""
+
+msgid "Shallows"
 msgstr ""
 
 msgid "Shaping landscape..."
@@ -2511,6 +2496,9 @@ msgstr ""
 msgid "The climate belt the city starts in. It decides the terrain and the resources around the city."
 msgstr ""
 
+msgid "The coast, the relief and the belts are the world itself. Resources are not shown; towns and rivers are a sketch."
+msgstr ""
+
 msgid "The colours of every window, panel and control. The choice applies at once and is remembered; a theme file put into the presets folder appears here without restarting the game."
 msgstr ""
 
@@ -2739,9 +2727,6 @@ msgstr ""
 msgid "This is the city itself"
 msgstr ""
 
-msgid "The coast, the relief and the belts are the world itself. Resources are not shown; towns and rivers are a sketch."
-msgstr ""
-
 msgid "This mod is required by \"%s\"."
 msgstr ""
 
@@ -2878,6 +2863,9 @@ msgid "Very high"
 msgstr ""
 
 msgid "Video"
+msgstr ""
+
+msgid "Wetland"
 msgstr ""
 
 msgid "What the technology gives:"
@@ -3143,10 +3131,6 @@ msgid "Makes clay pots, bricks and tablets on the potter's wheel."
 msgstr ""
 
 msgctxt "buildings.description"
-msgid "Produces lime from limestone and alum from alunite."
-msgstr ""
-
-msgctxt "buildings.description"
 msgid "Makes paper."
 msgstr ""
 
@@ -3156,6 +3140,10 @@ msgstr ""
 
 msgctxt "buildings.description"
 msgid "Presses vegetable oil out of oil crops."
+msgstr ""
+
+msgctxt "buildings.description"
+msgid "Produces lime from limestone and alum from alunite."
 msgstr ""
 
 msgctxt "buildings.description"
@@ -3263,19 +3251,15 @@ msgid "Hand Mill"
 msgstr ""
 
 msgctxt "buildings.name"
-msgid "Oilmaker's House"
-msgstr ""
-
-msgctxt "buildings.name"
 msgid "Jeweler's House"
 msgstr ""
 
 msgctxt "buildings.name"
-msgid "Library"
+msgid "Kiln"
 msgstr ""
 
 msgctxt "buildings.name"
-msgid "Kiln"
+msgid "Library"
 msgstr ""
 
 msgctxt "buildings.name"
@@ -3284,6 +3268,10 @@ msgstr ""
 
 msgctxt "buildings.name"
 msgid "Mason's Workshop"
+msgstr ""
+
+msgctxt "buildings.name"
+msgid "Oilmaker's House"
 msgstr ""
 
 msgctxt "buildings.name"
@@ -3615,10 +3603,6 @@ msgid "Burns limestone into lime."
 msgstr ""
 
 msgctxt "crafts.description"
-msgid "Produces alum from alunite by roasting, leaching and crystallization."
-msgstr ""
-
-msgctxt "crafts.description"
 msgid "Burns wood into charcoal."
 msgstr ""
 
@@ -3739,6 +3723,10 @@ msgid "Makes a dye (purple) from murex shells."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Makes a dye (quebracho brown) from quebracho wood."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Makes a dye (sepia) from cuttlefish."
 msgstr ""
 
@@ -3855,6 +3843,10 @@ msgid "Presses oil from the seeds and fruits of oil crops."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Produces alum from alunite by roasting, leaching and crystallization."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Produces parchment from animal hides by liming them."
 msgstr ""
 
@@ -3958,16 +3950,16 @@ msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
 msgstr ""
 
-msgctxt "crafts.description"
-msgid "Makes a dye (quebracho brown) from quebracho wood."
-msgstr ""
-
 msgctxt "crafts.name"
 msgid "Aged Cheese"
 msgstr ""
 
 msgctxt "crafts.name"
 msgid "Alpaca Meat"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Alum"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4223,10 +4215,6 @@ msgid "Lime"
 msgstr ""
 
 msgctxt "crafts.name"
-msgid "Alum"
-msgstr ""
-
-msgctxt "crafts.name"
 msgid "Llama Meat"
 msgstr ""
 
@@ -4308,6 +4296,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Purple"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Quebracho Brown"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4456,10 +4448,6 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Writing Set"
-msgstr ""
-
-msgctxt "crafts.name"
-msgid "Quebracho Brown"
 msgstr ""
 
 msgctxt "eras.name"
@@ -4663,7 +4651,7 @@ msgid "Mine, quarry, animal mill, oilmaker's house, weaver's and silkmaker's hou
 msgstr ""
 
 msgctxt "modifiers.tech_modifiers.name"
-msgid "Mine, quarry, bloomery, smelter, forge: +25% production"
+msgid "Mine, quarry, bloomery, smelter, forge: +25% production only where fresh water is available"
 msgstr ""
 
 msgctxt "modifiers.tech_modifiers.name"
@@ -5068,6 +5056,14 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Alpacas"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Alum"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Alunite"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5595,14 +5591,6 @@ msgid "Lime"
 msgstr ""
 
 msgctxt "resources.name"
-msgid "Alunite"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Alum"
-msgstr ""
-
-msgctxt "resources.name"
 msgid "Limestone"
 msgstr ""
 
@@ -5856,6 +5844,18 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Quartz Sand"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Quebracho Brown"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Quebracho Tree"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Quebracho Wood"
 msgstr ""
 
 msgctxt "resources.name"
@@ -6246,22 +6246,6 @@ msgctxt "resources.name"
 msgid "Zebu"
 msgstr ""
 
-msgctxt "resources.name"
-msgid "Pottery of <city_name>"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Quebracho Tree"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Quebracho Wood"
-msgstr ""
-
-msgctxt "resources.name"
-msgid "Quebracho Brown"
-msgstr ""
-
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
 msgstr ""
@@ -6350,10 +6334,6 @@ msgctxt "specializations.description"
 msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
 msgstr ""
 
-msgctxt "specializations.description"
-msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
-msgstr ""
-
 msgctxt "specializations.full_name"
 msgid "Specialization of ceramics"
 msgstr ""
@@ -6376,10 +6356,6 @@ msgstr ""
 
 msgctxt "specializations.full_name"
 msgid "Specialization of wool"
-msgstr ""
-
-msgctxt "specializations.full_name"
-msgid "Specialization of pottery"
 msgstr ""
 
 msgctxt "specializations.name"
@@ -6426,10 +6402,6 @@ msgctxt "specializations.name"
 msgid "Wool"
 msgstr ""
 
-msgctxt "specializations.name"
-msgid "Pottery"
-msgstr ""
-
 msgctxt "technologies.description"
 msgid "+10% to the production of mines and quarries."
 msgstr ""
@@ -6448,6 +6420,10 @@ msgstr ""
 
 msgctxt "technologies.description"
 msgid "Adds one production slot to the animal mill and the water mill.\n+10% to the production of the woodcutter's camp."
+msgstr ""
+
+msgctxt "technologies.description"
+msgid "Adds one production slot to the winemaker's house, the oilmaker's house, the dairy, the paper workshop and the jeweler's house."
 msgstr ""
 
 msgctxt "technologies.description"
@@ -6472,6 +6448,10 @@ msgstr ""
 
 msgctxt "technologies.description"
 msgid "Allows you to build improvements on explored resource hexes outside the Region. Such an outpost needs a road to the city and costs coins on top of labour; the further from the city, the more expensive."
+msgstr ""
+
+msgctxt "technologies.description"
+msgid "Allows you to build kilns: limestone → lime, alunite → alum."
 msgstr ""
 
 msgctxt "technologies.description"
@@ -6520,10 +6500,6 @@ msgstr ""
 
 msgctxt "technologies.description"
 msgid "Allows you to build the oilmaker's house: seeds, fruits and other parts of oil crops → vegetable oil."
-msgstr ""
-
-msgctxt "technologies.description"
-msgid "Allows you to build kilns: limestone → lime, alunite → alum."
 msgstr ""
 
 msgctxt "technologies.description"
@@ -6647,11 +6623,7 @@ msgid "Unlocks the use of draft animals to turn millstones."
 msgstr ""
 
 msgctxt "technologies.description"
-msgid "Adds one production slot to the winemaker's house, the oilmaker's house, the dairy, the paper workshop and the jeweler's house."
-msgstr ""
-
-msgctxt "technologies.description"
-msgid "Unlocks the water mill: the running water sets the millstones in motion.\n+25% to the production of mines, quarries, the bloomery, the smelter and the forge, where the water runs: the ore is washed and the bellows are driven by the water."
+msgid "Unlocks the water mill: the running water sets the millstones in motion.\n+25% to the production of mines, quarries, the bloomery, the smelter and the forge only where fresh water is available: without water the wheel gives no bonus, for the water washes the ore and drives the bellows."
 msgstr ""
 
 msgctxt "technologies.flavor"
@@ -6667,6 +6639,10 @@ msgid "A shaft is only as deep as the rope that serves it. A drum on a windlass,
 msgstr ""
 
 msgctxt "technologies.flavor"
+msgid "A threaded spindle turns many easy turns of a long handle into one slow, enormous squeeze. The press no longer waits on the weight of a beam, and a second batch can be worked beside the first."
+msgstr ""
+
+msgctxt "technologies.flavor"
 msgid "A wheel that rolls is not yet a machine; the teeth are. They turn one turn of the axle into a turn of the millstone, a pull of the press or a lift of the winch, and they hold the load instead of letting it fall back. Vitruvius described a mill whose upright wheel drove a horizontal one through a row of teeth, and a marble saw driven the same way is known from a sarcophagus in Hierapolis."
 msgstr ""
 
@@ -6676,10 +6652,6 @@ msgstr ""
 
 msgctxt "technologies.flavor"
 msgid "Ancient civilizations could count, but only now has knowledge moved from simple recipes to strict proofs. Geometry and abstract calculation let people not just watch the world but compute it: from the shape of a wheel's teeth to the motion of the stars."
-msgstr ""
-
-msgctxt "technologies.flavor"
-msgid "Roasting minerals opens new possibilities for crafts: limestone yields lime, while roasted alunite is leached and crystallized to obtain alum for treating hides and fixing dyes."
 msgstr ""
 
 msgctxt "technologies.flavor"
@@ -6787,6 +6759,10 @@ msgid "Raw leaf is harsh and spoils quickly. Cured and cut, it keeps for years, 
 msgstr ""
 
 msgctxt "technologies.flavor"
+msgid "Roasting minerals opens new possibilities for crafts: limestone yields lime, while roasted alunite is leached and crystallized to obtain alum for treating hides and fixing dyes."
+msgstr ""
+
+msgctxt "technologies.flavor"
 msgid "Ropes became an important material for building, sailing and farming, letting people bind, haul and hoist loads."
 msgstr ""
 
@@ -6868,10 +6844,6 @@ msgstr ""
 
 msgctxt "technologies.flavor"
 msgid "Working precious stones and metals turned the craft into art."
-msgstr ""
-
-msgctxt "technologies.flavor"
-msgid "A threaded spindle turns many easy turns of a long handle into one slow, enormous squeeze. The press no longer waits on the weight of a beam, and a second batch can be worked beside the first."
 msgstr ""
 
 msgctxt "technologies.name"
@@ -6971,14 +6943,6 @@ msgid "Leatherworking"
 msgstr ""
 
 msgctxt "technologies.name"
-msgid "Mechanics"
-msgstr ""
-
-msgctxt "technologies.name"
-msgid "Mineral Firing"
-msgstr ""
-
-msgctxt "technologies.name"
 msgid "Masonry"
 msgstr ""
 
@@ -6991,7 +6955,15 @@ msgid "Mead Making"
 msgstr ""
 
 msgctxt "technologies.name"
+msgid "Mechanics"
+msgstr ""
+
+msgctxt "technologies.name"
 msgid "Metallurgy"
+msgstr ""
+
+msgctxt "technologies.name"
+msgid "Mineral Firing"
 msgstr ""
 
 msgctxt "technologies.name"
@@ -7032,6 +7004,10 @@ msgstr ""
 
 msgctxt "technologies.name"
 msgid "Salt Extraction"
+msgstr ""
+
+msgctxt "technologies.name"
+msgid "Screw Press"
 msgstr ""
 
 msgctxt "technologies.name"
@@ -7092,10 +7068,6 @@ msgstr ""
 
 msgctxt "technologies.name"
 msgid "Writing"
-msgstr ""
-
-msgctxt "technologies.name"
-msgid "Screw Press"
 msgstr ""
 
 msgctxt "technologies.unlock_effects.name"

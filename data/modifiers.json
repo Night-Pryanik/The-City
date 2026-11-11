@@ -64,7 +64,7 @@
         // same millstones twice.
         "tech_id": "water_wheel",
         "icon": "water_chain.png",
-        "name": "Mine, quarry, bloomery, smelter, forge: +25% production",
+        "name": "Mine, quarry, bloomery, smelter, forge: +25% production only where fresh water is available",
         "requires_water": true,
         "production_multiplier": { "mine": 1.25, "quarry": 1.25 },
         "building_production_multiplier": {

@@ -47,7 +47,7 @@
       "science_cost": 5.0,
       "prerequisites": [ [ "irrigation", "wheel" ] ],
       "icon": "water_wheel.png",
-      "description": "Unlocks the water mill: the running water sets the millstones in motion.\n+25% to the production of mines, quarries, the bloomery, the smelter and the forge, where the water runs: the ore is washed and the bellows are driven by the water.",
+      "description": "Unlocks the water mill: the running water sets the millstones in motion.\n+25% to the production of mines, quarries, the bloomery, the smelter and the forge only where fresh water is available: without water the wheel gives no bonus, for the water washes the ore and drives the bellows.",
       "flavor": "The water wheel became an important source of power in the ancient world, automating the processing of grain and other materials."
     },
     {

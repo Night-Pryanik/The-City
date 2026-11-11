@@ -15,33 +15,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "%s (%s)"
-msgstr "%s (%s)"
-
-msgid "+%d production slot"
-msgstr "+%d слот производства"
-
-msgid "A challenge of the era is completed."
-msgstr "Испытание эпохи выполнено."
-
-msgid "Beach"
-msgstr "Пляж"
-
-msgid "Extra production slots:"
-msgstr "Дополнительные слоты производства:"
-
-msgid "Lake"
-msgstr "Озеро"
-
-msgid "Sea"
-msgstr "Море"
-
-msgid "Shallows"
-msgstr "Мелководье"
-
-msgid "Wetland"
-msgstr "Болото"
-
 msgid "\n\nFound here: %s"
 msgstr "\n\nЗдесь обнаружено: %s"
 
@@ -333,9 +306,6 @@ msgstr "%d × %d чел."
 msgid "%d/%d (%.1f sec)"
 msgstr "%d/%d (%.1f сек)"
 
-msgid "%s\n\nScience: %d"
-msgstr "%s\n\nНаука: %d"
-
 msgid "%s\nScience: %d%s"
 msgstr "%s\nНаука: %d%s"
 
@@ -459,6 +429,9 @@ msgstr "(%s x %s + %s x %s) x %s ≈ %d"
 msgid "+%d (Ctrl: +10, Shift: +100)"
 msgstr "+%d (Ctrl: +10, Shift: +100)"
 
+msgid "+%d production slot"
+msgstr "+%d слот производства"
+
 msgid "+%d%% (Fresh water access)"
 msgstr "+%d%% (Доступ к пресной воде)"
 
@@ -500,9 +473,6 @@ msgstr "1 сек"
 
 msgid "1.00 sec"
 msgstr "1,00 сек"
-
-msgid "1250 (Middle Ages)"
-msgstr "1250 (Средневековье)"
 
 msgid "3.0 sec"
 msgstr "3,0 сек"
@@ -653,6 +623,9 @@ msgstr "База: %.1f/сек"
 
 msgid "Bays"
 msgstr "Бухты"
+
+msgid "Beach"
+msgstr "Пляж"
 
 msgid "Beaches"
 msgstr "Пляжи"
@@ -1248,6 +1221,9 @@ msgstr "Дополнительные материалы:"
 msgid "Extra output:"
 msgstr "Дополнительный выход:"
 
+msgid "Extra production slots:"
+msgstr "Дополнительные слоты производства:"
+
 msgid "Extremely high"
 msgstr "Крайне высокая"
 
@@ -1508,6 +1484,9 @@ msgstr "Оставить сделку"
 
 msgid "Key of a dictionary names a nonexistent entity"
 msgstr "Ключ словаря указывает на несуществующую сущность"
+
+msgid "Lake"
+msgstr "Озеро"
 
 msgid "Land around the city"
 msgstr "Земля вокруг города"
@@ -2229,6 +2208,9 @@ msgstr "Разведка завершена! %s"
 msgid "Scouts sent... (%d coins paid from the treasury)"
 msgstr "Разведчики отправлены... (оплачено %d монет из казны)"
 
+msgid "Sea"
+msgstr "Море"
+
 msgid "Sea level"
 msgstr "Уровень моря"
 
@@ -2279,6 +2261,9 @@ msgstr "Настройки"
 
 msgid "Shallow water depth"
 msgstr "Глубина отмели"
+
+msgid "Shallows"
+msgstr "Мелководье"
 
 msgid "Shaping landscape..."
 msgstr "Формирование ландшафта..."
@@ -2511,6 +2496,9 @@ msgstr "Нужен доступ города к пресной воде"
 msgid "The climate belt the city starts in. It decides the terrain and the resources around the city."
 msgstr "Климатический пояс, в котором появится город. Он определяет ландшафт и ресурсы вокруг города."
 
+msgid "The coast, the relief and the belts are the world itself. Resources are not shown; towns and rivers are a sketch."
+msgstr "Берег, рельеф и пояса — сам мир. Ресурсы не показаны; города и реки — схема."
+
 msgid "The colours of every window, panel and control. The choice applies at once and is remembered; a theme file put into the presets folder appears here without restarting the game."
 msgstr "Цвета всех окон, панелей и элементов управления. Выбор применяется сразу и запоминается; файл темы, положенный в папку presets, появится в этом списке без перезапуска игры."
 
@@ -2739,9 +2727,6 @@ msgstr "Здесь — кольцо влияния чужого городка, 
 msgid "This is the city itself"
 msgstr "Это сам город"
 
-msgid "The coast, the relief and the belts are the world itself. Resources are not shown; towns and rivers are a sketch."
-msgstr "Берег, рельеф и пояса — сам мир. Ресурсы не показаны; города и реки — схема."
-
 msgid "This mod is required by \"%s\"."
 msgstr "Эта модификация требуется для «%s»."
 
@@ -2879,6 +2864,9 @@ msgstr "Очень высокая"
 
 msgid "Video"
 msgstr "Видео"
+
+msgid "Wetland"
+msgstr "Болото"
 
 msgid "What the technology gives:"
 msgstr "Что даёт технология:"
@@ -3143,10 +3131,6 @@ msgid "Makes clay pots, bricks and tablets on the potter's wheel."
 msgstr "Изготовление глиняной посуды, кирпичей и табличек на гончарном круге."
 
 msgctxt "buildings.description"
-msgid "Produces lime from limestone and alum from alunite."
-msgstr "Производство извести из известняка и квасцов из алунита."
-
-msgctxt "buildings.description"
 msgid "Makes paper."
 msgstr "Изготовление бумаги."
 
@@ -3157,6 +3141,10 @@ msgstr "Производство мыла из растительного мас
 msgctxt "buildings.description"
 msgid "Presses vegetable oil out of oil crops."
 msgstr "Отжим растительного масла из масличных культур."
+
+msgctxt "buildings.description"
+msgid "Produces lime from limestone and alum from alunite."
+msgstr "Производство извести из известняка и квасцов из алунита."
 
 msgctxt "buildings.description"
 msgid "Produces papyrus and other goods from papyrus stems."
@@ -3263,20 +3251,16 @@ msgid "Hand Mill"
 msgstr "Ручная мельница"
 
 msgctxt "buildings.name"
-msgid "Oilmaker's House"
-msgstr "Дом маслодела"
-
-msgctxt "buildings.name"
 msgid "Jeweler's House"
 msgstr "Дом ювелира"
 
 msgctxt "buildings.name"
-msgid "Library"
-msgstr "Библиотека"
-
-msgctxt "buildings.name"
 msgid "Kiln"
 msgstr "Печь для обжига"
+
+msgctxt "buildings.name"
+msgid "Library"
+msgstr "Библиотека"
 
 msgctxt "buildings.name"
 msgid "Market"
@@ -3285,6 +3269,10 @@ msgstr "Рынок"
 msgctxt "buildings.name"
 msgid "Mason's Workshop"
 msgstr "Мастерская каменотёса"
+
+msgctxt "buildings.name"
+msgid "Oilmaker's House"
+msgstr "Дом маслодела"
 
 msgctxt "buildings.name"
 msgid "Paper Workshop"
@@ -3615,10 +3603,6 @@ msgid "Burns limestone into lime."
 msgstr "Обжигает известняк в известь"
 
 msgctxt "crafts.description"
-msgid "Produces alum from alunite by roasting, leaching and crystallization."
-msgstr "Производит квасцы из алунита обжигом, выщелачиванием и кристаллизацией."
-
-msgctxt "crafts.description"
 msgid "Burns wood into charcoal."
 msgstr "Обжигает древесину в древесный уголь."
 
@@ -3739,6 +3723,10 @@ msgid "Makes a dye (purple) from murex shells."
 msgstr "Создает краситель (пурпур) из мурексов"
 
 msgctxt "crafts.description"
+msgid "Makes a dye (quebracho brown) from quebracho wood."
+msgstr "Создает краситель (кебраховый бурый) из древесины кебрачо"
+
+msgctxt "crafts.description"
 msgid "Makes a dye (sepia) from cuttlefish."
 msgstr "Создает краситель (сепию) из каракатиц"
 
@@ -3855,6 +3843,10 @@ msgid "Presses oil from the seeds and fruits of oil crops."
 msgstr "Выжимает масло из семян и плодов масличных культур"
 
 msgctxt "crafts.description"
+msgid "Produces alum from alunite by roasting, leaching and crystallization."
+msgstr "Производит квасцы из алунита обжигом, выщелачиванием и кристаллизацией."
+
+msgctxt "crafts.description"
 msgid "Produces parchment from animal hides by liming them."
 msgstr "Производит пергамент из шкур животных с помощью золения их в извести"
 
@@ -3958,10 +3950,6 @@ msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
 msgstr "Ткёт одежду из шерсти"
 
-msgctxt "crafts.description"
-msgid "Makes a dye (quebracho brown) from quebracho wood."
-msgstr "Создает краситель (кебраховый бурый) из древесины кебрачо"
-
 msgctxt "crafts.name"
 msgid "Aged Cheese"
 msgstr "Выдержанный сыр"
@@ -3969,6 +3957,10 @@ msgstr "Выдержанный сыр"
 msgctxt "crafts.name"
 msgid "Alpaca Meat"
 msgstr "Мясо альпаки"
+
+msgctxt "crafts.name"
+msgid "Alum"
+msgstr "Квасцы"
 
 msgctxt "crafts.name"
 msgid "Amphora"
@@ -4223,10 +4215,6 @@ msgid "Lime"
 msgstr "Известь"
 
 msgctxt "crafts.name"
-msgid "Alum"
-msgstr "Квасцы"
-
-msgctxt "crafts.name"
 msgid "Llama Meat"
 msgstr "Мясо ламы"
 
@@ -4309,6 +4297,10 @@ msgstr "Пульке"
 msgctxt "crafts.name"
 msgid "Purple"
 msgstr "Пурпур"
+
+msgctxt "crafts.name"
+msgid "Quebracho Brown"
+msgstr "Кебраховый бурый"
 
 msgctxt "crafts.name"
 msgid "Rabbit Meat"
@@ -4457,10 +4449,6 @@ msgstr "Шерстяная одежда"
 msgctxt "crafts.name"
 msgid "Writing Set"
 msgstr "Письменный набор"
-
-msgctxt "crafts.name"
-msgid "Quebracho Brown"
-msgstr "Кебраховый бурый"
 
 msgctxt "eras.name"
 msgid "Ancient"
@@ -4663,8 +4651,8 @@ msgid "Mine, quarry, animal mill, oilmaker's house, weaver's and silkmaker's hou
 msgstr "Шахта, каменоломня, мельница с животной тягой, дом маслодела, дом ткача и шелковода, мастерская каменщика, плотника и ювелира: +25% к производству"
 
 msgctxt "modifiers.tech_modifiers.name"
-msgid "Mine, quarry, bloomery, smelter, forge: +25% production"
-msgstr "Шахта, каменоломня, сыродутная печь, плавильня, кузница: +25% к производству"
+msgid "Mine, quarry, bloomery, smelter, forge: +25% production only where fresh water is available"
+msgstr "Шахта, каменоломня, сыродутная печь, плавильня, кузница: +25% к производству только при наличии пресной воды"
 
 msgctxt "modifiers.tech_modifiers.name"
 msgid "Mine, quarry: +10% production"
@@ -5069,6 +5057,14 @@ msgstr "Мясо альпаки"
 msgctxt "resources.name"
 msgid "Alpacas"
 msgstr "Альпаки"
+
+msgctxt "resources.name"
+msgid "Alum"
+msgstr "Квасцы"
+
+msgctxt "resources.name"
+msgid "Alunite"
+msgstr "Алунит"
 
 msgctxt "resources.name"
 msgid "Amaranth"
@@ -5595,14 +5591,6 @@ msgid "Lime"
 msgstr "Известь"
 
 msgctxt "resources.name"
-msgid "Alunite"
-msgstr "Алунит"
-
-msgctxt "resources.name"
-msgid "Alum"
-msgstr "Квасцы"
-
-msgctxt "resources.name"
 msgid "Limestone"
 msgstr "Известняк"
 
@@ -5857,6 +5845,18 @@ msgstr "Пирит"
 msgctxt "resources.name"
 msgid "Quartz Sand"
 msgstr "Кварцевый песок"
+
+msgctxt "resources.name"
+msgid "Quebracho Brown"
+msgstr "Кебраховый бурый"
+
+msgctxt "resources.name"
+msgid "Quebracho Tree"
+msgstr "Кебрачо"
+
+msgctxt "resources.name"
+msgid "Quebracho Wood"
+msgstr "Древесина кебрачо"
 
 msgctxt "resources.name"
 msgid "Quinoa"
@@ -6246,22 +6246,6 @@ msgctxt "resources.name"
 msgid "Zebu"
 msgstr "Зебу"
 
-msgctxt "resources.name"
-msgid "Pottery of <city_name>"
-msgstr "Глиняная посуда <city_name>"
-
-msgctxt "resources.name"
-msgid "Quebracho Tree"
-msgstr "Кебрачо"
-
-msgctxt "resources.name"
-msgid "Quebracho Wood"
-msgstr "Древесина кебрачо"
-
-msgctxt "resources.name"
-msgid "Quebracho Brown"
-msgstr "Кебраховый бурый"
-
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
 msgstr "Ровная дорога для телег. Позволяет перевозить втрое больше, чем тропка."
@@ -6350,10 +6334,6 @@ msgctxt "specializations.description"
 msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
 msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше."
 
-msgctxt "specializations.description"
-msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
-msgstr "Печи города знают за его стенами. Керамика приносит больше, а мастерские наполняют её быстрее."
-
 msgctxt "specializations.full_name"
 msgid "Specialization of ceramics"
 msgstr "Специализация керамики"
@@ -6377,10 +6357,6 @@ msgstr "Специализация оружия"
 msgctxt "specializations.full_name"
 msgid "Specialization of wool"
 msgstr "Специализация шерсти"
-
-msgctxt "specializations.full_name"
-msgid "Specialization of pottery"
-msgstr "Специализация керамики"
 
 msgctxt "specializations.name"
 msgid "Agrarian"
@@ -6426,10 +6402,6 @@ msgctxt "specializations.name"
 msgid "Wool"
 msgstr "Шерсть"
 
-msgctxt "specializations.name"
-msgid "Pottery"
-msgstr "Глиняная посуда"
-
 msgctxt "technologies.description"
 msgid "+10% to the production of mines and quarries."
 msgstr "+10% к производству шахт и каменоломен."
@@ -6449,6 +6421,10 @@ msgstr "-10% к затратам труда на строительство."
 msgctxt "technologies.description"
 msgid "Adds one production slot to the animal mill and the water mill.\n+10% to the production of the woodcutter's camp."
 msgstr "Добавляет один слот производства мельнице с животной тягой и водяной мельнице.\n+10% к производству лесной делянки."
+
+msgctxt "technologies.description"
+msgid "Adds one production slot to the winemaker's house, the oilmaker's house, the dairy, the paper workshop and the jeweler's house."
+msgstr "Добавляет один слот производства дому винодела, дому маслодела, сыроварне, бумажной мастерской и дому ювелира."
 
 msgctxt "technologies.description"
 msgid "Allows scouts to explore areas in the fog of war."
@@ -6473,6 +6449,10 @@ msgstr "Даёт возможность строить лесную делянк
 msgctxt "technologies.description"
 msgid "Allows you to build improvements on explored resource hexes outside the Region. Such an outpost needs a road to the city and costs coins on top of labour; the further from the city, the more expensive."
 msgstr "Позволяет строить улучшения на разведанных гексах с ресурсами вне Региона.\nТакая фактория требует дороги до города и стоит монет в дополнение к труду; чем дальше от города, тем дороже."
+
+msgctxt "technologies.description"
+msgid "Allows you to build kilns: limestone → lime, alunite → alum."
+msgstr "Даёт возможность строить печи для обжига: известняк → известь, алунит → квасцы."
 
 msgctxt "technologies.description"
 msgid "Allows you to build libraries."
@@ -6521,10 +6501,6 @@ msgstr "Даёт возможность строить дом стеклодел
 msgctxt "technologies.description"
 msgid "Allows you to build the oilmaker's house: seeds, fruits and other parts of oil crops → vegetable oil."
 msgstr "Даёт возможность строить дом маслодела: семена, плоды и прочие части масличных культур → растительное масло."
-
-msgctxt "technologies.description"
-msgid "Allows you to build kilns: limestone → lime, alunite → alum."
-msgstr "Даёт возможность строить печи для обжига: известняк → известь, алунит → квасцы."
 
 msgctxt "technologies.description"
 msgid "Allows you to build the paper workshop.\nAllows you to produce paper from mulberry, hemp and ramie with the help of lime."
@@ -6647,12 +6623,8 @@ msgid "Unlocks the use of draft animals to turn millstones."
 msgstr "Открывает использование тягловых животных для вращения мельничных жерновов."
 
 msgctxt "technologies.description"
-msgid "Adds one production slot to the winemaker's house, the oilmaker's house, the dairy, the paper workshop and the jeweler's house."
-msgstr "Добавляет один слот производства дому винодела, дому маслодела, сыроварне, бумажной мастерской и дому ювелира."
-
-msgctxt "technologies.description"
-msgid "Unlocks the water mill: the running water sets the millstones in motion.\n+25% to the production of mines, quarries, the bloomery, the smelter and the forge, where the water runs: the ore is washed and the bellows are driven by the water."
-msgstr "Открывает водяную мельницу: течение воды приводит в движение мельничные жернова.\n+25% к производству шахт и каменоломен, сыродутной печи, плавильни и кузницы, где течёт вода: руду промывают, а горны приводят в движение водой."
+msgid "Unlocks the water mill: the running water sets the millstones in motion.\n+25% to the production of mines, quarries, the bloomery, the smelter and the forge only where fresh water is available: without water the wheel gives no bonus, for the water washes the ore and drives the bellows."
+msgstr "Открывает водяную мельницу: течение воды приводит в движение мельничные жернова.\n+25% к производству шахт и каменоломен, сыродутной печи, плавильни и кузницы только при наличии пресной воды: без воды колесо бонуса не даёт, поскольку именно вода промывает руду и приводит в движение меха."
 
 msgctxt "technologies.flavor"
 msgid "A plow yoked to oxen made it possible to work heavy soils and raised yields."
@@ -6667,6 +6639,10 @@ msgid "A shaft is only as deep as the rope that serves it. A drum on a windlass,
 msgstr "Шахта так глубока, насколько глубок канат, который её обслуживает. Барабан на лебедке, канат через блок, канатный ворот, вокруг которого ходят люди или быки, — а в китайских рудниках педальное колесо размером с дом, которое крутится весь день, как похожее на него водяное колесо. Что поднимает лебёдка, столько и стоит рудник: руда, которую нельзя поднять, остаётся в породе."
 
 msgctxt "technologies.flavor"
+msgid "A threaded spindle turns many easy turns of a long handle into one slow, enormous squeeze. The press no longer waits on the weight of a beam, and a second batch can be worked beside the first."
+msgstr "Резьбовой шпиндель превращает множество лёгких оборотов длинной рукояти в одно медленное и огромное сжатие. Пресс больше не ждёт тяжести балки, и рядом с первой партией можно работать со второй."
+
+msgctxt "technologies.flavor"
 msgid "A wheel that rolls is not yet a machine; the teeth are. They turn one turn of the axle into a turn of the millstone, a pull of the press or a lift of the winch, and they hold the load instead of letting it fall back. Vitruvius described a mill whose upright wheel drove a horizontal one through a row of teeth, and a marble saw driven the same way is known from a sarcophagus in Hierapolis."
 msgstr "Колесо, которое катится, ещё не машина; машину делают зубья. Они превращают один оборот вала в оборот жернова, в тягу пресса или в подъём лебёдки и держат груз, не давая ему сорваться. Витривий описал мельницу, у которой вертикальное колесо через ряд зубьев приводило горизонтальное, а такой же мраморный пильный станок известен по саркофагу из Иераполя."
 
@@ -6677,10 +6653,6 @@ msgstr "Эмпорий не был ни колонией, ни городом: �
 msgctxt "technologies.flavor"
 msgid "Ancient civilizations could count, but only now has knowledge moved from simple recipes to strict proofs. Geometry and abstract calculation let people not just watch the world but compute it: from the shape of a wheel's teeth to the motion of the stars."
 msgstr "Древние цивилизации умели считать, но именно сейчас знания перешли от простых рецептов к строгим доказательствам. Геометрия и абстрактные вычисления позволили не просто наблюдать за миром, а рассчитывать его: от формы зубьев колеса до движения звёзд."
-
-msgctxt "technologies.flavor"
-msgid "Roasting minerals opens new possibilities for crafts: limestone yields lime, while roasted alunite is leached and crystallized to obtain alum for treating hides and fixing dyes."
-msgstr "Обжиг минералов открывает новые возможности для ремёсел: из известняка получают известь, а обожжённый алунит выщелачивают и кристаллизуют, получая квасцы для выделки кож и закрепления красителей."
 
 msgctxt "technologies.flavor"
 msgid "By mixing fat with lye, people got soap, the first step toward hygiene and medicine."
@@ -6787,6 +6759,10 @@ msgid "Raw leaf is harsh and spoils quickly. Cured and cut, it keeps for years, 
 msgstr "Сырой лист резок и быстро портится. Выделанный и нарезанный, он хранится годами: именно выделка превращает собранный лист в лежалый товар."
 
 msgctxt "technologies.flavor"
+msgid "Roasting minerals opens new possibilities for crafts: limestone yields lime, while roasted alunite is leached and crystallized to obtain alum for treating hides and fixing dyes."
+msgstr "Обжиг минералов открывает новые возможности для ремёсел: из известняка получают известь, а обожжённый алунит выщелачивают и кристаллизуют, получая квасцы для выделки кож и закрепления красителей."
+
+msgctxt "technologies.flavor"
 msgid "Ropes became an important material for building, sailing and farming, letting people bind, haul and hoist loads."
 msgstr "Верёвки стали важным материалом для строительства, мореплавания и сельского хозяйства, позволяя связывать, тянуть и поднимать грузы."
 
@@ -6869,10 +6845,6 @@ msgstr "Дерево — древнейший строительный мате�
 msgctxt "technologies.flavor"
 msgid "Working precious stones and metals turned the craft into art."
 msgstr "Обработка драгоценных камней и металлов превратила ремесло в искусство."
-
-msgctxt "technologies.flavor"
-msgid "A threaded spindle turns many easy turns of a long handle into one slow, enormous squeeze. The press no longer waits on the weight of a beam, and a second batch can be worked beside the first."
-msgstr "Резьбовой шпиндель превращает множество лёгких оборотов длинной рукояти в одно медленное и огромное сжатие. Пресс больше не ждёт тяжести балки, и рядом с первой партией можно работать со второй."
 
 msgctxt "technologies.name"
 msgid "Alchemy"
@@ -6971,14 +6943,6 @@ msgid "Leatherworking"
 msgstr "Кожевенное дело"
 
 msgctxt "technologies.name"
-msgid "Mechanics"
-msgstr "Механика"
-
-msgctxt "technologies.name"
-msgid "Mineral Firing"
-msgstr "Обжиг минералов"
-
-msgctxt "technologies.name"
 msgid "Masonry"
 msgstr "Каменная кладка"
 
@@ -6991,8 +6955,16 @@ msgid "Mead Making"
 msgstr "Медоварение"
 
 msgctxt "technologies.name"
+msgid "Mechanics"
+msgstr "Механика"
+
+msgctxt "technologies.name"
 msgid "Metallurgy"
 msgstr "Металлургия"
+
+msgctxt "technologies.name"
+msgid "Mineral Firing"
+msgstr "Обжиг минералов"
 
 msgctxt "technologies.name"
 msgid "Mining"
@@ -7033,6 +7005,10 @@ msgstr "Канатное дело"
 msgctxt "technologies.name"
 msgid "Salt Extraction"
 msgstr "Добыча соли"
+
+msgctxt "technologies.name"
+msgid "Screw Press"
+msgstr "Винтовой пресс"
 
 msgctxt "technologies.name"
 msgid "Scriptoriums"
@@ -7093,10 +7069,6 @@ msgstr "Обработка дерева"
 msgctxt "technologies.name"
 msgid "Writing"
 msgstr "Письменность"
-
-msgctxt "technologies.name"
-msgid "Screw Press"
-msgstr "Винтовой пресс"
 
 msgctxt "technologies.unlock_effects.name"
 msgid "Allows scouts to explore areas in the fog of war."

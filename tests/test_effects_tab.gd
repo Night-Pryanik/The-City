@@ -127,9 +127,9 @@ func _run() -> void:
 
     var original_locale := TranslationServer.get_locale()
     TranslationServer.set_locale("ru")
-    check(tr("Mine, quarry, bloomery, smelter, forge: +25% production", "modifiers.tech_modifiers.name")
-            == "Шахта, каменоломня, сыродутная печь, плавильня, кузница: +25% к производству",
-        "the Russian water wheel caption names all five distinct recipients", state)
+    check(tr("Mine, quarry, bloomery, smelter, forge: +25% production only where fresh water is available", "modifiers.tech_modifiers.name")
+            == "Шахта, каменоломня, сыродутная печь, плавильня, кузница: +25% к производству только при наличии пресной воды",
+        "the Russian water wheel caption names all five distinct recipients and the water condition", state)
     TranslationServer.set_locale(original_locale)
 
     var production_buildings := {"water_wheel": "forge", "cogwheel": "animal_mill"}
