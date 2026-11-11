@@ -1,26 +1,3 @@
-# Headless test of the production slots a technology grants:
-#   godot --headless --path . --script res://tests/test_production_slots.gd
-#
-# The grant lives in the "building_production_slots" map of a tech_modifiers record
-# (data/modifiers.json), keyed by the technology. The effect reaches only the buildings
-# that exist in the game: a blacklist mod that removes a building drops it from the
-# grant, and no mod has to rewrite the modifier. The first source is the "Screw Press"
-# technology of the antiquity.
-#
-# Checks:
-#   1. The shape of the data: the technology, its prerequisites, the record of the
-#      grant and the buildings it names.
-#   2. The gate: before the research the buildings keep their base slot count.
-#   3. A standing building gains the slot when the research completes (both the
-#      normal and the instant debug path), and the granted slot starts empty.
-#   4. A building still under construction gains the slot too.
-#   5. A building constructed after the research is born with the extra slot.
-#   6. An upgrade keeps using the resolver: a building outside the grant table
-#      does not gain a slot from the screw press.
-#   7. The slot containers follow the grown array, including the lazy restore
-#      from the flat dicts a save holds.
-#   8. The technology tree and the Effects tab show the grant with its own icon.
-#   9. A grant to a building a mod removed is ignored by the interface, not an error.
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
@@ -62,8 +39,6 @@ func _run() -> void:
         print("PRODUCTION SLOTS TEST OK")
         quit(0)
 
-# The tech_modifiers record of the screw press: the grant is a map on the modifier,
-# not on the technology.
 func _modifier_record(gdata: Node) -> Dictionary:
     for tm in gdata.modifiers.get("tech_modifiers", []):
         if str(tm.get("tech_id", "")) == TECH:
@@ -244,41 +219,61 @@ func _names_building(gdata: Node, grants: Dictionary, display_name: String) -> b
             return true
     return false
 
-# --- 9. A grant to a removed building is ignored -------------------------------
-# A blacklist mod removes a building but leaves the vanilla modifier that names it:
-# the effect simply does not reach the absent building. The dangling key is simulated
-# directly in the modifier map, which is exactly the state a blacklist produces.
 func _test_absent_building_ignored(gdata: Node, cdata: Node, state: Dictionary) -> void:
-    var grants: Dictionary = _slot_grants(gdata)
-    grants["ghost_workshop"] = 1
-    cdata.unlocked_technologies.erase(TECH)
-    cdata.unlocked_technologies.append(TECH)
-
-    var existing := 0
-    for building_id in grants:
-        if not gdata.get_building_data(str(building_id)).is_empty():
-            existing += 1
+    var buildings: Array = gdata.buildings
+    var grants: Dictionary = _slot_grants(gdata).duplicate()
+    var removed_name: String = gdata.get_building_display_name("winemaker_house")
+    gdata.buildings = buildings.filter(func(b): return b.get("id", "") != "winemaker_house")
+    check(cdata.get_production_slot_count("winemaker_house") == 0,
+            "a removed building has no production slots", state)
+    for building_id in GRANTED:
+        if building_id != "winemaker_house":
+            check(cdata.get_production_slot_count(building_id) == 2,
+                    "the remaining buildings keep their slot bonus", state)
 
     var rows := 0
     for effect in cdata.get_city_effects():
-        if str(effect.get("group", "")) != "technologies" \
-                or str(effect.get("icon", "")) != "production_slot.png":
+        if str(effect.get("icon", "")) != "production_slot.png":
             continue
         rows += 1
-        check(str(effect.get("name", "")) != "ghost_workshop",
-                "the Effects tab must not name a building the game does not have", state)
-    check(rows == existing,
-            "the Effects tab lists only the existing workshops (got %d, want %d)"
-                    % [rows, existing], state)
+        check(not ["winemaker_house", removed_name].has(str(effect.get("name", ""))),
+                "the Effects tab omits the removed building", state)
+    check(rows == GRANTED.size() - 1, "only existing slot recipients appear in Effects", state)
 
     var tree = load("res://scripts/tech_tree.gd").new()
+    var badges := 0
     for item in tree._get_unlock_items(TECH):
-        if str(item.get("icon", "")) == "production_slot.png":
-            check(not str(item.get("tip", "")).contains("ghost_workshop"),
-                    "the unlock tooltip must not name a removed building", state)
-    tree.free()
+        if str(item.get("icon", "")) != "production_slot.png":
+            continue
+        badges += 1
+        var tip := str(item.get("tip", ""))
+        check(not tip.contains(removed_name) and not tip.contains("winemaker_house"),
+                "the unlock tooltip omits the removed building", state)
+        for building_id in GRANTED:
+            if building_id != "winemaker_house":
+                check(tip.contains(gdata.get_building_display_name(building_id)),
+                        "the unlock tooltip retains existing recipients", state)
+    check(badges == 1, "a partially applicable grant keeps its badge", state)
 
-    grants.erase("ghost_workshop")
+    gdata.buildings = buildings.filter(func(b): return not GRANTED.has(b.get("id", "")))
+    for building_id in GRANTED:
+        check(cdata.get_production_slot_count(building_id) == 0,
+                "no removed building receives slots", state)
+    cdata.unlocked_technologies.append("cogwheel")
+    check(cdata.get_tech_production_modifiers("jeweler_house", true, false).is_empty(),
+            "production multipliers also ignore removed buildings", state)
+    for item in tree._get_unlock_items(TECH):
+        check(str(item.get("icon", "")) != "production_slot.png",
+                "a grant with no remaining recipients has no unlock badge", state)
+    for effect in cdata.get_city_effects():
+        check(str(effect.get("icon", "")) != "production_slot.png",
+                "a grant with no remaining recipients has no Effects rows", state)
+    check(_slot_grants(gdata) == grants, "ignoring absent buildings never rewrites the modifier", state)
+    gdata.buildings = buildings
+    for building_id in GRANTED:
+        check(cdata.get_production_slot_count(building_id) == 2,
+                "a restored building receives its bonus again", state)
+    tree.free()
 
 func check(cond: bool, msg: String, state: Dictionary):
     if not cond:

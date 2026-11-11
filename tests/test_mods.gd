@@ -313,10 +313,6 @@ func _test_validation(state: Dictionary) -> void:
 
 # --- 7. The shipped blacklist example -----------------------------------------------
 
-# The example is shipped with the game, so it is read as any other mod: it must be usable,
-# it must pass the check, and it must remove the chain it names without touching its
-# neighbours. A vanilla data change that starts to refer to a removed entity would make
-# the example unusable — and the player would see a shipped mod that cannot be switched on.
 func _test_blacklist_example(state: Dictionary) -> void:
     _mod_manager.scan()
     var manifest = _mod_manager.get_mod(EXAMPLE_MOD)
@@ -335,6 +331,38 @@ func _test_blacklist_example(state: Dictionary) -> void:
     check(not _has_craft("wine"), "the example removes the recipe of the same name", state)
     check(not _has_craft("fruit_wine"), "the example removes the second recipe", state)
     check(not _game_data.products.has("fruit_wine"), "the example removes the second product", state)
+
+    var grants: Dictionary = {}
+    for modifier in _game_data.modifiers.get("tech_modifiers", []):
+        if modifier.get("tech_id", "") == "screw_press":
+            grants = modifier.get("building_production_slots", {})
+    check(grants.size() == 5 and int(grants.get("winemaker_house", 0)) == 1,
+            "the blacklist leaves the vanilla slot modifier unchanged", state)
+    var cdata = get_root().get_node("CityData")
+    var unlocked: Array = cdata.unlocked_technologies.duplicate()
+    cdata.unlocked_technologies = ["screw_press"]
+    check(cdata.get_production_slot_count("winemaker_house") == 0,
+            "the blacklisted building receives no slots", state)
+    for building_id in ["oilmaker_house", "dairy", "paper_workshop", "jeweler_house"]:
+        check(cdata.get_production_slot_count(building_id) == 2,
+                "the blacklist preserves the slot bonus of %s" % building_id, state)
+    var rows := 0
+    for effect in cdata.get_city_effects():
+        if str(effect.get("icon", "")) == "production_slot.png":
+            rows += 1
+            check(str(effect.get("name", "")) != "winemaker_house",
+                    "the blacklist leaves no missing building in Effects", state)
+    check(rows == 4, "the modded game shows four slot recipients", state)
+    var tree = load("res://scripts/tech_tree.gd").new()
+    var badges := 0
+    for item in tree._get_unlock_items("screw_press"):
+        if str(item.get("icon", "")) == "production_slot.png":
+            badges += 1
+            check(not str(item.get("tip", "")).contains("winemaker_house"),
+                    "the modded tooltip omits the missing building", state)
+    check(badges == 1, "the modded technology keeps the slot badge", state)
+    tree.free()
+    cdata.unlocked_technologies = unlocked
 
     var alcohol = _game_data.product_groups.get("alcohol", [])
     check(not (alcohol as Array).has("wine"), "the rewritten group drops the removed wine", state)

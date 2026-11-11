@@ -2388,10 +2388,6 @@ func get_city_effects() -> Array:
             "source": get_tech_name(tech_id),
         })
 
-    # The production slots the researched technologies grant: one row per building
-    # that exists, so the tab names the workshop that gained the slot, not the grant
-    # as a whole. A workshop a blacklist mod removed is skipped — the grant simply
-    # does not reach it.
     for tm in GameData.modifiers.get("tech_modifiers", []):
         var tech_id := String(tm.get("tech_id", ""))
         var grants: Dictionary = tm.get("building_production_slots", {})
@@ -2931,13 +2927,11 @@ func request_build(building_id: String) -> bool:
     emit_signal("city_updated")
     return true
 
-# The production slots of a building type right now: the base count from
-# data/buildings.json plus the slots the researched technologies grant
-# (the "building_production_slots" map of a tech_modifiers record). The grant
-# reaches only the buildings that exist in the game: a blacklist mod that removes
-# a building drops it from the effect, and no mod has to rewrite the modifier.
 func get_production_slot_count(building_id: String) -> int:
-    var count := int(GameData.get_building_data(building_id).get("production_slots", 1))
+    var building: Dictionary = GameData.get_building_data(building_id)
+    if building.is_empty():
+        return 0
+    var count := int(building.get("production_slots", 1))
     for tm in GameData.modifiers.get("tech_modifiers", []):
         if not is_tech_unlocked(str(tm.get("tech_id", ""))):
             continue
@@ -3172,7 +3166,7 @@ func get_water_production_modifiers(owner_id: String, is_building: bool,
 func get_tech_production_modifiers(owner_id: String, is_building: bool,
         has_fresh_water: bool) -> Array:
     var result: Array = []
-    if owner_id == "":
+    if owner_id == "" or (is_building and GameData.get_building_data(owner_id).is_empty()):
         return result
     var field := "building_production_multiplier" if is_building else "production_multiplier"
     for tm in GameData.modifiers.get("tech_modifiers", []):

@@ -1347,23 +1347,22 @@ func _walk_id_map(value, rule, context: Dictionary, problems: Array) -> void:
         _walk_schema(value[key], inner, _child_context(context, name), problems)
 
 
-# One key of a dictionary against its registry.
-#
-# An empty registry is not a broken key: it means the tree has no such collection at all (the name
-# of the collection is misspelled, the file is not loaded). That is a problem of its own — reported
-# once by the walk of the root — and reporting every key of every map here would bury it under
-# hundreds of records pointing at the same cause.
 func _check_dict_key(problems: Array, context: Dictionary, registry: String, key: String) -> void:
     var known: Dictionary = _registries.get(registry, {})
-    if known.is_empty() or known.has(key):
+    if known.has(key):
         return
-    # A modifier acts on the buildings that exist: a blacklist mod removes a building,
-    # and the vanilla modifier naming it simply skips it at runtime. Such a key is absent
-    # BY DESIGN, not a typo — the loader keeps the removed ids (GameData.blacklisted).
-    if registry == KEY_BUILDINGS and _game_data != null:
+    var removed_buildings: Dictionary = {}
+    if registry == KEY_BUILDINGS and str(context.get("collection", "")) == "modifiers" \
+            and str(context.get("path", "")).begins_with("tech_modifiers["):
         var removed = _game_data.get("blacklisted")
-        if removed is Dictionary and removed.get(registry, {}).has(key):
-            return
+        if removed is Dictionary:
+            removed_buildings = removed.get(KEY_BUILDINGS, {})
+    # Modifier targets removed by a blacklist are optional; misspelled targets are not.
+    if removed_buildings.has(key):
+        return
+    # A missing collection is reported elsewhere, but a fully blacklisted one still catches typos.
+    if known.is_empty() and removed_buildings.is_empty():
+        return
     var target := str(REGISTRY_TARGETS.get(registry, "product"))
     # The reference to an @-group is written with the "@", and it is the group that is missing.
     if registry == KEY_GROUP_REFS and key.begins_with("@"):

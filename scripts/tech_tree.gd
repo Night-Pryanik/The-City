@@ -1200,9 +1200,6 @@ func _get_unlock_items(tech_id: String) -> Array:
         if eff is Dictionary:
             _add_unlock_item(result, seen, eff.get("icon", ""), eff.get("name", tr("Technology effect")))
 
-    # The production slots the technology grants (tech_modifiers): one badge for the
-    # whole set, the workshops and their amounts belong to its tooltip (as the recipes
-    # do). A workshop a blacklist mod removed is skipped — the grant does not reach it.
     var slot_lines: Array[String] = []
     for m in mods.get("tech_modifiers", []):
         if not (m is Dictionary) or m.get("tech_id", "") != tech_id:

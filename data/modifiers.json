@@ -90,11 +90,7 @@
         }
       },
       {
-        // The press grants an extra production slot. The map names the workshops it
-        // applies to, and the effect reaches only those that exist in the game: a
-        // blacklist mod that removes a workshop simply drops it from the grant, so
-        // the mod does not have to rewrite this record. No icon/name of its own —
-        // the interface words one row per granted workshop (CityData.get_city_effects).
+        // Blacklisted buildings remain in the map but receive no effect.
         "tech_id": "screw_press",
         "building_production_slots": {
           "winemaker_house": 1, "oilmaker_house": 1, "dairy": 1,

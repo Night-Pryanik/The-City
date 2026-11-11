@@ -65,6 +65,8 @@ func _initialize():
         _test_schema_whitelist(state)
     if WATCHDOG.wants_case("dict_keys"):
         _test_dict_keys(state)
+    if WATCHDOG.wants_case("blacklisted_modifier_buildings"):
+        _test_blacklisted_modifier_buildings(state)
     if WATCHDOG.wants_case("real_data"):
         _test_real_data(state)
     if WATCHDOG.wants_case("localization"):
@@ -585,6 +587,47 @@ func _test_dict_keys(state: Dictionary):
         "data without the tree must not produce key problems", state)
     bare.free()
 
+    gd.free()
+
+
+func _test_blacklisted_modifier_buildings(state: Dictionary) -> void:
+    var gd = _make_data()
+    gd.raw_data = {
+        "buildings": [{"id": "dairy", "name": "Dairy"}],
+        "modifiers": {"tech_modifiers": [{
+            "tech_id": "t_wheel",
+            "building_production_slots": {"dairy": 1, "removed_house": 1, "typo_house": 1},
+            "building_production_multiplier": {"dairy": 1.25, "removed_house": 1.25, "typo_house": 1.25},
+        }]},
+    }
+    gd.blacklisted = {"buildings": {"removed_house": true}}
+    var validator := DataValidator.new()
+    var problems: Array = validator.validate(gd)
+    check(_only_unknown_fields(problems).is_empty(),
+            "tech modifier slot maps belong to the schema", state)
+    var keys: Array = _only_unknown_keys(problems)
+    check(keys.size() == 2, "only the two misspelled modifier targets are reported", state)
+    for problem in keys:
+        check(str(problem.get("ref_id", "")) == "typo_house",
+                "blacklisted and existing modifier targets are valid", state)
+
+    gd.raw_data["buildings"] = []
+    gd.blacklisted["buildings"]["dairy"] = true
+    keys = _only_unknown_keys(validator.validate(gd))
+    check(keys.size() == 2, "typos remain visible when all buildings are blacklisted", state)
+    for problem in keys:
+        check(str(problem.get("ref_id", "")) == "typo_house",
+                "a fully blacklisted building collection still allows removed targets", state)
+
+    gd.raw_data["buildings"] = [{"id": "dairy"}]
+    gd.blacklisted.clear()
+    keys = _only_unknown_keys(validator.validate(gd))
+    check(keys.size() == 4, "missing targets without a blacklist are reported", state)
+
+    gd.blacklisted = {"buildings": {"removed_house": true}}
+    gd.crafts.append({"id": "broken_recipe", "produced_in": ["removed_house"]})
+    check(not _find(validator.validate(gd), "produced_in", "removed_house", "broken_recipe").is_empty(),
+            "required recipe references are not exempted by modifier rules", state)
     gd.free()
 
 
