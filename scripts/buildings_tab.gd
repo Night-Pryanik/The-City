@@ -924,8 +924,8 @@ func _show_building_details(bdata: Dictionary):
                 int(additional_yield[yield_id]), "colon"))
             content.add_child(yield_row)
 
-    # The number of production slots
-    var slots = bdata.get("production_slots", 0)
+    # The number of production slots, including the ones the researched technologies grant
+    var slots = CityData.get_production_slot_count(str(bdata.get("id", "")))
     var slots_label = Label.new()
     slots_label.text = tr("Production slots: %d") % int(slots)
     slots_label.add_theme_font_size_override("font_size", 14)

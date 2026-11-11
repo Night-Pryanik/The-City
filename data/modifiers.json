@@ -81,12 +81,24 @@
         // The Hand Mill is not listed either: it is turned by hand.
         "tech_id": "cogwheel",
         "icon": "production_bonus.png",
-        "name": "Mine, quarry, animal mill, oil press, weaver's and silkmaker's house, mason's, carpenter's and jeweler's workshop: +25% production",
+        "name": "Mine, quarry, animal mill, oilmaker's house, weaver's and silkmaker's house, mason's, carpenter's and jeweler's workshop: +25% production",
         "production_multiplier": { "mine": 1.25, "quarry": 1.25 },
         "building_production_multiplier": {
-          "animal_mill": 1.25, "hand_oil_press": 1.25, "weaver_house": 1.25,
+          "animal_mill": 1.25, "oilmaker_house": 1.25, "weaver_house": 1.25,
           "silk_maker_house": 1.25, "mason_workshop": 1.25, "jeweler_house": 1.25,
           "carpenter_workshop": 1.25
+        }
+      },
+      {
+        // The press grants an extra production slot. The map names the workshops it
+        // applies to, and the effect reaches only those that exist in the game: a
+        // blacklist mod that removes a workshop simply drops it from the grant, so
+        // the mod does not have to rewrite this record. No icon/name of its own —
+        // the interface words one row per granted workshop (CityData.get_city_effects).
+        "tech_id": "screw_press",
+        "building_production_slots": {
+          "winemaker_house": 1, "oilmaker_house": 1, "dairy": 1,
+          "paper_workshop": 1, "jeweler_house": 1
         }
       }
     ],

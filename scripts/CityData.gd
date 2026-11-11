@@ -2029,6 +2029,7 @@ func _complete_tech_instantly(tech_id: String) -> bool:
         emit_signal("research_error", tr("Technology not found: ") + tech_id, 1)
         return false
     unlocked_technologies.append(tech_id)
+    sync_production_slots()
     # The technology can open the new kinds of the resources — we spawn them on the map and
     # The actual rate of the science of the city (points/sec) — a direct sum of the sources:
     # the base income (BASE_SCIENCE_PER_SEC) plus the contribution of the working science buildings
@@ -2084,6 +2085,7 @@ func _complete_research():
         return
     var completed_tech_id = current_research_tech_id
     unlocked_technologies.append(current_research_tech_id)
+    sync_production_slots()
     var tech_name = get_tech_name(current_research_tech_id)
     emit_signal("research_error", tr("Research complete: ") + tech_name, 0)
     # The technology can open the new kinds of the resources — we spawn them on the map.
@@ -2314,6 +2316,9 @@ func check_building_additional_req(building_id: String) -> Dictionary:
 
     return {"ok": false, "reason": tr("Unknown construction requirement: %s") % requirement}
 
+# The badge of a production slot a technology grants (the tree and the Effects tab).
+const ICON_PRODUCTION_SLOT := "production_slot.png"
+
 # The effects that act on the city right now: the numbers and the availability it really has.
 # Only effects in force are listed — what a technology unlocks belongs to the technology tree,
 # and an effect that does not act on the city is not an entry here.
@@ -2382,6 +2387,26 @@ func get_city_effects() -> Array:
             "value": "",
             "source": get_tech_name(tech_id),
         })
+
+    # The production slots the researched technologies grant: one row per building
+    # that exists, so the tab names the workshop that gained the slot, not the grant
+    # as a whole. A workshop a blacklist mod removed is skipped — the grant simply
+    # does not reach it.
+    for tm in GameData.modifiers.get("tech_modifiers", []):
+        var tech_id := String(tm.get("tech_id", ""))
+        var grants: Dictionary = tm.get("building_production_slots", {})
+        if grants.is_empty() or not is_tech_unlocked(tech_id):
+            continue
+        for building_id in grants:
+            if GameData.get_building_data(str(building_id)).is_empty():
+                continue
+            effects.append({
+                "group": "technologies",
+                "icon": ICON_PRODUCTION_SLOT,
+                "name": GameData.get_building_display_name(str(building_id)),
+                "value": tr("+%d production slot") % int(grants[building_id]),
+                "source": get_tech_name(tech_id),
+            })
 
     # The specializations of the city. Only the numbers come here: a branch may also give a building,
     # a recipe or a mechanic, and those lines belong to the tab "Specialization".
@@ -2704,7 +2729,7 @@ func complete_building_upgrade(idx: int, upgrade_to: String) -> bool:
     var slot_count := 1
     var default_recipes: Array = []
     if new_bdata:
-        slot_count = int(new_bdata.get("production_slots", 1))
+        slot_count = get_production_slot_count(upgrade_to)
         default_recipes = new_bdata.get("default_recipes", [])
 
     # The transfer of the recipes: a recipe which is executable in the new version is preserved;
@@ -2906,6 +2931,43 @@ func request_build(building_id: String) -> bool:
     emit_signal("city_updated")
     return true
 
+# The production slots of a building type right now: the base count from
+# data/buildings.json plus the slots the researched technologies grant
+# (the "building_production_slots" map of a tech_modifiers record). The grant
+# reaches only the buildings that exist in the game: a blacklist mod that removes
+# a building drops it from the effect, and no mod has to rewrite the modifier.
+func get_production_slot_count(building_id: String) -> int:
+    var count := int(GameData.get_building_data(building_id).get("production_slots", 1))
+    for tm in GameData.modifiers.get("tech_modifiers", []):
+        if not is_tech_unlocked(str(tm.get("tech_id", ""))):
+            continue
+        count += int(tm.get("building_production_slots", {}).get(building_id, 0))
+    return count
+
+# A technology researched mid-game grants its slots to the buildings already
+# standing and to the ones still under construction: their slot arrays were
+# sized before the grant. A granted slot starts empty — the recipe is the
+# player's choice.
+func sync_production_slots() -> void:
+    var changed := false
+    for bld in city_built_buildings:
+        changed = _fit_slots_to_capacity(bld, str(bld.get("id", ""))) or changed
+    for build_key in building_construction:
+        var rec: Dictionary = building_construction[build_key]
+        changed = _fit_slots_to_capacity(rec, str(rec.get("building_id", ""))) or changed
+    if changed:
+        emit_signal("city_updated")
+
+func _fit_slots_to_capacity(record: Dictionary, building_id: String) -> bool:
+    var slots: Array = record.get("slots", [])
+    var want := get_production_slot_count(building_id)
+    if slots.size() >= want:
+        return false
+    while slots.size() < want:
+        slots.append("empty")
+    record["slots"] = slots
+    return true
+
 # The auto-assignment of the recipes to the slots on the construction of the building:
 # 1. We take the default_recipes of the building
 # 2. We assign them to the slots in order, without a repetition
@@ -2921,7 +2983,7 @@ func _auto_assign_slots(building_id: String) -> Array:
     if not bdata:
         return result
 
-    var slot_count = int(bdata.get("production_slots", 1))
+    var slot_count = get_production_slot_count(building_id)
     var default_recipes = bdata.get("default_recipes", [])
 
     for i in range(slot_count):

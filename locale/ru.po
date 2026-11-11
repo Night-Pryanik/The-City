@@ -15,8 +15,20 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "%s (%s)"
+msgstr "%s (%s)"
+
+msgid "+%d production slot"
+msgstr "+%d слот производства"
+
+msgid "A challenge of the era is completed."
+msgstr "Испытание эпохи выполнено."
+
 msgid "Beach"
 msgstr "Пляж"
+
+msgid "Extra production slots:"
+msgstr "Дополнительные слоты производства:"
 
 msgid "Lake"
 msgstr "Озеро"
@@ -3251,8 +3263,8 @@ msgid "Hand Mill"
 msgstr "Ручная мельница"
 
 msgctxt "buildings.name"
-msgid "Hand Oil Press"
-msgstr "Ручная маслодавка"
+msgid "Oilmaker's House"
+msgstr "Дом маслодела"
 
 msgctxt "buildings.name"
 msgid "Jeweler's House"
@@ -4639,8 +4651,8 @@ msgid "Fresh water passes through in a chain (up to 4 tiles)"
 msgstr "Передача пресной воды по цепочке (до 4 гексов)"
 
 msgctxt "modifiers.tech_modifiers.name"
-msgid "Mine, quarry, animal mill, oil press, weaver's and silkmaker's house, mason's, carpenter's and jeweler's workshop: +25% production"
-msgstr "Шахта, каменоломня, мельница с животной тягой, маслобойня, дом ткача и шелковода, мастерская каменщика, плотника и ювелира: +25% к производству"
+msgid "Mine, quarry, animal mill, oilmaker's house, weaver's and silkmaker's house, mason's, carpenter's and jeweler's workshop: +25% production"
+msgstr "Шахта, каменоломня, мельница с животной тягой, дом маслодела, дом ткача и шелковода, мастерская каменщика, плотника и ювелира: +25% к производству"
 
 msgctxt "modifiers.tech_modifiers.name"
 msgid "Mine, quarry, bloomery, smelter, forge: +25% production"
@@ -6314,6 +6326,10 @@ msgctxt "specializations.description"
 msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
 msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше."
 
+msgctxt "specializations.description"
+msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
+msgstr "Печи города знают за его стенами. Керамика приносит больше, а мастерские наполняют её быстрее."
+
 msgctxt "specializations.full_name"
 msgid "Specialization of ceramics"
 msgstr "Специализация керамики"
@@ -6337,6 +6353,10 @@ msgstr "Специализация оружия"
 msgctxt "specializations.full_name"
 msgid "Specialization of wool"
 msgstr "Специализация шерсти"
+
+msgctxt "specializations.full_name"
+msgid "Specialization of pottery"
+msgstr "Специализация керамики"
 
 msgctxt "specializations.name"
 msgid "Agrarian"
@@ -6381,6 +6401,10 @@ msgstr "Оружейная"
 msgctxt "specializations.name"
 msgid "Wool"
 msgstr "Шерсть"
+
+msgctxt "specializations.name"
+msgid "Pottery"
+msgstr "Глиняная посуда"
 
 msgctxt "technologies.description"
 msgid "+30% to resource production on plantations."
@@ -6463,8 +6487,8 @@ msgid "Allows you to build the glassmaker's house: sand and soda → glass."
 msgstr "Даёт возможность строить дом стеклодела: песок и сода → стекло."
 
 msgctxt "technologies.description"
-msgid "Allows you to build the hand oil press: seeds, fruits and other parts of oil crops → vegetable oil."
-msgstr "Даёт возможность строить ручную маслодавку: семена, плоды и прочие части масличных культур → растительное масло."
+msgid "Allows you to build the oilmaker's house: seeds, fruits and other parts of oil crops → vegetable oil."
+msgstr "Даёт возможность строить дом маслодела: семена, плоды и прочие части масличных культур → растительное масло."
 
 msgctxt "technologies.description"
 msgid "Allows you to build the lime kilns: limestone → lime."
@@ -6583,8 +6607,8 @@ msgid "Unlocks the recipe for hopped beer."
 msgstr "Открывает рецепт хмелевого пива."
 
 msgctxt "technologies.description"
-msgid "Unlocks the toothed wheel: the gears that pass a rotation on to the working tool.\n+25% to the production of mines, quarries, animal mills, oil presses, weaver's and silkmaker's houses, and of the mason's, carpenter's and jeweler's workshops."
-msgstr "Открывает зубчатое колесо: шестерни, передающие вращение рабочему инструменту.\n+25% к производству шахт и каменоломен, мельницы с животной тягой, ручной маслодавки, дома ткача и шелкопряда, а также мастерских каменотёса, плотника и ювелира."
+msgid "Unlocks the toothed wheel: the gears that pass a rotation on to the working tool.\n+25% to the production of mines, quarries, animal mills, oilmaker's houses, weaver's and silkmaker's houses, and of the mason's, carpenter's and jeweler's workshops."
+msgstr "Открывает зубчатое колесо: шестерни, передающие вращение рабочему инструменту.\n+25% к производству шахт и каменоломен, мельницы с животной тягой, дома маслодела, дома ткача и шелкопряда, а также мастерских каменотёса, плотника и ювелира."
 
 msgctxt "technologies.description"
 msgid "Unlocks the use of draft animals to turn millstones."
@@ -6593,6 +6617,10 @@ msgstr "Открывает использование тягловых живо�
 msgctxt "technologies.description"
 msgid "Unlocks the use of the water wheel to set millstones in motion."
 msgstr "Открывает использование водяного колеса для приведения в движение мельничных жерновов."
+
+msgctxt "technologies.description"
+msgid "Adds one production slot to the winemaker's house, the oilmaker's house, the dairy, the paper workshop and the jeweler's house."
+msgstr "Добавляет один слот производства дому винодела, дому маслодела, сыроварне, бумажной мастерской и дому ювелира."
 
 msgctxt "technologies.flavor"
 msgid "A plow yoked to oxen made it possible to work heavy soils and raised yields."
@@ -6801,6 +6829,10 @@ msgstr "Дерево — древнейший строительный мате�
 msgctxt "technologies.flavor"
 msgid "Working precious stones and metals turned the craft into art."
 msgstr "Обработка драгоценных камней и металлов превратила ремесло в искусство."
+
+msgctxt "technologies.flavor"
+msgid "A threaded spindle turns many easy turns of a long handle into one slow, enormous squeeze. The press no longer waits on the weight of a beam, and a second batch can be worked beside the first."
+msgstr "Резьбовой шпиндель превращает множество лёгких оборотов длинной рукояти в одно медленное и огромное сжатие. Пресс больше не ждёт тяжести балки, и рядом с первой партией можно работать со второй."
 
 msgctxt "technologies.name"
 msgid "Alchemy"
@@ -7013,6 +7045,10 @@ msgstr "Обработка дерева"
 msgctxt "technologies.name"
 msgid "Writing"
 msgstr "Письменность"
+
+msgctxt "technologies.name"
+msgid "Screw Press"
+msgstr "Винтовой пресс"
 
 msgctxt "technologies.unlock_effects.name"
 msgid "Allows scouts to explore areas in the fog of war."

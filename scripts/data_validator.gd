@@ -565,6 +565,7 @@ const MODIFIER_FIELDS := {
         "requires_water": LEAF,
         "production_multiplier": IMPROVEMENT_MAP,
         "building_production_multiplier": BUILDING_MAP,
+        "building_production_slots": BUILDING_MAP,
         "modifiers": {"array": {"target": LEAF, "type": LEAF, "value": LEAF}},
     }},
     "terrain_modifiers": {"array": {
@@ -1356,6 +1357,13 @@ func _check_dict_key(problems: Array, context: Dictionary, registry: String, key
     var known: Dictionary = _registries.get(registry, {})
     if known.is_empty() or known.has(key):
         return
+    # A modifier acts on the buildings that exist: a blacklist mod removes a building,
+    # and the vanilla modifier naming it simply skips it at runtime. Such a key is absent
+    # BY DESIGN, not a typo — the loader keeps the removed ids (GameData.blacklisted).
+    if registry == KEY_BUILDINGS and _game_data != null:
+        var removed = _game_data.get("blacklisted")
+        if removed is Dictionary and removed.get(registry, {}).has(key):
+            return
     var target := str(REGISTRY_TARGETS.get(registry, "product"))
     # The reference to an @-group is written with the "@", and it is the group that is missing.
     if registry == KEY_GROUP_REFS and key.begins_with("@"):

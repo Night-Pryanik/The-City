@@ -57,8 +57,18 @@
       "science_cost": 5.0,
       "prerequisites": [ [ "wheel", "mathematics" ] ],
       "icon": "cogwheel.png",
-      "description": "Unlocks the toothed wheel: the gears that pass a rotation on to the working tool.\n+25% to the production of mines, quarries, animal mills, oil presses, weaver's and silkmaker's houses, and of the mason's, carpenter's and jeweler's workshops.",
+      "description": "Unlocks the toothed wheel: the gears that pass a rotation on to the working tool.\n+25% to the production of mines, quarries, animal mills, oilmaker's houses, weaver's and silkmaker's houses, and of the mason's, carpenter's and jeweler's workshops.",
       "flavor": "A wheel that rolls is not yet a machine; the teeth are. They turn one turn of the axle into a turn of the millstone, a pull of the press or a lift of the winch, and they hold the load instead of letting it fall back. Vitruvius described a mill whose upright wheel drove a horizontal one through a row of teeth, and a marble saw driven the same way is known from a sarcophagus in Hierapolis."
+    },
+    {
+      "id": "screw_press",
+      "name": "Screw Press",
+      "era": "antiquity",
+      "science_cost": 5.0,
+      "prerequisites": [ [ "wheel", "mathematics" ] ],
+      "icon": "screw_press.png",
+      "description": "Adds one production slot to the winemaker's house, the oilmaker's house, the dairy, the paper workshop and the jeweler's house.",
+      "flavor": "A threaded spindle turns many easy turns of a long handle into one slow, enormous squeeze. The press no longer waits on the weight of a beam, and a second batch can be worked beside the first."
     },
     {
       "id": "paper",

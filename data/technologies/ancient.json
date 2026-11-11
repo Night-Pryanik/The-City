@@ -192,7 +192,7 @@
       "science_cost": 3.0,
       "icon": "oil_making.png",
       "prerequisites": [ [ "farming" ] ],
-      "description": "Allows you to build the hand oil press: seeds, fruits and other parts of oil crops → vegetable oil.",
+      "description": "Allows you to build the oilmaker's house: seeds, fruits and other parts of oil crops → vegetable oil.",
       "flavor": "Vegetable oil became an important food and a source of light."
     },
     {

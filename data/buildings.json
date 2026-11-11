@@ -180,12 +180,12 @@
       "default_recipes": [  ]
     },
     {
-      "id": "hand_oil_press",
-      "name": "Hand Oil Press",
+      "id": "oilmaker_house",
+      "name": "Oilmaker's House",
       "description": "Presses vegetable oil out of oil crops.",
       "work_cost": 20,
       "additional_cost": [ { "planks": 80 } ],
-      "icon": "hand_oil_press.png",
+      "icon": "oilmaker_house.png",
       "profession": "oilmaker",
       "production_slots": 1.0,
       "unlock_tech": "oil_making",

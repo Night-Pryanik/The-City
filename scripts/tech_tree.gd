@@ -1127,8 +1127,9 @@ func _get_unlock_items(tech_id: String) -> Array:
     # Assembles the list of {"icon", "tip"} — everything that the technology opens.
     # The sources: the buildings (buildings.json), the improvements (improvements.json),
     # the special actions (special_actions.json), the modifier effects
-    # (modifiers.json, tech_modifiers with the fields icon/name) and an arbitrary
-    # list "unlock_effects": [ {"icon", "name"} ] in the technology itself.
+    # (modifiers.json, tech_modifiers with the fields icon/name), an arbitrary
+    # list "unlock_effects": [ {"icon", "name"} ] in the technology itself and the
+    # production slots the technology grants (tech_modifiers, "building_production_slots").
     var result: Array = []
     var seen := {} # protection from the duplicates (the same icon+tooltip)
 
@@ -1198,6 +1199,27 @@ func _get_unlock_items(tech_id: String) -> Array:
     for eff in tech_data.get("unlock_effects", []):
         if eff is Dictionary:
             _add_unlock_item(result, seen, eff.get("icon", ""), eff.get("name", tr("Technology effect")))
+
+    # The production slots the technology grants (tech_modifiers): one badge for the
+    # whole set, the workshops and their amounts belong to its tooltip (as the recipes
+    # do). A workshop a blacklist mod removed is skipped — the grant does not reach it.
+    var slot_lines: Array[String] = []
+    for m in mods.get("tech_modifiers", []):
+        if not (m is Dictionary) or m.get("tech_id", "") != tech_id:
+            continue
+        var grants: Dictionary = m.get("building_production_slots", {})
+        for building_id in grants:
+            if GameData.get_building_data(str(building_id)).is_empty():
+                continue
+            slot_lines.append("%s: %s" % [
+                    GameData.get_building_display_name(str(building_id)),
+                    tr("+%d production slot") % int(grants[building_id])])
+    if not slot_lines.is_empty():
+        slot_lines.sort()
+        var slot_tip := tr("Extra production slots:")
+        for line in slot_lines:
+            slot_tip += "\n- " + line
+        _add_unlock_item(result, seen, CityData.ICON_PRODUCTION_SLOT, slot_tip)
 
     return result
 

@@ -268,7 +268,7 @@
     {
       "id": "vegetable_oil",
       "name": "Vegetable Oil",
-      "produced_in": [ "hand_oil_press" ],
+      "produced_in": [ "oilmaker_house" ],
       "resources": { "@oil_crops": 20 },
       "result": { "vegetable_oil": 10 },
       "time": 5.0,
