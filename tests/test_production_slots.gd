@@ -26,6 +26,7 @@ func _run() -> void:
     _test_upgrade(cdata, state)
     _test_containers(cdata, state)
     _test_ui_rows(gdata, cdata, state)
+    _test_grouped_slot_effects(gdata, cdata, state)
     _test_absent_building_ignored(gdata, cdata, state)
 
     cdata.city_built_buildings.clear()
@@ -194,30 +195,59 @@ func _test_ui_rows(gdata: Node, cdata: Node, state: Dictionary) -> void:
     check(found, "the technology tree shows the icon of the extra slot", state)
     tree.free()
 
+    var names: Array[String] = []
+    for building_id in grants:
+        names.append(gdata.get_building_display_name(str(building_id)))
+    var caption := "%s: %s" % [", ".join(names), tr("+%d production slot") % 1]
     var rows := 0
     for effect in cdata.get_city_effects():
         if str(effect.get("group", "")) != "technologies" \
                 or str(effect.get("icon", "")) != "production_slot.png":
             continue
         rows += 1
-        check(str(effect.get("value", "")) == tr("+%d production slot") % 1,
-                "the effect row shows the amount of the grant (got \"%s\")"
-                        % str(effect.get("value", "")), state)
+        check(str(effect.get("name", "")) == caption,
+                "one effect caption names every recipient and the shared slot bonus", state)
+        check(str(effect.get("value", "")) == "",
+                "the slot bonus is not repeated outside the caption", state)
         check(str(effect.get("source", "")) == str(cdata.get_tech_name(TECH)),
                 "the Effects tab names the technology of the grant", state)
-        check(grants.has(str(effect.get("name", ""))) \
-                or _names_building(gdata, grants, str(effect.get("name", ""))),
-                "the effect row names a granted workshop (got \"%s\")"
-                        % str(effect.get("name", "")), state)
-    check(rows == grants.size(),
-            "the Effects tab lists one row per granted workshop (got %d)" % rows, state)
+    check(rows == 1,
+            "the Effects tab groups all slot recipients in one row (got %d)" % rows, state)
 
-# The row carries the display name of the building, the grant map carries its id.
-func _names_building(gdata: Node, grants: Dictionary, display_name: String) -> bool:
-    for building_id in grants:
-        if gdata.get_building_display_name(str(building_id)) == display_name:
-            return true
-    return false
+func _test_grouped_slot_effects(gdata: Node, cdata: Node, state: Dictionary) -> void:
+    var record := _modifier_record(gdata)
+    var original_grants: Dictionary = record["building_production_slots"]
+    var original_modifiers: Array = gdata.modifiers["tech_modifiers"].duplicate()
+    var original_unlocked: Array = cdata.unlocked_technologies.duplicate()
+    record["building_production_slots"] = {"winemaker_house": 1, "oilmaker_house": 1, "dairy": 2}
+    gdata.modifiers["tech_modifiers"].append({
+        "tech_id": "wheel", "building_production_slots": {"paper_workshop": 1},
+    })
+    cdata.unlocked_technologies = [TECH, "wheel"]
+    var rows: Array = []
+    for effect in cdata.get_city_effects():
+        if str(effect.get("icon", "")) == "production_slot.png":
+            rows.append(effect)
+    var expected: Array = []
+    for group in [
+        {"tech": TECH, "slots": 1, "buildings": ["winemaker_house", "oilmaker_house"]},
+        {"tech": TECH, "slots": 2, "buildings": ["dairy"]},
+        {"tech": "wheel", "slots": 1, "buildings": ["paper_workshop"]},
+    ]:
+        var names: Array[String] = []
+        for building_id in group["buildings"]:
+            names.append(gdata.get_building_display_name(building_id))
+        expected.append({
+            "group": "technologies",
+            "icon": "production_slot.png",
+            "name": "%s: %s" % [", ".join(names), tr("+%d production slot") % int(group["slots"])],
+            "value": "",
+            "source": cdata.get_tech_name(group["tech"]),
+        })
+    check(rows == expected, "slot groups keep different amounts and technologies separate", state)
+    record["building_production_slots"] = original_grants
+    gdata.modifiers["tech_modifiers"] = original_modifiers
+    cdata.unlocked_technologies = original_unlocked
 
 func _test_absent_building_ignored(gdata: Node, cdata: Node, state: Dictionary) -> void:
     var buildings: Array = gdata.buildings
@@ -236,9 +266,14 @@ func _test_absent_building_ignored(gdata: Node, cdata: Node, state: Dictionary) 
         if str(effect.get("icon", "")) != "production_slot.png":
             continue
         rows += 1
-        check(not ["winemaker_house", removed_name].has(str(effect.get("name", ""))),
+        var caption := str(effect.get("name", ""))
+        check(not caption.contains("winemaker_house") and not caption.contains(removed_name),
                 "the Effects tab omits the removed building", state)
-    check(rows == GRANTED.size() - 1, "only existing slot recipients appear in Effects", state)
+        for building_id in GRANTED:
+            if building_id != "winemaker_house":
+                check(caption.contains(gdata.get_building_display_name(building_id)),
+                        "the grouped effect retains each available slot recipient", state)
+    check(rows == 1, "available slot recipients remain grouped in one row", state)
 
     var tree = load("res://scripts/tech_tree.gd").new()
     var badges := 0

@@ -254,22 +254,21 @@ func _test_city_effects(gdata: Node, cdata: Node, state: Dictionary) -> void:
         {"id": "pottery_workshop", "slots": ["bricks"]},
     ]
     var tech_name: String = str(cdata.get_tech_name(GEAR_TECH))
+    var record := _tech_record(gdata, GEAR_TECH)
     var found := 0
     for effect in cdata.get_city_effects():
-        if str(effect.get("group", "")) != "technologies":
-            continue
-        if str(effect.get("name", "")) != gdata.get_building_display_name("animal_mill"):
+        if str(effect.get("group", "")) != "technologies" \
+                or str(effect.get("source", "")) != tech_name:
             continue
         found += 1
-        check(str(effect.get("value", "")) == "+25%",
-                "the effect must show the size of the bonus (got \"%s\")"
-                        % str(effect.get("value", "")), state)
-        check(str(effect.get("source", "")) == tech_name,
-                "the effect must name the technology that causes it", state)
-        check(str(effect.get("icon", "")) == str(cdata.get_tech_icon(GEAR_TECH)),
-                "the effect must carry the icon of the technology", state)
+        check(str(effect.get("name", "")) == str(record.get("name", "")),
+                "the effect must retain all gearing recipients and the bonus", state)
+        check(str(effect.get("value", "")) == "",
+                "the bonus is already included in the technology caption", state)
+        check(str(effect.get("icon", "")) == str(record.get("icon", "")),
+                "the effect must carry the modifier icon", state)
     check(found == 1,
-            "the Effects tab must list the animal mill once (got %d)" % found, state)
+            "the Effects tab must list gearing once (got %d)" % found, state)
 
     cdata.city_built_buildings.clear()
     # Remove it at once: do_tick() resolves "MainMap" by name and would find a

@@ -4656,7 +4656,7 @@ msgstr "Шахта, каменоломня, мельница с животной
 
 msgctxt "modifiers.tech_modifiers.name"
 msgid "Mine, quarry, bloomery, smelter, forge: +25% production"
-msgstr "Шахта, каменоломня, кузница, плавильня, кузница: +25% к производству"
+msgstr "Шахта, каменоломня, сыродутная печь, плавильня, кузница: +25% к производству"
 
 msgctxt "modifiers.tech_modifiers.name"
 msgid "Plantations: +30% production"

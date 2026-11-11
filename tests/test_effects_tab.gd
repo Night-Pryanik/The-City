@@ -125,6 +125,45 @@ func _run() -> void:
     check(_rows_of(effects, "technologies").is_empty(),
         "an unlock (unlock_effects) became an effect row", state)
 
+    var original_locale := TranslationServer.get_locale()
+    TranslationServer.set_locale("ru")
+    check(tr("Mine, quarry, bloomery, smelter, forge: +25% production", "modifiers.tech_modifiers.name")
+            == "Шахта, каменоломня, сыродутная печь, плавильня, кузница: +25% к производству",
+        "the Russian water wheel caption names all five distinct recipients", state)
+    TranslationServer.set_locale(original_locale)
+
+    var production_buildings := {"water_wheel": "forge", "cogwheel": "animal_mill"}
+    for tech_id in production_buildings:
+        var building_id: String = production_buildings[tech_id]
+        city.unlocked_technologies.clear()
+        city.city_built_buildings = [
+            {"id": building_id}, {"id": building_id}, {"id": "pottery_workshop"},
+        ]
+        tiles[2][3]["terrain"] = "lake"
+        check(_rows_of(city.get_city_effects(), "technologies").is_empty(),
+            "%s: no production effects before research" % tech_id, state)
+        city.unlocked_technologies.append(tech_id)
+        tech_rows = _rows_of(city.get_city_effects(), "technologies")
+        var record := _tech_modifier(gdata, tech_id)
+        check(tech_rows.size() == 1,
+            "%s: one technology summary without per-building duplicates (%d)"
+                % [tech_id, tech_rows.size()], state)
+        if tech_rows.size() == 1:
+            check(str(tech_rows[0].get("name", "")) == str(record.get("name", "")),
+                "%s: the effect retains the full recipient list" % tech_id, state)
+            check(str(tech_rows[0].get("icon", "")) == str(record.get("icon", "")),
+                "%s: the effect retains the modifier icon" % tech_id, state)
+            check(str(tech_rows[0].get("source", "")) == city.get_tech_name(tech_id),
+                "%s: the effect names its technology" % tech_id, state)
+        tiles[2][3]["terrain"] = "boreal_plain"
+        check(_rows_of(city.get_city_effects(), "technologies") == tech_rows,
+            "%s: the city water supply does not hide the technology recipient list" % tech_id, state)
+        city.city_built_buildings.clear()
+        tiles[2][3]["terrain"] = "lake"
+        check(_rows_of(city.get_city_effects(), "technologies") == tech_rows,
+            "%s: unbuilt recipients remain in the technology summary" % tech_id, state)
+    tiles[2][3]["terrain"] = "boreal_plain"
+
     # One researched modifier stays on the city for the live check of the list below.
     city.unlocked_technologies.clear()
     city.unlocked_technologies.append("plow")

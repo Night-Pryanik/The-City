@@ -279,10 +279,7 @@ func _test_city_water(gdata: Node, cdata: Node, state: Dictionary) -> void:
     check(bool(cdata.check_building_additional_req("water_mill").get("ok", false)),
             "the Water Mill must be buildable with city water", state)
 
-    # The Effects tab lists only the bonuses on BUILT buildings, one row per bonus.
-    # The fresh-water bonus belongs to the city hex (the group "environment"),
-    # the bonus of the technology belongs to the technology (the group
-    # "technologies").
+    # Fresh-water bonuses name built recipients; technology bonuses retain their full captions.
     cdata.city_built_buildings = [
         {"id": "leatherworker_house", "slots": ["leather"]},
         {"id": "bloomery", "slots": ["iron"]},
@@ -308,18 +305,19 @@ func _test_city_water(gdata: Node, cdata: Node, state: Dictionary) -> void:
                             % str(effect.get("value", "")), state)
     check(named == 1, "the tanner must appear in the Effects tab", state)
 
-    var bloomery_rows := 0
+    var water_wheel_rows := 0
+    var water_wheel := _tech_record(gdata, WATER_TECH)
     for effect in techs:
-        if str(effect.get("name", "")) != gdata.get_building_display_name("bloomery"):
+        if str(effect.get("source", "")) != str(cdata.get_tech_name(WATER_TECH)):
             continue
-        bloomery_rows += 1
-        check(str(effect.get("value", "")) == "+25%",
-                "the effect of the technology must show the size of the bonus", state)
-        check(str(effect.get("source", "")) == str(cdata.get_tech_name(WATER_TECH)),
-                "the effect of the technology must name it as the provenance", state)
-    check(bloomery_rows == 1,
-            "the bloomery must appear once among the technology effects (got %d)"
-                    % bloomery_rows, state)
+        water_wheel_rows += 1
+        check(str(effect.get("name", "")) == str(water_wheel.get("name", "")),
+                "the technology caption must retain all water wheel recipients and the bonus", state)
+        check(str(effect.get("value", "")) == "",
+                "the bonus is already included in the technology caption", state)
+    check(water_wheel_rows == 1,
+            "the water wheel must appear once among the technology effects (got %d)"
+                    % water_wheel_rows, state)
 
     cdata.city_built_buildings.clear()
     # Remove it at once: do_tick() resolves "MainMap" by name and would find a

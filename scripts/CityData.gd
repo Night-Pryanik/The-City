@@ -2319,9 +2319,7 @@ func check_building_additional_req(building_id: String) -> Dictionary:
 # The badge of a production slot a technology grants (the tree and the Effects tab).
 const ICON_PRODUCTION_SLOT := "production_slot.png"
 
-# The effects that act on the city right now: the numbers and the availability it really has.
-# Only effects in force are listed — what a technology unlocks belongs to the technology tree,
-# and an effect that does not act on the city is not an entry here.
+# Technology bonuses list all recipients, not just the producers already built in the city.
 # Each element: { "group": String, "icon": String, "name": String, "value": String, "source": String }
 # Groups: "environment" — the hex of the city itself; "technologies" — the researched modifiers.
 func get_city_effects() -> Array:
@@ -2342,11 +2340,7 @@ func get_city_effects() -> Array:
             "source": "",
         })
 
-    # The bonuses that actually change the output of BUILT buildings: the water
-    # ones (the water of the CITY hex) and the ones of the technologies. Only
-    # built ones are listed: a bonus on a building the city does not have is not
-    # an effect yet. The Buildings tab shows the same rows for a building that
-    # has not been built, so the two panels agree.
+    # Environmental bonuses depend on the city's water supply and built recipients.
     var listed := {}
     for bld in city_built_buildings:
         var building_id := str(bld.get("id", ""))
@@ -2362,19 +2356,7 @@ func get_city_effects() -> Array:
                         (float(row.get("multiplier", 1.0)) - 1.0) * 100.0)),
                 "source": str(row.get("bonus", "")),
             })
-        for row in get_tech_production_modifiers(building_id, true, city_water):
-            effects.append({
-                "group": "technologies",
-                "icon": get_tech_icon(str(row.get("tech", ""))),
-                "name": GameData.get_building_display_name(building_id),
-                "value": "+%d%%" % int(round(
-                        (float(row.get("multiplier", 1.0)) - 1.0) * 100.0)),
-                "source": str(row.get("bonus", "")),
-            })
 
-    # The researched technologies. The records of data/modifiers.json carry the icon and the
-    # already localized caption, so the row repeats the record instead of wording the effect a
-    # second time.
     for mod in GameData.modifiers.get("tech_modifiers", []):
         var tech_id := String(mod.get("tech_id", ""))
         var icon := String(mod.get("icon", ""))
@@ -2393,14 +2375,21 @@ func get_city_effects() -> Array:
         var grants: Dictionary = tm.get("building_production_slots", {})
         if grants.is_empty() or not is_tech_unlocked(tech_id):
             continue
+        var recipients_by_slots := {}
         for building_id in grants:
             if GameData.get_building_data(str(building_id)).is_empty():
                 continue
+            var slots := int(grants[building_id])
+            if not recipients_by_slots.has(slots):
+                recipients_by_slots[slots] = []
+            recipients_by_slots[slots].append(GameData.get_building_display_name(str(building_id)))
+        for slots in recipients_by_slots:
             effects.append({
                 "group": "technologies",
                 "icon": ICON_PRODUCTION_SLOT,
-                "name": GameData.get_building_display_name(str(building_id)),
-                "value": tr("+%d production slot") % int(grants[building_id]),
+                "name": "%s: %s" % [", ".join(recipients_by_slots[slots]),
+                        tr("+%d production slot") % slots],
+                "value": "",
                 "source": get_tech_name(tech_id),
             })
 

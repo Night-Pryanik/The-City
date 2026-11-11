@@ -346,13 +346,17 @@ func _test_blacklist_example(state: Dictionary) -> void:
     for building_id in ["oilmaker_house", "dairy", "paper_workshop", "jeweler_house"]:
         check(cdata.get_production_slot_count(building_id) == 2,
                 "the blacklist preserves the slot bonus of %s" % building_id, state)
+    var recipient_names: Array[String] = []
+    for building_id in ["oilmaker_house", "dairy", "paper_workshop", "jeweler_house"]:
+        recipient_names.append(_game_data.get_building_display_name(building_id))
+    var expected_caption := "%s: %s" % [", ".join(recipient_names), tr("+%d production slot") % 1]
     var rows := 0
     for effect in cdata.get_city_effects():
         if str(effect.get("icon", "")) == "production_slot.png":
             rows += 1
-            check(str(effect.get("name", "")) != "winemaker_house",
-                    "the blacklist leaves no missing building in Effects", state)
-    check(rows == 4, "the modded game shows four slot recipients", state)
+            check(str(effect.get("name", "")) == expected_caption,
+                    "the grouped effect contains only the four available slot recipients", state)
+    check(rows == 1, "the modded game groups slot recipients in one row", state)
     var tree = load("res://scripts/tech_tree.gd").new()
     var badges := 0
     for item in tree._get_unlock_items("screw_press"):
