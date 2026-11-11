@@ -15,6 +15,21 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "Beach"
+msgstr "Пляж"
+
+msgid "Lake"
+msgstr "Озеро"
+
+msgid "Sea"
+msgstr "Море"
+
+msgid "Shallows"
+msgstr "Мелководье"
+
+msgid "Wetland"
+msgstr "Болото"
+
 msgid "\n\nFound here: %s"
 msgstr "\n\nЗдесь обнаружено: %s"
 
@@ -2712,8 +2727,8 @@ msgstr "Здесь — кольцо влияния чужого городка, 
 msgid "This is the city itself"
 msgstr "Это сам город"
 
-msgid "This map is only an approximate preview; the actual world will be generated separately and may differ."
-msgstr "Это приблизительный макет: реальная карта будет сгенерирована отдельно и может отличаться."
+msgid "The coast, the relief and the belts are the world itself. Resources are not shown; towns and rivers are a sketch."
+msgstr "Берег, рельеф и пояса — сам мир. Ресурсы не показаны; города и реки — схема."
 
 msgid "This mod is required by \"%s\"."
 msgstr "Эта модификация требуется для «%s»."

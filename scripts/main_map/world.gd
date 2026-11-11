@@ -64,6 +64,13 @@ func _initialize_map():
     # advanced between the stages (see _update_loading_progress). Without a loading
     # screen (a test, the editor, a direct scene run) the stages run in one go
     # (see _yield_loading_frame).
+    # The dice of the world are pinned right before the first stage: the preview of the new game
+    # window runs these same stages from the seed it shows, so the picture is the map the player
+    # is about to get. Whatever the data and the icons rolled above cannot move the map.
+    if CityData.world_seed == 0:
+        CityData.world_seed = randi()
+    seed(CityData.world_seed)
+
     var generator = load("res://scripts/map_generator.gd").new()
     # The number of the Voronoi centres for each terrain type is computed
     # from the configuration terrain_config (density + target_cluster),

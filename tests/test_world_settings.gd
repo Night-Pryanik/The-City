@@ -186,8 +186,8 @@ func _run() -> void:
         check(button != null and button.text == tr("Regenerate"),
                 "each preview has a regenerate button", state)
         check(disclaimer != null and disclaimer.text == tr(
-                "This map is only an approximate preview; the actual world will be generated separately and may differ."),
-                "each preview explains that the actual world may differ", state)
+                "The coast, the relief and the belts are the world itself. Resources are not shown; towns and rivers are a sketch."),
+                "each preview names what is the world itself and what stays a sketch", state)
         if regenerate_button == null:
             regenerate_button = button
     if regenerate_button != null:
@@ -471,6 +471,30 @@ func _run() -> void:
     check(WorldPreview.build(60, no_beach)["cells"] != one_side["cells"],
             "the beaches change the picture", state)
 
+    # The relief gives each family a height of its own, and the kinds that own a colour keep it
+    # whatever the belt. The lake and the wetland are told apart by colour, not by the light.
+    check(WorldPreview._cell_height(WorldPreview.CELL_MOUNTAIN)
+            > WorldPreview._cell_height(WorldPreview.CELL_HILL),
+            "a mountain stands above a hill on the relief", state)
+    check(WorldPreview._cell_height(WorldPreview.CELL_HILL)
+            > WorldPreview._cell_height(WorldPreview.CELL_LAND),
+            "a hill stands above the plain", state)
+    check(WorldPreview._cell_height(WorldPreview.CELL_DEEP_SEA)
+            < WorldPreview._cell_height(WorldPreview.CELL_LAKE),
+            "the deep sea lies below a lake", state)
+    var no_belts := PackedByteArray()
+    var flat := PackedFloat32Array()
+    flat.resize(9)
+    var lake_color: Color = WorldPreview._cell_color(
+            WorldPreview.CELL_LAKE, no_belts, flat, 3, 4)
+    var wetland_color: Color = WorldPreview._cell_color(
+            WorldPreview.CELL_WETLAND, no_belts, flat, 3, 4)
+    check(lake_color == WorldPreview.LAKE_COLOR, "a lake keeps its own colour", state)
+    check(wetland_color != lake_color,
+            "the wetland is told apart from the lake by colour", state)
+    check(WorldPreview._cell_color(WorldPreview.CELL_DEEP_SEA, no_belts, flat, 3, 4)
+            == WorldPreview.DEEP_SEA_COLOR, "the deep sea keeps its own colour", state)
+
     # The caption says what the sea took, which is the one number the picture cannot show.
     check(menu.world_previews[0]._sea_caption() == tr("No sea")
             or menu.world_previews[0]._sea_caption().contains("%"),
@@ -478,12 +502,20 @@ func _run() -> void:
                     % menu.world_previews[0]._sea_caption(), state)
 
     # The dialog rebuilds the picture on every change of a sea setting, not only on the mode:
-    # a number typed into a field must move the preview as well.
-    var before_typing: Dictionary = menu.world_previews[0]._picture
+    # a number typed into a field must move the preview as well. It moves once the typing pauses,
+    # because the relief is the generator's own work on the whole map and every keystroke would
+    # run it again.
+    var before_cells: PackedByteArray = menu.world_previews[0]._picture["cells"]
     var depth_field: LineEdit = menu.sea_controls["max_sea_depth"]["control"]
     depth_field.text = "6"
     depth_field.text_changed.emit("6")
-    check(menu.world_previews[0]._picture["cells"] != before_typing["cells"],
+    check(menu._preview_timer != null and not menu._preview_timer.is_stopped(),
+            "a sea setting being typed waits for the typing to pause", state)
+    var deadline := Time.get_ticks_msec() + 5000
+    while menu.world_previews[0]._picture["cells"] == before_cells \
+            and Time.get_ticks_msec() < deadline:
+        await process_frame
+    check(menu.world_previews[0]._picture["cells"] != before_cells,
             "a sea setting typed into the field moves the picture", state)
     depth_field.text = str(menu._sea_default("max_sea_depth"))
     menu._normalize_sea_fields()

@@ -100,6 +100,12 @@ var world_resource_density: float = 1.0
 # of the generator. Read by map_generator when it places the equator; the climate is baked
 # into the map at generation time, so the setting is not part of the save.
 var world_climate: String = "random"
+# The seed the world is generated from. The preview of the new game window runs the generator's
+# own stages from the seed it shows and hands that seed over, so the map the player saw is the
+# map the player gets. Zero means the world was not previewed (a test, a direct scene run) and
+# rolls a seed of its own. The map is baked at generation time, so the seed is not part of the
+# save.
+var world_seed: int = 0
 
 # The sea generation settings a new game starts from. The player changes them in the world
 # settings of a new game (the "Seas" section), and SeaManager reads the result from

@@ -30,6 +30,12 @@ const SETTING_ROW_HEIGHT := 32
 const SETTING_CONTROL_HEIGHT := 30
 const STEP_FIELD_WIDTH := 58
 
+# The relief of the picture is the generator's own work on the whole map, and a giant map costs
+# seconds per rebuild. It is kept while the settings that shape it are unchanged, and a number
+# being typed rebuilds it once the typing pauses rather than on every keystroke.
+const RELIEF_CACHE_LIMIT := 8
+const PREVIEW_DEBOUNCE := 0.2
+
 const TAB_CITY := 0
 const TAB_WORLD := 1
 const TAB_MODS := 2
@@ -116,6 +122,11 @@ var mod_list = null
 # The preview seed stays fixed while settings change, keeping those changes comparable. The
 # player can reroll it explicitly with the button beside either preview.
 var _preview_seed: int = 0
+# The reliefs already built, oldest first, and the timer of a rebuild waiting for the typing to
+# pause.
+var _relief_cache: Dictionary = {}
+var _relief_order: Array[String] = []
+var _preview_timer: Timer = null
 
 func _ready():
     # The data comes first: the tooltip of "Continue game" names the era of the save,
@@ -212,7 +223,7 @@ func _on_new_game():
     _popup_new_game_dialog()
     _refresh_town_row()
     _refresh_sea_rows()
-    _preview_seed = randi()
+    _preview_seed = _roll_preview_seed()
     _refresh_preview()
     city_name_edit.grab_focus()
     city_name_edit.select_all()
@@ -420,7 +431,7 @@ func _make_preview() -> Control:
 
     var disclaimer := Label.new()
     disclaimer.name = "PreviewDisclaimerLabel"
-    disclaimer.text = tr("This map is only an approximate preview; the actual world will be generated separately and may differ.")
+    disclaimer.text = tr("The coast, the relief and the belts are the world itself. Resources are not shown; towns and rivers are a sketch.")
     disclaimer.custom_minimum_size = Vector2(PREVIEW_WIDTH - 24, 0)
     disclaimer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     disclaimer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -429,29 +440,63 @@ func _make_preview() -> Control:
     column.add_child(disclaimer)
     return column
 
-# The previews show the world the current settings describe, so they are refreshed from one
-# place instead of each control knowing about them. The picture of the water is built once and
-# handed to both: the two tabs show the same world, and building the sea mask twice would
-# double the cost of every change of a setting.
+# The sides of the sea are rolled from the seed, so the picture and the world read the same coast
+# from the same configuration.
 func _resolved_sea_config(seed_value: int = 0) -> Dictionary:
     var cfg := _selected_sea_config()
     cfg["sides"] = SeaManager.resolve_sides(cfg, seed_value)
     return cfg
 
+# The previews show the world the current settings describe, so they are refreshed from one
+# place instead of each control knowing about them. One picture is handed to both: the two tabs
+# show the same world, and running the generator twice would double the cost of every change of
+# a setting.
 func _refresh_preview():
+    if _preview_timer != null:
+        _preview_timer.stop()
     var side := _selected_map_size()
     var towns := _selected_town_count()
-    var picture := WorldPreview.build(side, _resolved_sea_config(_preview_seed),
-            _preview_seed, _selected_river_config(), _selected_climate())
+    var picture := _cached_relief(side, _resolved_sea_config(_preview_seed), _selected_climate())
+    picture["rivers"] = WorldPreview.build_rivers(picture, side, _selected_river_config(),
+            _preview_seed)
     for preview in world_previews:
         preview.set_world(side, towns, picture)
 
+# Only the size, the sea, the seed and the climate shape the relief; the rivers, the towns and the
+# resource density are drawn over it. The oldest reliefs are dropped, so a long session of
+# comparing settings does not keep a giant map per attempt.
+func _cached_relief(side: int, sea: Dictionary, climate: String) -> Dictionary:
+    var key := "%d|%d|%s|%s" % [side, _preview_seed, JSON.stringify(sea), climate]
+    if _relief_cache.has(key):
+        return _relief_cache[key]
+    var picture := WorldPreview.build_relief(side, sea, _preview_seed, climate)
+    _relief_cache[key] = picture
+    _relief_order.append(key)
+    while _relief_order.size() > RELIEF_CACHE_LIMIT:
+        _relief_cache.erase(_relief_order.pop_front())
+    return picture
+
+# A rebuild waits for the typing to pause. A discrete change refreshes at once and cancels the
+# wait, so a pending rebuild never draws a value the player has already left behind.
+func _queue_preview_refresh():
+    if _preview_timer == null:
+        _preview_timer = Timer.new()
+        _preview_timer.one_shot = true
+        _preview_timer.wait_time = PREVIEW_DEBOUNCE
+        _preview_timer.timeout.connect(_refresh_preview)
+        add_child(_preview_timer)
+    _preview_timer.start()
+
 func _regenerate_preview():
-    var next_seed := randi()
+    var next_seed := _roll_preview_seed()
     if next_seed == _preview_seed:
         next_seed += 1
     _preview_seed = next_seed
     _refresh_preview()
+
+# Zero is the seed of a world that was not previewed, so the seed of a picture is never zero.
+func _roll_preview_seed() -> int:
+    return randi_range(1, 2147483647)
 
 # The belts of the chosen climate are drawn on the picture, so the climate moves it like any other
 # setting of the world.
@@ -762,8 +807,9 @@ func _make_number_field(value: String, fractional: bool, tooltip: String,
     edit.text_changed.connect(func(text): _keep_number(edit, text, fractional))
     # The picture follows the number while it is being typed, not only when the field loses
     # focus: the sea and the rivers are the parts of the world a setting changes by a
-    # visible amount.
-    edit.text_changed.connect(func(_text): _refresh_preview())
+    # visible amount. It follows once the typing pauses, because every keystroke would run the
+    # generator's stages over the whole map again.
+    edit.text_changed.connect(func(_text): _queue_preview_refresh())
     edit.focus_exited.connect(normalizer)
     return edit
 
@@ -952,7 +998,7 @@ func _on_custom_size_text_changed(text: String):
     var raw := custom_size_edit.text.strip_edges()
     if not raw.is_empty() and int(raw) >= MIN_MAP_SIZE and int(raw) <= MAX_MAP_SIZE:
         _refresh_town_row()
-        _refresh_preview()
+        _queue_preview_refresh()
 
 # A number outside the allowed range is pulled to the nearest bound when the field loses
 # focus, so the player sees the value the game is about to use.
@@ -971,7 +1017,7 @@ func _on_town_count_text_changed(text: String):
     _keep_digits(town_count_edit, text)
     var raw := town_count_edit.text.strip_edges()
     if not raw.is_empty() and int(raw) <= _max_town_count(_selected_map_size()):
-        _refresh_preview()
+        _queue_preview_refresh()
 
 func _normalize_town_count():
     town_count_edit.text = str(_selected_town_count())
@@ -1121,6 +1167,7 @@ func _start_new_game(city_name: String):
     CityData.world_rivers = _selected_river_config()
     CityData.world_resource_density = _selected_resource_density()
     CityData.world_climate = _selected_climate()
+    CityData.world_seed = _preview_seed
     # The overlay is hung on the ROOT, not on the menu: the scene change frees the
     # menu, and the world generation runs inside MainMap. MainMap updates the very
     # same bar and removes it when the world is ready.

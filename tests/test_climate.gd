@@ -499,8 +499,8 @@ func _test_chosen_climate(state: Dictionary) -> void:
             _test_neighbouring_belts(state)
     _tiles = main_tiles
 
-# The preview of the new game window draws the belts of the chosen climate: the city stands in the
-# belt the player chose, the belts keep their order on the picture, and the picture of the same
+# The preview of the new game window draws the belts of the world: the city stands in the belt
+# the player chose, the belts keep their order on the picture, and the picture of the same
 # settings is the same picture.
 func _test_preview_belts(state: Dictionary) -> void:
     var WorldPreview = load("res://scripts/world_preview.gd")
@@ -538,13 +538,19 @@ func _test_preview_belts(state: Dictionary) -> void:
         check(again["belts"] == belts,
                 "the same climate draws the same belts", state)
 
-    # A random climate rolls the latitude of the city: there is no belt to show, so the picture
-    # keeps the flat land.
+    # A random climate rolls the latitude of the city in the stage that rolls it for the world, so
+    # the picture promises the belts the player is about to get.
     var random_picture: Dictionary = WorldPreview.build(60, sea, SEED, {}, "random")
-    check((random_picture["belts"] as PackedByteArray).is_empty(),
-            "a random climate draws no belts", state)
-    check(str(random_picture["city_belt"]).is_empty(),
-            "a random climate names no belt in the caption", state)
+    var random_belts: PackedByteArray = random_picture["belts"]
+    var random_grid: int = random_picture["grid"]
+    check(random_belts.size() == random_grid * random_grid,
+            "a random climate draws a belt for every cell", state)
+    check(ClimateLayout.BELTS.has(str(random_picture["city_belt"])),
+            "a random climate names the belt of the city in the caption (got %s)"
+                    % str(random_picture["city_belt"]), state)
+    var random_again: Dictionary = WorldPreview.build(60, sea, SEED, {}, "random")
+    check(random_again["belts"] == random_belts,
+            "the same seed rolls the same random climate", state)
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if not condition:

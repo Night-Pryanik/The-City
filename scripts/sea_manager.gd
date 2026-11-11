@@ -79,8 +79,14 @@ static func build_sea_mask(rows: int, cols: int, city_row: int, city_col: int,
 # build_sea_mask, then the shallow band, the islands and the beaches. The hexes are marked with
 # the temporary flags _is_sea / _is_shallow_sea / _is_beach, so that after the Voronoi the mask
 # can be re-applied on top of the result (see reapply_sea_mask).
-static func apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> Array:
-    var cfg := sea_config()
+#
+# An empty `cfg` reads the settings of the world being generated; the map preview passes its own
+# so that the picture does not depend on the state of CityData. `announce` is false for the same
+# caller: it rebuilds the water on every change of a setting and would flood the console.
+static func apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int,
+        cfg: Dictionary = {}, announce: bool = true) -> Array:
+    if cfg.is_empty():
+        cfg = sea_config()
     var sea_mask := build_sea_mask(rows, cols, city_row, city_col, cfg)
 
     # A world without water is finished here: the steps below have nothing to work on, and the
@@ -94,7 +100,7 @@ static func apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, cit
     # The islands are grown AFTER the shallow band, so an island never carries shallows of its
     # own. They come before the marking and before the beach, so that the beach outlines the
     # new islands as it does any other land next to the sea.
-    grow_sea_islands(sea_mask, rows, cols, city_row, city_col, cfg)
+    grow_sea_islands(sea_mask, rows, cols, city_row, city_col, cfg, announce)
 
     # We mark the sea hexes with the temporary flag _is_sea.
     for r in range(rows):

@@ -24,6 +24,10 @@ const PLAIN_ZONE_RADIUS := 2
 # an impassable terrain cannot appear (a "sunken yard" around the city).
 const CENTER_EXCLUSION_RADIUS := 6
 
+# The stage timings and the placement reports go to the console once per world. The map preview
+# runs the same stages on every change of a setting, so it switches the reports off.
+var log_stages := true
+
 # Returns the list of the terrain types that take part in the Voronoi algorithm
 # (the base relief). They do NOT include:
 #   - the unique types (unique: true) — they are placed by place_unique_terrains;
@@ -193,8 +197,9 @@ func init_tile_data(rows: int, cols: int) -> Array:
         tile_data.append(col_array)
     return tile_data
 
-func apply_sea_mask(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> Array:
-    return SeaManager.apply_sea(tile_data, rows, cols, city_row, city_col)
+func apply_sea_mask(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int,
+        cfg: Dictionary = {}, announce: bool = true) -> Array:
+    return SeaManager.apply_sea(tile_data, rows, cols, city_row, city_col, cfg, announce)
 
 func generate_relief(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int, terrain_counts: Dictionary) -> void:
     # We generate the centres for the Voronoi. For the impassable terrain types
@@ -224,7 +229,8 @@ func generate_relief(tile_data: Array, rows: int, cols: int, city_row: int, city
     # instead of ~73 million, which speeds up the relief generation by tens of times.
     var t_jfa = Time.get_ticks_msec()
     var voronoi = _jump_flood_voronoi(rows, cols, centers)
-    print("JFA stage: ", Time.get_ticks_msec() - t_jfa, " ms")
+    if log_stages:
+        print("JFA stage: ", Time.get_ticks_msec() - t_jfa, " ms")
     for row in range(rows):
         for col in range(cols):
             tile_data[row][col]["terrain"] = voronoi[row][col]
@@ -290,6 +296,13 @@ func post_process_relief(tile_data: Array, rows: int, cols: int, sea_mask: Array
     _ensure_plain_zone(tile_data, rows, cols, city_row, city_col, PLAIN_ZONE_RADIUS)
 
 func apply_climate_and_covers(tile_data: Array, rows: int, cols: int) -> void:
+    apply_climate(tile_data, rows, cols)
+    apply_covers(tile_data, rows, cols)
+
+# The climate alone, without the vegetation: the zone and the temperature belt of every hex and
+# the varieties of the relief. The map preview runs this stage as well, so the belts on the
+# picture are the belts of the world; the covers are rolled by apply_covers and are not drawn.
+func apply_climate(tile_data: Array, rows: int, cols: int, chosen: String = "") -> void:
     # --- THE CLIMATE ---
     # The climate is built AFTER the relief, because the water hexes have no zone: the sea and
     # the lakes break the climate regions at the coasts. The deserts are pruned right after, while
@@ -297,21 +310,25 @@ func apply_climate_and_covers(tile_data: Array, rows: int, cols: int) -> void:
     # is rolled — so that the cover of a hex always belongs to the zone it ends up in.
     var climate_cfg: Dictionary = GameData.map_config.get("climate", {})
     var t_climate = Time.get_ticks_msec()
-    _apply_climate(tile_data, rows, cols)
+    _apply_climate(tile_data, rows, cols, chosen)
     # The zone patches are settled BEFORE the relief is turned into the varieties of the zones: a
     # dissolved patch takes the zone of its neighbours, and its terrain has to follow the new zone.
     _remove_small_zone_islands(tile_data, rows, cols, int(climate_cfg.get("min_zone_size", 3)))
     _limit_deserts(tile_data, rows, cols)
     _convert_families(tile_data, rows, cols)
-    print("climate stage: ", Time.get_ticks_msec() - t_climate, " ms")
+    if log_stages:
+        print("climate stage: ", Time.get_ticks_msec() - t_climate, " ms")
 
+func apply_covers(tile_data: Array, rows: int, cols: int) -> void:
+    var climate_cfg: Dictionary = GameData.map_config.get("climate", {})
     var t_cover = Time.get_ticks_msec()
     for row in range(rows):
         for col in range(cols):
             tile_data[row][col]["cover"] = _roll_cover(tile_data[row][col])
     if bool(climate_cfg.get("cover_smoothing", true)):
         _smooth_covers(tile_data, rows, cols)
-    print("cover stage: ", Time.get_ticks_msec() - t_cover, " ms")
+    if log_stages:
+        print("cover stage: ", Time.get_ticks_msec() - t_cover, " ms")
 
 func place_all_resources(tile_data: Array, raw_res: Dictionary, rows: int, cols: int, city_row: int, city_col: int) -> void:
     var t_res = Time.get_ticks_msec()
@@ -433,7 +450,8 @@ func place_unique_terrains(tile_data: Array, rows: int, cols: int, city_row: int
                 tile["terrain"] = terrain_type
                 tile["cover"] = _roll_cover(tile)
 
-        print("The unique terrain type %s is placed: %d hexes" % [terrain_type, cluster.size()])
+        if log_stages:
+            print("The unique terrain type %s is placed: %d hexes" % [terrain_type, cluster.size()])
 
 # The Jump Flood Algorithm (JFA) for building the Voronoi diagram on
 # a hexagonal grid (odd-r). The complexity is O(rows * cols * log2(max(rows, cols)))
@@ -816,7 +834,7 @@ const CLIMATE_FAMILIES := ["plain", "hill", "mountain", "swamp", "marsh"]
 # it breaks the climate regions at the coasts. Its temperature belt is still recorded — the belt is
 # the latitude, and the sea does not cancel it — and that is what the water covers of the warm
 # belts (data/covers.json → "temperature_belts") are rolled with.
-func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
+func _apply_climate(tile_data: Array, rows: int, cols: int, chosen: String = "") -> void:
     for r in range(rows):
         for c in range(cols):
             tile_data[r][c]["climate"] = ""
@@ -828,7 +846,8 @@ func _apply_climate(tile_data: Array, rows: int, cols: int) -> void:
     if cfg.is_empty():
         return
 
-    var chosen: String = CityData.world_climate
+    if chosen == "":
+        chosen = CityData.world_climate
     var geo := ClimateLayout.geometry(cfg, rows, 1.0)
     var equator := ClimateLayout.roll_equator_row(rows, cfg)
     if chosen != ClimateLayout.CLIMATE_RANDOM:

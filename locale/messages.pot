@@ -15,6 +15,21 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "Beach"
+msgstr ""
+
+msgid "Lake"
+msgstr ""
+
+msgid "Sea"
+msgstr ""
+
+msgid "Shallows"
+msgstr ""
+
+msgid "Wetland"
+msgstr ""
+
 msgid "\n\nFound here: %s"
 msgstr ""
 
@@ -2712,7 +2727,7 @@ msgstr ""
 msgid "This is the city itself"
 msgstr ""
 
-msgid "This map is only an approximate preview; the actual world will be generated separately and may differ."
+msgid "The coast, the relief and the belts are the world itself. Resources are not shown; towns and rivers are a sketch."
 msgstr ""
 
 msgid "This mod is required by \"%s\"."

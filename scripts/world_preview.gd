@@ -5,35 +5,29 @@
 # follows the square root of that ratio. That is the whole point of the control — a number in
 # a dropdown says nothing about how much map it is.
 #
-# Inside the square is the water the settings describe, drawn by the generator itself rather
-# than by a second, hand-written rule: SeaManager builds the sea mask on the real map grid, and
-# the mask is averaged down to the cells of the picture.
+# The picture is the world itself, up to the climate: the generator's own stages run here in
+# their own order on the real map grid, from the seed the caller pins, and that same seed is
+# handed to the world generation (CityData.world_seed). The coast, the islands, the relief and
+# the climate belts on the picture are therefore the ones the player is about to get, not a
+# sample of the settings. The blocks of hexes are averaged down to the cells of the picture: a
+# cell takes the majority kind of the hexes it covers, and a tie goes to the higher ground.
 #
-# The rivers are schematic: the generator needs the mountains, the lakes and the terrain, and
-# the picture has none of them. So a river starts at a random inland cell and runs downhill to
-# the coast of the sea the picture shows. Only the main rivers are drawn, in the number the
-# player chose, and a path never leaves the land — a river mouths at the shore and does not
-# cross the water, and no two rivers cross each other.
+# What the picture does not show is what the world rolls after the climate: the resources are
+# not drawn at all, the towns are a sunflower spiral rather than the placement of the generator,
+# and the rivers are schematic courses over the real coast. The late guarantees of the starting
+# area (the terrain of the guaranteed food plant) may still turn a hex or two of the starting
+# ring into mountains after this picture is drawn.
 #
-# It is a SAMPLE of the settings and never the world the player is about to get. The caller
-# picks the seed, so the same settings keep the same coast until the player rerolls the preview;
-# the world generation rolls its own dice. The real world is kept out of here on purpose: a
-# player who saw it would plan the first moves from the menu — "there is a town west of my start,
-# I will grow that way" — and the map would be explored before it is built.
+# The towns stand only on land reachable from the city: one that would fall into the sea, a lake
+# or an island moves to the nearest free cell of that land, so the picture keeps the count of the
+# setting. The gold point in the middle is the player's city: MainMap puts it at half the rows and
+# half the columns, so that mark is exact. The numbers are printed under the square.
 #
-# The towns are schematic — a sunflower spiral rather than the placement of the generator —
-# and a town stands only on land reachable from the city: one that would fall into the sea or
-# on an island moves to the nearest free cell of that land, so the picture keeps the count of
-# the setting. The gold point in the middle is the player's city: MainMap puts it at half the
-# rows and half the columns, so that mark is exact. The numbers are printed under the square.
-#
-# The belts of the chosen climate are drawn on the land as well. Their arithmetic is the one of
-# the generator (ClimateLayout), so the picture shows the belts the world will have — but the
-# field itself is the preview's own: the equator falls on one side of the city or on the other
-# and the meander has its own salt, exactly as the coastline has its own roll of the dice. A
-# random climate draws no belts: its equator is rolled, so the city may land in any belt and
-# there is nothing to promise.
+# The belts are the belts of the world even for a random climate: the equator is rolled by the
+# same stage that rolls it for the world, so there is something to promise now.
 extends Control
+
+const MapGenerator = preload("res://scripts/map_generator.gd")
 
 const PANEL_COLOR := Color(0.12, 0.12, 0.12)
 const PANEL_BORDER_COLOR := Color(0.28, 0.28, 0.28)
@@ -44,6 +38,14 @@ const LAND_COLOR := Color(0.30, 0.33, 0.29)
 const DEEP_SEA_COLOR := Color(0.10, 0.20, 0.32)
 const SHALLOW_SEA_COLOR := Color(0.18, 0.36, 0.50)
 const BEACH_COLOR := Color(0.60, 0.54, 0.38)
+# A lake is inland water and a wetland is land the player can walk on: the two must not read as
+# one dark patch, so the lake keeps a blue of its own and the wetland a dark green.
+const LAKE_COLOR := Color(0.30, 0.50, 0.60)
+const WETLAND_COLOR := Color(0.16, 0.28, 0.26)
+# The rock of a mountain top, mixed into the colour of its belt.
+const MOUNTAIN_ROCK := Color(0.58, 0.57, 0.55)
+# The light of the relief: a unit vector from the north-west, high enough to keep every slope lit.
+const RELIEF_LIGHT := Vector3(-0.5, -0.5, 0.7071)
 const TOWN_COLOR := Color(0.92, 0.92, 0.90)
 const CITY_COLOR := Color(0.95, 0.78, 0.35)
 const RIVER_COLOR := Color(0.36, 0.62, 0.90)
@@ -62,14 +64,20 @@ const BELT_COLORS: Array[Color] = [
 ]
 
 # The kinds of a cell of the picture. The codes are what build() puts into the byte array and
-# what the palette above turns into colours.
+# what the palette above turns into colours. The land codes are the relief families of the
+# generator; the deserts count as a plain, because the climate prunes them into the plain of
+# their zone anyway.
 const CELL_LAND := 0
 const CELL_DEEP_SEA := 1
 const CELL_SHALLOW_SEA := 2
 const CELL_BEACH := 3
+const CELL_LAKE := 4
+const CELL_HILL := 5
+const CELL_MOUNTAIN := 6
+const CELL_WETLAND := 7
 
 const PADDING := 14.0
-const CAPTION_HEIGHT := 100.0
+const CAPTION_HEIGHT := 116.0
 const MIN_SIDE := 30.0
 const TITLE_FONT_SIZE := 17
 const CAPTION_FONT_SIZE := 12
@@ -138,33 +146,35 @@ func _init() -> void:
     _caption_layer.render = Callable(self, "_draw_caption")
     add_child(_caption_layer)
 
-# The world the settings describe, on a grid of the preview: the sea and the main rivers.
-#
-# The sea mask is built by the generator itself, so every setting that moves the coast in the
-# game moves it here as well. A cell of the picture takes the kind of the majority of the hexes
-# it covers; the shallow band and the beach are worked out on that grid, because at this size
-# they are one or two cells wide whatever their depth in hexes.
-#
-# The rivers are generated on that same grid (see _build_rivers), so a river can only run
-# through the cells the picture draws as land: it never crosses the sea it is drawn on, and it
-# never crosses a river already drawn.
+# The whole picture of the world the settings describe: the relief the generator builds, and the
+# schematic rivers over it.
 static func build(size: int, sea: Dictionary, preview_seed: int = 20261026,
         rivers: Dictionary = {}, climate: String = ClimateLayout.CLIMATE_RANDOM) -> Dictionary:
+    var picture := build_relief(size, sea, preview_seed, climate)
+    picture["rivers"] = build_rivers(picture, size, rivers, preview_seed)
+    return picture
+
+# The expensive half of the picture: the hexes of the world (see relief_tiles) averaged down to
+# the cells of the picture. The caller caches it by (size, sea, seed, climate), because the
+# rivers, the towns and the resource density do not change it.
+#
+# A cell of the picture takes the majority kind of the hexes it covers; a tie goes to the higher
+# ground, so a mountain ridge is not averaged away into a plain. The beach is drawn where the
+# world has beach hexes and the cell touches the water of the picture.
+static func build_relief(size: int, sea: Dictionary, preview_seed: int = 20261026,
+        climate: String = ClimateLayout.CLIMATE_RANDOM) -> Dictionary:
     var grid := mini(maxi(size, 1), GRID_MAX)
     var city := int(size / 2.0)
+    var tiles := relief_tiles(size, sea, preview_seed, climate)
 
-    # The generator draws the coasts at random. The seed is pinned for the build and the global
-    # generator is randomized again right after it: the same settings always draw the same
-    # picture, and the world the player gets is a different roll of the same dice. Nothing may
-    # depend on the state the preview leaves — the world generation reseeds the generator before
-    # it starts anyway, and that is the second of the two guards against handing over the map.
-    seed(preview_seed)
-    var mask: Array = SeaManager.build_sea_mask(size, size, city, city, sea)
-    SeaManager.grow_sea_islands(mask, size, size, city, city, sea, false)
-    randomize()
-
+    var cells := PackedByteArray()
+    cells.resize(grid * grid)
+    var belts := PackedByteArray()
+    belts.resize(grid * grid)
     var water := PackedByteArray()
     water.resize(grid * grid)
+    var fallback := PackedByteArray()
+    fallback.resize(grid * grid)
     var sea_cells := 0
     for cell_y in range(grid):
         var row_from := int(float(cell_y) * float(size) / float(grid))
@@ -172,66 +182,122 @@ static func build(size: int, sea: Dictionary, preview_seed: int = 20261026,
         for cell_x in range(grid):
             var col_from := int(float(cell_x) * float(size) / float(grid))
             var col_to := maxi(col_from + 1, int(float(cell_x + 1) * float(size) / float(grid)))
-            var wet := 0
+            var votes := {}
+            var belt_votes := {}
             var total := 0
+            var wet := 0
+            var beach_votes := 0
             for row in range(row_from, row_to):
                 for col in range(col_from, col_to):
+                    var code := _cell_code(str(tiles[row][col]["terrain"]))
+                    votes[code] = int(votes.get(code, 0)) + 1
                     total += 1
-                    if mask[row][col]:
+                    if code == CELL_DEEP_SEA or code == CELL_SHALLOW_SEA:
+                        sea_cells += 1
+                    if _is_water_code(code):
                         wet += 1
-            sea_cells += wet
-            if wet * 2 >= total:
-                water[cell_y * grid + cell_x] = 1
+                    elif code == CELL_BEACH:
+                        beach_votes += 1
+                    var belt := maxi(0, ClimateLayout.BELTS.find(
+                            str(tiles[row][col].get("temperature", ""))))
+                    belt_votes[belt] = int(belt_votes.get(belt, 0)) + 1
+            var index := cell_y * grid + cell_x
+            water[index] = 1 if wet * 2 >= total else 0
+            fallback[index] = _majority(votes,
+                    [CELL_MOUNTAIN, CELL_HILL, CELL_WETLAND, CELL_LAND])
+            if water[index] == 1:
+                cells[index] = _majority(votes, [CELL_DEEP_SEA, CELL_SHALLOW_SEA, CELL_LAKE])
+            elif beach_votes > 0:
+                cells[index] = CELL_BEACH
+            else:
+                cells[index] = fallback[index]
+            belts[index] = _majority(belt_votes, [0, 1, 2, 3, 4])
 
-    var depths := _coast_depths(water, grid, size, sea)
-    var beach: bool = bool(sea.get("beach", true))
-    var cells := PackedByteArray()
-    cells.resize(grid * grid)
+    # A beach only outlines a coast the picture actually draws: a block of hexes can hold beach
+    # hexes of an inlet thinner than one cell, and that sand would float on dry land.
     for index in range(grid * grid):
-        if water[index] == 1:
-            cells[index] = CELL_SHALLOW_SEA if depths[index] > 0 else CELL_DEEP_SEA
-        elif beach and _touches(water, grid, index, 1):
-            cells[index] = CELL_BEACH
-        else:
-            cells[index] = CELL_LAND
+        if cells[index] == CELL_BEACH and not _touches(water, grid, index, 1):
+            cells[index] = fallback[index]
 
     # The city sits at the same row and column, so one number names its cell.
     var city_cell := clampi(int(float(city) * float(grid) / float(size)), 0, grid - 1)
-    var belts := PackedByteArray()
-    var city_belt := ""
-    if climate != ClimateLayout.CLIMATE_RANDOM:
-        var layout := _climate_layout(size, grid, preview_seed, climate)
-        belts = layout["belts"]
-        if belts.size() == grid * grid:
-            city_belt = ClimateLayout.belt_name(belts[city_cell * grid + city_cell])
     return {
         "grid": grid,
         "cells": cells,
         "belts": belts,
-        "city_belt": city_belt,
+        "water": water,
+        "city_belt": str(tiles[city][city].get("temperature", "")),
         "reachable": _reachable_cells(cells, grid, city_cell * grid + city_cell),
         "sea_share": float(sea_cells) / float(maxi(size * size, 1)),
-        "rivers": _build_rivers(grid, water, size, rivers, preview_seed),
     }
 
-# The belts of the chosen climate on the grid of the picture.
-#
-# The picture is coarser than the world, so the belts are computed on the grid of the picture and
-# the geometry is scaled to it: a belt is a share of the height of the map, and it keeps that
-# share on the picture. The equator falls on one side of the city or on the other, and the
-# meander has its own salt — both are rolled from the seed of the picture, so the picture never
-# tells more than the settings do.
-static func _climate_layout(size: int, grid: int, preview_seed: int, climate: String) -> Dictionary:
-    var cfg: Dictionary = GameData.map_config.get("climate", {})
-    if cfg.is_empty():
-        return {"belts": PackedByteArray()}
-    var scale := float(grid) / float(maxi(size, 1))
-    var geo := ClimateLayout.geometry(cfg, grid, scale)
-    var rng := RandomNumberGenerator.new()
-    rng.seed = preview_seed
-    var side := 1.0 if rng.randf() < 0.5 else -1.0
-    var equator := ClimateLayout.equator_of(grid, geo, climate, side)
-    return ClimateLayout.layout(grid, grid, geo, climate, rng.randi(), equator)
+# The hexes of the world as the picture draws them: the generator's own stages, in the order the
+# world runs them, from the pinned seed. The corridor is laid after the climate, as the world lays
+# it, because a punched hex becomes the plain of its own zone. The covers and the resources the
+# world rolls in between are not drawn here and change no terrain, so the picture does not pay for
+# them. The global generator is randomized again afterwards: nothing may depend on the state the
+# picture leaves, and the world seeds itself before its first stage as well.
+static func relief_tiles(size: int, sea: Dictionary, preview_seed: int,
+        climate: String) -> Array:
+    var city := int(size / 2.0)
+    seed(preview_seed)
+    var generator := MapGenerator.new()
+    generator.log_stages = false
+    var counts := generator.make_terrain_counts(size, size)
+    var tiles := generator.init_tile_data(size, size)
+    var mask := generator.apply_sea_mask(tiles, size, size, city, city, sea, false)
+    generator.generate_relief(tiles, size, size, city, city, counts)
+    generator.post_process_relief(tiles, size, size, mask, city, city)
+    generator.apply_climate(tiles, size, size, climate)
+    generator.ensure_outward_corridor(tiles, size, size, city, city)
+    generator.free()
+    randomize()
+    return tiles
+
+# The schematic main rivers over the water of the picture (see _build_rivers).
+static func build_rivers(picture: Dictionary, size: int, cfg: Dictionary,
+        seed_value: int) -> Array:
+    return _build_rivers(int(picture.get("grid", 0)), picture.get("water", PackedByteArray()),
+            size, cfg, seed_value)
+
+# The kind of a hex of the world on the picture. The unique lakes are water like any lake: they
+# are impassable, and a town does not stand on them.
+static func _cell_code(terrain_id: String) -> int:
+    match terrain_id:
+        "sea":
+            return CELL_DEEP_SEA
+        "shallow_sea":
+            return CELL_SHALLOW_SEA
+        "beach":
+            return CELL_BEACH
+        "lake":
+            return CELL_LAKE
+    var data: Dictionary = GameData.terrains.get(terrain_id, {})
+    if bool(data.get("unique", false)) and int(data.get("move_cost", 1)) >= 999:
+        return CELL_LAKE
+    match GameData.terrain_family(terrain_id):
+        "hill":
+            return CELL_HILL
+        "mountain":
+            return CELL_MOUNTAIN
+        "swamp", "marsh":
+            return CELL_WETLAND
+    return CELL_LAND
+
+static func _is_water_code(code: int) -> bool:
+    return code == CELL_DEEP_SEA or code == CELL_SHALLOW_SEA or code == CELL_LAKE
+
+# The majority of the votes; the order of the list breaks a tie, so the caller puts the kind it
+# wants to survive a tie first.
+static func _majority(votes: Dictionary, order: Array) -> int:
+    var best: int = order[order.size() - 1]
+    var best_count := -1
+    for code in order:
+        var count := int(votes.get(code, 0))
+        if count > best_count:
+            best = code
+            best_count = count
+    return best
 
 # The land a town can stand on: the cells of the picture connected to the cell of the city over
 # land. The world places a town only where it can reach the player's city by land, so an island
@@ -276,36 +342,9 @@ static func _nearest_land_cell(cells: PackedByteArray, grid: int, from: int) -> 
     return -1
 
 static func _is_land_cell(cells: PackedByteArray, index: int) -> bool:
-    return cells[index] == CELL_LAND or cells[index] == CELL_BEACH
-
-# How far every water cell of the picture lies from the coast, in cells, up to the depth the
-# shallow band reaches. The band is set in hexes, so it is scaled to the grid: the shallows of
-# a 200×200 world are thinner than one cell of its picture, and the picture shows them one
-# cell wide instead of not at all.
-static func _coast_depths(water: PackedByteArray, grid: int, size: int,
-        sea: Dictionary) -> PackedByteArray:
-    var depths := PackedByteArray()
-    depths.resize(grid * grid)
-    var depth_limit := clampi(roundi(float(sea.get("coast_max_depth", 3))
-            * float(grid) / float(maxi(size, 1))), 1, grid)
-    var queue := PackedInt32Array()
-    for index in range(grid * grid):
-        if water[index] == 0 or not _touches(water, grid, index, 0):
-            continue
-        depths[index] = 1
-        queue.append(index)
-    var head := 0
-    while head < queue.size():
-        var index := queue[head]
-        head += 1
-        if depths[index] >= depth_limit:
-            continue
-        for neighbour in _neighbours(grid, index):
-            if water[neighbour] == 0 or depths[neighbour] > 0:
-                continue
-            depths[neighbour] = depths[index] + 1
-            queue.append(neighbour)
-    return depths
+    return cells[index] == CELL_LAND or cells[index] == CELL_BEACH \
+            or cells[index] == CELL_HILL or cells[index] == CELL_MOUNTAIN \
+            or cells[index] == CELL_WETLAND
 
 # The four cells around a cell of the picture. The picture is a square grid of blocks of
 # hexes, so the sides of a block are what a neighbour means here.
@@ -919,26 +958,36 @@ func _climate_caption() -> String:
         return ""
     return tr("Climate: %s") % _belt_label(belt)
 
-# The legend of the belts: a swatch of every belt and its name. The land of the picture is tinted
-# with the colours of the belts, so the player has to know which colour is which. The names of the
-# five belts do not fit on one line of the panel, so the legend is laid out in rows of three.
+# The legend of the picture: a swatch of every belt and its name, then one row of the kinds that
+# own a colour whatever the belt. The land is tinted with the colours of the belts, so the player
+# has to know which colour is which; the hills and the mountains are that same colour lit by the
+# slope, so they need no swatch of their own. The names of the five belts do not fit on one line
+# of the panel, so they are laid out in rows of three.
 func _draw_legend(layer: Control, font: Font, first_baseline: float) -> void:
     var belts: PackedByteArray = _picture.get("belts", PackedByteArray())
     if belts.is_empty():
         return
     var labels: Array[String] = []
+    var swatches: Array[Color] = []
     for code in range(ClimateLayout.BELTS.size()):
         labels.append(_belt_label(ClimateLayout.BELTS[code]))
+        swatches.append(BELT_COLORS[code])
     var row := 0
     var index := 0
     while index < labels.size():
-        var row_labels := labels.slice(index, mini(index + LEGEND_ROW_ITEMS, labels.size()))
-        _draw_legend_row(layer, font, row_labels, index,
+        var count := mini(LEGEND_ROW_ITEMS, labels.size() - index)
+        _draw_legend_row(layer, font, labels.slice(index, index + count),
+                swatches.slice(index, index + count),
                 first_baseline + float(row) * LEGEND_ROW_STEP)
-        index += LEGEND_ROW_ITEMS
+        index += count
         row += 1
+    var kinds: Array[String] = [tr("Sea"), tr("Shallows"), tr("Beach"), tr("Lake"), tr("Wetland")]
+    var kind_colors: Array[Color] = [DEEP_SEA_COLOR, SHALLOW_SEA_COLOR, BEACH_COLOR, LAKE_COLOR,
+            WETLAND_COLOR]
+    _draw_legend_row(layer, font, kinds, kind_colors,
+            first_baseline + float(row) * LEGEND_ROW_STEP)
 
-func _draw_legend_row(layer: Control, font: Font, labels: Array[String], first_code: int,
+func _draw_legend_row(layer: Control, font: Font, labels: Array[String], swatches: Array[Color],
         baseline: float) -> void:
     var widths: Array[float] = []
     var total := 0.0
@@ -950,7 +999,7 @@ func _draw_legend_row(layer: Control, font: Font, labels: Array[String], first_c
     var x := (layer.size.x - total + LEGEND_GAP) * 0.5
     for offset in range(labels.size()):
         layer.draw_rect(Rect2(Vector2(x, baseline - float(LEGEND_FONT_SIZE) + 1.0), LEGEND_SWATCH),
-                BELT_COLORS[first_code + offset])
+                swatches[offset])
         x += LEGEND_SWATCH.x + LEGEND_GAP
         layer.draw_string(font, Vector2(x, baseline), labels[offset], HORIZONTAL_ALIGNMENT_LEFT, -1,
                 LEGEND_FONT_SIZE, CAPTION_COLOR)
@@ -988,20 +1037,40 @@ func _make_texture(picture: Dictionary) -> ImageTexture:
     var belts: PackedByteArray = picture.get("belts", PackedByteArray())
     if grid <= 0 or cells.size() != grid * grid:
         return null
+    var heights := PackedFloat32Array()
+    heights.resize(grid * grid)
+    for index in range(cells.size()):
+        heights[index] = _cell_height(cells[index])
     var rgb := PackedByteArray()
     rgb.resize(grid * grid * 3)
     for index in range(cells.size()):
-        var color := _cell_color(cells[index], belts, index)
-        rgb[index * 3] = int(color.r * 255.0)
-        rgb[index * 3 + 1] = int(color.g * 255.0)
-        rgb[index * 3 + 2] = int(color.b * 255.0)
+        var color := _cell_color(cells[index], belts, heights, grid, index)
+        rgb[index * 3] = clampi(int(color.r * 255.0), 0, 255)
+        rgb[index * 3 + 1] = clampi(int(color.g * 255.0), 0, 255)
+        rgb[index * 3 + 2] = clampi(int(color.b * 255.0), 0, 255)
     return ImageTexture.create_from_image(
             Image.create_from_data(grid, grid, false, Image.FORMAT_RGB8, rgb))
 
-# The colour of a cell of the picture: the colour of the water, the sand of the beach, and the
-# colour of the belt the land lies in. A picture without belts (a random climate) keeps the flat
-# colour of the land.
-static func _cell_color(code: int, belts: PackedByteArray, index: int) -> Color:
+# The height a kind of cell stands at on the relief of the picture. The families are not a
+# heightfield of the world — the world has no heights — so the picture gives each family one, and
+# the slope between two neighbours is what the light shades.
+static func _cell_height(code: int) -> float:
+    match code:
+        CELL_MOUNTAIN:
+            return 2.0
+        CELL_HILL:
+            return 1.0
+        CELL_LAKE, CELL_SHALLOW_SEA:
+            return -1.0
+        CELL_DEEP_SEA:
+            return -2.0
+    return 0.0
+
+# The colour of a cell of the picture: the water and the sand keep colours of their own, and the
+# land is the colour of its belt lit by the slope of the relief around it. A wetland is flat and
+# dark instead: it is waterlogged ground, not a slope, and the light would read it as a hill.
+static func _cell_color(code: int, belts: PackedByteArray, heights: PackedFloat32Array,
+        grid: int, index: int) -> Color:
     match code:
         CELL_DEEP_SEA:
             return DEEP_SEA_COLOR
@@ -1009,9 +1078,23 @@ static func _cell_color(code: int, belts: PackedByteArray, index: int) -> Color:
             return SHALLOW_SEA_COLOR
         CELL_BEACH:
             return BEACH_COLOR
+        CELL_LAKE:
+            return LAKE_COLOR
+    var belt := LAND_COLOR
     if index < belts.size():
-        return BELT_COLORS[clampi(belts[index], 0, BELT_COLORS.size() - 1)]
-    return LAND_COLOR
+        belt = BELT_COLORS[clampi(belts[index], 0, BELT_COLORS.size() - 1)]
+    if code == CELL_WETLAND:
+        return (belt * 0.85).lerp(WETLAND_COLOR, 0.35)
+    var x := index % grid
+    var y := index / grid
+    var gx := heights[y * grid + mini(x + 1, grid - 1)] - heights[y * grid + maxi(x - 1, 0)]
+    var gy := heights[mini(y + 1, grid - 1) * grid + x] - heights[maxi(y - 1, 0) * grid + x]
+    var normal := Vector3(-gx, -gy, 2.0).normalized()
+    var shade := clampf(0.62 + 0.55 * maxf(0.0, normal.dot(RELIEF_LIGHT)), 0.5, 1.18)
+    var color := belt * shade
+    if code == CELL_MOUNTAIN:
+        color = color.lerp(MOUNTAIN_ROCK, 0.30)
+    return color
 
 # A thin space between the thousands, so that a huge map does not read as one long number.
 static func _grouped(value: int) -> String:
