@@ -209,6 +209,21 @@
       "special_yield": { "science": 3 }
     },
     {
+      "id": "alunite", "price": 5,
+      "name": "Alunite",
+      "type": "product",
+      "category": "material",
+      "icon": "alunite.png"
+    },
+    {
+      "id": "alum", "price": 12,
+      "name": "Alum",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "limestone_burning",
+      "icon": "alum.png"
+    },
+    {
       "id": "lime", "price": 6,
       "name": "Lime",
       "type": "product",

@@ -118,6 +118,25 @@
       "color": [ 200, 200, 180 ]
     },
     {
+      "id": "alunite_deposit",
+      "price": 5,
+      "name": "Alunite",
+      "type": "raw",
+      "category": "minerals",
+      "group": "minerals",
+      "subgroup": "",
+      "tech_required": "mining",
+      "allowed_terrain": [ "hill", "mountain", "rocky_desert" ],
+      "allowed_cover": [
+        "none", "temperate_rainforest_sparse", "temperate_dry_forest_sparse",
+        "temperate_rainforest", "temperate_dry_forest"
+      ],
+      "improved_by": "quarry",
+      "produces": { "alunite": 10 },
+      "icon": "alunite.png",
+      "color": [ 210, 175, 160 ]
+    },
+    {
       "id": "clay_deposit",
       "price": 3,
       "name": "Clay",

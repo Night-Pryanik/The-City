@@ -131,13 +131,10 @@
       "products": [ "oak_wood", "beech_wood", "chestnut_wood", "pine_wood", "maple_wood", "walnut_wood" ]
     },
     {
-      // The tanning materials: the barks, the galls, the nut, the shrub leaf and
-      // the dye and tannin woods all spend their astringent liquor the same way,
-      // so a tanner takes whichever the surroundings yield. No recipe names the
-      // group yet — the tanner's house still works hides alone.
+      // Tanning agents include both plant tannins and mineral salts.
       "id": "tannins",
-      "name": "Tannins",
-      "products": [ "oak_bark", "chestnut_bark", "walnuts", "galls", "campeche_wood", "sumac_leaves", "quebracho_wood" ]
+      "name": "Tanning Agents",
+      "products": [ "oak_bark", "chestnut_bark", "walnuts", "galls", "campeche_wood", "sumac_leaves", "quebracho_wood", "alum" ]
     }
   ]
 }

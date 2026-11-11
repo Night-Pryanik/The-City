@@ -248,8 +248,8 @@
     },
     {
       "id": "lime_kilns",
-      "name": "Lime Kilns",
-      "description": "Makes lime from limestone.",
+      "name": "Kiln",
+      "description": "Produces lime from limestone and alum from alunite.",
       "work_cost": 45,
       "additional_cost": [ { "planks": 120 }, { "@processed_construction_materials": 60 } ],
       "icon": "lime_kilns.png",

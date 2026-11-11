@@ -242,6 +242,16 @@
       "description": "Burns limestone into lime."
     },
     {
+      "id": "alum",
+      "name": "Alum",
+      "produced_in": [ "lime_kilns" ],
+      "resources": { "alunite": 20 },
+      "result": { "alum": 10 },
+      "time": 5.0,
+      "unlock_tech": "limestone_burning",
+      "description": "Produces alum from alunite by roasting, leaching and crystallization."
+    },
+    {
       "id": "papyrus",
       "name": "Papyrus",
       "produced_in": [ "papyrus_workshop" ],

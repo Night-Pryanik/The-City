@@ -3143,8 +3143,8 @@ msgid "Makes clay pots, bricks and tablets on the potter's wheel."
 msgstr "Изготовление глиняной посуды, кирпичей и табличек на гончарном круге."
 
 msgctxt "buildings.description"
-msgid "Makes lime from limestone."
-msgstr "Производство извести из известняка."
+msgid "Produces lime from limestone and alum from alunite."
+msgstr "Производство извести из известняка и квасцов из алунита."
 
 msgctxt "buildings.description"
 msgid "Makes paper."
@@ -3275,8 +3275,8 @@ msgid "Library"
 msgstr "Библиотека"
 
 msgctxt "buildings.name"
-msgid "Lime Kilns"
-msgstr "Печи для обжига извести"
+msgid "Kiln"
+msgstr "Печь для обжига"
 
 msgctxt "buildings.name"
 msgid "Market"
@@ -3613,6 +3613,10 @@ msgstr "Создает лодку из тростника"
 msgctxt "crafts.description"
 msgid "Burns limestone into lime."
 msgstr "Обжигает известняк в известь"
+
+msgctxt "crafts.description"
+msgid "Produces alum from alunite by roasting, leaching and crystallization."
+msgstr "Производит квасцы из алунита обжигом, выщелачиванием и кристаллизацией."
 
 msgctxt "crafts.description"
 msgid "Burns wood into charcoal."
@@ -4219,6 +4223,10 @@ msgid "Lime"
 msgstr "Известь"
 
 msgctxt "crafts.name"
+msgid "Alum"
+msgstr "Квасцы"
+
+msgctxt "crafts.name"
 msgid "Llama Meat"
 msgstr "Мясо ламы"
 
@@ -4771,7 +4779,7 @@ msgid "Tableware Stones"
 msgstr "Камни для посуды"
 
 msgctxt "product_groups.name"
-msgid "Tannins"
+msgid "Tanning Agents"
 msgstr "Дубильные вещества"
 
 msgctxt "product_groups.name"
@@ -5577,6 +5585,14 @@ msgstr "Чечевица"
 msgctxt "resources.name"
 msgid "Lime"
 msgstr "Известь"
+
+msgctxt "resources.name"
+msgid "Alunite"
+msgstr "Алунит"
+
+msgctxt "resources.name"
+msgid "Alum"
+msgstr "Квасцы"
 
 msgctxt "resources.name"
 msgid "Limestone"
@@ -6491,8 +6507,8 @@ msgid "Allows you to build the oilmaker's house: seeds, fruits and other parts o
 msgstr "Даёт возможность строить дом маслодела: семена, плоды и прочие части масличных культур → растительное масло."
 
 msgctxt "technologies.description"
-msgid "Allows you to build the lime kilns: limestone → lime."
-msgstr "Даёт возможность строить печи для обжига известняка: известняк → известь."
+msgid "Allows you to build kilns: limestone → lime, alunite → alum."
+msgstr "Даёт возможность строить печи для обжига: известняк → известь, алунит → квасцы."
 
 msgctxt "technologies.description"
 msgid "Allows you to build the paper workshop.\nAllows you to produce paper from mulberry, hemp and ramie with the help of lime."
@@ -6643,8 +6659,8 @@ msgid "Ancient civilizations could count, but only now has knowledge moved from 
 msgstr "Древние цивилизации умели считать, но именно сейчас знания перешли от простых рецептов к строгим доказательствам. Геометрия и абстрактные вычисления позволили не просто наблюдать за миром, а рассчитывать его: от формы зубьев колеса до движения звёзд."
 
 msgctxt "technologies.flavor"
-msgid "Burning limestone in kilns made lime possible, a key building material and an ingredient for making cement."
-msgstr "Обжиг известняка в печах позволил получать известь, важный строительный материал и компонент для производства цемента."
+msgid "Roasting minerals opens new possibilities for crafts: limestone yields lime, while roasted alunite is leached and crystallized to obtain alum for treating hides and fixing dyes."
+msgstr "Обжиг минералов открывает новые возможности для ремёсел: из известняка получают известь, а обожжённый алунит выщелачивают и кристаллизуют, получая квасцы для выделки кож и закрепления красителей."
 
 msgctxt "technologies.flavor"
 msgid "By mixing fat with lye, people got soap, the first step toward hygiene and medicine."
@@ -6927,8 +6943,8 @@ msgid "Leatherworking"
 msgstr "Кожевенное дело"
 
 msgctxt "technologies.name"
-msgid "Limestone Burning"
-msgstr "Обжиг известняка"
+msgid "Mineral Firing"
+msgstr "Обжиг минералов"
 
 msgctxt "technologies.name"
 msgid "Masonry"

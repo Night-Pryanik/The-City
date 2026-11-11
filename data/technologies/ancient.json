@@ -340,13 +340,13 @@
     },
     {
       "id": "limestone_burning",
-      "name": "Limestone Burning",
+      "name": "Mineral Firing",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "limestone_burning.png",
       "prerequisites": [ [ "pottery", "masonry" ] ],
-      "description": "Allows you to build the lime kilns: limestone → lime.",
-      "flavor": "Burning limestone in kilns made lime possible, a key building material and an ingredient for making cement."
+      "description": "Allows you to build kilns: limestone → lime, alunite → alum.",
+      "flavor": "Roasting minerals opens new possibilities for crafts: limestone yields lime, while roasted alunite is leached and crystallized to obtain alum for treating hides and fixing dyes."
     },
     {
       "id": "currency",

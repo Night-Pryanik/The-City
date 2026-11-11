@@ -3143,7 +3143,7 @@ msgid "Makes clay pots, bricks and tablets on the potter's wheel."
 msgstr ""
 
 msgctxt "buildings.description"
-msgid "Makes lime from limestone."
+msgid "Produces lime from limestone and alum from alunite."
 msgstr ""
 
 msgctxt "buildings.description"
@@ -3275,7 +3275,7 @@ msgid "Library"
 msgstr ""
 
 msgctxt "buildings.name"
-msgid "Lime Kilns"
+msgid "Kiln"
 msgstr ""
 
 msgctxt "buildings.name"
@@ -3612,6 +3612,10 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Burns limestone into lime."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Produces alum from alunite by roasting, leaching and crystallization."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -4219,6 +4223,10 @@ msgid "Lime"
 msgstr ""
 
 msgctxt "crafts.name"
+msgid "Alum"
+msgstr ""
+
+msgctxt "crafts.name"
 msgid "Llama Meat"
 msgstr ""
 
@@ -4771,7 +4779,7 @@ msgid "Tableware Stones"
 msgstr ""
 
 msgctxt "product_groups.name"
-msgid "Tannins"
+msgid "Tanning Agents"
 msgstr ""
 
 msgctxt "product_groups.name"
@@ -5576,6 +5584,14 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Lime"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Alunite"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Alum"
 msgstr ""
 
 msgctxt "resources.name"
@@ -6491,7 +6507,7 @@ msgid "Allows you to build the oilmaker's house: seeds, fruits and other parts o
 msgstr ""
 
 msgctxt "technologies.description"
-msgid "Allows you to build the lime kilns: limestone → lime."
+msgid "Allows you to build kilns: limestone → lime, alunite → alum."
 msgstr ""
 
 msgctxt "technologies.description"
@@ -6643,7 +6659,7 @@ msgid "Ancient civilizations could count, but only now has knowledge moved from 
 msgstr ""
 
 msgctxt "technologies.flavor"
-msgid "Burning limestone in kilns made lime possible, a key building material and an ingredient for making cement."
+msgid "Roasting minerals opens new possibilities for crafts: limestone yields lime, while roasted alunite is leached and crystallized to obtain alum for treating hides and fixing dyes."
 msgstr ""
 
 msgctxt "technologies.flavor"
@@ -6927,7 +6943,7 @@ msgid "Leatherworking"
 msgstr ""
 
 msgctxt "technologies.name"
-msgid "Limestone Burning"
+msgid "Mineral Firing"
 msgstr ""
 
 msgctxt "technologies.name"
