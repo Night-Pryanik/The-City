@@ -94,6 +94,19 @@ func _test_data(gdata: Node, state: Dictionary) -> void:
             "the \"%s\" technology has no record in tech_modifiers" % WATER_TECH, state)
     check(bool(ww.get("requires_water", false)),
             "the water wheel needs the running water as well as the technology", state)
+    # The Effects tab lists a researched technology whether or not the city has
+    # water, so the caption and the description must carry the condition themselves.
+    var wheel_caption := str(ww.get("name", ""))
+    check(wheel_caption.contains("+25%") and wheel_caption.contains("only")
+            and wheel_caption.contains("fresh water"),
+            "the water wheel caption must state that the +25% bonus needs water", state)
+    var wheel_description := ""
+    for t in gdata.technologies:
+        if str(t.get("id", "")) == WATER_TECH:
+            wheel_description = str(t.get("description", ""))
+    check(wheel_description.contains("+25%") and wheel_description.contains("only")
+            and wheel_description.contains("fresh water"),
+            "the technology description must state that the +25% bonus needs water", state)
     for field in ["production_multiplier", "building_production_multiplier"]:
         check(ww.get(field, {}) is Dictionary and not ww.get(field, {}).is_empty(),
                 "the record of the \"%s\" technology must fill %s" % [WATER_TECH, field],

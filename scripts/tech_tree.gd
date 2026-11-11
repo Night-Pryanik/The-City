@@ -51,12 +51,6 @@ const ERA_LABEL_HEIGHT: int = 64 # the height of the strip above the columns und
 const ERA_LABEL_WIDTH: int = 200 # the fixed width of the heading of the era
 const ERA_LINE_WIDTH: float = 2.0 # the thickness of the vertical separator of the eras
 
-# --- The tooltip of a technology ---
-# The width of the text of the tooltip. The built-in tooltip of Godot does not wrap
-# the text — a long description runs off the screen — so the line breaks are put by
-# hand, by this width (see _wrap_tooltip_text).
-const TOOLTIP_MAX_WIDTH: int = 460
-
 # --- The external references (filled in in setup) ---
 var current_label: Label # "Researching: ..." (the Label at the top of the panel)
 var science_pool_label: Label # "Science: X/sec" (the rate of the research of the city)
@@ -879,10 +873,10 @@ func _create_tech_button(tech_data: Dictionary) -> Button:
     # The small icons at the bottom of the button: everything that the technology opens.
     _add_unlock_icons(btn, tech_data["id"])
 
-    # Tooltip — the built-in mechanism of Godot. It will be shown on hover
-    # after the system delay (Project Settings → gui/timets/tooltip_delay_sec).
-    # The text is wrapped by the width of the tooltip (see _wrap_tooltip_text).
-    btn.tooltip_text = _tech_tooltip_text(tech_data["id"])
+    # Tooltip — the built-in mechanism of Godot, with the wrapping content of the
+    # project: the engine draws the text of a tooltip in one line, and a long
+    # description of a technology runs off the screen.
+    _attach_tech_tooltip(btn, tech_data["id"])
 
     # The click — upwards, through the signal.
     var tech_id: String = tech_data["id"]
@@ -1328,12 +1322,33 @@ func _update_states():
                 progress.visible = false
 
         # The tooltip with the actual state
-        btn.tooltip_text = _tech_tooltip_text(tech_id)
+        _update_tech_tooltip(btn, tech_id)
     
+func _attach_tech_tooltip(btn: Button, tech_id: String) -> void:
+    # The wrapping tooltip of the project: the built-in tooltip of the engine draws
+    # its text in one line, and the description of a technology does not fit in one.
+    # The carrier is laid over the button, but it stops above the row of the unlock
+    # icons: those icons have their own tooltips, and the row needs the mouse for
+    # the wheel that scrolls it.
+    var carrier := WrappedTooltip.attach(btn, _tech_tooltip_text(tech_id))
+    if btn.get_node_or_null("UnlockIconsScroll") != null:
+        carrier.offset_bottom = -(UNLOCK_ICON_SIZE + UNLOCK_ICONS_MARGIN)
+
+func _update_tech_tooltip(btn: Button, tech_id: String) -> void:
+    # The text of the tooltip follows the state of the technology. A repeated
+    # assignment takes the open tooltip down, so the text is only replaced when it
+    # has really changed (the same rule as in trade_tab._set_tooltip).
+    var carrier := WrappedTooltip.find_carrier(btn)
+    if carrier == null:
+        return
+    var text := _tech_tooltip_text(tech_id)
+    if carrier.tooltip_text == text:
+        return
+    carrier.tooltip_text = text
+
 func _tech_tooltip_text(tech_id: String) -> String:
     # The text of the tooltip of the technology: the description, the cost of the
-    # research and the state of the technology. It is wrapped by the width of the
-    # tooltip — the built-in tooltip of Godot does not wrap the text.
+    # research and the state of the technology.
     var tech_data := _get_tech_data(tech_id)
     if tech_data.is_empty():
         return ""
@@ -1341,7 +1356,7 @@ func _tech_tooltip_text(tech_id: String) -> String:
     if desc.is_empty():
         desc = tr("No description available.")
     var cost: int = int(tech_data.get("science_cost", 3))
-    return _wrap_tooltip_text(tr("%s\nScience: %d%s") % [desc, cost, _tech_state_text(tech_id)])
+    return tr("%s\nScience: %d%s") % [desc, cost, _tech_state_text(tech_id)]
 
 # The state of the technology, as it is shown at the end of the tooltip.
 func _tech_state_text(tech_id: String) -> String:
@@ -1364,32 +1379,6 @@ func _tech_state_text(tech_id: String) -> String:
     if era_name.is_empty():
         return tr("\n\n[Unavailable: requires advancing to the next era]")
     return tr("\n\n[Era: %s — advance to it first]") % era_name
-
-# Wraps the text of the tooltip by the width of the tooltip. The built-in tooltip
-# of Godot does not wrap the text — a long description runs off the screen — so
-# the line breaks are put here, by the width of the font of the tooltip.
-func _wrap_tooltip_text(text: String) -> String:
-    var font: Font = get_theme_font("font", "TooltipLabel")
-    if font == null:
-        return text
-    var font_size: int = get_theme_font_size("font_size", "TooltipLabel")
-    var lines: Array[String] = []
-    for paragraph in text.split("\n"):
-        if paragraph.is_empty():
-            lines.append("")
-            continue
-        var line := ""
-        for word in paragraph.split(" "):
-            var candidate := word if line.is_empty() else line + " " + word
-            if line.is_empty() \
-                    or font.get_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, -1,
-                            font_size).x <= TOOLTIP_MAX_WIDTH:
-                line = candidate
-            else:
-                lines.append(line)
-                line = word
-        lines.append(line)
-    return "\n".join(lines)
 
 func _find_progress_in_button(btn: Button) -> ProgressBar:
     for child in btn.get_children():
