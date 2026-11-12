@@ -447,6 +447,29 @@ When key game systems change, the documentation must be updated together with th
 
 ## 📜 License
 
-The project is in development.
+The project is licensed in two parts:
 
-License information will be added separately.
+| Part | Where | License |
+|---|---|---|
+| Code — scripts, scenes, tests, tools | `scripts/`, `scenes/`, `tests/`, `tools/` | CC BY-NC-SA 4.0 — [`LICENSE`](LICENSE) |
+| Artwork and game data — icons, tilesets, JSON data, texts | `icons/`, `tilesets/`, `data/`, `locale/` | CC BY 4.0 — [`LICENSE-ASSETS.md`](LICENSE-ASSETS.md) |
+
+In plain words:
+
+- **the code** may be read, changed and shared by anyone; it may not be used to make
+  money, so nobody may sell The City or a paid game built on this code; a changed
+  version must stay under the same license, so it remains open;
+- **the artwork and the data** may be reused by anyone, including for money, as long
+  as The City is credited — which is what a mod that reuses vanilla icons or vanilla
+  data has to do.
+
+Third-party components — the bundled font and the engine — keep their own licenses
+and are listed in [`NOTICE.md`](NOTICE.md).
+
+Mods are third-party content: a mod carries its own license, stated by its author.
+The two mods that ship with the game are part of the project and follow the licenses
+above.
+
+The name **The City**, the logo and the branding are not covered by the license.
+The license grants permission to use the material, not to present a modified or
+derived work as the original game.

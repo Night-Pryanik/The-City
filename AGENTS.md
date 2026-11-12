@@ -204,6 +204,8 @@ The purpose of comments is to preserve **non-obvious knowledge**, not to increas
 
 Files ignored only by the working-tree `.gitignore` are local by design and must not be committed: `docs.md`, `developer_diary.md`, `TODO.md`, the scratch files under `tools/`, and the assistant's memory folder.
 
+Font files are local as well. The `*.ttf` rule keeps every font out of the index except `fonts/InterVariable.ttf`, which was added before the rule and is tracked on purpose — it is the font the game ships with (SIL OFL). Any other font in `fonts/` belongs to the machine it sits on and must not reach a distributed build unless its own license allows redistribution.
+
 `docs.md` is the detailed design document, and source comments reference it by section name. It stays on disk and remains valid for local work, although the file is absent from the repository — the references are not a reason to re-add it.
 
 To keep a file local, list it in the working-tree `.gitignore` and drop it from the index with `git rm --cached <file>`, which leaves the file itself untouched on disk.

@@ -15,6 +15,63 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "%s (%s)"
+msgstr "%s (%s)"
+
+msgid "A challenge of the era is completed."
+msgstr "Испытание эпохи выполнено."
+
+msgid "About"
+msgstr "О программе"
+
+msgid "About the game"
+msgstr "О программе"
+
+msgid "An economic simulator of a single city's development through historical eras."
+msgstr "Экономический симулятор развития одного города сквозь исторические эпохи."
+
+msgid "Anyone may read, change and share the code. It may not be used to make money, and a changed version must stay under the same license."
+msgstr "Любой может читать, изменять и распространять код. Его нельзя использовать для заработка, а изменённая версия должна оставаться под той же лицензией."
+
+msgid "Anyone may reuse the artwork and the data, including commercially, as long as The City is credited."
+msgstr "Любой может использовать графику и данные, в том числе за деньги, если указать авторство The City."
+
+msgid "Artwork and game data"
+msgstr "Графика и игровые данные"
+
+msgid "Author"
+msgstr "Автор"
+
+msgid "Game code"
+msgstr "Код игры"
+
+msgid "Godot Engine — MIT License"
+msgstr "Движок Godot — лицензия MIT"
+
+msgid "Inter font — SIL Open Font License 1.1"
+msgstr "Шрифт Inter — SIL Open Font License 1.1"
+
+msgid "Licenses"
+msgstr "Лицензии"
+
+msgid "Open the license text"
+msgstr "Открыть текст лицензии"
+
+msgid "Open the repository"
+msgstr "Открыть репозиторий"
+
+msgid "Project"
+msgstr "Проект"
+
+msgid "The artwork was made with the help of an image-generation model."
+msgstr "Графика создана при помощи генератора изображений."
+
+msgid "The full texts of the licenses are in the LICENSE and LICENSE-ASSETS.md files of the repository."
+msgstr "Полные тексты лицензий лежат в файлах LICENSE и LICENSE-ASSETS.md репозитория."
+
+msgid "Third-party components"
+msgstr "Сторонние компоненты"
+
 msgid "\n\nFound here: %s"
 msgstr "\n\nЗдесь обнаружено: %s"
 
@@ -4806,6 +4863,10 @@ msgctxt "product_groups.name"
 msgid "Writing Materials"
 msgstr "Писчие материалы"
 
+msgctxt "product_groups.name"
+msgid "Tannins"
+msgstr "Дубильные вещества"
+
 msgctxt "professions.description"
 msgid "A pseudo-profession that covers the whole population of the city, including employed citizens."
 msgstr "Псевдо-профессия: охватывает всё население города, включая занятых жителей."
@@ -6246,6 +6307,10 @@ msgctxt "resources.name"
 msgid "Zebu"
 msgstr "Зебу"
 
+msgctxt "resources.name"
+msgid "Pottery of <city_name>"
+msgstr "Глиняная посуда <city_name>"
+
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
 msgstr "Ровная дорога для телег. Позволяет перевозить втрое больше, чем тропка."
@@ -6334,6 +6399,10 @@ msgctxt "specializations.description"
 msgid "Workshops and mills of the city work faster. Every building that turns raw materials into goods produces more."
 msgstr "Мастерские и мельницы города работают быстрее. Каждое здание, превращающее сырьё в товары, производит больше."
 
+msgctxt "specializations.description"
+msgid "The kilns of the city are known beyond its walls. Pottery brings more, and the workshops of the city fill it faster."
+msgstr "Печи города знают за его стенами. Керамика приносит больше, а мастерские наполняют её быстрее."
+
 msgctxt "specializations.full_name"
 msgid "Specialization of ceramics"
 msgstr "Специализация керамики"
@@ -6357,6 +6426,10 @@ msgstr "Специализация оружия"
 msgctxt "specializations.full_name"
 msgid "Specialization of wool"
 msgstr "Специализация шерсти"
+
+msgctxt "specializations.full_name"
+msgid "Specialization of pottery"
+msgstr "Специализация керамики"
 
 msgctxt "specializations.name"
 msgid "Agrarian"
@@ -6401,6 +6474,10 @@ msgstr "Оружейная"
 msgctxt "specializations.name"
 msgid "Wool"
 msgstr "Шерсть"
+
+msgctxt "specializations.name"
+msgid "Pottery"
+msgstr "Глиняная посуда"
 
 msgctxt "technologies.description"
 msgid "+10% to the production of mines and quarries."

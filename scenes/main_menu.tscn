@@ -49,6 +49,11 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Settings"
 
+[node name="AboutButton" type="Button" parent="VBoxContainer" unique_id=1900000001]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "About"
+
 [node name="QuitButton" type="Button" parent="VBoxContainer" unique_id=1616336660]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24

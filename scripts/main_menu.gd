@@ -6,6 +6,7 @@ extends Control
 # rules in memory with no consumer at all.
 const DataValidator = preload("res://scripts/data_validator.gd")
 const DataProblemsWindow = preload("res://scripts/data_problems_window.gd")
+const AboutWindow = preload("res://scripts/about_window.gd")
 const UiHelpers = preload("res://scripts/ui_helpers.gd")
 const UI_THEME = preload("res://scripts/ui_theme.gd")
 const ModListScene = preload("res://scenes/mod_list.tscn")
@@ -84,6 +85,7 @@ const SEA_CHECK := "check"
 @onready var new_game_button = $VBoxContainer/NewGameButton
 @onready var load_game_button = $VBoxContainer/LoadGameButton
 @onready var settings_button = $VBoxContainer/SettingsButton
+@onready var about_button = $VBoxContainer/AboutButton
 @onready var quit_button = $VBoxContainer/QuitButton
 
 # The window of the saves, created on the first click on "Load game".
@@ -138,6 +140,7 @@ func _ready():
     new_game_button.pressed.connect(_on_new_game)
     load_game_button.pressed.connect(_on_load_game)
     settings_button.pressed.connect(_on_settings)
+    about_button.pressed.connect(_on_about)
     quit_button.pressed.connect(_on_quit)
 
 # Both items that need a save are gated by the same fact. The tooltip of "Continue game"
@@ -1202,6 +1205,18 @@ func _on_settings():
     var settings_menu = load("res://scenes/settings_menu.tscn").instantiate()
     add_child(settings_menu)
     settings_menu.show()
+
+# The "About" window: the author, the licenses and the third-party components.
+#
+# The window is created on every click and removes itself when it is closed, therefore
+# it does not outlive the visit to it. It is added to the scene tree root, and not to
+# the menu: the anchors of the menu Control are not set to the screen edges
+# (scenes/main_menu.tscn), and the plate of the window would cover only part of it.
+func _on_about():
+    var window = Control.new()
+    window.set_script(AboutWindow)
+    get_tree().root.add_child(window)
+    window.show_about()
 
 func _on_quit():
     get_tree().quit()
