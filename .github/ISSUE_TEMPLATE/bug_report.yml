@@ -1,0 +1,52 @@
+name: Bug report
+description: Something in the game does not work as it should
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. The save of the city is the most useful thing to
+        attach: a save that leads to the bug is worth more than any description
+        of it.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      description: The steps that lead to the bug, from the start of the game.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: The version of the game or the build
+  - type: dropdown
+    id: system
+    attributes:
+      label: The system
+      options:
+        - Windows
+        - Linux
+        - macOS
+    validations:
+      required: true
+  - type: textarea
+    id: save
+    attributes:
+      label: A save
+      description: A new game, or a save — and if it is a save, the city, the era and the moment of the game.
+  - type: textarea
+    id: logs
+    attributes:
+      label: A screenshot or a part of the log
