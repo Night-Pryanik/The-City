@@ -59,12 +59,12 @@
   "climate": {
     "equator_min": 0.33,        // The range of the equator row of a random climate: the nearer
     "equator_max": 0.67,        // to 0.5, the more central (tropical) the city's latitude is
-    "tropical_half_rows": 0.08, // Half of the height of the tropical belt
-    "subtropical_rows": 0.06,   // The height of the subtropical belt on each side of the tropical
+    "tropical_half_rows": 0.05, // Half of the height of the tropical belt
+    "subtropical_rows": 0.10,   // The height of the subtropical belt on each side of the tropical
                                 // one (the savanna)
-    "mild_rows": 0.10,          // The height of the mild belt on each side of the subtropical one
+    "mild_rows": 0.20,          // The height of the mild belt on each side of the subtropical one
                                 // (the steppe and the prairie); everything beyond it is cold
-    "polar_share": 0.3,         // The share of the cold region that is the polar (tundra) belt.
+    "polar_share": 0.3333,      // The share of the cold region that is the polar (tundra) belt.
                                 // The tundra is its outer part, the one that reaches the map edge,
                                 // and the taiga keeps the inner part. A share rather than a height
                                 // in rows: the cold region is only a few rows thick on a side the
@@ -72,8 +72,8 @@
     // The belts are not straight: the temperature row of a hex is shifted by a smooth noise field,
     // so the boundaries meander and the belts take unequal areas. The shift is limited so that
     // the belts never overturn: the sequence stays ordered in every column.
-    "warp_rows": 3.0,           // The amplitude of the shift (in rows)
-    "warp_scale": 0.2,          // The size of the noise features (fraction of the smaller side)
+    "warp_rows": 5.0,           // The amplitude of the shift (in rows)
+    "warp_scale": 0.1,          // The size of the noise features (fraction of the smaller side)
     // The moisture field: a threshold on a smooth noise. A lower threshold means more wet land.
     "moisture_scale": 0.26,
     "moisture_threshold": 0.5,
