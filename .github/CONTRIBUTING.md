@@ -55,7 +55,7 @@ python tools/validate_json.py
 
 ## The rules of the code
 
-* Indentation is a tab, as in the rest of the project.
+* Indentation is a four spaces, as in the rest of the project.
 * The comments are in English, and they explain the current state of the system
   and the reason behind a decision — not the history of how it was written. A
   comment that only repeats the code is not needed.
