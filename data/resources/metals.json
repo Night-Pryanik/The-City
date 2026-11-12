@@ -17,7 +17,7 @@
       "improved_by": null,
       "produces": { "meteorite_iron": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
-      "icon": "meteorite_iron.png",
+      "icon": "meteorite_iron_nugget.png",
       "color": [ 120, 130, 140 ]
     },
     {
@@ -37,7 +37,7 @@
       "improved_by": null,
       "produces": { "copper": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
-      "icon": "copper.png",
+      "icon": "copper_nugget.png",
       "color": [ 120, 130, 140 ]
     },
     {
@@ -57,7 +57,7 @@
       "improved_by": null,
       "produces": { "gold": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
-      "icon": "gold.png",
+      "icon": "gold_nugget.png",
       "color": [ 120, 130, 140 ]
     },
     {
@@ -77,7 +77,7 @@
       "improved_by": null,
       "produces": { "silver": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
-      "icon": "silver.png",
+      "icon": "silver_nugget.png",
       "color": [ 120, 130, 140 ]
     },
     {
