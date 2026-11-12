@@ -345,6 +345,32 @@
       "description": "Dries rosella flower sepals."
     },
     {
+      // The syrup of the boiled pods, not a crystallised sugar: the pod is
+      // boiled in water and the sweet pulp is strained out of it. The sugar
+      // boiler is the workshop of the sweet juice, and the pod is boiled in
+      // it like the cane and the sap.
+      "id": "carob_syrup",
+      "name": "Carob Syrup",
+      "produced_in": [ "sugar_boiler" ],
+      "resources": { "carob_pods": 20 },
+      "result": { "carob_syrup": 10 },
+      "time": 5.0,
+      "unlock_tech": "sugar_making",
+      "description": "Boils the crushed pods down to a dark syrup."
+    },
+    {
+      // The pods are milled and the mash is fermented: the drink of the dry
+      // coast, cheaper than the wine of the grape.
+      "id": "carob_wine",
+      "name": "Carob Wine",
+      "produced_in": [ "winemaker_house" ],
+      "resources": { "carob_pods": 20 },
+      "result": { "carob_wine": 10 },
+      "time": 5.0,
+      "unlock_tech": "winemaking",
+      "description": "Ferments the crushed pods into a dark wine."
+    },
+    {
       // Crushing and boiling are one operation here, so no intermediate juice
       // good exists. An alternatives slot spends units of any variant at the
       // rate of the first one, so all variants of the OR-term must ask the same

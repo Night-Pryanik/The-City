@@ -93,6 +93,28 @@
       "color": [ 140, 210, 140 ]
     },
     {
+      // The tree of the dry warm coast: it stands on a stony slope and needs
+      // no water beyond the rain, so it takes the dry zones and the rocky
+      // oases of the desert alike. The plantation harvests the pods without
+      // felling the tree (docs.md, "Improvement types are a convention").
+      "id": "carob_tree",
+      "price": 8,
+      "name": "Carob Tree",
+      "type": "raw",
+      "category": "plants",
+      "group": "extra_food_plants",
+      "subgroup": "fruits",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [ "none" ],
+      "allowed_climate_zones": [ "savanna_dry", "savanna_wet", "tropical_dry" ],
+      "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "carob_pods": 10, "feed": 40 },
+      "icon": "carob_tree.png",
+      "color": [ 150, 110, 60 ]
+    },
+    {
       "id": "pomegranate_plant",
       "price": 9,
       "name": "Pomegranates",

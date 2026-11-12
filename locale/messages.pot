@@ -3571,6 +3571,10 @@ msgid "Boils a sweet juice down to sugar."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Boils the crushed pods down to a dark syrup."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Brews beer bittered and preserved with hops."
 msgstr ""
 
@@ -3656,6 +3660,10 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Drives charcoal into a bloom of iron in the forge."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Ferments the crushed pods into a dark wine."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -4020,6 +4028,14 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Carmine"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Carob Syrup"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Carob Wine"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4731,6 +4747,10 @@ msgid "Fruits"
 msgstr ""
 
 msgctxt "product_groups.name"
+msgid "Grains and Pods"
+msgstr ""
+
+msgctxt "product_groups.name"
 msgid "Jewelry"
 msgstr ""
 
@@ -5196,6 +5216,22 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Carmine"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Carob Pods"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Carob Syrup"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Carob Tree"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Carob Wine"
 msgstr ""
 
 msgctxt "resources.name"

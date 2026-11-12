@@ -44,6 +44,16 @@
       "type": "product",
       "category": "fruits",
       "icon": "yucca_fruit.png"
+    },
+    {
+      // The pod is a dried sweet fruit of the tree, eaten as it is and milled
+      // into flour like a grain (the pod is a third of its weight sugar).
+      "id": "carob_pods",
+      "price": 6,
+      "name": "Carob Pods",
+      "type": "product",
+      "category": "fruits",
+      "icon": "carob_pods.png"
     }
   ]
 }

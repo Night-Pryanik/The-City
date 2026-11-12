@@ -124,6 +124,15 @@
       "category": "drinks",
       "unlock_tech": "winemaking",
       "icon": "fruit_wine.png"
+    },
+    {
+      "id": "carob_wine",
+      "price": 14,
+      "name": "Carob Wine",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "winemaking",
+      "icon": "carob_wine.png"
     }
   ]
 }

@@ -8,10 +8,10 @@
   //
   // The whole chain goes, because a building without its recipes produces nothing and a
   // recipe without its building cannot be produced anywhere:
-  //   winemaker_house -> wine, fruit_wine -> wine, fruit_wine
+  //   winemaker_house -> wine, fruit_wine, carob_wine -> wine, fruit_wine, carob_wine
   "blacklist": {
     "buildings": [ "winemaker_house" ],
-    "crafts": [ "wine", "fruit_wine" ],
-    "resources": [ "wine", "fruit_wine" ]
+    "crafts": [ "wine", "fruit_wine", "carob_wine" ],
+    "resources": [ "wine", "fruit_wine", "carob_wine" ]
   }
 }

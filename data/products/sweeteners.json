@@ -5,6 +5,16 @@
   // (data/consumption/consumption_all.json).
   "resources": [
     { "id": "honey", "price": 16, "name": "Honey", "type": "product", "category": "sweeteners", "icon": "honey.png" },
-    { "id": "sugar", "price": 14, "name": "Sugar", "type": "product", "category": "sweeteners", "icon": "sugar.png" }
+    { "id": "sugar", "price": 14, "name": "Sugar", "type": "product", "category": "sweeteners", "icon": "sugar.png" },
+    {
+      // The syrup of the boiled pods, not a crystallised sugar: the pod is
+      // boiled in water and the sweet pulp is strained out of it.
+      "id": "carob_syrup",
+      "price": 12,
+      "name": "Carob Syrup",
+      "type": "product",
+      "category": "sweeteners",
+      "icon": "carob_syrup.png"
+    }
   ]
 }

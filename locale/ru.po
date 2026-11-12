@@ -3628,6 +3628,10 @@ msgid "Boils a sweet juice down to sugar."
 msgstr "Уваривает сладкий сок до сахара"
 
 msgctxt "crafts.description"
+msgid "Boils the crushed pods down to a dark syrup."
+msgstr "Вываривает размолотые стручки в тёмный сироп"
+
+msgctxt "crafts.description"
 msgid "Brews beer bittered and preserved with hops."
 msgstr "Варит пиво с хмелем: горечь и долгий срок хранения"
 
@@ -3714,6 +3718,10 @@ msgstr "Сушит, скручивает, вялит и ферментирует
 msgctxt "crafts.description"
 msgid "Drives charcoal into a bloom of iron in the forge."
 msgstr "Вгоняет уголь в раскалённую крицу железа в кузнице"
+
+msgctxt "crafts.description"
+msgid "Ferments the crushed pods into a dark wine."
+msgstr "Сбраживает размолотые стручки в тёмное вино"
 
 msgctxt "crafts.description"
 msgid "Fires clay into building bricks."
@@ -4078,6 +4086,14 @@ msgstr "Кампеш"
 msgctxt "crafts.name"
 msgid "Carmine"
 msgstr "Кармин"
+
+msgctxt "crafts.name"
+msgid "Carob Syrup"
+msgstr "Рожковый сироп"
+
+msgctxt "crafts.name"
+msgid "Carob Wine"
+msgstr "Рожковое вино"
 
 msgctxt "crafts.name"
 msgid "Carthamin"
@@ -4788,12 +4804,12 @@ msgid "Fruits"
 msgstr "Фрукты"
 
 msgctxt "product_groups.name"
-msgid "Jewelry"
-msgstr "Украшения"
+msgid "Grains and Pods"
+msgstr "Зерно и бобы"
 
 msgctxt "product_groups.name"
-msgid "Millable Grains"
-msgstr "Зерновые культуры"
+msgid "Jewelry"
+msgstr "Украшения"
 
 msgctxt "product_groups.name"
 msgid "Nuts"
@@ -5258,6 +5274,22 @@ msgstr "Каньива"
 msgctxt "resources.name"
 msgid "Carmine"
 msgstr "Кармин"
+
+msgctxt "resources.name"
+msgid "Carob Pods"
+msgstr "Рожковые стручки"
+
+msgctxt "resources.name"
+msgid "Carob Syrup"
+msgstr "Рожковый сироп"
+
+msgctxt "resources.name"
+msgid "Carob Tree"
+msgstr "Рожковое дерево"
+
+msgctxt "resources.name"
+msgid "Carob Wine"
+msgstr "Рожковое вино"
 
 msgctxt "resources.name"
 msgid "Carthamin"

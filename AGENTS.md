@@ -210,6 +210,12 @@ Font files are local as well. The `*.ttf` rule keeps every font out of the index
 
 To keep a file local, list it in the working-tree `.gitignore` and drop it from the index with `git rm --cached <file>`, which leaves the file itself untouched on disk.
 
+## The Example Mod and a New Recipe Chain
+
+`mods/blacklist_example` is a shipped mod that removes the winemaker's house, its recipes and the wines they produce. A new recipe in one of the removed buildings breaks it: the mod leaves the recipe behind, the recipe keeps a reference to a building that no longer exists, and `tests/test_mods.gd` fails with "the example adds no problems to the data".
+
+A new chain therefore has to be removed whole: the recipe, the product it makes, and every goods group that lists the product. The group is rewritten by the mod itself (`mods/blacklist_example/data/product_groups.json`), and the list it writes must hold exactly the members that survive — a member left out of the list is not an error, but a member of a removed product in the list is.
+
 ## Text and the Texture Filter of a Canvas Item
 
 The atlas of a font is a texture, and a `CanvasItem` samples it with its own `texture_filter`. A text drawn with `draw_string` on an item whose filter is `TEXTURE_FILTER_NEAREST` comes out streaked and stretched as soon as the window scales the interface by a fraction (`window/stretch/mode = "canvas_items"` with a base smaller than the window), because the glyph bitmap is then magnified by a nearest sampling. The letters of a small size suffer first.

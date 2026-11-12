@@ -27,8 +27,11 @@
       "icon": "cows.png"
     },
     {
+      // Everything the mill grinds into the flour of the city: the grain
+      // crops and the pod of the carob tree, which is ground into a flour of
+      // its own kind — but the mill has one flour.
       "id": "millable_grains",
-      "name": "Millable Grains",
+      "name": "Grains and Pods",
       "products": [
         "wheat",
         "rye",
@@ -38,7 +41,10 @@
         "rice",
         "millet",
         "sorghum",
-        "buckwheat"
+        "buckwheat",
+        // The pod is milled into flour as well, and the flour is the flour of
+        // the mill: a dried sweet pod has no flour of its own.
+        "carob_pods"
       ]
     },
     {
