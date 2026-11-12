@@ -1,0 +1,14 @@
+# The City — authors
+
+The people who wrote the project. The names are written as they should appear in
+the credits.
+
+**Anton Burmistrov** ([@Night-Pryanik](https://github.com/Night-Pryanik)) — author
+and maintainer
+
+A contribution is published under the license of the part it touches: the code
+under CC BY-NC-SA 4.0, the artwork and the game data under CC BY 4.0 — see
+[`LICENSE`](LICENSE) and [`LICENSE-ASSETS.md`](LICENSE-ASSETS.md).
+
+The third-party components the game ships with — the Inter font and the Godot
+engine — keep their own licenses; they are listed in [`NOTICE.md`](NOTICE.md).

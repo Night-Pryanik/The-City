@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you refer to The City in your work, please cite it as below."
+title: "The City"
+abstract: "An economic simulator of a single city's development through historical eras, on a procedurally generated hexagonal map."
+authors:
+  - family-names: "Burmistrov"
+    given-names: "Anton"
+    alias: "Night-Pryanik"
+    website: "https://github.com/Night-Pryanik"
+type: software
+license: CC-BY-NC-SA-4.0
+license-url: "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+repository-code: "https://github.com/Night-Pryanik/The-City"
+keywords:
+  - game
+  - city-builder
+  - economy
+  - simulation
+  - procedural-generation
+  - godot

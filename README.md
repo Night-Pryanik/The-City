@@ -445,6 +445,14 @@ When key game systems change, the documentation must be updated together with th
 
 ---
 
+## 🤝 Contributing
+
+Bug reports, fixes, new resources, translations and mods are all welcome. The
+rules of the code, the tests and the translation catalog are described in
+[`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md), the rules of the community
+in [`.github/CODE_OF_CONDUCT.md`](.github/CODE_OF_CONDUCT.md), and the names of the
+authors are listed in [`AUTHORS`](AUTHORS).
+
 ## 📜 License
 
 The project is licensed in two parts:
