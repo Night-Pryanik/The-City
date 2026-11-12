@@ -229,6 +229,8 @@ func _run() -> void:
         await _test_deal_cancel(town)
     if WATCHDOG.wants_case("contract_sync"):
         await _test_contract_sync(town)
+    if WATCHDOG.wants_case("refresh_drops_permanent"):
+        await _test_refresh_drops_permanent_flag(town)
     if WATCHDOG.wants_case("group_row"):
         await _test_group_row(town)
     if WATCHDOG.wants_case("separator"):
@@ -1129,6 +1131,55 @@ func _test_contract_sync(town: Dictionary) -> void:
             % _ui._amount_edit.text)
     _check(_ui._selected_contract.is_empty(),
         "an unrelated change must not put the panel into the edit mode")
+
+    _ui._map = null
+    map.queue_free()
+
+# -------------------------------------------------------
+# 12b. The panel drops the "Permanent" flag when the contract is gone
+# -------------------------------------------------------
+
+# A contract torn by the tick (or closed) must not leave the "Permanent" flag on:
+# _refresh re-reads the contract and the panel reopens as a fresh order, so the
+# checkbox follows the contract and stays off over a good that no longer has one.
+func _test_refresh_drops_permanent_flag(town: Dictionary) -> void:
+    var map := ContractMap.new()
+    get_root().add_child(map)
+    map.contracts["town_test|%s" % WOOD] = {
+        "id": "contract_refresh", "town_id": "town_test", "town_name": "Testville",
+        "product_id": WOOD, "amount": 35, "unit_price": 6, "cost_per_tick": 210,
+    }
+    _ui._map = map
+
+    _ui.open_town(town, true)
+    await process_frame
+    var wood_row := _row_by_key(_ui.sell_list, "sell:%s" % WOOD)
+    _check(wood_row != null, "the town must have a row for the good")
+    if wood_row == null:
+        _ui._map = null
+        map.queue_free()
+        return
+    _click(wood_row)
+    await process_frame
+    _check(_ui._trade_panel != null and is_instance_valid(_ui._trade_panel),
+        "a click on the good of the contract must open the trade panel")
+    if _ui._trade_panel == null:
+        _ui._map = null
+        map.queue_free()
+        return
+    _check(_ui._permanent_check.button_pressed,
+        "the panel of an existing contract must have the \"Permanent\" flag on")
+
+    # The contract is torn: the map forgets it, exactly as the town tick does.
+    map.contracts.erase("town_test|%s" % WOOD)
+    _ui._refresh()
+    await process_frame
+    _check(_ui._selected_contract.is_empty(),
+        "a contract that has gone must turn the panel back into a fresh order")
+    # _refresh keeps the amount the player had (see keep_amount) — only the flag
+    # must follow the contract.
+    _check(not _ui._permanent_check.button_pressed,
+        "a fresh order must have the \"Permanent\" flag off after the refresh")
 
     _ui._map = null
     map.queue_free()

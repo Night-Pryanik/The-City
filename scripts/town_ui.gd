@@ -431,6 +431,10 @@ func _refresh():
     if not _selected_key.is_empty():
         var keep_amount := _current_amount()
         _sync_selected_contract()
+        # A contract that was torn by the tick or closed is gone from the map: the
+        # panel reopens as a fresh order, so the "Permanent" flag must follow the
+        # contract and not stay on over a good that no longer has one.
+        _panel_permanent = not _selected_contract.is_empty()
         _open_trade_panel(keep_amount)
         _refresh_row_styles()
 
@@ -1153,6 +1157,7 @@ func _clear_selection() -> void:
     _selected_name = ""
     _selected_contract = {}
     _selected_delivery = {}
+    _panel_permanent = false
     _hovered_row = null
     _free_trade_panel()
     _refresh_row_styles()
