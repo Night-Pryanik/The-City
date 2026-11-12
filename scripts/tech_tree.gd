@@ -67,6 +67,12 @@ var _tech_nodes: Dictionary = {} # tech_id -> {button, column, row}
 var _arrows_layer: Control # the Control in which _draw draws the arrows
 var _fonts_adjusted: bool = false # the deferred automatic selection of the font has already worked
 var _hovered_tech_id: String = "" # the ID of the technology the cursor is over
+# --- The cached layout ---
+# _compute_layout() is a pure function of the static tech data (ids, prerequisites,
+# eras). Completing a research does not change any of it, so the layout stays valid
+# until the tech data itself changes (a new mod, a changed dependency, an era change).
+var _cached_layout: Dictionary = {}
+var _layout_valid: bool = false
 var _related_techs: Dictionary = {} # tech_id -> bool, the related technologies for the highlighting
 
 # --- The separation by eras ---
@@ -81,8 +87,19 @@ signal research_requested(tech_id: String)
 func setup(parent: Control, current_lbl: Label, science_lbl: Label = null):
     current_label = current_lbl
     science_pool_label = science_lbl
+    # A new game / a new UI setup: the static tech data may have changed (a new mod set,
+    # a language reload), so the cached layout is no longer trustworthy.
+    _cached_layout = {}
+    _layout_valid = false
     _build_ui(parent)
     _setup_science_tooltip()
+
+# Invalidates the cached layout. Call it when the static tech data changes
+# (new mods, changed dependencies, a changed era assignment, a language reload),
+# so that the next rebuild() recomputes _compute_layout() instead of reusing the cache.
+func invalidate_layout_cache() -> void:
+    _cached_layout = {}
+    _layout_valid = false
 
 # --- The tooltip of the breakdown of the science ("Science: X/sec") ---
 # A panel in the style of the other tooltips of the project (mouse_filter IGNORE — it does not interfere with
@@ -367,9 +384,6 @@ func _compute_layout() -> Dictionary:
                 _sort_column_by_barycenter(columns, c, parents_map, true, y_positions)
         # The alternating passes down/up. 8 iterations are enough to converge for 24 nodes;
         # 4 sometimes leaves noticeable intersections.
-        print("[tech_tree] Layout result:")
-        for c in range(num_cols):
-            print("  col %d: %s" % [c, ", ".join(columns[c])])
 
     var max_col_count := 0
     for c in columns:
@@ -714,7 +728,13 @@ func rebuild():
     if GameData.technologies.is_empty():
         return
 
-    var layout = _compute_layout()
+    var layout: Dictionary
+    if _layout_valid and not _cached_layout.is_empty():
+        layout = _cached_layout
+    else:
+        layout = _compute_layout()
+        _cached_layout = layout.duplicate(true)
+        _layout_valid = true
     var columns: Dictionary = layout["columns"]
     var max_col_count: int = layout["max_col_count"]
 

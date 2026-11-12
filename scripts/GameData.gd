@@ -83,6 +83,11 @@ var blacklisted: Dictionary = {}
 var active_mod_ids: Array = []
 var active_mod_dirs: Array = []
 
+# Emitted when the static game data is (re)loaded — a new game, a loaded save,
+# or a language change. UI that caches layout derived from the data (the tech tree)
+# must invalidate the cache so the next rebuild() recomputes it.
+signal data_reloaded
+
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
     loader.load_all_data(active_mod_dirs)
@@ -90,6 +95,7 @@ func load_all_data():
     loader.free()
     data_loaded = true
     _sync_icon_registry()
+    data_reloaded.emit()
 
 # The icons a mod ships live in its own folder, so the registry is told which mods are
 # running before anything asks it for a texture. The registry is looked up through the tree

@@ -197,6 +197,9 @@ func _ready():
     )
     tech_tree.research_requested.connect(_on_research_requested)
     $ContentPanel/TechnologiesPanel/TreeRoot.add_child(tech_tree)
+    # The static tech data may be reloaded (new game, language change). Invalidate
+    # the cached layout so the next rebuild() recomputes it instead of reusing a stale one.
+    GameData.data_reloaded.connect(tech_tree.invalidate_layout_cache)
 
     trade_tab = load("res://scripts/trade_tab.gd").new()
     trade_tab.setup(
