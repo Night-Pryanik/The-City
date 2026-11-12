@@ -73,6 +73,13 @@ var _hovered_tech_id: String = "" # the ID of the technology the cursor is over
 # until the tech data itself changes (a new mod, a changed dependency, an era change).
 var _cached_layout: Dictionary = {}
 var _layout_valid: bool = false
+# The dependency maps "parent -> [children]" and "child -> [parents]". A pure function
+# of GameData.technologies: they are built once and invalidated when the static tech
+# data changes (new mods, changed dependencies, an era change, a language reload).
+# This avoids rebuilding the maps on every hover and every redraw of the arrows layer.
+var _children_map: Dictionary = {} # parent_id -> [child_id, ...]
+var _parents_map: Dictionary = {} # child_id -> [parent_id, ...]
+var _relations_cache_valid: bool = false
 var _related_techs: Dictionary = {} # tech_id -> bool, the related technologies for the highlighting
 
 # --- The separation by eras ---
@@ -88,9 +95,11 @@ func setup(parent: Control, current_lbl: Label, science_lbl: Label = null):
     current_label = current_lbl
     science_pool_label = science_lbl
     # A new game / a new UI setup: the static tech data may have changed (a new mod set,
-    # a language reload), so the cached layout is no longer trustworthy.
+    # a language reload), so the cached layout and the dependency maps are no longer
+    # trustworthy.
     _cached_layout = {}
     _layout_valid = false
+    _relations_cache_valid = false
     _build_ui(parent)
     _setup_science_tooltip()
 
@@ -100,6 +109,35 @@ func setup(parent: Control, current_lbl: Label, science_lbl: Label = null):
 func invalidate_layout_cache() -> void:
     _cached_layout = {}
     _layout_valid = false
+
+# Builds the dependency maps once from GameData.technologies. Called lazily on the
+# first hover / arrows draw after the cache has been invalidated.
+func _build_relations_maps() -> void:
+    _children_map = {}
+    _parents_map = {}
+    for tech in GameData.technologies:
+        var tid: String = tech["id"]
+        var prereqs = tech.get("prerequisites", [])
+        for group in prereqs:
+            for req in group:
+                if not _children_map.has(req):
+                    _children_map[req] = []
+                _children_map[req].append(tid)
+                if not _parents_map.has(tid):
+                    _parents_map[tid] = []
+                _parents_map[tid].append(req)
+    _relations_cache_valid = true
+
+# Ensures the dependency maps are up to date before they are used.
+func _ensure_relations_maps() -> void:
+    if not _relations_cache_valid:
+        _build_relations_maps()
+
+# Invalidates the cached dependency maps. Call it when the static tech data changes
+# (new mods, changed dependencies, a changed era assignment, a language reload), so
+# the maps are rebuilt from the current data on the next access.
+func invalidate_relations_cache() -> void:
+    _relations_cache_valid = false
 
 # --- The tooltip of the breakdown of the science ("Science: X/sec") ---
 # A panel in the style of the other tooltips of the project (mouse_filter IGNORE — it does not interfere with
@@ -1537,25 +1575,14 @@ func _update_related_techs(tech_id: String):
     _related_techs.clear()
     _related_techs[tech_id] = true # the technology itself is also highlighted
 
-    # The map "child -> [parents]" and "parent -> [children]".
-    var parents_map: Dictionary = {}
-    var children_map: Dictionary = {}
-    for tech in GameData.technologies:
-        var tid: String = tech["id"]
-        var prereqs = tech.get("prerequisites", [])
-        for group in prereqs:
-            for req in group:
-                if not parents_map.has(tid):
-                    parents_map[tid] = []
-                parents_map[tid].append(req)
-                if not children_map.has(req):
-                    children_map[req] = []
-                children_map[req].append(tid)
+    # The dependency maps "child -> [parents]" and "parent -> [children]". Built once
+    # and reused on every hover; invalidated when the static tech data changes.
+    _ensure_relations_maps()
 
     # All the ancestors (recursively, up to the roots).
-    _collect_ancestors(tech_id, parents_map, _related_techs)
+    _collect_ancestors(tech_id, _parents_map, _related_techs)
     # All the descendants (recursively, up to the leaves).
-    _collect_descendants(tech_id, children_map, _related_techs)
+    _collect_descendants(tech_id, _children_map, _related_techs)
 
 func _collect_ancestors(tech_id: String, parents_map: Dictionary, result: Dictionary) -> void:
     # Adds all the ancestors of tech_id to result along the chain (up to the roots).
@@ -1610,19 +1637,12 @@ func _on_arrows_draw():
 
     var color_hover := UI_THEME.color("info") # a bright accent for the highlighted relations
 
-    # We build the map "parent → list of the children" from prerequisites.
-    var children_map: Dictionary = {}
-    for tech in GameData.technologies:
-        var tid: String = tech["id"]
-        var prereqs = tech.get("prerequisites", [])
-        for group in prereqs:
-            for req in group:
-                if not children_map.has(req):
-                    children_map[req] = []
-                children_map[req].append(tid)
+    # The dependency maps "parent -> [children]" / "child -> [parents]". Built once and
+    # reused on every redraw; invalidated when the static tech data changes.
+    _ensure_relations_maps()
 
     var line_width := 2.0
-    for parent_id in children_map:
+    for parent_id in _children_map:
         if not _tech_nodes.has(parent_id):
             continue
         var parent_entry = _tech_nodes[parent_id]
@@ -1634,7 +1654,7 @@ func _on_arrows_draw():
             parent_btn.position.y + parent_btn.size.y * 0.5
         )
 
-        for child_id in children_map[parent_id]:
+        for child_id in _children_map[parent_id]:
             if not _tech_nodes.has(child_id):
                 continue
             var child_entry = _tech_nodes[child_id]
