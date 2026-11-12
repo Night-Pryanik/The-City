@@ -81,6 +81,12 @@ var _children_map: Dictionary = {} # parent_id -> [child_id, ...]
 var _parents_map: Dictionary = {} # child_id -> [parent_id, ...]
 var _relations_cache_valid: bool = false
 var _related_techs: Dictionary = {} # tech_id -> bool, the related technologies for the highlighting
+# The id -> tech / id -> era indexes. A pure function of GameData.technologies /
+# GameData.eras: built once and invalidated when the static data changes. They turn
+# _get_tech_data(), _get_era_name() and _tech_exists() from linear scans into O(1) lookups.
+var _tech_by_id: Dictionary = {} # tech_id -> tech data
+var _era_by_id: Dictionary = {}  # era_id -> era data
+var _tech_index_valid: bool = false
 
 # --- The separation by eras ---
 var _era_labels: Array = [] # the Label-headings of the eras (they are cleared in rebuild)
@@ -109,6 +115,9 @@ func setup(parent: Control, current_lbl: Label, science_lbl: Label = null):
 func invalidate_layout_cache() -> void:
     _cached_layout = {}
     _layout_valid = false
+    # The static data may have changed (new mods, changed dependencies, an era change,
+    # a language reload): the id -> tech / id -> era indexes are stale.
+    _tech_index_valid = false
 
 # Builds the dependency maps once from GameData.technologies. Called lazily on the
 # first hover / arrows draw after the cache has been invalidated.
@@ -132,6 +141,17 @@ func _build_relations_maps() -> void:
 func _ensure_relations_maps() -> void:
     if not _relations_cache_valid:
         _build_relations_maps()
+
+# Ensures the id -> tech / id -> era indexes are built before they are used.
+func _ensure_tech_index() -> void:
+    if not _tech_index_valid:
+        _tech_by_id = {}
+        _era_by_id = {}
+        for tech in GameData.technologies:
+            _tech_by_id[tech["id"]] = tech
+        for era in GameData.eras:
+            _era_by_id[era.get("id", "")] = era
+        _tech_index_valid = true
 
 # Invalidates the cached dependency maps. Call it when the static tech data changes
 # (new mods, changed dependencies, a changed era assignment, a language reload), so
@@ -432,6 +452,7 @@ func _compute_layout() -> Dictionary:
         "columns": columns,
         "tech_col": col_for,
         "max_col_count": max_col_count,
+        "era_groups": _compute_era_groups(columns, num_cols),
     }
 
 func _build_parents_map(techs: Array) -> Dictionary:
@@ -522,10 +543,8 @@ func _median(values: Array) -> float:
     return (float(values[int(n / 2.0) - 1]) + float(values[int(n / 2.0)])) * 0.5
 
 func _tech_exists(tech_id: String) -> bool:
-    for t in GameData.technologies:
-        if t["id"] == tech_id:
-            return true
-    return false
+    _ensure_tech_index()
+    return _tech_by_id.has(tech_id)
 
     # The pairs are sorted by the first element (bary), then by the second (id) —
     # because the Array in GDScript is compared element by element.
@@ -600,10 +619,8 @@ func _normalize_era_columns(col_for: Dictionary) -> Dictionary:
 func _get_era_name(era_id: String) -> String:
     if era_id.is_empty():
         return ""
-    for era in GameData.eras:
-        if era.get("id", "") == era_id:
-            return era.get("name", era_id)
-    return era_id
+    _ensure_tech_index()
+    return _era_by_id.get(era_id, {}).get("name", era_id)
 
 # Returns the id of the era to which the column column_id belongs.
 # A column can contain the technologies of different eras (rare, but it happens —
@@ -686,14 +703,14 @@ func _col_y() -> float:
 
 # Creates the Label-headings of the eras above the fresh columns. It is called from rebuild().
 # The headings are added to _inner, therefore they scroll together with the tree.
-func _create_era_labels(layout_columns: Dictionary, num_cols: int) -> void:
+func _create_era_labels(era_groups: Array) -> void:
     # First we remove the old headings (if there was a rebuild).
     for l in _era_labels:
         if is_instance_valid(l):
             l.queue_free()
     _era_labels.clear()
 
-    _era_groups = _compute_era_groups(layout_columns, num_cols)
+    _era_groups = era_groups
     if _era_groups.is_empty():
         return
 
@@ -798,7 +815,7 @@ func rebuild():
     # We create the headings of the eras (the strip on the top). We do this BEFORE the columns,
     # so that the headings end up under them in the z-order (the arrows are drawn
     # by the last layer over everything).
-    _create_era_labels(columns, num_cols)
+    _create_era_labels(layout["era_groups"])
 
     # We place the columns manually inside _inner (and NOT through HBoxContainer),
     # so that the positions are predictable for the drawing of the arrows.
@@ -1349,11 +1366,8 @@ func _load_tech_icon(icon_name: String) -> Texture2D:
     return IconRegistry.get_texture(icon_name)
 
 func _get_tech_data(tech_id: String) -> Dictionary:
-            # The pure weighted average of the special_yield of the mixture, without the bonuses.
-    for t in GameData.technologies:
-        if t["id"] == tech_id:
-            return t
-    return {}
+    _ensure_tech_index()
+    return _tech_by_id.get(tech_id, {})
 
 func _update_states():
     # " (Name1, Name2)" by the unique names in the order of the first appearance; for
