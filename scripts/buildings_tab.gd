@@ -25,7 +25,11 @@ var _cached_build_manager = null
 # The button of the selected building and the dictionary id -> button (for the details tooltip).
 var selected_button: Button = null
 var _hovered_building_id: String = "" # the building under the cursor (for the details tooltip)
+var _hovered_construction_bar_key: String = "" # the construction bar under the cursor
 var building_buttons: Dictionary = {}
+# Cached static data of the currently selected building, to avoid scanning buildings_data
+# every frame while the cursor is on the "Build" button.
+var _selected_bdata: Dictionary = {}
 var _detail_material_rows: Array = []
 var _detail_requirement_label: Label = null
 # The last "era" of the resource display (CityData.resource_display_interval):
@@ -198,6 +202,7 @@ func refresh_built():
     for child in built_buildings_list.get_children():
         child.queue_free()
     construction_rows.clear()
+    _hovered_construction_bar_key = ""
     # The list buttons are recreated — the tooltip could remain hanging over a removed
     # button (its mouse_exited will no longer fire), so we hide it explicitly.
     _hide_built_tooltip()
@@ -314,6 +319,8 @@ func _refresh_construction_rows():
             if is_upgrade else tr("Pause construction")
         pause_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         pause_btn.pressed.connect(_on_construction_pause_pressed.bind(build_key))
+        pause_btn.mouse_entered.connect(_on_construction_entered.bind(build_key))
+        pause_btn.mouse_exited.connect(_on_construction_exited.bind(build_key))
         row.add_child(pause_btn)
 
         # The cancel button of the construction or the upgrade.
@@ -323,7 +330,13 @@ func _refresh_construction_rows():
         cancel_btn.tooltip_text = tr("Cancel upgrade") if is_upgrade else tr("Cancel construction")
         cancel_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         cancel_btn.pressed.connect(_on_construction_cancel_pressed.bind(build_key))
+        cancel_btn.mouse_entered.connect(_on_construction_entered.bind(build_key))
+        cancel_btn.mouse_exited.connect(_on_construction_exited.bind(build_key))
         row.add_child(cancel_btn)
+
+        # The progress bar itself: hovering over it shows the construction tooltip.
+        bar.mouse_entered.connect(_on_construction_entered.bind(build_key))
+        bar.mouse_exited.connect(_on_construction_exited.bind(build_key))
 
         built_buildings_list.add_child(row)
         construction_rows[build_key] = {
@@ -394,37 +407,6 @@ func _refresh_build_button_text():
     else:
         build_button.text = tr("Build")
         build_button.tooltip_text = ""
-
-# Returns the data about the progress bar of the building under construction under the cursor.
-# It returns an empty dictionary if the cursor is not over any of the bars.
-func get_hovered_construction_bar(mouse_pos: Vector2) -> Dictionary:
-    var bm = _get_build_manager()
-    if not bm:
-        return {}
-    for build_key in construction_rows.keys():
-        var row_data = construction_rows[build_key]
-        if not is_instance_valid(row_data["bar"]):
-            continue
-        var bar = row_data["bar"]
-        if bar.get_global_rect().has_point(mouse_pos):
-            var progress_data = bm.get_building_build_progress(build_key)
-            if progress_data.is_empty():
-                continue
-            var work_cost = progress_data.get("work_cost", 1)
-            var progress_value = min(progress_data.get("progress", 0.0), work_cost)
-            var percent = 0.0
-            if work_cost > 0:
-                percent = progress_value / work_cost * 100.0
-            var status = progress_data.get("status", "active")
-            var status_text = tr("Under construction")
-            if status == "paused":
-                status_text = tr("Paused")
-            return {
-                "bar": bar,
-                "status_text": status_text,
-                "percent": percent
-            }
-    return {}
 
 # Returns the status of the group of built buildings: the text and the colour for the button.
 # idle — the buildings that have a worker, but all the slots are empty (they are idle).
@@ -662,20 +644,24 @@ func _on_building_slots_pressed(building_id: String):
 func _on_building_list_pressed(building_id: String):
     selected_button = building_buttons.get(building_id, null)
     selected_building_id = building_id
+    _selected_bdata = {}
     if ui_helpers:
         ui_helpers.set_message("")
         ui_helpers.hide_group_tooltip()
 
-    var bdata = null
     for b in buildings_data:
         if b["id"] == building_id:
-            bdata = b
+            _selected_bdata = b
             break
-    if bdata:
-        _show_building_details(bdata)
+    if not _selected_bdata.is_empty():
+        _show_building_details(_selected_bdata)
 
 func get_selected_button() -> Button:
     return selected_button
+
+# Returns the static data of the currently selected building (cached on selection).
+func get_selected_bdata() -> Dictionary:
+    return _selected_bdata
 
 # --- The details tooltip on hover (any building button, not only the selected one) ---
 func _on_building_hovered(building_id: String):
@@ -690,6 +676,46 @@ func _on_building_hovered(building_id: String):
 func _on_building_unhovered(building_id: String):
     if _hovered_building_id == building_id:
         _hovered_building_id = ""
+
+# The cursor entered a construction row: remember its build key.
+func _on_construction_entered(build_key: String):
+    _hovered_construction_bar_key = build_key
+
+# The cursor left a construction row: clear the hover if it was this one.
+func _on_construction_exited(build_key: String):
+    if _hovered_construction_bar_key == build_key:
+        _hovered_construction_bar_key = ""
+
+# Returns the data about the progress bar of the building under construction under the cursor.
+# Uses the hover state tracked via mouse_entered/mouse_exited instead of scanning all rows.
+# Returns an empty dictionary if the cursor is not over any of the bars.
+func get_hovered_construction_bar() -> Dictionary:
+    var build_key = _hovered_construction_bar_key
+    if build_key == "":
+        return {}
+    var row_data = construction_rows.get(build_key, null)
+    if not row_data or not is_instance_valid(row_data["bar"]):
+        return {}
+    var bm = _get_build_manager()
+    if not bm:
+        return {}
+    var progress_data = bm.get_building_build_progress(build_key)
+    if progress_data.is_empty():
+        return {}
+    var work_cost = progress_data.get("work_cost", 1)
+    var progress_value = min(progress_data.get("progress", 0.0), work_cost)
+    var percent = 0.0
+    if work_cost > 0:
+        percent = progress_value / work_cost * 100.0
+    var status = progress_data.get("status", "active")
+    var status_text = tr("Under construction")
+    if status == "paused":
+        status_text = tr("Paused")
+    return {
+        "bar": row_data["bar"],
+        "status_text": status_text,
+        "percent": percent
+    }
 
 func get_hovered_button() -> Button:
     # Returns the button of the building under the cursor, if it still exists.

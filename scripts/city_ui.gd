@@ -718,16 +718,10 @@ func _on_research_requested(tech_id: String):
 func _process(delta):
     var mouse_pos = get_viewport().get_mouse_position()
 
-    # The tooltip for the food toggles (only on the "Resources" tab — otherwise the
-    # hidden toggles "leak" into the other tabs through get_global_rect,
-    # which returns the coordinates even for hidden panels).
-    var hovered_food = false
-    if resources_panel.visible:
-        for pid in resources_tab.get_food_toggles():
-            var toggle = resources_tab.get_food_toggles()[pid]
-            if toggle.is_visible_in_tree() and toggle.get_global_rect().has_point(mouse_pos):
-                hovered_food = true
-                break
+    # The tooltip for the food toggles (only on the "Resources" tab).
+    # The hovered toggle is tracked via mouse_entered/mouse_exited in resources_tab,
+    # so we no longer scan every toggle each frame.
+    var hovered_food = resources_tab.get_hovered_food_id() != ""
 
     if hovered_food:
         food_hover_timer += delta
@@ -751,12 +745,10 @@ func _process(delta):
             if buildings_tab.selected_building_id == "":
                 hint = tr("No building selected")
             else:
-                var bdata = null
-                for b in data_cache.get("buildings_data", []):
-                    if b["id"] == buildings_tab.selected_building_id:
-                        bdata = b
-                        break
-                if bdata:
+                # The static data of the selected building is cached in buildings_tab
+                # on selection, so we do not scan buildings_data every frame.
+                var bdata = buildings_tab.get_selected_bdata()
+                if not bdata.is_empty():
                     var work_cost = bdata.get("work_cost", 0)
                     if work_cost > 0:
                         work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
@@ -790,9 +782,10 @@ func _process(delta):
         ui_helpers.build_tooltip_panel.visible = false
 
     # The tooltip for the progress bars of the buildings under construction (updated in real time)
+    # The hovered bar is tracked via mouse_entered/mouse_exited in buildings_tab.
     var hovered_bar = {}
     if buildings_panel.visible:
-        hovered_bar = buildings_tab.get_hovered_construction_bar(mouse_pos)
+        hovered_bar = buildings_tab.get_hovered_construction_bar()
     if not hovered_bar.is_empty():
         var status_text = hovered_bar.get("status_text", tr("Under construction"))
         var percent = hovered_bar.get("percent", 0.0)
@@ -807,8 +800,10 @@ func _process(delta):
     var hovered_detail = false
     var hovered_detail_button = false
     if buildings_panel.visible and buildings_tab.has_method("get_hovered_button"):
+        # get_hovered_button() already tracks hover via mouse_entered/mouse_exited,
+        # so no per-frame rect polling is needed here.
         var hov_btn = buildings_tab.get_hovered_button()
-        if hov_btn and hov_btn.get_global_rect().has_point(mouse_pos):
+        if hov_btn:
             hovered_detail = true
             hovered_detail_button = true
             if building_detail_locked \

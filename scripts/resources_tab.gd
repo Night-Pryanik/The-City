@@ -41,6 +41,9 @@ var production_rates: Dictionary = {}
 var consumption_rates: Dictionary = {}
 var city_food_pool: Dictionary = {}
 var food_toggles: Dictionary = {}
+# The product id of the food toggle under the cursor, tracked via mouse_entered/mouse_exited
+# instead of polling every frame in city_ui._process.
+var _hovered_food_id: String = ""
 var amount_labels: Dictionary = {}
 var prod_labels: Dictionary = {}
 var cons_labels: Dictionary = {}
@@ -255,6 +258,7 @@ func refresh():
     _clear_list(storage_list)
     _clear_list(tamed_list)
     food_toggles.clear()
+    _hovered_food_id = ""
     amount_labels.clear()
     prod_labels.clear()
     cons_labels.clear()
@@ -406,6 +410,8 @@ func _fill_storage_section() -> void:
                 # the icon, and a stretched CheckBox would draw its box far from the text.
                 toggle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
                 toggle.toggled.connect(_on_food_toggle_toggled.bind(prod_id))
+                toggle.mouse_entered.connect(_on_food_toggle_entered.bind(prod_id))
+                toggle.mouse_exited.connect(_on_food_toggle_exited.bind(prod_id))
                 row.add_child(toggle)
                 food_toggles[prod_id] = toggle
 
@@ -720,6 +726,19 @@ func get_food_pool() -> Dictionary:
 
 func get_food_toggles() -> Dictionary:
     return food_toggles
+
+# The cursor entered a food toggle: remember which product it is.
+func _on_food_toggle_entered(prod_id: String):
+    _hovered_food_id = prod_id
+
+# The cursor left a food toggle: clear the hover if it was this one.
+func _on_food_toggle_exited(prod_id: String):
+    if _hovered_food_id == prod_id:
+        _hovered_food_id = ""
+
+# Returns the product id of the food toggle under the cursor, or "" if none.
+func get_hovered_food_id() -> String:
+    return _hovered_food_id
 
 func get_production_rates() -> Dictionary:
     return production_rates
