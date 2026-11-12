@@ -271,6 +271,10 @@ func _build_border() -> void:
     _border.set_anchors_preset(Control.PRESET_FULL_RECT)
     _border.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _border.draw.connect(_draw_border)
+    # A Control redraws only when explicitly asked: its size follows the window
+    # through the anchors, but resize does not emit draw on its own. Queue a
+    # redraw on resize so _draw_border repaints the frame at the new size.
+    _border.resized.connect(_border.queue_redraw)
     _border_layer.add_child(_border)
     _border.visible = false
 
