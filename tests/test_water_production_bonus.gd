@@ -389,6 +389,8 @@ func _test_production_pipeline(cdata: Node, state: Dictionary) -> void:
 func _prepare_tanner(cdata: Node) -> void:
     cdata.city_storage.clear()
     cdata.add_to_storage("hide", 200, "common")
+    # The tanner spends a group of tanning agents on every batch of hides.
+    cdata.add_to_storage("oak_bark", 200, "common")
     cdata.city_built_buildings = [
         {"id": "leatherworker_house", "slots": ["leather"], "quality_priority": "best"}
     ]

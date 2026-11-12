@@ -487,8 +487,8 @@
       "icon": "resin.png"
     },
     {
-      // The tan barks of the "@tannins" group. No recipe spends tannin yet:
-      // the tanner's house still works hides alone.
+      // The tan barks of the "@tannins" group: the tanner's house spends a
+      // group of them on every batch of hides.
       "id": "oak_bark", "price": 5,
       "name": "Oak Bark",
       "type": "product",

@@ -80,7 +80,7 @@
       "id": "leather",
       "name": "Leather",
       "produced_in": [ "leatherworker_house" ],
-      "resources": { "hide": 10 },
+      "resources": { "hide": 10, "@tannins": 10 },
       "result": { "leather": 10 },
       "time": 4.0,
       "unlock_tech": "leatherworking",

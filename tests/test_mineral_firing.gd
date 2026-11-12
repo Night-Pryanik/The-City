@@ -111,7 +111,8 @@ func _test_records(gd: Node, city: Node) -> void:
 
     var leather: Dictionary = city.get_craft_by_id("leather")
     _check(not leather.is_empty(), "leather recipe exists")
-    _check(leather.get("resources", {}).keys() == ["hide"], "leatherworking consumes hides without tanning agents")
+    _check(leather.get("resources", {}).keys() == ["hide", "@tannins"],
+        "leatherworking consumes hides and tanning agents")
     _check(leather.get("result", {}).keys() == ["leather"], "leatherworking produces leather")
     _check(leather.get("produced_in", []) == ["leatherworker_house"], "leather keeps its workshop")
     _check(str(leather.get("unlock_tech", "")) == "leatherworking", "leather keeps its technology gate")
