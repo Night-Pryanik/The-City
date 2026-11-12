@@ -691,8 +691,8 @@ func hide_group_tooltip():
 # The structure: the header with the name of the resource (and, for a group, the
 # composition on the row below — a group reference stays readable without leaving
 # the row), then one row per consumer:
-#   "• All citizens: 10 ед./сек (no bonus)"
-#   "• Fisherman: 1 ед./сек (+50% to production)"
+#   "• All citizens: 10 units/sec (no bonus)"
+#   "• Fisherman: 1 units/sec (+50% to production)"
 # The rate is per one worker/citizen and is given by the same format as in the row
 # of the expense of a profession (ConsumptionUi.format_rate_with_unit), so that the
 # two places cannot show a different number for one and the same rule.

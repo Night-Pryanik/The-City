@@ -1,5 +1,5 @@
-# Временный скрипт валидации data/*.json: вырезает комментарии так же, как
-# data_loader.gd (_strip_json_comments — с учётом строк), затем парсит JSON.
+# Temporary script to validate data/*.json: strips comments the same way
+# data_loader.gd (_strip_json_comments — taking strings into account), then parses JSON.
 import json
 import os
 import sys

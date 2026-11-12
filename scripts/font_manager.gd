@@ -89,7 +89,7 @@ const STYLE_ITALIC := 2
 # Medium weight of the project theme was lost once (fonts/inter_medium.tres carried
 # {"wght": 500} and rendered as plain Regular). Two forms do work: this numeric tag and
 # the axis name TextServer gives it, "weight" (the .tres file uses that one, it reads
-# better). Measured: Inter at 40 px, "Шрифт 1234 Wg" — 308 px at the default weight,
+# better). Measured: Inter at 40 px, "Font 1234 Wg" — 308 px at the default weight,
 # 312 px with the tag applied.
 const WEIGHT_AXIS := 2003265652
 

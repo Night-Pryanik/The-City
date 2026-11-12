@@ -286,8 +286,8 @@ func _fill_product_rows() -> void:
     _add_filtered_rows(entries, _show_product_form, VIEW_PRODUCT_LIST)
 
 # One row per entry that matches the search of its own list: an entry is [the lowercased
-# name, the name, the id]. The prefix is what the player sees typed — "Ам" leaves амарант
-# and амфора, not everything with an "ам" inside. Only the rows are rebuilt on a keystroke,
+# name, the name, the id]. The prefix is what the player sees typed — "Am" leaves amaranth
+# and amphora, not everything with an "am" inside. Only the rows are rebuilt on a keystroke,
 # never the field, so the caret and the focus stay where the typing happens.
 func _add_filtered_rows(entries: Array, on_pick: Callable, slot: String) -> void:
     var needle := str(_pending_filters[slot]).to_lower()

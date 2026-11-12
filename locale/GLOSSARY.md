@@ -16,10 +16,10 @@ Each target language gets its own catalog in `locale/`:
 
 ```
 locale/messages.pot   # template: every source message, empty msgstr
-locale/<код>.po       # one file per target language
+locale/<code>.po       # one file per target language
 ```
 
-When a new language is added, drop in `locale/<код>.po` next to the others and
+When a new language is added, drop in `locale/<code>.po` next to the others and
 register it in `project.godot` under
 `internationalization/locale/translations`. No code changes are needed.
 
