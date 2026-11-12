@@ -25,7 +25,7 @@
       "id": "tundra_moss",
       "name": "Moss and Lichen",
       "color": [ 186, 200, 196 ],
-      "alpha": 0.45,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "icons": [ "tundra_moss_1.png", "tundra_moss_2.png", "tundra_moss_3.png" ]
     },
@@ -50,7 +50,7 @@
       "id": "temperate_rainforest_sparse",
       "name": "Sparse Temperate Rainforest",
       "color": [ 34, 139, 34 ],
-      "alpha": 0.55,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "wood_yield": 10,
       "icons": [ "temperate_rainforest_sparse_1.png", "temperate_rainforest_sparse_2.png", "temperate_rainforest_sparse_3.png" ]
@@ -59,7 +59,7 @@
       "id": "temperate_dry_forest",
       "name": "Temperate Dry Forest",
       "color": [ 96, 122, 44 ],
-      "alpha": 0.8,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "wood_yield": 16,
       "icons": [ "temperate_dry_forest_1.png", "temperate_dry_forest_2.png", "temperate_dry_forest_3.png" ]
@@ -68,7 +68,7 @@
       "id": "temperate_dry_forest_sparse",
       "name": "Sparse Temperate Dry Forest",
       "color": [ 96, 122, 44 ],
-      "alpha": 0.5,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "wood_yield": 8,
       "icons": [ "temperate_dry_forest_sparse_1.png", "temperate_dry_forest_sparse_2.png", "temperate_dry_forest_sparse_3.png" ]
@@ -79,7 +79,7 @@
       "id": "taiga",
       "name": "Taiga",
       "color": [ 30, 90, 70 ],
-      "alpha": 0.4,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "wood_yield": 20,
       "icons": [ "taiga_1.png", "taiga_2.png", "taiga_3.png" ]
@@ -88,7 +88,7 @@
       "id": "taiga_sparse",
       "name": "Sparse Taiga",
       "color": [ 40, 100, 80 ],
-      "alpha": 0.28,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "wood_yield": 10,
       "icons": [ "taiga_sparse_1.png", "taiga_sparse_2.png", "taiga_sparse_3.png" ]
@@ -99,7 +99,7 @@
       "id": "tropical_rainforest",
       "name": "Tropical Rainforest",
       "color": [ 25, 105, 45 ],
-      "alpha": 0.44,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "wood_yield": 25,
       "icons": [ "tropical_rainforest_1.png", "tropical_rainforest_2.png", "tropical_rainforest_3.png" ]
@@ -108,7 +108,7 @@
       "id": "tropical_rainforest_sparse",
       "name": "Sparse Tropical Rainforest",
       "color": [ 35, 115, 55 ],
-      "alpha": 0.3,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "wood_yield": 12,
       "icons": [ "tropical_rainforest_sparse_1.png", "tropical_rainforest_sparse_2.png", "tropical_rainforest_sparse_3.png" ]
@@ -117,7 +117,7 @@
       "id": "tropical_dry_forest",
       "name": "Tropical Dry Forest",
       "color": [ 110, 118, 40 ],
-      "alpha": 0.4,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "wood_yield": 18,
       "icons": [ "tropical_dry_forest_1.png", "tropical_dry_forest_2.png", "tropical_dry_forest_3.png" ]
@@ -126,7 +126,7 @@
       "id": "tropical_dry_forest_sparse",
       "name": "Sparse Tropical Dry Forest",
       "color": [ 118, 124, 52 ],
-      "alpha": 0.26,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "wood_yield": 9,
       "icons": [ "tropical_dry_forest_sparse_1.png", "tropical_dry_forest_sparse_2.png", "tropical_dry_forest_sparse_3.png" ]

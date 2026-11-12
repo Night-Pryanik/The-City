@@ -1,4 +1,4 @@
-# The map preview of a new game.
+﻿# The map preview of a new game.
 #
 # The square IS the world: its AREA is proportional to the chosen map size against the
 # largest allowed one, so a map twice as large reads as twice as much map. The side therefore
@@ -46,7 +46,8 @@ const WETLAND_COLOR := Color(0.16, 0.28, 0.26)
 const MOUNTAIN_ROCK := Color(0.58, 0.57, 0.55)
 # The light of the relief: a unit vector from the north-west, high enough to keep every slope lit.
 const RELIEF_LIGHT := Vector3(-0.5, -0.5, 0.7071)
-const TOWN_COLOR := Color(0.92, 0.92, 0.90)
+const TOWN_COLOR := Color.WHITE
+const TOWN_OUTLINE_COLOR := Color.BLACK
 const CITY_COLOR := Color(0.95, 0.78, 0.35)
 const RIVER_COLOR := Color(0.36, 0.62, 0.90)
 const TITLE_COLOR := Color(0.90, 0.90, 0.90)
@@ -56,11 +57,11 @@ const CAPTION_COLOR := Color(0.62, 0.62, 0.62)
 # picture and not for the game: the five belts have to be told apart at a glance, and the towns
 # (pale) and the city (gold) have to stay readable on every one of them.
 const BELT_COLORS: Array[Color] = [
-    Color(0.80, 0.83, 0.85),   # polar: the tundra, the palest belt
-    Color(0.25, 0.42, 0.38),   # cold: the taiga, a dark blue-green
-    Color(0.66, 0.70, 0.32),   # mild: the steppe and the prairie
-    Color(0.76, 0.56, 0.22),   # subtropical: the savanna
-    Color(0.24, 0.62, 0.24),   # tropical: the deepest green
+    Color(0.60, 0.80, 1.00),   # polar: light blue — tundra zone
+    Color(0.25, 0.45, 0.95),   # cold: blue — boreal zone
+    Color(0.40, 0.75, 0.35),   # mild: green — temperate zone
+    Color(1.00, 0.60, 0.20),   # subtropical: orange — savanna
+    Color(1.00, 0.90, 0.20),   # tropical: yellow — tropical zone
 ]
 
 # The kinds of a cell of the picture. The codes are what build() puts into the byte array and
@@ -839,6 +840,7 @@ func _draw_towns(square: Rect2) -> void:
         var point := centre + Vector2(cos(angle), sin(angle)) * distance
         if _is_town_land(square, point) and _clear_of_towns(point, placed):
             placed.append(point)
+            draw_circle(point, TOWN_RADIUS + 1.0, TOWN_OUTLINE_COLOR)
             draw_circle(point, TOWN_RADIUS, TOWN_COLOR)
             continue
         var cell := _nearest_free_cell(square, point, placed)
@@ -846,6 +848,7 @@ func _draw_towns(square: Rect2) -> void:
             continue
         var spot := _cell_point(square, cell)
         placed.append(spot)
+        draw_circle(spot, TOWN_RADIUS + 1.0, TOWN_OUTLINE_COLOR)
         draw_circle(spot, TOWN_RADIUS, TOWN_COLOR)
 
 func _clear_of_towns(point: Vector2, placed: Array[Vector2]) -> bool:
