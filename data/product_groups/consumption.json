@@ -131,6 +131,18 @@
       "id": "tare",
       "name": "Tare",
       "products": [ "amphora", "glass_bottle", "wooden_barrel" ]
+    },
+    {
+      // The goods of the perfumer's art as the citizens use them: the perfume they
+      // put on, the incense they burn and the attar they keep. The raw resins and the
+      // roses are NOT in the group: they are the material of the perfumer's house, and
+      // the citizens do not eat the raw material of a good that is made out of it.
+      // The order of the members is the order of the write-off (the citizens take the
+      // first member that is in storage): the everyday perfume goes first, the costly
+      // attar last.
+      "id": "perfumery",
+      "name": "Perfumery",
+      "products": [ "perfume", "incense", "attar" ]
     }
   ]
 }

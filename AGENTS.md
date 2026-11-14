@@ -216,6 +216,16 @@ To keep a file local, list it in the working-tree `.gitignore` and drop it from 
 
 A new chain therefore has to be removed whole: the recipe, the product it makes, and every goods group that lists the product. The group is rewritten by the mod itself (`mods/blacklist_example/data/product_groups.json`), and the list it writes must hold exactly the members that survive — a member left out of the list is not an error, but a member of a removed product in the list is.
 
+## City Consumption: the Goods, Not the Material
+
+A group of goods that the citizens write off (`data/consumption/`) holds the goods the citizens use, not the material these goods are made of. The citizens do not eat the raw resin of the perfumer's art while the perfume, the incense and the attar made out of it are in the storage: the raw material belongs to the workshop, and the workshop is the one that turns it into the goods of the town.
+
+The exception is a raw material that is eaten in its own right: the grapes are eaten as fruit and are made into wine, and the two demands compete for the same harvest.
+
+The order of the members of a group is the order of the write-off — the citizens take the first member that is in storage. The everyday good goes first, the costly one last.
+
+A good is not worth less than the material it is made of: the incense is worth more than the resin it is ground from.
+
 ## Text and the Texture Filter of a Canvas Item
 
 The atlas of a font is a texture, and a `CanvasItem` samples it with its own `texture_filter`. A text drawn with `draw_string` on an item whose filter is `TEXTURE_FILTER_NEAREST` comes out streaked and stretched as soon as the window scales the interface by a fraction (`window/stretch/mode = "canvas_items"` with a base smaller than the window), because the glyph bitmap is then magnified by a nearest sampling. The letters of a small size suffer first.

@@ -416,6 +416,18 @@
       "default_recipes": [ "wooden_barrel" ]
     },
     {
+      "id": "perfumer_house",
+      "name": "Perfumer's House",
+      "description": "Grinds aromatic resins into perfumes and incense.",
+      "work_cost": 35,
+      "additional_cost": [ { "planks": 120 }, { "@processed_construction_materials": 60 } ],
+      "icon": "perfumer_house.png",
+      "production_slots": 1.0,
+      "profession": "perfumer",
+      "unlock_tech": "perfume_making",
+      "default_recipes": [ "perfume" ]
+    },
+    {
       "id": "sugar_boiler",
       "name": "Sugar Boiler",
       "description": "Boils a sweet juice down to sugar.",

@@ -3180,6 +3180,10 @@ msgid "Fuses glass and blows glassware."
 msgstr "Варка стекла и выдувание стеклянных изделий."
 
 msgctxt "buildings.description"
+msgid "Grinds aromatic resins into perfumes and incense."
+msgstr "Стирает ароматические смолы в духи и благовония."
+
+msgctxt "buildings.description"
 msgid "Handles every step of making tar and tarring materials."
 msgstr "Осуществление всех операций по производству смолы и смолению материалов."
 
@@ -3344,6 +3348,10 @@ msgid "Parchment Workshop"
 msgstr "Пергаментная мастерская"
 
 msgctxt "buildings.name"
+msgid "Perfumer's House"
+msgstr "Дом парфюмера"
+
+msgctxt "buildings.name"
 msgid "Pottery Workshop"
 msgstr "Гончарная мастерская"
 
@@ -3474,6 +3482,10 @@ msgstr "Орехи"
 msgctxt "categories.name"
 msgid "Other"
 msgstr "Прочее"
+
+msgctxt "categories.name"
+msgid "Perfumery"
+msgstr "Парфюмерия"
 
 msgctxt "categories.name"
 msgid "Spices"
@@ -3692,8 +3704,16 @@ msgid "Cuts stone into plates, bowls, and cups."
 msgstr "Вырезает из камня тарелки, миски и чашки."
 
 msgctxt "crafts.description"
+msgid "Dissolves the fragrant resin in oil and keeps the scent in a jar."
+msgstr "Растворяет ароматическую смолу в масле и хранит запах в склянке."
+
+msgctxt "crafts.description"
 msgid "Distils tar out of resin."
 msgstr "Выгоняет смолу из живицы."
+
+msgctxt "crafts.description"
+msgid "Distils the scent of the resin into a pure oil."
+msgstr "Перегоняет запах смолы в чистое масло."
 
 msgctxt "crafts.description"
 msgid "Dries and roasts coffee beans."
@@ -3738,6 +3758,10 @@ msgstr "Складывает и закаляет узорчатую полосу
 msgctxt "crafts.description"
 msgid "Foldes the bloom of the city into the watered bar the smiths of other towns ask for."
 msgstr "Слиток города коётся в полосу с узором, которую просят кузнецы других городков."
+
+msgctxt "crafts.description"
+msgid "Grinds the resin with charcoal into a powder for the hearth."
+msgstr "Стирает смолу с углём в порошок для очага."
 
 msgctxt "crafts.description"
 msgid "Makes a batch of weapons to defend the city."
@@ -4040,6 +4064,10 @@ msgid "Arsenic"
 msgstr "Мышьяк"
 
 msgctxt "crafts.name"
+msgid "Attar"
+msgstr "Аттар"
+
+msgctxt "crafts.name"
 msgid "Beef"
 msgstr "Говядина"
 
@@ -4244,6 +4272,10 @@ msgid "Horsemeat"
 msgstr "Конина"
 
 msgctxt "crafts.name"
+msgid "Incense"
+msgstr "Благовония"
+
+msgctxt "crafts.name"
 msgid "Indigo"
 msgstr "Индиго"
 
@@ -4338,6 +4370,10 @@ msgstr "Пергамент"
 msgctxt "crafts.name"
 msgid "Pearl Jewelry"
 msgstr "Украшения из жемчуга"
+
+msgctxt "crafts.name"
+msgid "Perfume"
+msgstr "Духи"
 
 msgctxt "crafts.name"
 msgid "Pigeon"
@@ -4824,6 +4860,10 @@ msgid "Paper Fibers"
 msgstr "Волокна для бумаги"
 
 msgctxt "product_groups.name"
+msgid "Perfumery"
+msgstr "Парфюмерия"
+
+msgctxt "product_groups.name"
 msgid "Processed Building Materials"
 msgstr "Обработанные стройматериалы"
 
@@ -4948,6 +4988,10 @@ msgid "Gathers and boils down natural tar."
 msgstr "Собирает и выпаривает природную смолу."
 
 msgctxt "professions.description"
+msgid "Grinds aromatic resins into perfumes and incense."
+msgstr "Стирает ароматические смолы в духи и благовония."
+
+msgctxt "professions.description"
 msgid "Grows technical and spice crops."
 msgstr "Возделывает технические и пряные культуры."
 
@@ -5022,6 +5066,10 @@ msgstr "Шахтёр"
 msgctxt "professions.name"
 msgid "Oilmaker"
 msgstr "Маслодел"
+
+msgctxt "professions.name"
+msgid "Perfumer"
+msgstr "Парфюмер"
 
 msgctxt "professions.name"
 msgid "Planter"
@@ -5168,6 +5216,10 @@ msgid "Arsenic Ore"
 msgstr "Мышьяковая руда"
 
 msgctxt "resources.name"
+msgid "Attar"
+msgstr "Аттар"
+
+msgctxt "resources.name"
 msgid "Banteng"
 msgstr "Бантенги"
 
@@ -5214,6 +5266,10 @@ msgstr "Бизоны"
 msgctxt "resources.name"
 msgid "Bitumen"
 msgstr "Битум"
+
+msgctxt "resources.name"
+msgid "Boswellia"
+msgstr "Босвеллия"
 
 msgctxt "resources.name"
 msgid "Bread"
@@ -5404,6 +5460,10 @@ msgid "Coir"
 msgstr "Койр"
 
 msgctxt "resources.name"
+msgid "Commiphora"
+msgstr "Коммифора"
+
+msgctxt "resources.name"
 msgid "Copper"
 msgstr "Медь"
 
@@ -5504,6 +5564,10 @@ msgid "Foraged Food"
 msgstr "Дикоросы"
 
 msgctxt "resources.name"
+msgid "Frankincense"
+msgstr "Ладан"
+
+msgctxt "resources.name"
 msgid "Fruit Wine"
 msgstr "Фруктовое вино"
 
@@ -5602,6 +5666,10 @@ msgstr "Конина"
 msgctxt "resources.name"
 msgid "Horses"
 msgstr "Лошади"
+
+msgctxt "resources.name"
+msgid "Incense"
+msgstr "Благовония"
 
 msgctxt "resources.name"
 msgid "Indigo"
@@ -5772,6 +5840,10 @@ msgid "Mutton"
 msgstr "Баранина"
 
 msgctxt "resources.name"
+msgid "Myrrh"
+msgstr "Мирра"
+
+msgctxt "resources.name"
 msgid "Nephrite"
 msgstr "Нефрит"
 
@@ -5858,6 +5930,10 @@ msgstr "Жемчужницы"
 msgctxt "resources.name"
 msgid "Peas"
 msgstr "Горох"
+
+msgctxt "resources.name"
+msgid "Perfume"
+msgstr "Духи"
 
 msgctxt "resources.name"
 msgid "Pigeon"
@@ -6616,6 +6692,10 @@ msgid "Allows you to build the paper workshop.\nAllows you to produce paper from
 msgstr "Даёт возможность строить бумажную мастерскую.\nПозволяет производить бумагу из тутовника, конопли и рами с использованием извести."
 
 msgctxt "technologies.description"
+msgid "Allows you to build the perfumer's house: fragrant resins and oil → perfume."
+msgstr "Позволяет построить дом парфюмера: ароматические смолы и масло → духи."
+
+msgctxt "technologies.description"
 msgid "Allows you to build the quarry and the mason's workshop."
 msgstr "Даёт возможность строить каменоломню и каменотёсную мастерскую."
 
@@ -6920,6 +7000,10 @@ msgid "The loom turned wool and flax into cloth, from which clothes were sewn."
 msgstr "Ткацкий станок превратил шерсть и лён в ткань, из которой шили одежду."
 
 msgctxt "technologies.flavor"
+msgid "The perfumer's workshop held both goods at once: the resin ground with charcoal for the temple, and the resin dissolved in oil for the body. The people of the warm south had mixed the tears of the boswellia tree with oil long before anyone thought of distilling them."
+msgstr "В мастерской парфюмера лежали оба товара: смола, стёртая с углём для храма, и смола, растворённая в масле для тела. Народы тёплого юга смешивали слёзы босвеллии с маслом задолго до того, как кто-либо додумался их перегонять."
+
+msgctxt "technologies.flavor"
 msgid "The skill of laying stone made it possible to build sturdy buildings that outlived centuries."
 msgstr "Умение класть камень позволило строить прочные здания, которые переживали века."
 
@@ -7098,6 +7182,10 @@ msgstr "Бумага"
 msgctxt "technologies.name"
 msgid "Parchment"
 msgstr "Пергамент"
+
+msgctxt "technologies.name"
+msgid "Perfumery"
+msgstr "Парфюмерия"
 
 msgctxt "technologies.name"
 msgid "Plantations"

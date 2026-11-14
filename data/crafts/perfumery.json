@@ -1,0 +1,39 @@
+{
+  // The recipes of the perfumer's house. The materials are named directly and not through
+  // the "@perfumery" group: that group holds the ready goods of the perfumer's art, and
+  // a recipe that takes the group would make a perfume out of an attar.
+  "crafts": [
+    {
+      "id": "perfume",
+      "name": "Perfume",
+      "produced_in": [ "perfumer_house" ],
+      "resources": [ [ { "frankincense": 20 }, { "myrrh": 20 }, { "roses": 20 } ], { "vegetable_oil": 10 } ],
+      "result": { "perfume": 10 },
+      "time": 5.0,
+      "description": "Dissolves the fragrant resin in oil and keeps the scent in a jar."
+    },
+    {
+      // The incense is made of the resin alone: the rose petals are a perfume material,
+      // but they are not what is burned on the temple hearth.
+      "id": "incense",
+      "name": "Incense",
+      "produced_in": [ "perfumer_house" ],
+      "resources": [ [ { "frankincense": 20 }, { "myrrh": 20 } ], { "charcoal": 10 } ],
+      "result": { "incense": 10 },
+      "time": 5.0,
+      "description": "Grinds the resin with charcoal into a powder for the hearth."
+    },
+    {
+      // The alembic of the alchemist's house pulls the scent out of the resin: the
+      // essence is a drop of a whole tree's yield, so it is worth more than the resin.
+      "id": "attar",
+      "name": "Attar",
+      "produced_in": [ "perfumer_house" ],
+      "resources": [ [ { "frankincense": 20 }, { "myrrh": 20 }, { "roses": 20 } ] ],
+      "result": { "attar": 5 },
+      "time": 8.0,
+      "unlock_tech": "alchemy",
+      "description": "Distils the scent of the resin into a pure oil."
+    }
+  ]
+}

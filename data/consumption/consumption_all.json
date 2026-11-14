@@ -135,6 +135,21 @@
       "amount": 10,
       "interval": 1,
       "production_bonus": 0.0
+    },
+    {
+      // The citizens write off the goods of the perfumer's art: they put the perfume on
+      // and burn the incense. Only the ready goods are written off — the raw resin and
+      // the roses are the material of the perfumer's house, and the citizens do not eat
+      // the raw material of a good that is made out of it.
+      // The rate is a tenth of the one of the other luxuries (the jewelry
+      // and the clothes are written off at a unit per citizen per second) — the perfumer
+      // and the citizens take the same goods out of the same storage, and a heavy write-off
+      // would leave the workshop without its own products.
+      "resource": "@perfumery",
+      "profession": [ "all" ],
+      "amount": 1,
+      "interval": 10,
+      "production_bonus": 0.0
     }
   ]
 }

@@ -697,6 +697,48 @@
       "color": [ 150, 200, 100 ]
     },
     {
+      // The boswellia of the dry mountains: the frankincense resin is tapped from the
+      // bark of a living tree, so the camp takes the resin without felling the
+      // tree (docs.md, "Improvement types are a convention").
+      "id": "boswellia_tree", "price": 14,
+      "name": "Boswellia",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "aromatic_plants",
+      "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
+      "allowed_cover": [
+        "none", "tropical_dry_forest_sparse"
+      ],
+      "allowed_climate_zones": [ "savanna_dry", "tropical_dry" ],
+      "improved_by": "lumberjack_hut",
+      "tech_required": "wood_processing",
+      "produces": { "frankincense": 10 },
+      "icon": "boswellia_tree.png",
+      "color": [ 200, 180, 130 ]
+    },
+    {
+      // The commiphora of the dry bushland: the myrrh gum is cut out of the bark of
+      // the living tree, so the camp takes the gum without felling the tree
+      // (docs.md, "Improvement types are a convention").
+      "id": "commiphora_tree", "price": 12,
+      "name": "Commiphora",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "aromatic_plants",
+      "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
+      "allowed_cover": [
+        "none", "temperate_dry_forest_sparse", "temperate_rainforest_sparse"
+      ],
+      "allowed_climate_zones": [ "savanna_dry", "savanna_wet" ],
+      "improved_by": "lumberjack_hut",
+      "tech_required": "wood_processing",
+      "produces": { "myrrh": 10 },
+      "icon": "commiphora_tree.png",
+      "color": [ 160, 140, 100 ]
+    },
+    {
       "id": "chili_field", "price": 7,
       "name": "Chili",
       "type": "raw",

@@ -194,6 +194,12 @@
       "name": "Oilmaker",
       "icon": "profession_oilmaker.png",
       "description": "Description of oilmaker profession."
+    },
+    {
+      "id": "perfumer",
+      "name": "Perfumer",
+      "icon": "profession_perfumer.png",
+      "description": "Grinds aromatic resins into perfumes and incense."
     }
   ]
 }

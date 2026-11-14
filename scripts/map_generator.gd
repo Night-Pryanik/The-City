@@ -938,6 +938,10 @@ func _limit_deserts(tile_data: Array, rows: int, cols: int) -> void:
 # together, otherwise they would only exchange zones and stay specks. An island with no land
 # neighbours keeps a single zone of its own: there is nothing to merge it with.
 #
+# A speck is dissolved into the zone of its OWN belt: the belt of a hex is pinned by its latitude
+# (see _apply_climate), and a zone of another belt would put the vegetation of that belt on a hex
+# that does not stand in it.
+#
 # A speck that reaches the pole row keeps its zone: the belt of those hexes is pinned by the
 # latitude (see _apply_climate), and the sea cuts the polar band into specks often enough — a
 # corner of the map behind a sea strip is one hex. Merging it would take the tundra off the pole.
@@ -1004,14 +1008,27 @@ func _remove_small_zone_islands(tile_data: Array, rows: int, cols: int, min_size
                     merged[key] = true
                     members[key] = true
                     stack.append(key)
-            var target := _dominant_neighbour_zone(tile_data, rows, cols, members, cluster)
-            if target == "":
-                # An island: nothing around it to merge into, so it keeps one zone instead of
-                # being split between the specks it is made of.
-                target = _dominant_zone_of_cells(tile_data, cluster)
-            if target != "":
-                for cell in cluster:
-                    tile_data[cell.x][cell.y]["climate"] = target
+            # The belt of a hex is pinned by its latitude, so a speck is dissolved into the zone
+            # of ITS OWN belt and takes only the humidity of the zone around it. A speck that
+            # takes the zone of another belt would carry the vegetation of a belt it does not
+            # stand in, and two neighbouring hexes could end up two belts apart.
+            var groups: Dictionary = {}
+            for cell in cluster:
+                var belt := str(tile_data[cell.x][cell.y].get("temperature", ""))
+                if not groups.has(belt):
+                    groups[belt] = []
+                (groups[belt] as Array).append(cell)
+            for belt in groups.keys():
+                var cells_of_belt: Array = groups[belt]
+                var target := _dominant_neighbour_zone(tile_data, rows, cols, members,
+                        cells_of_belt, belt)
+                if target == "":
+                    # Nothing of the belt around: an island, or a belt that is narrow here.
+                    # The speck keeps its own zone — there is nothing of its belt to merge into.
+                    target = _dominant_zone_of_cells(tile_data, cells_of_belt)
+                if target != "":
+                    for cell in cells_of_belt:
+                        tile_data[cell.x][cell.y]["climate"] = target
 
 # Whether a patch reaches the pole row of the map, whose belt is pinned by the latitude.
 func _touches_pole(cells: Array, rows: int) -> bool:
@@ -1021,14 +1038,17 @@ func _touches_pole(cells: Array, rows: int) -> bool:
     return false
 
 # The zone that surrounds a cluster of specks: the most frequent one among the land neighbours of
-# its hexes that are not a part of the cluster. Ties are broken by the id, so that the result does
-# not depend on the dictionary order.
+# its hexes that are not a part of the cluster and that stand in the same belt. Ties are broken by
+# the id, so that the result does not depend on the dictionary order.
 func _dominant_neighbour_zone(tile_data: Array, rows: int, cols: int, members: Dictionary,
-        cells: Array) -> String:
+        cells: Array, belt: String) -> String:
     var counts: Dictionary = {}
     for cell in cells:
         for neighbour in HexUtils.get_neighbors_odd_r(cell.x, cell.y, rows, cols):
-            if members.has(Vector2i(neighbour.row, neighbour.col)):
+            var key := Vector2i(neighbour.row, neighbour.col)
+            if members.has(key):
+                continue
+            if str(tile_data[neighbour.row][neighbour.col].get("temperature", "")) != belt:
                 continue
             var zone_id := str(tile_data[neighbour.row][neighbour.col].get("climate", ""))
             if zone_id == "":

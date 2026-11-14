@@ -3123,6 +3123,10 @@ msgid "Fuses glass and blows glassware."
 msgstr ""
 
 msgctxt "buildings.description"
+msgid "Grinds aromatic resins into perfumes and incense."
+msgstr ""
+
+msgctxt "buildings.description"
 msgid "Handles every step of making tar and tarring materials."
 msgstr ""
 
@@ -3287,6 +3291,10 @@ msgid "Parchment Workshop"
 msgstr ""
 
 msgctxt "buildings.name"
+msgid "Perfumer's House"
+msgstr ""
+
+msgctxt "buildings.name"
 msgid "Pottery Workshop"
 msgstr ""
 
@@ -3416,6 +3424,10 @@ msgstr ""
 
 msgctxt "categories.name"
 msgid "Other"
+msgstr ""
+
+msgctxt "categories.name"
+msgid "Perfumery"
 msgstr ""
 
 msgctxt "categories.name"
@@ -3635,7 +3647,15 @@ msgid "Cuts stone into plates, bowls, and cups."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Dissolves the fragrant resin in oil and keeps the scent in a jar."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Distils tar out of resin."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Distils the scent of the resin into a pure oil."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -3680,6 +3700,10 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Foldes the bloom of the city into the watered bar the smiths of other towns ask for."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Grinds the resin with charcoal into a powder for the hearth."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -3983,6 +4007,10 @@ msgid "Arsenic"
 msgstr ""
 
 msgctxt "crafts.name"
+msgid "Attar"
+msgstr ""
+
+msgctxt "crafts.name"
 msgid "Beef"
 msgstr ""
 
@@ -4187,6 +4215,10 @@ msgid "Horsemeat"
 msgstr ""
 
 msgctxt "crafts.name"
+msgid "Incense"
+msgstr ""
+
+msgctxt "crafts.name"
 msgid "Indigo"
 msgstr ""
 
@@ -4280,6 +4312,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Pearl Jewelry"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Perfume"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4771,6 +4807,10 @@ msgid "Paper Fibers"
 msgstr ""
 
 msgctxt "product_groups.name"
+msgid "Perfumery"
+msgstr ""
+
+msgctxt "product_groups.name"
 msgid "Processed Building Materials"
 msgstr ""
 
@@ -4891,6 +4931,10 @@ msgid "Gathers and boils down natural tar."
 msgstr ""
 
 msgctxt "professions.description"
+msgid "Grinds aromatic resins into perfumes and incense."
+msgstr ""
+
+msgctxt "professions.description"
 msgid "Grows technical and spice crops."
 msgstr ""
 
@@ -4964,6 +5008,10 @@ msgstr ""
 
 msgctxt "professions.name"
 msgid "Oilmaker"
+msgstr ""
+
+msgctxt "professions.name"
+msgid "Perfumer"
 msgstr ""
 
 msgctxt "professions.name"
@@ -5111,6 +5159,10 @@ msgid "Arsenic Ore"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Attar"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Banteng"
 msgstr ""
 
@@ -5156,6 +5208,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Bitumen"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Boswellia"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5347,6 +5403,10 @@ msgid "Coir"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Commiphora"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Copper"
 msgstr ""
 
@@ -5447,6 +5507,10 @@ msgid "Foraged Food"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Frankincense"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Fruit Wine"
 msgstr ""
 
@@ -5544,6 +5608,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Horses"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Incense"
 msgstr ""
 
 msgctxt "resources.name"
@@ -5715,6 +5783,10 @@ msgid "Mutton"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Myrrh"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Nephrite"
 msgstr ""
 
@@ -5800,6 +5872,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Peas"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Perfume"
 msgstr ""
 
 msgctxt "resources.name"
@@ -6543,6 +6619,10 @@ msgid "Allows you to build the paper workshop.\nAllows you to produce paper from
 msgstr ""
 
 msgctxt "technologies.description"
+msgid "Allows you to build the perfumer's house: fragrant resins and oil → perfume."
+msgstr ""
+
+msgctxt "technologies.description"
 msgid "Allows you to build the quarry and the mason's workshop."
 msgstr ""
 
@@ -6847,6 +6927,10 @@ msgid "The loom turned wool and flax into cloth, from which clothes were sewn."
 msgstr ""
 
 msgctxt "technologies.flavor"
+msgid "The perfumer's workshop held both goods at once: the resin ground with charcoal for the temple, and the resin dissolved in oil for the body. The people of the warm south had mixed the tears of the boswellia tree with oil long before anyone thought of distilling them."
+msgstr ""
+
+msgctxt "technologies.flavor"
 msgid "The skill of laying stone made it possible to build sturdy buildings that outlived centuries."
 msgstr ""
 
@@ -7024,6 +7108,10 @@ msgstr ""
 
 msgctxt "technologies.name"
 msgid "Parchment"
+msgstr ""
+
+msgctxt "technologies.name"
+msgid "Perfumery"
 msgstr ""
 
 msgctxt "technologies.name"

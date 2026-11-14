@@ -1,0 +1,54 @@
+{
+  // The resins of the perfumer's art and the goods made out of them. The resins are cut
+  // out of the bark of a living tree and hardened in the air; the tree gives them as it
+  // stands (see data/resources/plants/technical_plants.json).
+  "resources": [
+    {
+      "id": "frankincense",
+      "price": 30,
+      "name": "Frankincense",
+      "type": "product",
+      "category": "perfumery",
+      "unlock_tech": "wood_processing",
+      "icon": "frankincense.png"
+    },
+    {
+      "id": "myrrh",
+      "price": 25,
+      "name": "Myrrh",
+      "type": "product",
+      "category": "perfumery",
+      "unlock_tech": "wood_processing",
+      "icon": "myrrh.png"
+    },
+    {
+      "id": "perfume",
+      "price": 50,
+      "name": "Perfume",
+      "type": "product",
+      "category": "perfumery",
+      "unlock_tech": "perfume_making",
+      "icon": "perfume.png"
+    },
+    {
+      // The incense is the resin ground with charcoal: the raw gum is worth more than
+      // the gum alone, and it is sold as the product of the perfumer's art.
+      "id": "incense",
+      "price": 45,
+      "name": "Incense",
+      "type": "product",
+      "category": "perfumery",
+      "unlock_tech": "perfume_making",
+      "icon": "incense.png"
+    },
+    {
+      "id": "attar",
+      "price": 85,
+      "name": "Attar",
+      "type": "product",
+      "category": "perfumery",
+      "unlock_tech": "alchemy",
+      "icon": "attar.png"
+    }
+  ]
+}

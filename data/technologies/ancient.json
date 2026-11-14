@@ -379,6 +379,16 @@
       "flavor": "Dyeing cloth and pottery with various dyes is one of the oldest crafts."
     },
     {
+      "id": "perfume_making",
+      "name": "Perfumery",
+      "era": "ancient",
+      "science_cost": 3.0,
+      "icon": "perfume_making.png",
+      "prerequisites": [ [ "oil_making", "dyeing" ] ],
+      "description": "Allows you to build the perfumer's house: fragrant resins and oil → perfume.",
+      "flavor": "The perfumer's workshop held both goods at once: the resin ground with charcoal for the temple, and the resin dissolved in oil for the body. The people of the warm south had mixed the tears of the boswellia tree with oil long before anyone thought of distilling them."
+    },
+    {
       "id": "sugar_making",
       "name": "Sugar Making",
       "era": "ancient",

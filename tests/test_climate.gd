@@ -208,6 +208,11 @@ func _test_neighbouring_belts(state: Dictionary) -> void:
 # the zone around it. An island with no land neighbours has nothing to merge with and stays, and
 # neither is a patch that reaches the pole row: the belt of those hexes is pinned by the latitude,
 # and the sea cuts the polar band into specks often enough to leave one behind.
+#
+# A patch that stands alone in its belt stays as well: the sea cuts it off from the rest of the
+# belt — a piece of land in the middle of a cold shore, a corner of the map behind the water — and
+# there is no zone of the belt to dissolve it into. The belt of a hex is pinned by its latitude, so
+# such a patch keeps the zone of its own belt even when it is small.
 func _test_min_size(state: Dictionary) -> void:
     _generate()
     var min_size := int(_gdata.map_config.get("climate", {}).get("min_zone_size", 3))
@@ -239,9 +244,25 @@ func _test_min_size(state: Dictionary) -> void:
                 continue
             if _touches_pole(cells):
                 continue
+            if not _touches_own_belt(cells, zone_id):
+                continue
             check(cells.size() >= min_size,
                     "the zone %s has a patch of %d hexes at (%d,%d)" % [zone_id, cells.size(), r, c],
                     state)
+
+# Whether any hex of the patch has a land neighbour OUTSIDE the patch in the same belt: a patch
+# that stands alone in its belt has no zone of the belt to be dissolved into.
+func _touches_own_belt(cells: Array, zone_id: String) -> bool:
+    var belt := _temperature_index(cells[0].x, cells[0].y)
+    for cell in cells:
+        for neighbour in HexUtils.get_neighbors_odd_r(cell.x, cell.y, ROWS, COLS):
+            if not _has_zone(neighbour.row, neighbour.col):
+                continue
+            if _zone_id(neighbour.row, neighbour.col) == zone_id:
+                continue
+            if _temperature_index(neighbour.row, neighbour.col) == belt:
+                return true
+    return false
 
 # The map keeps a polar edge on both sides: the tundra reaches the very pole, and no belt warmer
 # than the taiga comes near the edge.

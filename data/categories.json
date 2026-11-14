@@ -12,6 +12,7 @@
     { "id": "drinks", "name": "Drinks" },
     { "id": "tobacco", "name": "Tobacco Products" },
     { "id": "spices", "name": "Spices" },
+    { "id": "perfumery", "name": "Perfumery" },
     { "id": "aux_food", "name": "Additional Food" },
     { "id": "sweeteners", "name": "Sweeteners" },
     { "id": "technical_plants", "name": "Technical Crops" },
