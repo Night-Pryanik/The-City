@@ -757,6 +757,25 @@
       "color": [ 160, 140, 100 ]
     },
     {
+      // Sandalwood of the dry foothills: the heartwood is the incense wood.
+      "id": "sandalwood_tree", "price": 14,
+      "name": "Sandalwood",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "aromatic_plants",
+      "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
+      "allowed_cover": [
+        "none", "tropical_dry_forest_sparse"
+      ],
+      "allowed_climate_zones": [ "savanna_dry", "tropical_dry" ],
+      "improved_by": "lumberjack_hut",
+      "tech_required": "wood_processing",
+      "produces": { "sandalwood": 10 },
+      "icon": "sandalwood.png",
+      "color": [ 180, 160, 120 ]
+    },
+    {
       "id": "chili_field", "price": 7,
       "name": "Chili",
       "type": "raw",

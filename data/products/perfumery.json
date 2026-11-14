@@ -49,6 +49,16 @@
       "category": "perfumery",
       "unlock_tech": "alchemy",
       "icon": "attar.png"
+    },
+    {
+      // Sandalwood heartwood sold as incense: the wood of the perfumer's art.
+      "id": "sandalwood",
+      "price": 40,
+      "name": "Sandalwood",
+      "type": "product",
+      "category": "perfumery",
+      "unlock_tech": "wood_processing",
+      "icon": "sandalwood.png"
     }
   ]
 }
