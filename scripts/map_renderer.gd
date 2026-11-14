@@ -826,9 +826,9 @@ func _draw_town_influence_borders(visible_range: Dictionary) -> void:
         var color := Color(seg.cr, seg.cg, seg.cb, seg.ca)
         draw_line(p1, p2, color, TOWN_INFLUENCE_BORDER_WIDTH, true)
 
-    # Draws the overlay of the cover over the relief.
+    # Draws the cover over the relief: a full hex tile that replaces the terrain.
     # If the cover has an icon - we draw it (a deterministic choice by the seed),
-    # otherwise - a semi-transparent coloured polygon (color + alpha).
+    # otherwise - a flat coloured polygon.
 func _draw_cover_overlay(row: int, col: int, center: Vector2, vertices: PackedVector2Array):
     var tile = tile_data[row][col]
     var cover_id = tile.get("cover", "none")
@@ -848,14 +848,11 @@ func _draw_cover_overlay(row: int, col: int, center: Vector2, vertices: PackedVe
             TERRAIN_ICON_SIZE,
             TERRAIN_ICON_SIZE
         )
-    # The icon of the forest is usually opaque - we apply the alpha for the semi-transparency.
-        var alpha = float(cover.get("alpha", 0.45))
-        draw_texture_rect(tex, icon_rect, false, Color(1, 1, 1, alpha))
+        # A cover icon is a complete hex tile, ground and walls included.
+        draw_texture_rect(tex, icon_rect, false)
     else:
-    # The fallback: a semi-transparent coloured polygon.
         var c = cover.get("color", [0, 0, 0])
-        var alpha = float(cover.get("alpha", 0.45))
-        draw_colored_polygon(vertices, Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0, alpha))
+        draw_colored_polygon(vertices, Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0))
 
     # Returns the name of the cover picture for the hex (row, col) - a deterministic choice.
     # The list is the one of the data, grown by the extra variants of the active tileset.

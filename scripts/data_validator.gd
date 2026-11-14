@@ -482,7 +482,6 @@ const COVER_FIELDS := {
     "id": LEAF,
     "name": LEAF,
     "color": LEAF,
-    "alpha": LEAF,
     "icons": LEAF,
     "move_cost_bonus": LEAF,
     "wood_yield": LEAF,
