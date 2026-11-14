@@ -11,6 +11,7 @@
     { "id": "nuts", "name": "Nuts" },
     { "id": "drinks", "name": "Drinks" },
     { "id": "tobacco", "name": "Tobacco Products" },
+    { "id": "coca", "name": "Coca" },
     { "id": "spices", "name": "Spices" },
     { "id": "perfumery", "name": "Perfumery" },
     { "id": "aux_food", "name": "Additional Food" },

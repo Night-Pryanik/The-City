@@ -508,6 +508,7 @@
     { "id": "rapeseed", "price": 5, "name": "Rapeseed", "type": "product", "category": "material", "unlock_tech": "oil_making", "icon": "rapeseed.png" },
     { "id": "hops", "price": 6, "name": "Hops", "type": "product", "category": "material", "icon": "hops.png" },
     { "id": "tobacco_leaf", "price": 10, "name": "Tobacco Leaf", "type": "product", "category": "material", "icon": "tobacco_leaf.png" },
+    { "id": "coca_leaf", "price": 10, "name": "Coca Leaf", "type": "product", "category": "coca", "icon": "coca_leaf.png" },
     { "id": "sugar_cane", "price": 7, "name": "Sugar Cane", "type": "product", "category": "material", "icon": "sugar_cane.png" },
     {
       // The cold belt's sugar feedstock. A batch of sugar asks the same amount

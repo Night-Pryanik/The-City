@@ -137,6 +137,15 @@
       "production_bonus": 0.0
     },
     {
+      // The citizens chew coca leaf raw — the leaf is the good itself,
+      // not the raw material of a workshop, so it is written off directly.
+      "resource": "coca_leaf",
+      "profession": [ "all" ],
+      "amount": 10,
+      "interval": 1,
+      "production_bonus": 0.0
+    },
+    {
       // The citizens write off the goods of the perfumer's art: they put the perfume on
       // and burn the incense. Only the ready goods are written off — the raw resin and
       // the roses are the material of the perfumer's house, and the citizens do not eat

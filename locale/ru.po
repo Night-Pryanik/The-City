@@ -3432,6 +3432,10 @@ msgid "Clothes"
 msgstr "Одежда"
 
 msgctxt "categories.name"
+msgid "Coca"
+msgstr "Кока"
+
+msgctxt "categories.name"
 msgid "Containers"
 msgstr "Контейнеры"
 
@@ -5426,6 +5430,10 @@ msgstr "Глиняные таблички"
 msgctxt "resources.name"
 msgid "Cloth Clothes"
 msgstr "Тканевая одежда"
+
+msgctxt "resources.name"
+msgid "Coca Leaf"
+msgstr "Лист коки"
 
 msgctxt "resources.name"
 msgid "Cochineal"
