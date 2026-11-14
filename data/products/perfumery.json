@@ -51,10 +51,10 @@
       "icon": "attar.png"
     },
     {
-      // Sandalwood heartwood sold as incense: the wood of the perfumer's art.
-      "id": "sandalwood",
-      "price": 40,
-      "name": "Sandalwood",
+      // Sandalwood oil pressed from the heartwood: a fragrant oil of the perfumer's art.
+      "id": "sandalwood_oil",
+      "price": 45,
+      "name": "Sandalwood Oil",
       "type": "product",
       "category": "perfumery",
       "unlock_tech": "wood_processing",

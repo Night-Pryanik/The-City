@@ -142,7 +142,7 @@
       // attar last.
       "id": "perfumery",
       "name": "Perfumery",
-      "products": [ "perfume", "incense", "sandalwood", "attar" ]
+      "products": [ "perfume", "incense", "attar" ]
     }
   ]
 }

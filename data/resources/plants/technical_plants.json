@@ -771,7 +771,7 @@
       "allowed_climate_zones": [ "savanna_dry", "tropical_dry" ],
       "improved_by": "lumberjack_hut",
       "tech_required": "wood_processing",
-      "produces": { "sandalwood": 10 },
+      "produces": { "sandalwood_oil": 10 },
       "icon": "sandalwood.png",
       "color": [ 180, 160, 120 ]
     },

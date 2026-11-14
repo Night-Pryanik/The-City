@@ -18,10 +18,10 @@
       "id": "incense",
       "name": "Incense",
       "produced_in": [ "perfumer_house" ],
-      "resources": [ [ { "frankincense": 20 }, { "myrrh": 20 } ], { "charcoal": 10 } ],
+      "resources": [ [ { "frankincense": 20 }, { "myrrh": 20 }, { "sandalwood_oil": 20 } ], { "charcoal": 10 } ],
       "result": { "incense": 10 },
       "time": 5.0,
-      "description": "Grinds the resin with charcoal into a powder for the hearth."
+      "description": "Grinds the resin—or the sandalwood oil—with charcoal into a powder for the hearth."
     },
     {
       // The alembic of the alchemist's house pulls the scent out of the resin: the
